@@ -1,0 +1,115 @@
+! ***************** icon_star ****************************
+!
+! +++
+! Creates a star
+!
+!
+! 2023-01-01 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates a star
+
+LOCAL GEOMETRY MODULE icon_star(
+INT     star_number   :=  1     > "Star number";
+FLOAT   star_scale    :=  1.0   > "Star scale";
+INT     star_color    := 3      >"Star color";
+INT     graphic       :=  1     > "Graphic flag");
+
+CONSTANT FLOAT offset_icon = 0.1;
+
+! Correction for screen 2560 X 1440
+CONSTANT FLOAT pixel_scale = 1.33; 
+
+INT    b_val;              ! Blank value B planes
+CONSTANT INT b_val_pts= 0; ! Blank value points
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("icon_star Graphic flag not 0, 1 or 2");
+  ENDIF;
+
+  TFORM_MOVE(#10, VEC(0.0, 0.0, 0.0), VEC(7.0710678, pixel_scale*10.0, 0.0), star_scale, star_scale, star_scale);
+ 
+  POI_FREE(#11, VEC( 0.0, pixel_scale*10.0, 0.0) :BLANK= b_val_pts, PEN=4);
+  POI_FREE(#12, VEC( 7.0710678,  7.0710678, 0.0) :BLANK= b_val_pts, PEN=4);
+  POI_FREE(#13, VEC( 7.0710678, -7.0710678, 0.0) :BLANK= b_val_pts, PEN=4);
+  POI_FREE(#14, VEC( 0.0, -pixel_scale*10.0,0.0) :BLANK= b_val_pts, PEN=4);
+  POI_FREE(#15, VEC(-7.0710678, -7.0710678, 0.0) :BLANK= b_val_pts, PEN=4);
+  POI_FREE(#16, VEC(-7.0710678,  7.0710678, 0.0) :BLANK= b_val_pts, PEN=4);
+
+
+  TCOPY(#21, #11, #10);
+  TCOPY(#22, #12, #10);
+  TCOPY(#23, #13, #10);
+  TCOPY(#24, #14, #10);
+  TCOPY(#25, #15, #10);
+  TCOPY(#26, #16, #10);
+  
+  B_PLANE(#1, ON(#21), ON(#23), ON(#23), ON(#25):BLANK=b_val, PEN=star_color);
+  
+  B_PLANE(#2, ON(#22), ON(#24), ON(#24), ON(#26):BLANK=b_val, PEN=star_color);
+  
+  
+  DEL(#10);
+  DEL(#21);
+  DEL(#22);
+  DEL(#23);
+  DEL(#24);
+  DEL(#25);
+  DEL(#26);
+  
+  IF graphic <= 1 THEN
+ 
+	DEL(#11);
+    DEL(#12);
+    DEL(#13);
+    DEL(#14);
+    DEL(#15);
+    DEL(#16);
+	
+	EXIT();
+  
+  ENDIF;
+  
+  TFORM_MOVE(#30, VEC(0.0, 0.0, 0.0), VEC(7.0710678, pixel_scale*10.0, offset_icon), star_scale, star_scale, star_scale);
+
+  TCOPY(#31, #11, #30);
+  TCOPY(#32, #12, #30);
+  TCOPY(#33, #13, #30);
+  TCOPY(#34, #14, #30);
+  TCOPY(#35, #15, #30);
+  TCOPY(#36, #16, #30);
+  
+  B_PLANE(#3, ON(#35), ON(#33), ON(#33), ON(#31):BLANK=b_val, PEN=star_color);
+  
+  B_PLANE(#4, ON(#36), ON(#34), ON(#34), ON(#32):BLANK=b_val, PEN=star_color);
+
+  DEL(#11);
+  DEL(#12);
+  DEL(#13);
+  DEL(#14);
+  DEL(#15);
+  DEL(#16);  
+  
+  DEL(#30);  
+  
+  DEL(#31);
+  DEL(#32);
+  DEL(#33);
+  DEL(#34);
+  DEL(#35);
+  DEL(#36);
+
+
+ENDMODULE
+
+ 
