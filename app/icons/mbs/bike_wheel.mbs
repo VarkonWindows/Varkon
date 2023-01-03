@@ -1,0 +1,130 @@
+! ***************** bike_wheel ****************************
+!
+! +++
+! Create a bike wheel
+!
+!
+! 2022-12-29 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Create pipe around input spine curve
+
+GLOBAL GEOMETRY MODULE bike_wheel(
+REF     id_point        := #0     > "@t1 Center point for wheel";
+FLOAT   wheel_diameter  := 1360.0 > "Wheel diameter";
+FLOAT   tire_diameter   :=   80.0 > "Tire diameter";
+FLOAT   spike_diameter  :=   10.0 > "Spike diameter";
+FLOAT   center_diameter :=  30.0  > "Center diameter";
+INT	    n_spikes        :=  24    > "Number of spikes";
+INT	    reverse         := -1     > "Reverse for SUR_SWEEP";
+INT	    wheel_color     :=  3     > "Wheel color";
+FLOAT   scale_wheel     :=  1.0   > "Scale wheel";
+INT     graphic         :=  1     > "Graphic flag");
+
+
+CONSTANT VECTOR y_dir = VEC(0.0, 0.0, 1.0);
+
+INT  spike_number;  ! Loop spike number
+FLOAT t_delta;      ! Delta parameter value for spikes
+VECTOR spike_start; ! Start point for spike
+FLOAT  t_end;       ! End parameter value
+FLOAT  t_current;   ! Current parameter value for spikes
+
+VECTOR pt_cir_1;    ! Circle defintion point
+VECTOR t_pt_cir_1;  ! Circle tangent defintion point
+VECTOR pt_cir_2;    ! Circle defintion point
+VECTOR t_pt_cir_2;  ! Circle tangent defintion point
+VECTOR pt_cir_3;    ! Circle defintion point
+VECTOR t_pt_cir_3;  ! Circle tangent defintion point
+VECTOR pt_cir_4;    ! Circle defintion point
+VECTOR t_pt_cir_4;  ! Circle tangent defintion point
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("bike_wheel Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+! Spine for wheel
+  ARC_1POS(#2, ON(id_point), 0.5*wheel_diameter*scale_wheel:BLANK=0, PEN=3);
+  
+! Spine for center
+  ARC_1POS(#5, ON(id_point), 0.5*center_diameter*scale_wheel:BLANK=0, PEN=3);
+  
+  pt_cir_1 := ON(id_point) - VEC(-0.5*wheel_diameter*scale_wheel, 0.0, 0.0);  
+  pt_cir_2 := ON(id_point) - VEC( 0.0, 0.5*wheel_diameter*scale_wheel, 0.0);  
+  pt_cir_3 := ON(id_point) - VEC( 0.5*wheel_diameter*scale_wheel, 0.0, 0.0);  
+  pt_cir_4 := ON(id_point) - VEC( 0.0,-0.5*wheel_diameter*scale_wheel, 0.0);  
+
+  t_pt_cir_1 := pt_cir_1 + VEC( 0.0,  1.0, 0.0);  
+  t_pt_cir_2 := pt_cir_2 + VEC( 1.0,  0.0, 0.0); 
+  t_pt_cir_3 := pt_cir_3 + VEC( 0.0, -1.0, 0.0); 
+  t_pt_cir_4 := pt_cir_4 + VEC(-1.0,  0.0, 0.0); 
+    
+  CUR_CONIC(#9, "FREE", 
+                pt_cir_1, t_pt_cir_1, 0.4142,
+                pt_cir_2, t_pt_cir_2, 0.4142,
+                pt_cir_3, t_pt_cir_3, 0.4142,
+                pt_cir_4, t_pt_cir_4, 0.4142, 
+				pt_cir_1, t_pt_cir_1
+				: BLANK=0, PEN=4);
+				
+! Profiles
+
+  MODE_BASIC();
+
+  ARC_1POS(#3, vec(0,0,0), 0.5*tire_diameter*scale_wheel:PEN=1, BLANK= 1);
+  
+  ARC_1POS(#6, vec(0,0,0), 0.5*spike_diameter*scale_wheel:PEN=1, BLANK= 1);
+
+  MODE_GLOBAL();
+
+
+! Tire surface
+
+  SUR_SWEEP(#4, #3, #2, reverse, y_dir:BLANK=1, PEN=3);
+
+  SUR_APPROX(#1,#4, "CUB_SUR", 1, 4:PEN=wheel_color, BLANK= b_val);
+  
+  DEL(#4);
+  
+! Center surface
+
+  SUR_SWEEP(#7, #6, #5, reverse, y_dir:BLANK=1, PEN=3);
+  
+  SUR_APPROX(#8,#7, "CUB_SUR", 1, 4:PEN=wheel_color, BLANK= b_val);
+  
+  DEL(#7);
+  
+! Spikes
+  
+  t_end := INV_ARCL(#9, ARCL(#9));
+  
+  t_delta := t_end/(n_spikes - 1);
+  
+  FOR spike_number := 1 TO n_spikes DO
+  
+    t_current := (spike_number -1)*t_delta;
+  
+    LIN_FREE(#10, ON(id_point), ON(#9, t_current):BLANK=1, PEN=4); 
+	
+	PART(#11, bike_pipe(GLOBAL_REF(#10), spike_diameter*scale_wheel, reverse, wheel_color, graphic));
+	
+	DEL(#10);
+  
+  ENDFOR;
+
+
+ENDMODULE
+
+ 

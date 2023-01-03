@@ -1,0 +1,135 @@
+! ***************** bike_saddle ****************************
+!
+! +++
+! Creates a bike saddle
+!
+!
+! 2022-12-27 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates a bike saddle
+
+GLOBAL GEOMETRY MODULE bike_saddle(
+REF     id_origin     := #0     > "@t1 Origin for saddle";
+FLOAT   length_saddle := 490.0  > "Saddle length";
+FLOAT   width_back    := 220.0  > "Width back";
+FLOAT   width_front   :=  90.0  > "Width back";
+FLOAT   height_saddle :=  49.0  > "Saddle height";
+INT	    saddle_color  :=  3     > "Saddle color";
+FLOAT   scale_saddle  :=  1.0   > "Saddle scale";
+INT     graphic       :=  1     > "Graphic flag");
+
+REF    g_id_origin;         ! Global ref of id_origin
+
+VECTOR  p_back_min_upper;
+VECTOR  p_back_min_lower;
+VECTOR  p_back_max_upper;
+VECTOR  p_back_max_lower;
+
+VECTOR  p_front_min_upper;
+VECTOR  p_front_min_lower;
+VECTOR  p_front_max_upper;
+VECTOR  p_front_max_lower;
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("bike_saddle Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  IF FINDS(RSTR(id_origin), "##") = 1 THEN
+    g_id_origin :=  id_origin;
+  ELSE
+    g_id_origin :=  RVAL("#" + RSTR(id_origin));
+  ENDIF;
+  
+ 
+  CSYS_1P(#11, "CsysSaddle", ON(g_id_origin), 0.0, 0.0, 0.0 : BLANK= 1, PEN=3);
+  
+  MODE_LOCAL(#11);
+  
+  TFORM_MOVE(#10, VEC(0,0,0), VEC(0,0,0), scale_saddle, scale_saddle, scale_saddle);
+ 
+  
+  POI_FREE(#12, VEC(-length_saddle/2.0,  height_saddle/2.0, -width_back/2.0)  :BLANK= 1, PEN=4);
+  POI_FREE(#13, VEC( length_saddle/2.0,  height_saddle/2.0, -width_front/2.0) :BLANK= 1, PEN=4);
+  POI_FREE(#14, VEC( length_saddle/2.0,  height_saddle/2.0,  width_front/2.0) :BLANK= 1, PEN=4);
+  POI_FREE(#15, VEC(-length_saddle/2.0,  height_saddle/2.0,  width_front/2.0) :BLANK= 1, PEN=4);
+  
+  POI_FREE(#16, VEC(-length_saddle/2.0, -height_saddle/2.0, -width_back/2.0)  :BLANK= 1, PEN=2);
+  POI_FREE(#17, VEC( length_saddle/2.0, -height_saddle/2.0, -width_front/2.0) :BLANK= 1, PEN=2);
+  POI_FREE(#18, VEC( length_saddle/2.0, -height_saddle/2.0,  width_front/2.0) :BLANK= 1, PEN=2);
+  POI_FREE(#19, VEC(-length_saddle/2.0, -height_saddle/2.0,  width_front/2.0) :BLANK= 1, PEN=2);
+
+
+  MODE_GLOBAL();
+  
+  TCOPY(#22, #12, #10);
+  TCOPY(#23, #13, #10);
+  TCOPY(#24, #14, #10);
+  TCOPY(#25, #15, #10);
+  
+  TCOPY(#26, #16, #10);
+  TCOPY(#27, #17, #10);
+  TCOPY(#28, #18, #10);
+  TCOPY(#29, #19, #10);
+  
+  p_back_min_upper := ON(#22);
+  p_front_min_upper := ON(#23);
+  p_front_max_upper := ON(#24);
+  p_back_max_upper := ON(#25);
+  
+  p_back_min_lower := ON(#26);
+  p_front_min_lower := ON(#27);
+  p_front_max_lower := ON(#28);
+  p_back_max_lower := ON(#29);
+  
+  B_PLANE(#1, p_back_min_upper, p_back_max_upper, p_front_max_upper, p_front_min_upper:BLANK=b_val, PEN=saddle_color);
+  
+  B_PLANE(#2, p_back_min_lower, p_front_min_lower, p_front_max_lower, p_back_max_lower:BLANK=b_val, PEN=saddle_color);
+
+  B_PLANE(#3, p_back_max_upper, p_back_max_lower, p_front_max_lower, p_front_max_upper:BLANK=b_val, PEN=saddle_color);
+
+  B_PLANE(#4, p_back_min_upper, p_front_min_upper, p_front_min_lower, p_back_min_lower:BLANK=b_val, PEN=saddle_color);
+
+  B_PLANE(#5, p_back_min_lower, p_back_max_lower, p_back_max_upper, p_back_min_upper:BLANK=b_val, PEN=saddle_color);
+
+  B_PLANE(#6, p_front_min_lower, p_front_min_upper, p_front_max_upper, p_front_max_lower:BLANK=b_val, PEN=saddle_color);
+
+  DEL(#11);
+  
+  DEL(#12);
+  DEL(#13);
+  DEL(#14);
+  DEL(#15);
+  
+  DEL(#22);
+  DEL(#23);
+  DEL(#24);
+  DEL(#25);
+  
+  DEL(#16);
+  DEL(#17);
+  DEL(#18);
+  DEL(#19);
+  
+  DEL(#26);
+  DEL(#27);
+  DEL(#28);
+  DEL(#29);
+
+
+
+ENDMODULE
+
+ 

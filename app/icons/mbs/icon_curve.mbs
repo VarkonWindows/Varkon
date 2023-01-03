@@ -1,0 +1,923 @@
+!*************************** icon_curve *******************************
+! +++
+! Create icons along a curve
+!
+! 2023-01-02 Gunnar Liden
+! ---
+!****************************************************************************
+!sdesce Create icons along a curve
+
+GLOBAL GEOMETRY MODULE icon_curve (
+STRING in_icons*132:= "b_1 b_1"  >"Input icons separated by space";
+REF    icon_cur    :=   #0       >"@t10 Curve for the icons (X axis)";
+REF    direct_cur  :=   #0       >"@t10 Curve icon direction (Y axis)";
+STRING in_pens*132 :=  "2 4"     >"Icon colors separated by space or one color";
+STRING in_scales*132:= "0,1 0,2" >"Icon scales separated by space or one scale";
+FLOAT  start_t      :=  0.3      >"Start parameter value for text";
+FLOAT  dist_icon    :=  3.1      >"Distance between icons for scale=1";
+FLOAT  rot_angle    :=  0.0      >"Icon rotation angle";
+INT    graphic      :=  1        >"Graphic case");
+
+! Defined icons (TODO Should be moved to a file)
+! -------------
+
+CONSTANT INT n_defined_icon = 5;
+
+STRING icon_def_name_array(5)*15;
+
+FLOAT  icon_def_width_array(5);
+
+! Current icon category: bike or star
+STRING icon_category*10; 
+
+INT def_number;  ! Loop number defined icon
+
+STRING current_def_name*15;  
+FLOAT  current_width;
+FLOAT  t_next_icon;
+
+
+! Internal variables
+! -------------------
+
+! Debug case
+CONSTANT INT  debug_case = 0;
+
+! File name for the log file
+CONSTANT STRING name_logfile= "C:\Varkon\app\icons\job\debug\icon_curve.log";
+FILE f_log; ! File object for the log file
+
+! Maximum number of icons for bikes TODO Crash for 13 or 14
+CONSTANT INT max_n_icon_bike = 12;
+
+CONSTANT INT max_n_icon = 99;
+
+
+INT    n_icon;             ! Number of icon names
+INT    n_pen;              ! Number of icon colors
+INT    n_scale;            ! Number of icon scales
+STRING icon_array(99)*15;  ! Array of input icon names
+INT    pen_array(99);      ! Array of input colors
+FLOAT  scale_array(99);    ! Array of input icon scales
+FLOAT  t_icon_array(99);   ! Array of curve parameter values for the icons
+
+INT    char_number;        ! Loop character number
+INT    in_length;          ! Length of the input string with icon names
+INT    start_char_found;   ! Flag telling if character shall be saved
+STRING current_char*1;     ! Current character
+STRING current_icon*15;    ! Current icon name
+INT    icon_number;        ! Loop parameter icon number
+STRING current_col_str*15; ! Current icon color as string
+INT    current_color;      ! Current icon color as integer
+STRING current_sca_str*15; ! Current icon scale as string
+FLOAT  current_scale;      ! Current icon scale as float
+
+INT    pos_bike_str;       ! Position bike for function FINDS
+INT    pos_star_str;       ! Position star for function FINDS
+
+
+STRING bike_number_str*2;  ! Bike number als string
+INT    bike_number;         ! Bike number
+STRING star_number_str*2;  ! Star number als string
+INT    star_number;         ! Star number
+
+
+STRING n_icons*30;         ! Next icon
+
+
+FLOAT  previous_scale;     ! Scale for the previous icon
+FLOAT  current_arcl;       ! Current arc length
+FLOAT  arc_length_total;       ! First  curve arc length
+FLOAT  arc_length_2;       ! Second curve arc length
+
+FLOAT  scalar_prod_x;      ! Scalar product vector and X axis
+FLOAT  scalar_prod_y;      ! Scalar product vector and Y axis
+FLOAT  scalar_prod_z;      ! Scalar product vector and Z axis
+VECTOR pt_inters_csy;      ! Point for intersect csys
+INT    n_i_pts;            ! Number intersect points 
+
+VECTOR origin_pt;          ! Origin point for coordinate system
+VECTOR x_axis_pt;          ! X axis point for coordinate system
+VECTOR y_axis_pt;          ! Y axis point for coordinate system
+
+INT    b_val;              ! Blank value
+
+REF    g_icon_cur;         ! Global ref of icon_cur
+REF    g_direct_cur;       ! Global ref of direct_cur
+  
+REF    ref_csys_rot;       ! Coordinate system for rotation rot_angle
+
+STRING s*1;                ! For INPMT
+
+BEGINMODULE
+
+! Set defined icons
+! -----------------
+
+  icon_def_name_array(1) := "bike_1";
+  icon_def_name_array(2) := "bike_2";
+  icon_def_name_array(3) := "bike_3";
+  icon_def_name_array(4) := "bike_4";
+  icon_def_name_array(5) := "star_1";
+  
+  icon_def_width_array(1) := 24.0;
+  icon_def_width_array(2) := 24.1;
+  icon_def_width_array(3) := 24.2;
+  icon_def_width_array(4) := 24.3;
+  icon_def_width_array(5) := 14.2;
+  
+  icon_category:= "undefined";
+
+! Check the graphic flag
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic >= 1 AND graphic <= 5 THEN
+    b_val := 0;
+  ELSE
+    EXIT("icon_curve Graphic flag= " + STR(graphic, -1, 0) + " is not implemented");
+  ENDIF;
+  
+  IF FINDS(RSTR(icon_cur), "##") = 1 THEN
+    g_icon_cur :=  icon_cur;
+  ELSE
+    g_icon_cur :=  RVAL("#" + RSTR(icon_cur));
+  ENDIF;
+  
+  IF FINDS(RSTR(direct_cur), "##") = 1 THEN
+    g_direct_cur :=  direct_cur;
+  ELSE
+    g_direct_cur :=  RVAL("#" + RSTR(direct_cur));
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OPEN(f_log, "w", name_logfile);
+   IF IOSTAT(f_log) < 0 THEN
+     EXIT("icon_curve Failure opening LOG file " + name_logfile);
+   ENDIF;
+   
+   OUTSTR(f_log,"Debug output from part icon_curve");
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"================================");
+   OUTLIN(f_log);
+   OUTLIN(f_log);
+
+   OUTSTR(f_log,"Input icon names: " + in_icons);
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"Input colors: " + in_pens);
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"Input scales: " + in_scales);
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"icon_cur= " + RSTR(icon_cur));
+   OUTLIN(f_log);
+   OUTSTR(f_log,"g_icon_cur= " + RSTR(g_icon_cur));
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"direct_cur= " + RSTR(direct_cur));
+   OUTLIN(f_log);
+   OUTSTR(f_log,"g_direct_cur= " + RSTR(g_direct_cur));
+   OUTLIN(f_log);
+   
+  ENDIF;  
+  
+! Input icon names to the string array with icon names
+! ----------------------------------------------------
+
+! Length of input string with icon names. 
+  in_length := LENGTH(in_icons);
+  
+  IF debug_case = 1 THEN
+     OUTSTR(f_log,"Number of characters is " + STR(in_length, -1, 0) + 
+		        " in input string in_icons= " + in_icons);
+        OUTLIN(f_log);        
+  ENDIF; 
+  
+  n_icon := 0; 
+  
+  start_char_found := 0;
+  
+  current_icon := "";
+  
+  FOR char_number:= 1 TO in_length DO
+  
+    current_char := SUBSTR(in_icons, char_number, 1);
+	
+	IF current_char <> " " AND start_char_found = 0 THEN
+	  
+	  start_char_found := 1;
+	  
+	  current_icon := current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  IF char_number = in_length THEN
+	  
+        IF n_icon + 1 >= max_n_icon_bike THEN
+	      s:= INPMT("icon_curve Number of icons must nod exceed " + STR(max_n_icon_bike, -1, 0), "");
+		  GOTO max_n_icon_bike_exceeded;
+	    ENDIF;
+	  
+	    n_icon := n_icon + 1;
+	  
+	    icon_array(n_icon) := current_icon;
+		
+        IF debug_case = 1 THEN
+          OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+	    	        " Added icon= " + current_icon + " n_icon= " + STR(n_icon, -1, 0) + " char_number = in_length ");
+          OUTLIN(f_log);        
+        ENDIF; 
+		
+	  ENDIF;
+	  
+	ELIF current_char <> " " AND start_char_found = 1 AND char_number = in_length THEN
+	
+	  start_char_found := 0;
+	  
+	  current_icon := current_icon + current_char;
+	  
+      IF n_icon + 1 >= max_n_icon_bike THEN
+	    s:= INPMT("icon_curve Number of icons must nod exceed " + STR(max_n_icon_bike, -1, 0), "");
+		GOTO max_n_icon_bike_exceeded;
+	  ENDIF;
+
+	  n_icon := n_icon + 1;
+	  
+	  icon_array(n_icon) := current_icon;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_icon= '" + current_icon + "' n_icon= " + STR(n_icon, -1, 0) + " char_number = in_length ");
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_icon := "";	
+	  
+	ELIF current_char <> " " AND start_char_found = 1 THEN
+	  
+	  current_icon := current_icon + current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' current_icon= " + current_icon);
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELIF current_char = " " AND start_char_found = 1 THEN
+	
+	  start_char_found := 0;
+	  
+      IF n_icon + 1 >= max_n_icon_bike THEN
+	    s:= INPMT("icon_curve Number of icons must nod exceed " + STR(max_n_icon_bike, -1, 0), "");
+		GOTO max_n_icon_bike_exceeded;
+	  ENDIF;
+	  
+	  n_icon := n_icon + 1;
+	  
+	  icon_array(n_icon) := current_icon;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_icon= '" + current_icon + "' n_icon= " + STR(n_icon, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_icon := "";
+	  
+	ELIF current_char = " " AND start_char_found = 0 THEN
+	
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELSE
+      IF debug_case = 1 THEN
+        CLOSE(f_log);
+      ENDIF; 
+	  EXIT("icon_curve Programming error setting icon_array"); 
+	ENDIF;
+
+  ENDFOR;
+  
+max_n_icon_bike_exceeded:
+
+  IF debug_case = 1 THEN
+  
+   OUTSTR(f_log,"Number of icon names= " + STR(n_icon, -1, 0));
+   OUTLIN(f_log);
+   
+   FOR icon_number:= 1 TO n_icon DO
+   
+     OUTSTR(f_log,STR(icon_number, 2, 0) + " Icon name " + icon_array(icon_number));
+     OUTLIN(f_log);
+   
+   ENDFOR;
+   
+  ENDIF;  
+  
+
+! Input icon colors to the integer array with icon colors
+! --------------------------------------------------------
+
+! Length of input string with icon colors. 
+  in_length := LENGTH(in_pens);
+  
+  n_pen := 0; 
+  
+  start_char_found := 0;
+  
+  current_col_str := "";
+  
+  FOR char_number:= 1 TO in_length DO
+  
+    current_char := SUBSTR(in_pens, char_number, 1);
+	
+	IF current_char <> " " AND start_char_found = 0 THEN
+	  
+	  start_char_found := 1;
+	  
+	  current_col_str := current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  IF char_number = in_length THEN
+	  
+	    n_pen := n_pen + 1;
+	  
+	    current_color := IVAL(current_col_str);
+	  
+	    pen_array(n_pen) := current_color;	 
+		
+		!s:= INPMT("n_pen= " + STR(n_pen, -1, 0) + " pen_array= " + STR(pen_array(n_pen), -1, 0), "y");
+		
+        IF debug_case = 1 THEN
+          OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+	    	        " Added color= " + STR(current_color, -1, 0) + " n_pen= " + STR(n_pen, -1, 0) + " char_number = in_length ");
+          OUTLIN(f_log);        
+        ENDIF; 
+		
+	  ENDIF;
+	  
+	ELIF current_char <> " " AND start_char_found = 1 AND char_number = in_length THEN
+	
+	  start_char_found := 0;
+	  
+	  current_col_str := current_col_str + current_char;
+	  
+	  n_pen := n_pen + 1;
+	  
+	  current_color := IVAL(current_col_str);
+	  
+	  ! s:= INPMT("n_pen= " + STR(n_pen, -1, 0), " ");
+	  
+	  pen_array(n_pen) := current_color;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " Added color= " + STR(current_color, -1, 0) + " n_pen= " + STR(n_pen, -1, 0) + " char_number = in_length ");
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_col_str := "";	
+	  
+	ELIF current_char <> " " AND start_char_found = 1 THEN
+	  
+	  current_col_str := current_col_str + current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' current_col_str= " + current_col_str);
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELIF current_char = " " AND start_char_found = 1 THEN
+	
+	  start_char_found := 0;
+	  
+	  n_pen := n_pen + 1;
+	  
+	  current_color := IVAL(current_col_str);
+	  
+	  ! s:= INPMT("n_pen= " + STR(n_pen, -1, 0), " ");
+	  
+	  pen_array(n_pen) := current_color;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " Added color= " + STR(current_color, -1, 0) + " n_pen= " + STR(n_pen, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_col_str := "";
+	  
+	ELIF current_char = " " AND start_char_found = 0 THEN
+	
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELSE
+      IF debug_case = 1 THEN
+        CLOSE(f_log);
+      ENDIF; 
+	  EXIT("icon_curve Programming error setting pen_array"); 
+	ENDIF;
+
+  ENDFOR;
+  
+
+  IF n_pen = 1 and n_icon > n_pen THEN
+
+    FOR icon_number:= n_pen + 1 TO n_icon DO
+	
+	  ! s:= INPMT("icon_number= " + STR(icon_number, -1, 0), " ");
+	
+	  pen_array(icon_number) := pen_array(1);
+	
+	ENDFOR;
+	
+	n_pen := n_icon;
+    
+  ELIF n_pen <> n_icon THEN
+  
+     IF debug_case = 1 THEN
+      CLOSE(f_log);
+    ENDIF;  
+	
+	EXIT("icon_curve Number of colors (" + STR(n_pen, -1, 0) + ") not equal to number of icons (" +
+	              STR(n_icon, -1, 0) + ")"); 
+  
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OUTSTR(f_log,"Number of icon colors= " + STR(n_pen, -1, 0));
+   OUTLIN(f_log);
+   
+   FOR icon_number:= 1 TO n_pen DO
+   
+     OUTSTR(f_log,STR(icon_number, 2, 0) + " Icon color " + STR(pen_array(icon_number), -1, 0));
+     OUTLIN(f_log);
+   
+   ENDFOR;
+   
+  ENDIF;  
+  
+! Input icon scales to the float array with icon scales
+! ------------------------------------------------------
+
+  IF FINDS(in_scales, ",") > 0 THEN
+  
+     IF debug_case = 1 THEN
+      OUTSTR(f_log,"icon_curve Error: Decimal comma (',') is not allowed in in_scales= " + in_scales);
+      OUTLIN(f_log);  
+      CLOSE(f_log);      
+    ENDIF;  
+	
+	EXIT("icon_curve Error: Decimal comma (',') is not allowed in in_scales= " + in_scales);
+  
+  ENDIF;
+
+! Length of input string with icon scales. 
+  in_length := LENGTH(in_scales);
+  
+  n_scale := 0; 
+  
+  start_char_found := 0;
+  
+  current_sca_str := "";
+  
+  FOR char_number:= 1 TO in_length DO
+  
+    current_char := SUBSTR(in_scales, char_number, 1);
+	
+	IF current_char <> " " AND start_char_found = 0 THEN
+	  
+	  start_char_found := 1;
+	  
+	  current_sca_str := current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  IF char_number = in_length THEN
+	  
+	    n_scale := n_scale + 1;
+	  
+	    current_scale := FVAL(current_sca_str);
+	  
+	    scale_array(n_scale) := current_scale;	 
+		
+        IF debug_case = 1 THEN
+          OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+	    	        " Added scale= " + STR(current_scale, -1, 2) + " n_scale= " + STR(n_scale, -1, 0) + " char_number = in_length ");
+          OUTLIN(f_log);        
+        ENDIF; 
+		
+	  ENDIF;
+	  
+	ELIF current_char <> " " AND start_char_found = 1 AND char_number = in_length THEN
+	
+	  start_char_found := 0;
+	  
+	  current_sca_str := current_sca_str + current_char;
+	  
+	  n_scale := n_scale + 1;
+	  
+	  current_scale := FVAL(current_sca_str);
+	  
+	  scale_array(n_scale) := current_scale;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " Added scale= " + STR(current_scale, -1, 2) + " n_scale= " + STR(n_scale, -1, 0) + " char_number = in_length ");
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_sca_str := "";	
+	  
+	ELIF current_char <> " " AND start_char_found = 1 THEN
+	  
+	  current_sca_str := current_sca_str + current_char;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' current_sca_str= " + current_sca_str);
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELIF current_char = " " AND start_char_found = 1 THEN
+	
+	  start_char_found := 0;
+	  
+	  n_scale := n_scale + 1;
+	  
+	  current_scale := FVAL(current_sca_str);
+	  
+	  scale_array(n_scale) := current_scale;
+	  
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " Added scale= " + STR(current_scale, -1, 2) + " n_scale= " + STR(n_scale, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	  current_sca_str := "";
+	  
+	ELIF current_char = " " AND start_char_found = 0 THEN
+	
+      IF debug_case = 1 THEN
+        OUTSTR(f_log,"char_number= " + STR(char_number, -1, 0) + 
+		        " current_char= '" + current_char + "' start_char_found= " + STR(start_char_found, -1, 0));
+        OUTLIN(f_log);        
+      ENDIF; 
+	  
+	ELSE
+      IF debug_case = 1 THEN
+        CLOSE(f_log);
+      ENDIF; 
+	  EXIT("icon_curve Programming error setting scale_array"); 
+	ENDIF;
+
+  ENDFOR;
+  
+  IF n_scale = 1 and n_pen > n_scale THEN
+
+    FOR icon_number:= n_scale + 1 TO n_icon DO
+	
+	  scale_array(icon_number) := scale_array(1);
+	
+	ENDFOR;
+	
+	n_scale := n_icon;
+    
+  ELIF n_scale <> n_icon THEN
+  
+     IF debug_case = 1 THEN
+      CLOSE(f_log);
+    ENDIF;  
+	
+	EXIT("icon_curve Number of scales (" + STR(n_scale, -1, 0) + ") is not equal to the number of icons (" +
+	              STR(n_icon, -1, 0) + ")"); 
+  
+  ENDIF;
+
+  IF debug_case = 1 THEN
+  
+   OUTSTR(f_log,"Number of icon scales= " + STR(n_scale, -1, 0));
+   OUTLIN(f_log);
+   
+   FOR icon_number:= 1 TO n_scale DO
+   
+     OUTSTR(f_log,STR(icon_number, 2, 0) + " Icon scale " + STR(scale_array(icon_number), -1, 4));
+     OUTLIN(f_log);
+   
+   ENDFOR;
+   
+  ENDIF;  
+  
+! Determine if the case is that only one icon shall fill the curve
+
+  IF n_icon = 1 AND n_pen = 1 AND n_scale = 1 THEN
+  
+    n_icon := max_n_icon;
+	
+	n_pen := max_n_icon;
+	
+	n_scale := max_n_icon;
+	
+    FOR icon_number:=2 TO max_n_icon DO
+	
+	icon_array(icon_number) := icon_array(1);
+	
+	pen_array(icon_number) := pen_array(1);
+	
+	scale_array(icon_number) := scale_array(1);
+  
+    ENDFOR;
+  
+  ENDIF;
+
+! Calculate the curve parameter value for each icon
+! -------------------------------------------------
+
+  CUR_TRIM(#4, g_icon_cur, 0.0, start_t:BLANK=1);
+
+! Start arc length (for the first icon)
+  current_arcl := ARCL(#4);
+  
+  t_icon_array(1) := start_t;
+  
+  DEL(#4);
+ 
+! The total arclength of the icon curve 
+  arc_length_total := ARCL(g_icon_cur);
+  
+  
+  FOR icon_number:= 1 TO n_icon - 1 DO
+  
+    current_icon := icon_array(icon_number);
+	
+	FOR def_number  := 1 TO n_defined_icon DO
+	
+	  current_def_name := icon_def_name_array(def_number);
+	  
+	  IF current_def_name = current_icon THEN
+	  
+	    current_width := icon_def_width_array(def_number);
+		
+		GOTO width_found;
+	  
+	  ENDIF;
+	
+	ENDFOR;
+	
+	IF debug_case = 1 THEN
+      CLOSE(f_log);
+    ENDIF;  
+	
+	EXIT("icon_curve The icon with the name " + current_icon + 
+	          " is not implemented (defined in icon_def_name_array)");
+	
+width_found:
+
+    current_scale := scale_array(icon_number);
+
+    current_arcl := current_arcl + (current_width + dist_icon)*current_scale;
+	
+	IF current_arcl >= arc_length_total THEN
+	
+	  IF debug_case = 1 THEN
+	  
+        OUTSTR(f_log,STR(icon_number, 2, 0) + " current_arcl " + STR(current_arcl, -1, 2) +
+		        " arc_length_total= " + STR(arc_length_total, -1, 2));
+       OUTLIN(f_log);	  
+        OUTSTR(f_log,STR(icon_number, 2, 0) + " current_width " + STR(current_width, -1, 2) +
+		        " dist_icon= " + STR(dist_icon, -1, 2));
+       OUTLIN(f_log);	  
+        OUTSTR(f_log,STR(icon_number, 2, 0) + " Add scaled " + STR((current_width + dist_icon)*current_scale, -1, 2) +
+		        " current_scale= " + STR(current_scale, -1, 2));
+       OUTLIN(f_log);	
+	  
+	  
+      !Max length CLOSE(f_log);
+      ENDIF;  
+	
+	  !Max length EXIT("icon_curve The arclength up to icon number " + STR(icon_number + 1, -1, 0) + 
+	  !Max length        " exceeds the total arc length for the icon curve");
+
+      n_icon := icon_number - 1;
+	
+	  n_pen := icon_number - 1;
+	
+	  n_scale := icon_number - 1;
+
+	  GOTO max_length_exceeded;
+	
+	ENDIF;
+	
+	t_next_icon := INV_ARCL(g_icon_cur, current_arcl); 
+	
+	t_icon_array(icon_number + 1) := t_next_icon;
+	
+     !s:= INPMT("icon_number+1= " + STR(icon_number+1, -1, 0) + " Continue y/n ", "y");
+	 !IF s = "n" THEN
+	 !  CLOSE(f_log);  
+	 !  EXIT();
+	 !ENDIF;
+  
+  ENDFOR;
+  
+max_length_exceeded:
+  
+  IF debug_case = 1 THEN
+  
+   OUTSTR(f_log,"Number of parameter values: " + STR(n_icon, -1, 0));
+   OUTLIN(f_log);
+   
+   FOR icon_number:= 1 TO n_icon DO
+   
+     OUTSTR(f_log,STR(icon_number, 2, 0) + " Curve parameter " + STR(t_icon_array(icon_number), -1, 4));
+     OUTLIN(f_log);
+   
+   ENDFOR;
+   
+  ENDIF;  
+  
+  
+! Create the icons along the curve
+! --------------------------------
+
+  icon_category:= "undefined";
+	
+  FOR icon_number:= 1 TO n_icon DO
+  
+    current_icon := icon_array(icon_number);
+	
+	pos_bike_str := FINDS(current_icon, "bike_");
+	pos_star_str := FINDS(current_icon, "star_");
+	
+	IF pos_bike_str = 1 THEN
+	  icon_category:= "bike";
+		
+	  bike_number_str := SUBSTR(current_icon, pos_bike_str);
+	
+	  bike_number := IVAL(bike_number_str);
+	ELIF pos_star_str = 1 THEN
+	  icon_category:= "star";
+		
+	  star_number_str := SUBSTR(current_icon, pos_star_str);
+	
+	  star_number := IVAL(star_number_str);
+	ELSE
+	  IF debug_case = 1 THEN
+        CLOSE(f_log);
+      ENDIF;  
+	
+	  EXIT("icon_curve The icon with the name " + current_icon + 
+	          " is not implemented. Do not contain 'bike_' or 'star_'.");	
+	ENDIF;
+	
+	
+    origin_pt:= ON(g_icon_cur, t_icon_array(icon_number));
+	
+    x_axis_pt:= ON(g_icon_cur, t_icon_array(icon_number)) + 10.0*TANG(g_icon_cur, t_icon_array(icon_number));	
+	
+	scalar_prod_x := VEC(1.0, 0.0, 0.0)*TANG(g_icon_cur, t_icon_array(icon_number));
+	scalar_prod_y := VEC(0.0, 1.0, 0.0)*TANG(g_icon_cur, t_icon_array(icon_number));
+	scalar_prod_z := VEC(0.0, 0.0, 1.0)*TANG(g_icon_cur, t_icon_array(icon_number));
+	  
+
+	IF scalar_prod_x < scalar_prod_y AND scalar_prod_x < scalar_prod_z THEN
+	  pt_inters_csy := origin_pt + 10.0*VEC(1.0, 0.0, 0.0);
+	ELIF scalar_prod_y < scalar_prod_x AND scalar_prod_y < scalar_prod_z THEN
+	  pt_inters_csy := origin_pt + 10.0*VEC(0.0, 1.0, 0.0);
+	ELIF scalar_prod_z < scalar_prod_x AND scalar_prod_z < scalar_prod_y THEN
+	  pt_inters_csy := origin_pt + 10.0*VEC(0.0, 0.0, 1.0);
+	ELSE
+	  EXIT("icon_curve Programming error scalar products"); 
+	ENDIF; 
+	  
+	CSYS_3P(#6, "FirstCsys", origin_pt, x_axis_pt, pt_inters_csy:BLANK=1, PEN=3);
+	  
+	MODE_LOCAL(#6);
+	  
+	CSYS_1P(#5, "IntCsys", VEC(0,0,0), 0.0, 90.0, 0.0:BLANK=1, PEN=4);
+	  
+    MODE_GLOBAL();	
+	
+	  
+	n_i_pts:= N_INTERSECT(g_direct_cur, #5);
+	  
+	IF n_i_pts = 0 THEN
+	
+	  IF debug_case = 1 THEN
+	  
+        OUTSTR(f_log,STR(icon_number, 2, 0) + " Curve parameter " + STR(t_icon_array(icon_number), -1, 4) 
+		   + " No intersection point on the second curve");
+        OUTLIN(f_log);
+		
+      ENDIF;
+	  
+	  GOTO no_intersection_pt;
+		
+	ELIF n_i_pts = 1 THEN
+	  
+	  y_axis_pt:= INTERSECT(g_direct_cur, #5, 1);
+		
+	ELIF n_i_pts = 2 THEN
+	  
+	  IF VECL(INTERSECT(g_direct_cur, #5, 1) - origin_pt) < VECL(INTERSECT(g_direct_cur, #5, 2) - origin_pt) THEN
+		y_axis_pt:= INTERSECT(g_direct_cur, #5, 1);
+      ELSE
+		y_axis_pt:= INTERSECT(g_direct_cur, #5, 2);
+      ENDIF;
+	ELIF n_i_pts >= 3 THEN
+	 
+	  IF debug_case = 1 THEN
+		CLOSE(f_log);
+      ENDIF;
+		
+	  EXIT("icon_curve To many intersect points with the second curve n_i_pts= " + STR(n_i_pts, -1, 0));	  
+	ENDIF; 
+
+    CSYS_3P(#2, "IconCsys", origin_pt, x_axis_pt, y_axis_pt:BLANK=1);
+
+!   Coordinate system for rotation rot_angle	  
+	ref_csys_rot := #2;
+
+    IF ABS(rot_angle) > 0.01 THEN
+	  
+	  MODE_LOCAL(#2);
+		
+      CSYS_1P(#7, "CsysRot", VEC(0,0,0), rot_angle, 0.0, 0.0:BLANK=1, PEN=4);
+		
+      MODE_GLOBAL();
+		
+      ref_csys_rot := #7;
+
+    ENDIF;
+	
+	
+	
+	!IF debug_case = 1 THEN
+	   !POI_FREE(#21, origin_pt:PEN=2);
+	   !POI_FREE(#22, x_axis_pt:PEN=2);
+	   !POI_FREE(#23, y_axis_pt:PEN=2);
+	   !CSYS_3P(#20, "IconCsysDebug", origin_pt, x_axis_pt, y_axis_pt:BLANK=0, PEN=2);
+	!ENDIF;
+	
+	current_color := pen_array(icon_number);
+	
+	current_scale := scale_array(icon_number);
+	
+	IF icon_category = "bike" THEN
+	
+	  bike_number := 1; ! QQQQQQQQQQQQQQQQQQ
+	  
+      PART(#1,bike(bike_number, 1360.0, 1360.0, 80.0, 10.0, 100.0, 24, current_color, 100.0, 500.0, 
+      70.0, 40.0, current_color, 490.0, 220.0, 90.0, 49.0, current_color, current_scale, 1), ref_csys_rot);
+	
+	ELIF icon_category = "star" THEN
+	
+	  PART(#11, icon_star(star_number, current_scale, current_color, 2), ref_csys_rot);
+	
+	ENDIF;
+	
+	DEL(#2);
+	
+no_intersection_pt:
+	
+	DEL(#5);
+	DEL(#6);
+	IF ABS(rot_angle) > 0.01 THEN
+	  DEL(#7);
+	ENDIF;
+  
+  ENDFOR;
+  
+  
+  IF debug_case = 1 THEN
+    CLOSE(f_log);
+  ENDIF;  
+  
+ENDMODULE
+

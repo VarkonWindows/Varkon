@@ -1,0 +1,250 @@
+!***********************************************************
+!
+! Defines a bike
+!
+! 2022-12-30 Gunnar Liden
+!
+!***********************************************************
+
+LOCAL GEOMETRY MODULE bike(
+INT     bike_number :=           1    > "Bike number";
+FLOAT   back_wheel_diameter:= 1360.0  > "Back wheel diameter";
+FLOAT   front_wheel_diameter:= 1360.0 > "Front wheel diameter";
+FLOAT   tire_diameter:=          80.0 > "Tire diameter";
+FLOAT   spike_diameter:=         10.0 > "Spike diameter";
+FLOAT   center_diameter:=       100.0 > "Center diameter";
+INT	    n_spikes :=              24   > "Number of spikes";
+INT	    wheel_color :=            8   > "Wheel color";
+FLOAT   pedal_length :=         100.0 > "Pedal length";
+FLOAT   handle_bar_length :=    500.0 > "Handlebars length";
+FLOAT   frame_diameter :=        70.0 > "Frame tube diameter";
+FLOAT   fork_diameter :=         40.0 > "Fork tube diameter";
+INT     frame_color:=             8   > "Frame color";
+FLOAT   length_saddle :=        490.0 > "Saddle length";
+FLOAT   width_back :=           220.0 > "Saddle width back";
+FLOAT   width_front :=           90.0 > "Saddle width front";
+FLOAT   height_saddle :=         49.0 > "Saddle height";
+INT	    saddle_color :=           8   > "Saddle color";
+
+FLOAT   scale_bike :=             1.0 > "Scale bike";
+INT     graphic :=                1   > "Graphic flag");
+
+! Bike 1 start ********************************************
+CONSTANT VECTOR pt_back_wheel_1      = VEC( 800,  550, 0);
+CONSTANT VECTOR pt_front_wheel_1     = VEC(3100,  550, 0);
+CONSTANT VECTOR pt_saddle_near_1     = VEC(1450, 1600, 0);
+CONSTANT VECTOR pt_frame_bottom_1    = VEC(1700,  550, 0);
+CONSTANT VECTOR pt_frame_front_ext_1 = VEC(2900, 1400, 0);
+CONSTANT VECTOR pt_frame_top_1       = VEC(1500, 1400, 0);
+CONSTANT VECTOR pt_pedal_top_1       = VEC(1450,  750, 0);
+CONSTANT VECTOR pt_f_w_fork_top_1    = VEC(2600, 1650, 0);
+! Bike 1 end **********************************************
+
+! Make the bike icon the same size as the charaacters
+CONSTANT FLOAT scale_to_char = 0.006;
+
+VECTOR pt_back_wheel_scaled;
+VECTOR pt_front_wheel_scaled;
+VECTOR pt_saddle_near_scaled;
+VECTOR pt_frame_bottom_scaled;
+VECTOR pt_frame_front_ext_scaled;
+VECTOR pt_frame_top_scaled;
+VECTOR pt_pedal_top_scaled;
+VECTOR pt_f_w_fork_top_scaled;
+
+CONSTANT VECTOR vec_f_w_fork     = VEC(-70, 50, 0); 
+VECTOR   pt_front_wheel_fork_bottom; 
+
+CONSTANT VECTOR vec_handle_bars  = VEC( 100, 50, 0); 
+VECTOR   pt_handle_bars;
+
+VECTOR pt_pedal_bottom;
+
+VECTOR vec_pedal_bottom;
+
+VECTOR vec_saddle;
+VECTOR pt_saddle_ext;
+VECTOR pt_saddle;
+FLOAT  t_saddle;
+
+VECTOR pt_frame_front_top;
+VECTOR pt_frame_front_bottom;
+
+CONSTANT INT frame_reverse = -1;
+
+FLOAT   scale_frame;
+
+FLOAT   scale_wheel;
+
+VECTOR   pt_handlebar;
+VECTOR   pt_handlebar_left;
+VECTOR   pt_handlebar_right;
+
+FLOAT   scale_saddle;
+
+INT    b_val;              ! Blank value
+INT    b_val_skeleton;     ! Blank value skeleton
+
+STRING s*1;                ! For INPMT
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+	b_val_skeleton := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+	 b_val_skeleton := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+	 b_val_skeleton := 0;
+  ELSE
+    EXIT("bike Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  scale_frame  := scale_bike*scale_to_char;
+  scale_wheel  := scale_bike*scale_to_char;
+  scale_saddle := scale_bike*scale_to_char;
+  
+  IF bike_number = 1 THEN
+  
+    pt_back_wheel_scaled := pt_back_wheel_1*scale_frame;
+    pt_front_wheel_scaled := pt_front_wheel_1*scale_frame;
+    pt_saddle_near_scaled:= pt_saddle_near_1*scale_frame;
+    pt_frame_bottom_scaled := pt_frame_bottom_1*scale_frame;
+    pt_frame_front_ext_scaled := pt_frame_front_ext_1*scale_frame;
+    pt_frame_top_scaled := pt_frame_top_1*scale_frame;
+    pt_pedal_top_scaled := pt_pedal_top_1*scale_frame;
+    pt_f_w_fork_top_scaled := pt_f_w_fork_top_1*scale_frame;
+  
+  ELSE
+  
+    EXIT("bike Bike number " + STR(bike_number, -1, 0) + " is not yet implemented");
+	
+  ENDIF;
+
+  POI_FREE(#1, pt_back_wheel_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#2, pt_front_wheel_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#3, pt_saddle_near_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#4, pt_frame_bottom_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#5, pt_frame_front_ext_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#6, pt_frame_top_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#7, pt_pedal_top_scaled:BLANK=b_val_skeleton);
+  POI_FREE(#8, pt_f_w_fork_top_scaled:BLANK=b_val_skeleton, PEN=4);
+  
+  pt_front_wheel_fork_bottom := pt_front_wheel_scaled + scale_frame*vec_f_w_fork; 
+  POI_FREE(#9, pt_front_wheel_fork_bottom:BLANK=b_val_skeleton, PEN=4);
+  
+  pt_handle_bars := pt_f_w_fork_top_scaled + scale_frame*vec_handle_bars;
+  POI_FREE(#10, pt_handle_bars:BLANK=b_val_skeleton, PEN=8);
+  
+  CUR_CONIC(#11, "FREE", pt_frame_top_scaled, pt_frame_front_ext_scaled, 0.5, pt_frame_front_ext_scaled, pt_frame_top_scaled:BLANK=1, PEN=1);
+  
+  CUR_CONIC(#12, "FREE", pt_frame_top_scaled, pt_frame_bottom_scaled, 0.5, pt_frame_bottom_scaled, pt_frame_top_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#13, "FREE", pt_frame_bottom_scaled, pt_frame_front_ext_scaled, 0.5, pt_frame_front_ext_scaled, pt_frame_bottom_scaled:BLANK=1, PEN=1);
+
+  CUR_CONIC(#14, "FREE", pt_back_wheel_scaled, pt_frame_top_scaled, 0.5, pt_frame_top_scaled, pt_back_wheel_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#15, "FREE", pt_back_wheel_scaled, pt_frame_bottom_scaled, 0.5, pt_frame_bottom_scaled, pt_back_wheel_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#16, "FREE", pt_f_w_fork_top_scaled, pt_front_wheel_fork_bottom, 0.5, pt_front_wheel_fork_bottom, pt_f_w_fork_top_scaled:BLANK=1, PEN=1);
+
+  CUR_CONIC(#17, "FREE", pt_f_w_fork_top_scaled, pt_handle_bars, 0.5, pt_handle_bars, pt_f_w_fork_top_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#18, "FREE", pt_front_wheel_fork_bottom, pt_front_wheel_scaled, 0.5, pt_front_wheel_scaled, pt_front_wheel_fork_bottom:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#19, "FREE", pt_pedal_top_scaled, pt_frame_bottom_scaled, 0.5, pt_frame_bottom_scaled, pt_pedal_top_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#20, "FREE", pt_pedal_top_scaled - VEC(pedal_length*scale_frame, 0, 0), 
+                         pt_pedal_top_scaled + VEC(pedal_length*scale_frame, 0, 0), 0.5, 
+						 pt_pedal_top_scaled + VEC(pedal_length*scale_frame, 0, 0), 
+						 pt_pedal_top_scaled - VEC(pedal_length*scale_frame, 0, 0):BLANK=b_val_skeleton, PEN=3);
+
+  vec_pedal_bottom := pt_frame_bottom_scaled - pt_pedal_top_scaled;
+  
+  pt_pedal_bottom := pt_frame_bottom_scaled + vec_pedal_bottom;
+  
+  CUR_CONIC(#21, "FREE", pt_pedal_bottom, pt_frame_bottom_scaled, 0.5, pt_frame_bottom_scaled, pt_pedal_bottom:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#22, "FREE", pt_pedal_bottom - VEC(pedal_length*scale_frame, 0, 0), 
+                         pt_pedal_bottom + VEC(pedal_length*scale_frame, 0, 0), 0.5, 
+						 pt_pedal_bottom + VEC(pedal_length*scale_frame, 0, 0), 
+						 pt_pedal_bottom - VEC(pedal_length*scale_frame, 0, 0):BLANK=b_val_skeleton, PEN=3);
+						 
+  vec_saddle := pt_frame_top_scaled - pt_frame_bottom_scaled;
+
+  pt_saddle_ext := pt_frame_top_scaled + vec_saddle;
+  
+  CUR_CONIC(#23, "FREE", pt_frame_top_scaled, pt_saddle_ext, 0.5, pt_saddle_ext, pt_frame_top_scaled:BLANK=1, PEN=1);
+
+  t_saddle := INV_ON(#23, pt_saddle_near_scaled);
+  
+  pt_saddle := ON(#23, t_saddle);
+
+  CUR_CONIC(#24, "FREE", pt_frame_top_scaled, pt_saddle, 0.5, pt_saddle, pt_frame_top_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  pt_frame_front_top := INTERSECT(#16, #11);
+  
+  pt_frame_front_bottom := INTERSECT(#16, #13);
+  
+  CUR_CONIC(#26, "FREE", pt_frame_front_top, pt_frame_front_bottom, 0.5, pt_frame_front_bottom, pt_frame_front_top:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#27, "FREE", pt_frame_front_top, pt_f_w_fork_top_scaled, 0.5, pt_f_w_fork_top_scaled, pt_frame_front_top:BLANK=b_val_skeleton, PEN=3);
+  
+  CUR_CONIC(#28, "FREE", pt_frame_front_bottom, pt_front_wheel_fork_bottom, 0.5, pt_front_wheel_fork_bottom, pt_frame_front_bottom:BLANK=b_val_skeleton, PEN=3);
+  
+  CUR_CONIC(#29, "FREE", pt_frame_bottom_scaled, pt_frame_front_bottom, 0.5, pt_frame_front_bottom, pt_frame_bottom_scaled:BLANK=b_val_skeleton, PEN=3);
+
+  CUR_CONIC(#30, "FREE", pt_frame_top_scaled, pt_frame_front_top, 0.5, pt_frame_front_top, pt_frame_top_scaled:BLANK=b_val_skeleton, PEN=3);
+  
+  PART(#31, bike_pipe(GLOBAL_REF(#30), frame_diameter*scale_frame, frame_reverse, frame_color, graphic));
+  
+  PART(#32, bike_pipe(GLOBAL_REF(#29), frame_diameter*scale_frame, frame_reverse, frame_color, graphic));
+  
+  PART(#33, bike_pipe(GLOBAL_REF(#26), frame_diameter*scale_frame, frame_reverse, frame_color, graphic));
+  
+  PART(#34, bike_pipe(GLOBAL_REF(#12), frame_diameter*scale_frame, frame_reverse, frame_color, graphic));
+  
+  PART(#35, bike_pipe(GLOBAL_REF(#27), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+  
+  PART(#36, bike_pipe(GLOBAL_REF(#28), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+ 
+  PART(#37, bike_pipe(GLOBAL_REF(#14), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+
+  PART(#38, bike_pipe(GLOBAL_REF(#15), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+
+  PART(#39, bike_pipe(GLOBAL_REF(#17), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+
+  PART(#40, bike_pipe(GLOBAL_REF(#18), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+
+  PART(#41, bike_pipe(GLOBAL_REF(#24), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+  
+  PART(#42,bike_wheel(GLOBAL_REF(#1), back_wheel_diameter, tire_diameter, spike_diameter, 
+                 center_diameter,  n_spikes, frame_reverse, wheel_color, scale_wheel, graphic));
+					  
+  PART(#43,bike_wheel(GLOBAL_REF(#2), back_wheel_diameter, tire_diameter, spike_diameter, 
+                 center_diameter,  n_spikes, frame_reverse, wheel_color, scale_wheel, graphic));
+   
+  
+  pt_handlebar_left  := pt_handle_bars - VEC(0.0, 0.0, handle_bar_length*scale_frame);
+  pt_handlebar_right := pt_handle_bars + VEC(0.0, 0.0, handle_bar_length*scale_frame);
+  
+  CUR_CONIC(#44, "FREE", pt_handlebar_left, pt_handlebar_right, 0.5, pt_handlebar_right, pt_handlebar_left:BLANK=b_val_skeleton, PEN=3);
+  
+  PART(#45, bike_pipe_z(GLOBAL_REF(#44), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+  
+  ! Origin is near point TODO
+
+  PART(#46,bike_saddle(GLOBAL_REF(#3), length_saddle, width_back, width_front, 
+                   height_saddle, saddle_color, scale_saddle, graphic)); 
+				   
+  PART(#47, bike_pipe(GLOBAL_REF(#19), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+ 
+  PART(#48, bike_pipe(GLOBAL_REF(#21), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+ 
+  PART(#49, bike_pipe(GLOBAL_REF(#20), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+ 
+  PART(#50, bike_pipe(GLOBAL_REF(#22), fork_diameter*scale_frame,  frame_reverse, frame_color, graphic));
+  
+ENDMODULE
