@@ -1,0 +1,173 @@
+!*************************** char_csys *******************************
+! +++
+! Creates one solid character
+!
+! 2022-12-30 Gunnar Liden
+! ---
+!****************************************************************************
+!sdesce Creates one solid character
+
+GLOBAL GEOMETRY MODULE char_csys (
+REF    ref_csys    := #0     >"@t8192 Coordinate system for the character";
+STRING in_char*1   := "a"    >"Input text";
+INT    pen_top     :=  2     > "Color for top facets";
+INT    pen_bottom  :=  3     > "Color for bottom facets";
+INT    pen_side    :=  4     > "Color for side facets";
+FLOAT  scale_char  := 1.4    >"Character scale factor";
+STRING font_case*1 :=  "N"   > "Font case Normal or Italic";
+INT    graphic     := 1      >"Graphic case");
+
+! Internal variables
+! ------------------
+
+INT ascii_number;         ! ASCII number for a character
+
+STRING char_code_name*30; ! Code for the input char and the TXT file name
+
+! Start part of the file name
+CONSTANT STRING start_file_name= "char_"; 
+
+! Lower character part of the file name
+CONSTANT STRING txt_lc= "lc_"; 
+
+! Upper character part of the file name
+CONSTANT STRING txt_uc= "uc_"; 
+
+STRING file_name*30;            ! file name
+
+! Extension for the TXT file with point data
+CONSTANT STRING file_ext_txt = ".txt";
+
+! File name for space character
+CONSTANT STRING file_name_space = "char_lc_space";
+
+REF    global_ref_csys;
+
+! Debug case
+CONSTANT INT  debug_case = 1;
+
+! File name for the log file
+CONSTANT STRING name_logfile= "C:\Varkon\app\chars\job\debug\char_csys.log";
+FILE f_log; ! File object for the log file
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+! Check the graphic flag
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic >= 1 AND graphic <= 5 THEN
+    b_val := 0;
+  ELSE
+    EXIT("char_csys Graphic flag= " + STR(graphic, -1, 0) + " for character is not implemented");
+  ENDIF;
+  
+  IF LENGTH(in_char) = 0 THEN
+    EXIT("char_csys No input character");
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OPEN(f_log, "w", name_logfile);
+   IF IOSTAT(f_log) < 0 THEN
+     EXIT("char_csys Failure opening LOG file " + name_logfile);
+   ENDIF;
+   
+   OUTSTR(f_log,"Debug output from part char_csys");
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"================================");
+   OUTLIN(f_log);
+   OUTLIN(f_log);
+
+   OUTSTR(f_log,"Input character in_char= '" + in_char + "'");
+   OUTLIN(f_log);
+   
+  ENDIF;  
+  
+! Construct the file name
+! -----------------------
+
+! Convert to ASCII number  
+  ascii_number := ASCII(in_char);
+
+  IF ascii_number >= 65 AND ascii_number <= 90 THEN
+	  
+	char_code_name := start_file_name + txt_uc + CHR(ASCII(in_char) + 32);
+  
+  ELIF ascii_number >= 97 AND ascii_number <= 122 THEN
+  
+    char_code_name := start_file_name + txt_lc + in_char;
+  
+  ELSE
+     IF debug_case = 1 THEN
+       OUTSTR(f_log,"The input character in_char= '" + in_char + "' with ASCII code  " 
+	              + STR(ascii_number, -1, 0) + " is not yet implemented");
+       OUTLIN(f_log);
+       CLOSE(f_log);	   
+	 ENDIF;
+	 EXIT("The input character '" + in_char + "' with ASCII code  " 
+	              + STR(ascii_number, -1, 0) + " is not yet implemented");
+  ENDIF;
+
+  
+! Add the solid character
+! -----------------------
+
+  IF FINDS(RSTR(ref_csys), "##") = 1 THEN
+    global_ref_csys :=  ref_csys;
+  ELSE
+    global_ref_csys :=  RVAL("#" + RSTR(ref_csys));
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+     OUTSTR(f_log,"The input character in_char= '" + in_char + "' has the code name char_code_name= " 
+	               + char_code_name);
+     OUTLIN(f_log);	   
+     OUTSTR(f_log,"ref_csys= " + RSTR(ref_csys));
+     OUTLIN(f_log);
+     OUTSTR(f_log,"global_ref_csys= " + RSTR(global_ref_csys));
+     OUTLIN(f_log);
+     OUTSTR(f_log,"GLOBAL_REF(ref_csys)= " + RSTR(GLOBAL_REF(ref_csys)));
+     OUTLIN(f_log);
+	 CLOSE(f_log);
+  ENDIF;
+
+  PART(#1, char_solid(char_code_name + file_ext_txt, pen_top, pen_bottom, pen_side, 
+			scale_char, font_case, graphic), global_ref_csys);
+  
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

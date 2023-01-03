@@ -1,0 +1,595 @@
+!*************************** char_curve *******************************
+! +++
+! Create solids text along a curve
+!
+! 2022-12-26 Gunnar Liden
+! ---
+!****************************************************************************
+!sdesce Create solids text along a curve
+
+GLOBAL GEOMETRY MODULE char_curve (
+STRING in_text*132 := "JAZZ i(live)" >"Input text";
+REF    text_cur    := #0             >"@t10 Curve for the text (X axis)";
+REF    direct_cur  := #0             >"@t10 Curve char direction (Y axis)";
+INT    pen_top     :=  2             > "Color for top facets";
+INT    pen_bottom  :=  3             > "Color for bottom facets";
+INT    pen_side    :=  4             > "Color for side facets";
+FLOAT  start_t     := 0.3            >"Start parameter value for text";
+FLOAT  dist_char   := 3.1            >"Distance between character for scale=1";
+FLOAT  rot_angle   := 0.0            >"Character rotation angle";
+FLOAT  scale_s     := 1.4            >"Start character scale factor";
+FLOAT  scale_e     := 0.9            >"End character scale factor";
+INT    graphic     := 1              >"Graphic case");
+
+! Internal variables
+
+! Full name of the file that holds all character sizes
+CONSTANT STRING file_char_sizes= "C:\Varkon\app\chars\data\char_sizes.txt";
+
+INT ascii_number; ! ASCII number for a character
+
+! Start part of the file name
+CONSTANT STRING start_file_name= "char_"; 
+
+! Lower character part of the file name
+CONSTANT STRING txt_lc= "lc_"; 
+
+! Upper character part of the file name
+CONSTANT STRING txt_uc= "uc_"; 
+
+STRING file_name*30;            ! file name
+
+! Extension for the TXT file with point data
+CONSTANT STRING file_ext_txt = ".txt";
+
+! File name for space character
+CONSTANT STRING file_name_space = "char_lc_space";
+
+FILE   f_sizes;                 ! File object for the sizes TXT file
+INT    row_number;              ! Loop variable row number
+STRING r_line*132;              ! Line read
+STRING coord_val*30;            ! Coordinate value
+FLOAT  min_x;                   ! Minimum X value for the facets
+FLOAT  max_x;                   ! Maximum X value for the facets
+FLOAT  min_y;                   ! Minimum Y value for the facets
+FLOAT  max_y;                   ! Maximum Y value for the facets
+FLOAT  min_z;                   ! Minimum Y value for the facets
+FLOAT  max_z;                   ! Maximum Y value for the facets
+INT    pos_char;                ! Position of char for FINDS
+
+! This value must be the same as defined in stl_to_txt.mbs
+CONSTANT INT w_width = 15;      ! Controls the amount of padding
+
+! Maximum number of rows in the character sizes file
+CONSTANT INT n_max_number_rows = 1000;
+
+! Debug case
+CONSTANT INT  debug_case = 1;
+
+! File name for the log file
+CONSTANT STRING name_logfile= "C:\Varkon\app\chars\job\debug\char_curve.log";
+FILE f_log; ! File object for the log file
+
+INT    in_length;          ! Length of input string
+
+! Maximum number of characters of the input text
+CONSTANT INT max_n_char = 132;
+
+INT    n_char;             ! Number of characters
+STRING char_array(132)*1;  ! Array of input characters
+STRING case_array(132)*1;  ! Array of input character cases (n or i)
+STRING name_array(132)*30; ! Array of character file names
+FLOAT  width_array(132);   ! Array of character widths
+FLOAT  arcl_array(132);    ! Array of arclength for the characters
+FLOAT  t_1_array(132);     ! Array of curve parameter values for the characters
+FLOAT  t_2_array(132);     ! Array of curve parameter values for the characters
+
+INT    char_number;        ! Loop character number
+STRING c_char*1;           ! Current character
+STRING n_chars*2;          ! Next characters
+STRING case_char*1;        ! Current character case (n or i)
+
+FLOAT  current_scale;      ! Scale for the current character
+FLOAT  previous_scale;     ! Scale for the previous character
+FLOAT  current_arcl;       ! Current arc length
+FLOAT  arc_length_1;       ! First  curve arc length
+FLOAT  arc_length_2;       ! Second curve arc length
+!FLOAT  t_closest;          ! Parameter value for closest point
+FLOAT  scalar_prod_x;      ! Scalar product vector and X axis
+FLOAT  scalar_prod_y;      ! Scalar product vector and Y axis
+FLOAT  scalar_prod_z;      ! Scalar product vector and Z axis
+VECTOR pt_inters_csy;      ! Point for intersect csys
+INT    n_i_pts;            ! Number intersect points 
+
+VECTOR origin_pt;          ! Origin point for coordinate system
+VECTOR x_axis_pt;          ! X axis point for coordinate system
+VECTOR y_axis_pt;          ! Y axis point for coordinate system
+
+INT    b_val;              ! Blank value
+
+REF    g_text_cur;         ! Global ref of text_cur
+REF    g_direct_cur;       ! Global ref of direct_cur
+  
+REF    ref_csys_rot;       ! Coordinate system for rotation rot_angle
+
+BEGINMODULE
+
+! Check the graphic flag
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic >= 1 AND graphic <= 5 THEN
+    b_val := 0;
+  ELSE
+    EXIT("char_curve Graphic flag= " + STR(graphic, -1, 0) + " for character is not implemented");
+  ENDIF;
+  
+  IF FINDS(RSTR(text_cur), "##") = 1 THEN
+    g_text_cur :=  text_cur;
+  ELSE
+    g_text_cur :=  RVAL("#" + RSTR(text_cur));
+  ENDIF;
+  
+  IF FINDS(RSTR(direct_cur), "##") = 1 THEN
+    g_direct_cur :=  direct_cur;
+  ELSE
+    g_direct_cur :=  RVAL("#" + RSTR(direct_cur));
+  ENDIF;
+  
+! Length of input string. The check is actually to "hard" because of possible italic codes 'i()'
+  in_length := LENGTH(in_text);
+  
+  IF in_length > max_n_char THEN
+     EXIT("char_curve Max input string length is " + 
+	   STR(max_n_char, -1, 0) + ". Length in_text is " + STR(in_length, -1, 0));
+  ELIF in_length = 1 THEN
+  
+    EXIT("char_curve Minimum number of characters is two (2). Use char_csy for one character");
+  
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OPEN(f_log, "w", name_logfile);
+   IF IOSTAT(f_log) < 0 THEN
+     EXIT("char_curve Failure opening LOG file " + name_logfile);
+   ENDIF;
+   
+   OUTSTR(f_log,"Debug output from part char_curve");
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"================================");
+   OUTLIN(f_log);
+   OUTLIN(f_log);
+
+   OUTSTR(f_log,"Input text: " + in_text);
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"text_cur= " + RSTR(text_cur));
+   OUTLIN(f_log);
+   OUTSTR(f_log,"g_text_cur= " + RSTR(g_text_cur));
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"direct_cur= " + RSTR(direct_cur));
+   OUTLIN(f_log);
+   OUTSTR(f_log,"g_direct_cur= " + RSTR(g_direct_cur));
+   OUTLIN(f_log);
+   
+  ENDIF;  
+  
+! Input text to character arrays
+! ------------------------------
+
+  n_char := 0; 
+  
+  case_char := "n";
+  
+  FOR char_number:= 1 TO in_length DO
+  
+    c_char := SUBSTR(in_text, char_number, 1);
+		
+	n_chars := c_char;
+	IF char_number < in_length - 1 THEN
+	
+	  n_chars := c_char + SUBSTR(in_text, char_number + 1, 1);
+	
+	ENDIF;
+	
+    !OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " c_char= '" + c_char + "' n_chars= '" + n_chars + "'");
+    !OUTLIN(f_log);
+
+	IF n_chars = "i("  OR n_chars = "I(" THEN
+	  
+	  case_char := "i";
+		
+      !OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " case_char= " + case_char);
+      !OUTLIN(f_log);
+	  
+	ELIF c_char = ")" THEN
+	
+	  case_char := "n";
+	  
+      !OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " case_char= " + case_char);
+      !OUTLIN(f_log);
+	  
+	ELIF c_char = "(" THEN
+	
+	  ; ! Do nothing
+	  
+      !OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " Do nothing ");
+      !OUTLIN(f_log);
+	  
+	ELSE
+	
+	  n_char := n_char + 1;
+	  
+	  char_array(n_char) := c_char;
+	  
+	  case_array(n_char) := case_char;
+	  
+	  
+	  IF debug_case = 1 THEN
+        !OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " Character added to array " );
+        !OUTLIN(f_log);
+	  
+        OUTSTR(f_log,"Char number " + STR(n_char, 2, 0) + " Char= '" + char_array(n_char) + "' Case= " + case_array(n_char));
+        OUTLIN(f_log);
+	  ENDIF;
+ 
+		
+	ENDIF;
+
+  ENDFOR;
+  
+! Construct the file names
+! ------------------------
+
+  FOR char_number:= 1 TO n_char DO
+  
+    c_char := char_array(char_number);
+	
+	ascii_number := ASCII(c_char);
+	
+	IF ascii_number >= 65 AND ascii_number <= 90 THEN
+	  ! Upper case
+	  
+	  c_char := CHR(ASCII(c_char) + 32);
+	  
+	  file_name := start_file_name + txt_uc + c_char;
+	  
+	ELIF ascii_number >= 97 AND ascii_number <= 122 THEN
+	  ! Lower case
+	  
+	  file_name := start_file_name + txt_lc + c_char;
+	  
+	ELIF ascii_number = 32 THEN
+	  ! Lower case
+	  
+	  file_name := start_file_name + txt_lc + "space";
+	  
+	ELSE
+	  CLOSE(f_log);
+      EXIT("char_curve Not yet an implemented character with ASCII= " + STR(ascii_number, -1, 0));
+	ENDIF;
+	
+	name_array(char_number) := file_name;
+	
+	  IF debug_case = 1 THEN
+	  
+        OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + " file name= " + name_array(char_number) );
+        OUTLIN(f_log);
+	  ENDIF;
+	
+  ENDFOR;
+  
+! Set the character sizes array
+! -----------------------------
+   
+  FOR char_number:= 1 TO n_char DO
+  
+    file_name := name_array(char_number);
+	
+	IF FINDS(file_name, file_name_space) > 0 THEN
+	  
+	  width_array(char_number) := 2.0*dist_char;	
+		
+	  IF debug_case = 1 THEN
+        OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + " Width= " + STR(width_array(char_number), -1, 4) + " Space");
+        OUTLIN(f_log);
+	  ENDIF;
+	  
+	  GOTO space_found;
+		
+	ENDIF;
+  
+    OPEN(f_sizes, "r", file_char_sizes);
+    IF IOSTAT(f_sizes) < 0 THEN
+       EXIT("char_curve Failure opening sizes TXT file " + file_char_sizes);
+    ENDIF;  
+	
+!   Three header lines 
+    r_line:=INLIN(f_sizes);
+    r_line:=INLIN(f_sizes);
+    r_line:=INLIN(f_sizes);
+  
+	FOR row_number := 1 TO n_max_number_rows DO
+	
+      ! Read the line with the file name
+	  r_line:=INLIN(f_sizes);
+	  IF IOSTAT(f_sizes) < 0 THEN
+	     CLOSE(f_sizes);
+		 ! TODO INPMT
+	     GOTO file_error;
+	  ENDIF;
+	  
+	  pos_char := FINDS(r_line, file_name);
+	  
+	  IF pos_char = 1 THEN
+        ! Read line with minimum and maximum values
+        r_line:=INLIN(f_sizes);
+        coord_val:= SUBSTR(r_line, 0, w_width);
+        min_x:=  FVAL(coord_val);
+        coord_val:= SUBSTR(r_line,   w_width + 1, w_width);
+        max_x:=  FVAL(coord_val);
+        coord_val:= SUBSTR(r_line, 2*w_width + 1, w_width);
+        min_y:=  FVAL(coord_val);
+        coord_val:= SUBSTR(r_line, 3*w_width + 1, w_width);
+        max_y:=  FVAL(coord_val);
+        coord_val:= SUBSTR(r_line, 4*w_width + 1, w_width);
+        min_z:=  FVAL(coord_val);
+        coord_val:= SUBSTR(r_line, 5*w_width + 1, w_width);
+        max_z:=  FVAL(coord_val);	 
+
+        ! Assuming that min and max X size always equal
+        width_array(char_number) := ABS(max_x);	
+		
+	    IF debug_case = 1 THEN
+	  
+          OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + " Width= " + STR(width_array(char_number), -1, 4) );
+          OUTLIN(f_log);
+	    ENDIF;
+	  
+	    GOTO close_sizes;
+	  
+	  ELSE
+	  
+	    ! Read (skip) the line with max-min values
+	    r_line:=INLIN(f_sizes);
+	  
+	  ENDIF; 
+	
+	ENDFOR;
+	
+close_sizes:
+  
+    CLOSE(f_sizes);
+	
+space_found:;
+	
+  ENDFOR; ! char_number
+  
+file_error:
+
+! Calculate the start arc length and parameter for each character and curve
+! -------------------------------------------------------------------------
+
+  CUR_TRIM(#4, g_text_cur, 0.0, start_t:BLANK=1);
+
+  current_arcl := ARCL(#4);
+  
+  arc_length_1 := ARCL(g_text_cur);
+  
+  arc_length_2 := ARCL(g_direct_cur);
+  
+  DEL(#4);
+
+  FOR char_number:= 1 TO n_char DO
+  
+    IF char_number > 1 THEN
+      current_scale := scale_s + (scale_e-scale_s)/(n_char - 1)* char_number; ! TODO Check
+	  previous_scale := scale_s + (scale_e-scale_s)/(n_char - 1)* (char_number-1);
+	ELSE
+	  current_scale := scale_s;
+	  previous_scale := scale_s; ! Not used hopefully
+	ENDIF;
+	
+	IF char_number = 1 THEN
+	
+	  arcl_array(char_number) := current_arcl;
+	  
+	ELSE
+	
+	  current_arcl := current_arcl + 
+	     width_array(char_number-1)*previous_scale + (width_array(char_number) + dist_char)*current_scale;
+		 
+	  arcl_array(char_number) := current_arcl;
+	  
+	  IF current_arcl >= arc_length_1  THEN
+	  
+	    IF debug_case = 1 THEN
+		
+          OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + 
+		    " Arc length= " + STR(current_arcl, -1, 4) + 
+			             " >= arc_length_1= " + STR(arc_length_1, -1, 4));
+          OUTLIN(f_log);
+		
+		  CLOSE(f_log);
+		
+		ENDIF;
+		
+		EXIT("char_curve Number of characters. start param value or scale too big. Arc length is exceeded");
+	  
+	  ENDIF;
+	
+	ENDIF;
+	
+	t_1_array(char_number) := INV_ARCL(g_text_cur, arcl_array(char_number));
+	
+	t_2_array(char_number) := INV_ARCL(g_direct_cur, arcl_array(char_number));
+
+	
+	  IF debug_case = 1 THEN
+	  
+        OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + " Arc length= " + STR(arcl_array(char_number), -1, 4) );
+        OUTLIN(f_log);
+		
+        OUTSTR(f_log,"Char number " + STR(char_number, 2, 0) + " Curve 1 t= " + STR(t_1_array(char_number), -1, 4) 
+                        + " Curve 2 t= " + STR(t_2_array(char_number), -1, 4)		);
+        OUTLIN(f_log);
+		
+		! POI_FREE(#11, ON(g_text_cur, t_1_array(char_number)):PEN=2);
+		
+		! POI_FREE(#12, ON(g_direct_cur, t_2_array(char_number)):PEN=2);
+	  ENDIF;	
+  
+  
+  ENDFOR;
+  
+! Add the 3d characters
+! ---------------------
+
+  FOR char_number:= 1 TO n_char DO
+  
+    file_name := name_array(char_number);
+	
+	IF file_name <> file_name_space THEN
+  
+      origin_pt:= ON(g_text_cur, t_1_array(char_number));
+      x_axis_pt:= ON(g_text_cur, t_1_array(char_number)) + 10.0*TANG(g_text_cur, t_1_array(char_number));
+	  
+	  !QQQQQt_closest := INV_ON(g_direct_cur, origin_pt);
+	  
+	  !QQQy_axis_pt:= ON(g_direct_cur, t_closest);
+	  
+      !QQQQ y_axis_pt:= ON(g_direct_cur, t_2_array(char_number));
+	  
+	  scalar_prod_x := VEC(1.0, 0.0, 0.0)*TANG(g_text_cur, t_1_array(char_number));
+	  scalar_prod_y := VEC(0.0, 1.0, 0.0)*TANG(g_text_cur, t_1_array(char_number));
+	  scalar_prod_z := VEC(0.0, 0.0, 1.0)*TANG(g_text_cur, t_1_array(char_number));
+	  
+
+	  IF scalar_prod_x < scalar_prod_y AND scalar_prod_x < scalar_prod_z THEN
+	    pt_inters_csy := origin_pt + 10.0*VEC(1.0, 0.0, 0.0);
+	  ELIF scalar_prod_y < scalar_prod_x AND scalar_prod_y < scalar_prod_z THEN
+	    pt_inters_csy := origin_pt + 10.0*VEC(0.0, 1.0, 0.0);
+	  ELIF scalar_prod_z < scalar_prod_x AND scalar_prod_z < scalar_prod_y THEN
+	    pt_inters_csy := origin_pt + 10.0*VEC(0.0, 0.0, 1.0);
+	  ELSE
+	    EXIT("char_curve Programming error scalar products"); 
+	  ENDIF; 
+	  
+	  CSYS_3P(#6, "FirstCsys", origin_pt, x_axis_pt, pt_inters_csy:BLANK=1, PEN=3);
+	  
+	  MODE_LOCAL(#6);
+	  
+	    CSYS_1P(#5, "IntCsys", VEC(0,0,0), 0.0, 90.0, 0.0:BLANK=1, PEN=4);
+	  
+	  MODE_GLOBAL();
+	  
+	  n_i_pts:= N_INTERSECT(g_direct_cur, #5);
+	  
+	  IF n_i_pts = 0 THEN
+	    IF debug_case = 1 THEN
+		  CLOSE(f_log);
+		ENDIF;
+		
+	    EXIT("char_curve No intersection point on the second curve");
+		
+	  ELIF n_i_pts = 1 THEN
+	  
+	    y_axis_pt:= INTERSECT(g_direct_cur, #5, 1);
+		
+	  ELIF n_i_pts = 2 THEN
+	  
+	    IF VECL(INTERSECT(g_direct_cur, #5, 1) - origin_pt) < VECL(INTERSECT(g_direct_cur, #5, 2) - origin_pt) THEN
+		  y_axis_pt:= INTERSECT(g_direct_cur, #5, 1);
+		ELSE
+		  y_axis_pt:= INTERSECT(g_direct_cur, #5, 2);
+		ENDIF;
+	  ELIF n_i_pts >= 3 THEN
+	 
+	    IF debug_case = 1 THEN
+		  CLOSE(f_log);
+		ENDIF;
+		
+	    EXIT("char_curve To many intersect points with the second curve n_i_pts= " + STR(n_i_pts, -1, 0));	  
+	  ENDIF;
+	  
+      CSYS_3P(#2, "CharCsys", origin_pt, x_axis_pt, y_axis_pt:BLANK=1);
+
+!     Coordinate system for rotation rot_angle	  
+	  ref_csys_rot := #2;
+
+      IF ABS(rot_angle) > 0.01 THEN
+	  
+	    MODE_LOCAL(#2);
+		
+		CSYS_1P(#7, "CsysRot", VEC(0,0,0), rot_angle, 0.0, 0.0:BLANK=1, PEN=4);
+		
+		MODE_GLOBAL();
+		
+		ref_csys_rot := #7;
+
+      ENDIF;	  
+
+	  
+	  !IF debug_case = 1 THEN
+	    !POI_FREE(#21, origin_pt:PEN=2);
+		!POI_FREE(#22, x_axis_pt:PEN=2);
+		!POI_FREE(#23, y_axis_pt:PEN=2);
+	    !CSYS_3P(#20, "CharCsysDebug", origin_pt, x_axis_pt, y_axis_pt:BLANK=0, PEN=2);
+	  !ENDIF;
+	
+	  current_scale := scale_s + (scale_e-scale_s)/(n_char - 1)* char_number;
+	
+	  PART(#1, char_solid(file_name + file_ext_txt, pen_top, pen_bottom, pen_side, 
+	              current_scale, case_array(char_number), graphic), ref_csys_rot);
+	
+	  DEL(#2);
+	  DEL(#5);
+	  DEL(#6);
+	  IF ABS(rot_angle) > 0.01 THEN
+	    DEL(#7);
+	  ENDIF;
+	
+	ENDIF;
+	
+  ENDFOR;
+  
+  IF debug_case = 1 THEN
+    CLOSE(f_log);
+  ENDIF;  
+  
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

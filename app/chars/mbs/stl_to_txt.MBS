@@ -1,0 +1,484 @@
+!*************************** stl_to_txt *******************************
+! +++
+! Create TXT file with point data for one character
+!
+! 2022-12-27 Gunnar Liden
+! ---
+!****************************************************************************
+!sdesce Create TXT file with point data for one character
+
+GLOBAL GEOMETRY MODULE stl_to_txt (
+STRING stl_file_name*132   := "" >"STL full file name ";
+STRING txt_file_name*132   := "" >"TXT full file name ";
+STRING file_char_sizes*132 := "" >"Name of the file with character sizes ";
+STRING char_code_name*30   := "" >"Character code name (Equal TXT file name)";
+INT  debug_case            := 1  >"Debug case ");
+
+! Internal variables
+!===================
+
+FILE f_stl;                     ! File object for the STL file
+FILE f_txt;                     ! File object for the character TXT file
+FILE f_sizes;                   ! File object for the sizes TXT file
+
+CONSTANT STRING reverse= "n";   ! Reverse normals ? (y/n)
+INT    status;                  ! Reading error code
+STRING r_line*132;              ! Line read
+VECTOR p_1,p_2,p_3;             ! Facet vertex coordinates
+INT    n_char;                  ! Character count
+VECTOR swap;                    ! For normal reversal
+INT    n_facet;                 ! STL facet count
+
+
+CONSTANT INT array_max = 1200;  ! Maximum point array size
+ 
+VECTOR p1_array(1200);          ! Array of p1 points
+VECTOR p2_array(1200);          ! Array of p2 points
+VECTOR p3_array(1200);          ! Array of p3 points
+
+INT    p_number;                ! Point number in loop
+
+FLOAT  min_x;                   ! Minimum X value for the facets
+FLOAT  max_x;                   ! Maximum X value for the facets
+FLOAT  min_y;                   ! Minimum Y value for the facets
+FLOAT  max_y;                   ! Maximum Y value for the facets
+FLOAT  min_z;                   ! Minimum Y value for the facets
+FLOAT  max_z;                   ! Maximum Y value for the facets
+VECTOR pt_origin;               ! Origin for the STL char
+CONSTANT FLOAT  corr_y = 6.2;   ! Correction Y value for j, q and y
+
+! For the calculation of facet side of character
+INT    side_flag;               ! Eq. 1: Bottom Eq. 2: Top Eq. 3: Side
+VECTOR vector_product;          ! Vector product
+FLOAT  scalar_product;          ! Scalar product
+CONSTANT VECTOR z_axis = VEC(0.0, 0.0, 1.0);
+CONSTANT FLOAT tol_scalar = 0.0001; ! Tolerance for scalar product
+
+
+CONSTANT INT w_width = 15;      ! Controls the amount of padding
+CONSTANT INT n_dec   =  4;      ! Number of decimals
+
+BEGINMODULE
+
+!  Read STL point data to arrays
+!  =============================
+
+!  Open STL file
+   OPEN(f_stl, "r", stl_file_name);
+   IF IOSTAT(f_stl) < 0 THEN
+     EXIT("stl_to_txt Failure opening STL file " + stl_file_name);
+   ENDIF;
+  
+!  Initialization.
+
+   n_facet := 0;
+   
+   status := 0;  
+  
+
+! Eat lines until "solid" found.
+
+findsolid:
+
+   r_line:=INLIN(f_stl);
+   
+   IF IOSTAT(f_stl) = 0 THEN
+     IF FINDS(r_line,"solid") = 0 THEN
+       GOTO findsolid;
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt This doesn't seem to be an ASCII-formatted STL-file !");
+   ENDIF; 
+   
+!  If "endsolid" is found but no "solid" something is wrong.
+
+   IF FINDS(r_line,"endsolid") > 0 THEN
+     POP_PMT();
+     CLOSE(f_stl);	
+     EXIT("stl_to_txt Found endsolid but no solid !");
+   ENDIF;
+   
+!  Eat lines until "facet" found.
+
+findfacet:
+
+   r_line:=INLIN(f_stl);
+   IF IOSTAT(f_stl) = 0 THEN
+     IF FINDS(r_line,"facet") = 0 THEN
+       GOTO findfacet;
+     ENDIF;
+   ELSE
+     GOTO end;
+   ENDIF;
+   
+!  Eat lines until "outer loop" found.
+
+findouterloop:
+
+   r_line:=INLIN(f_stl);
+   IF IOSTAT(f_stl) = 0 THEN
+     IF FINDS(r_line,"outer loop") = 0 THEN
+       GOTO findouterloop;
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);	
+     EXIT("stl_to_txt This doesn't seem to be an ASCII-formatted STL-file !");
+   ENDIF;
+   
+!  Eat lines until first "vertex" found.
+
+findvertex1:
+
+   r_line:= INLIN(f_stl);
+   IF IOSTAT(f_stl) = 0 THEN
+     n_char:= FINDS(r_line,"vertex");
+     IF n_char = 0 THEN
+       GOTO findvertex1;
+     ELSE
+       r_line:= SUBSTR(r_line,n_char+6);
+       p_1.x:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_1.y:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_1.z:=    FVAL(r_line,status,n_char);
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Unvalid STL-file, keyword vertex missing (1)!");
+   ENDIF;
+
+   
+!  Eat lines until second "vertex" found.
+
+findvertex2:
+
+   r_line:= INLIN(f_stl);
+   IF IOSTAT(f_stl) = 0 THEN
+     n_char:=FINDS(r_line,"vertex");
+     if n_char = 0 THEN
+       goto findvertex2;
+     ELSE
+       r_line:= SUBSTR(r_line,n_char+6);
+       p_2.x:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_2.y:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_2.z:=    FVAL(r_line,status,n_char);
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Unvalid STL-file, keyword vertex missing (2)!");
+   ENDIF;
+
+!  Eat lines until last "vertex" found.
+
+findvertex3:
+
+   r_line:=inlin(f_stl);
+   IF iostat(f_stl) = 0 THEN
+     n_char:=finds(r_line,"vertex");
+     IF n_char = 0 THEN
+       GOTO findvertex3;
+     ELSE
+       r_line:= SUBSTR(r_line,n_char+6);
+       p_3.x:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_3.y:=    FVAL(r_line,status,n_char);
+       r_line:= SUBSTR(r_line,n_char+1);
+       p_3.z:=    FVAL(r_line,status,n_char);
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Unvalid STL-file, keyword vertex missing ! (3)");
+   ENDIF;
+
+!  Possible reversal of normal.
+   IF reverse = "y"  OR  reverse = "Y" THEN
+     swap := p_1;
+     p_1  := p_3;
+     p_3  := swap;
+   ENDIF;
+   
+!  Next facet
+   n_facet:= n_facet + 1;
+   
+   IF   n_facet >= 32000 THEN
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Cant create an MBS entity (order number) for more than 32000 facets !");
+   ELIF   n_facet > array_max THEN
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Point array size must be increased");
+   ENDIF;
+ 
+   p1_array(n_facet):= p_1;
+   p2_array(n_facet):= p_2;
+   p3_array(n_facet):= p_3;
+   
+   
+!  Eat lines until "endloop" found.
+
+findendloop:
+
+   r_line:= INLIN(f_stl);
+   
+   IF IOSTAT(f_stl) = 0 THEN
+     IF FINDS(r_line,"endloop") = 0 THEN
+       GOTO findendloop;
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Unvalid STL-file, keyword endloop missing !");
+   ENDIF;
+   
+!  Eat lines until "endfacet" found.
+
+findendfacet:
+
+   r_line:= INLIN(f_stl);
+   IF IOSTAT(f_stl) = 0 then
+     IF FINDS(r_line,"endfacet") = 0 THEN
+       GOTO findendfacet;
+     ENDIF;
+   ELSE
+     POP_PMT();
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Unvalid STL-file, keyword endfacet missing !");
+   ENDIF;
+   
+! Try next facet.
+
+   GOTO findfacet;
+   
+end:
+   POP_PMT();
+   CLOSE(f_stl);  
+   PSH_PMT(STR(n_facet,-1,0)+" facets read !");
+   
+   
+!  Calculate origin for the character
+!  ==================================
+
+   min_x :=  1200000.0;
+   max_x := -1200000.0;
+  
+   min_y :=  1200000.0;
+   max_y := -1200000.0;
+   
+   min_z :=  1200000.0;
+   max_z := -1200000.0;  
+   
+   FOR p_number:= 1 TO n_facet DO
+   
+    p_1 := p1_array(p_number);
+	p_2 := p2_array(p_number);
+	p_3 := p3_array(p_number);
+   
+	IF p_1.x < min_x THEN
+      min_x := p_1.x;
+    ENDIF;	
+	IF p_1.x > max_x THEN
+      max_x := p_1.x;
+    ENDIF;	
+	IF p_1.y < min_y THEN
+      min_y := p_1.y;
+    ENDIF;	
+	IF p_1.y > max_y THEN
+      max_y := p_1.y;
+    ENDIF;	
+	IF p_1.z < min_z THEN
+      min_z := p_1.z;
+    ENDIF;	
+	IF p_1.z > max_z THEN
+      max_z := p_1.z;
+    ENDIF;	
+	
+	IF p_2.x < min_x THEN
+      min_x := p_2.x;
+    ENDIF;	
+	IF p_2.x > max_x THEN
+      max_x := p_2.x;
+    ENDIF;	
+	IF p_2.y < min_y THEN
+      min_y := p_2.y;
+    ENDIF;	
+	IF p_2.y > max_y THEN
+      max_y := p_2.y;
+    ENDIF;	
+	IF p_2.z < min_z THEN
+      min_z := p_2.z;
+    ENDIF;	
+	IF p_2.z > max_z THEN
+      max_z := p_2.z;
+    ENDIF;	
+	
+	IF p_3.x < min_x THEN
+      min_x := p_3.x;
+    ENDIF;	
+	IF p_3.x > max_x THEN
+      max_x := p_3.x;
+    ENDIF;	
+	IF p_3.y < min_y THEN
+      min_y := p_3.y;
+    ENDIF;	
+	IF p_3.y > max_y THEN
+      max_y := p_3.y;
+    ENDIF;	
+	IF p_3.z < min_z THEN
+      min_z := p_3.z;
+    ENDIF;	
+	IF p_3.z > max_z THEN
+      max_z := p_3.z;
+    ENDIF;		
+	
+   ENDFOR;
+   
+   IF char_code_name = "char_lc_j" OR char_code_name = "char_lc_q" OR
+      char_code_name = "char_lc_p" OR char_code_name = "char_lc_y" THEN
+    pt_origin := VEC(min_x + (max_x - min_x)/2.0, min_y + corr_y, 0.0);
+   ELSE
+     pt_origin := VEC(min_x + (max_x - min_x)/2.0, min_y, 0.0);
+   ENDIF;
+ 
+
+!  Determine side of character, write points and side flag to the TXT file 
+!  =======================================================================
+
+!  Open TXT files
+   OPEN(f_txt, "w", txt_file_name);
+   IF IOSTAT(f_txt) < 0 THEN
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Failure opening character TXT file " + txt_file_name);
+   ENDIF;
+   
+   OPEN(f_sizes, "a", file_char_sizes);
+   IF IOSTAT(f_sizes) < 0 THEN
+     CLOSE(f_stl);
+     EXIT("stl_to_txt Failure opening sizes TXT file " + file_char_sizes);
+   ENDIF;
+  
+   
+!  Write header data to the character TXT file
+   OUTSTR(f_txt, "This file was generated by stl_to_txt:");
+   OUTLIN(f_txt);   
+   OUTSTR(f_txt, txt_file_name);
+   OUTLIN(f_txt); 
+   OUTSTR(f_txt, "Do not change anything manually!");
+   OUTLIN(f_txt);   
+   
+   
+   OUTSTR(f_txt, STR(n_facet, w_width, 0) + 
+				   "   Number of facets for this character");
+   OUTLIN(f_txt);
+   
+   OUTSTR(f_txt, STR(min_x - pt_origin.x, w_width, n_dec) + 
+	             STR(max_x - pt_origin.x, w_width, n_dec) + 
+				 STR(min_y - pt_origin.y, w_width, n_dec) + 
+				 STR(max_y - pt_origin.y, w_width, n_dec) + 
+				 STR(min_z - pt_origin.z, w_width, n_dec) + 
+				 STR(max_z - pt_origin.z, w_width, n_dec) + 
+				   "  MinMax ");
+   OUTLIN(f_txt);
+   
+   OUTSTR(f_sizes, char_code_name);
+   OUTLIN(f_sizes);
+   
+   OUTSTR(f_sizes, STR(min_x - pt_origin.x, w_width, n_dec) + 
+	               STR(max_x - pt_origin.x, w_width, n_dec) + 
+				   STR(min_y - pt_origin.y, w_width, n_dec) + 
+				   STR(max_y - pt_origin.y, w_width, n_dec) + 
+				   STR(min_z - pt_origin.z, w_width, n_dec) + 
+				   STR(max_z - pt_origin.z, w_width, n_dec) + 
+				   "  MinMax ");
+   OUTLIN(f_sizes);   
+
+    
+   FOR p_number:= 1 TO n_facet DO
+   
+     p_1 := p1_array(p_number) - pt_origin;
+	 p_2 := p2_array(p_number) - pt_origin;
+	 p_3 := p3_array(p_number) - pt_origin;
+   
+     vector_product := VECN(VPROD(p_2 - p_1, p_3 - p_1)); 
+	 
+     scalar_product := vector_product * z_axis; 
+	 
+	 IF ABS(scalar_product - 1.0) < tol_scalar THEN
+	 
+	   side_flag := 1;
+	 
+	 ELIF ABS(scalar_product + 1.0) < tol_scalar THEN
+	   side_flag := 2;
+	 ELSE
+	   side_flag := 3;
+	 ENDIF; 
+   
+     OUTSTR(f_txt, STR(p_1.x, w_width, n_dec) + 
+	               STR(p_1.y, w_width, n_dec) + 
+				   STR(p_1.z, w_width, n_dec) + 
+				   "   p1 number " + STR(p_number, -1, 0));
+     OUTLIN(f_txt);
+	 
+     OUTSTR(f_txt, STR(p_2.x, w_width, n_dec) + 
+	               STR(p_2.y, w_width, n_dec) + 
+				   STR(p_2.z, w_width, n_dec) + 
+				   "   p2 number " + STR(p_number, -1, 0));
+     OUTLIN(f_txt);
+	 
+     OUTSTR(f_txt, STR(p_3.x, w_width, n_dec) + 
+	               STR(p_3.y, w_width, n_dec) + 
+				   STR(p_3.z, w_width, n_dec) + 
+				   "   p3 number " + STR(p_number, -1, 0));
+     OUTLIN(f_txt);
+	 
+	 OUTSTR(f_txt, STR(side_flag, w_width, 0) + "                 " +
+				   "   Side flag facet number " + STR(p_number, -1, 0));
+     OUTLIN(f_txt);
+   
+   ENDFOR;
+	
+!  Close TXT character and sizes files   
+   CLOSE(f_txt);
+   CLOSE(f_sizes);
+
+   
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

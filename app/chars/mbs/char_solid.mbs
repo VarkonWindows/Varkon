@@ -1,0 +1,187 @@
+!***********************************************************
+!
+! Creates a solid character with bounded planes
+!
+! 2022-12-27 Gunnar Liden
+!
+!***********************************************************
+!sdesce Creates a solid character with bounded planes
+
+LOCAL GEOMETRY MODULE char_solid(
+STRING  file_name*30 :=  ""  > "File name with extension txt";
+INT     pen_top      :=  2   > "Color for top facets";
+INT     pen_bottom   :=  3   > "Color for bottom facets";
+INT     pen_side     :=  4   > "Color for side facets";
+FLOAT   scale_factor :=  1.0 > "Scale factor";
+STRING  font_case*1  :=  "N" > "Font case Normal or Italic";
+INT     graphic      :=  1   > "Graphic flag");
+
+! Directory name for the input TXT file with point data for the character
+CONSTANT STRING txt_file_dir= "C:\Varkon\app\chars\data\";
+
+! Angle for font attribute italic 
+CONSTANT FLOAT italic_angle= -11.0;
+
+STRING txt_file_name*132;  ! Full name of the TXT file
+
+CONSTANT INT w_width = 15; ! Controls the amount of padding
+CONSTANT INT n_dec   =  4; ! Number of decimals
+
+
+INT    n_facet;            ! Number of facets
+VECTOR p_1;                ! Point 1 of facet
+VECTOR p_2;                ! Point 2 of facet
+VECTOR p_3;                ! Point 3 of facet
+INT    side_flag;          ! 1: Top 2: Bottom 3: Side
+INT    f_number;           ! Facet number for loop
+FILE   f_txt;              ! File object for the TXT file
+FLOAT  min_x;              ! Minimum X value for the facets
+FLOAT  max_x;              ! Maximum X value for the facets
+FLOAT  min_y;              ! Minimum Y value for the facets
+FLOAT  max_y;              ! Maximum Y value for the facets
+FLOAT  min_z;              ! Minimum Z value for the facets
+FLOAT  max_z;              ! Maximum Z value for the facets
+INT    b_val;              ! Blank value
+STRING r_line*132;         ! Line read
+STRING coord_val*30;       ! Coordinate value as string
+STRING int_val*30;         ! Integer value as string
+INT    f_pen;              ! Facet color
+
+BEGINMODULE
+
+! Check the graphic flag
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic >= 1 AND graphic <= 5 THEN
+    b_val := 0;
+  ELSE
+    EXIT("char_solid Graphic flag= " + STR(graphic, -1, 0) + " for character is not implemented");
+  ENDIF;
+
+! Construct the full name of the TXT file  
+  txt_file_name := txt_file_dir + file_name;
+  
+! Transformation for italic
+  TFORM_ROTP(#6, VEC(0,0,0), italic_angle);
+
+! Open TXT file with point data
+  OPEN(f_txt, "r", txt_file_name);
+  IF IOSTAT(f_txt) < 0 THEN
+    EXIT("char_solid Failure opening TXT file " + txt_file_name);
+  ENDIF;
+
+! Three header lines 
+  r_line:=INLIN(f_txt);
+  r_line:=INLIN(f_txt);
+  r_line:=INLIN(f_txt);
+  
+! Line with number of facets   
+  r_line:=INLIN(f_txt);
+  int_val:= SUBSTR(r_line, 0, w_width);
+  n_facet := IVAL(int_val);
+
+! Read line with minimum and maximum values
+  r_line:=INLIN(f_txt);
+  coord_val:= SUBSTR(r_line, 0, w_width);
+  min_x:=  FVAL(coord_val);
+  coord_val:= SUBSTR(r_line, w_width + 1, w_width);
+  max_x:=  FVAL(coord_val);
+  coord_val:= SUBSTR(r_line, 2*w_width + 1, w_width);
+  min_y:=  FVAL(coord_val);
+  coord_val:= SUBSTR(r_line, 3*w_width + 1, w_width);
+  max_y:=  FVAL(coord_val);
+  coord_val:= SUBSTR(r_line, 4*w_width + 1, w_width);
+  min_z:=  FVAL(coord_val);
+  coord_val:= SUBSTR(r_line, 5*w_width + 1, w_width);
+  max_z:=  FVAL(coord_val);
+
+! Register the minimum and maximum values
+  ! No longer used PART(#2, char_reg(min_x, max_x, min_y, max_y, min_z, max_z));
+
+! Loop for all facets
+
+  FOR f_number:= 1 TO n_facet DO
+
+!   Read line with coordinates for point 1
+    r_line:=INLIN(f_txt);
+    coord_val:= SUBSTR(r_line, 0, w_width);
+    p_1.x:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, w_width + 1, w_width);
+    p_1.y:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, 2*w_width + 1, w_width);
+    p_1.z:=  FVAL(coord_val);
+
+!   Read line with coordinates for point 2
+    r_line:=INLIN(f_txt);
+    coord_val:= SUBSTR(r_line, 0, w_width);
+    p_2.x:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, w_width + 1, w_width);
+    p_2.y:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, 2*w_width + 1, w_width);
+    p_2.z:=  FVAL(coord_val);
+
+!   Read line with coordinates for point 3
+    r_line:=INLIN(f_txt);
+    coord_val:= SUBSTR(r_line, 0, w_width);
+    p_3.x:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, w_width + 1, w_width);
+    p_3.y:=  FVAL(coord_val);
+    coord_val:= SUBSTR(r_line, 2*w_width + 1, w_width);
+    p_3.z:=  FVAL(coord_val);
+
+!   Read line with side flag
+    r_line:=INLIN(f_txt);
+    coord_val:= SUBSTR(r_line, 0, w_width);
+    side_flag:=  IVAL(coord_val);
+
+    IF side_flag   = 1 THEN
+     f_pen:= pen_top;
+    ELIF side_flag = 2 THEN
+     f_pen:= pen_bottom;
+    ELIF side_flag = 3 THEN
+     f_pen:= pen_side;
+    ELSE
+     f_pen:= 1;
+    ENDIF;
+	
+	IF font_case = "I" OR font_case = "i" THEN
+	  
+	  POI_FREE(#7, p_1:BLANK=0);
+	  POI_FREE(#8, p_2:BLANK=0);
+	  POI_FREE(#9, p_3:BLANK=0);
+	  
+	  TCOPY(#10, #7, #6);
+	  TCOPY(#11, #8, #6);
+	  TCOPY(#12, #9, #6);
+	  
+	  p_1 := ON(#10);
+	  p_2 := ON(#11);
+	  p_3 := ON(#12);
+	  
+	  DEL(#7);
+	  DEL(#8);
+	  DEL(#9);
+	  DEL(#10);
+	  DEL(#11);
+	  DEL(#12);
+	  
+	ENDIF;
+
+    IF graphic = 1 THEN
+      B_PLANE(#1, scale_factor*p_1, scale_factor*p_2,scale_factor*p_2, scale_factor*p_3 :PEN= f_pen, BLANK= b_val);
+    ELIF graphic = 2 AND side_flag = 1 THEN
+      B_PLANE(#2, scale_factor*p_1, scale_factor*p_2,scale_factor*p_2, scale_factor*p_3 :PEN= f_pen, BLANK= b_val);
+    ELIF graphic = 3 AND side_flag = 2 THEN
+      B_PLANE(#3, scale_factor*p_1, scale_factor*p_2,scale_factor*p_2, scale_factor*p_3 :PEN= f_pen, BLANK= b_val);
+    ELIF graphic = 4 AND side_flag = 3 THEN
+      B_PLANE(#4, scale_factor*p_1, scale_factor*p_2,scale_factor*p_2, scale_factor*p_3 :PEN= f_pen, BLANK= b_val);
+    ELIF graphic = 5 AND (side_flag = 1 OR side_flag = 2) THEN
+      B_PLANE(#5, scale_factor*p_1, scale_factor*p_2,scale_factor*p_2, scale_factor*p_3 :PEN= f_pen, BLANK= b_val);
+    ENDIF;
+  
+  ENDFOR;
+
+! Close TXT file 
+  CLOSE(f_txt);
+
+ENDMODULE

@@ -1,0 +1,24 @@
+!***********************************************************
+!
+! Registrates data for a character
+!
+! 2022-12-23 Gunnar Liden
+!
+!***********************************************************
+!sdesce Registrates data for a character
+
+GLOBAL GEOMETRY MODULE char_reg(
+FLOAT   min_x;     ! Minimum X value of character
+FLOAT   max_x;     ! Maximum X value of character
+FLOAT   min_y;     ! Minimum Y value of character
+FLOAT   max_y;     ! Maximum Y value of character
+FLOAT   min_z;     ! Minimum Z value of character
+FLOAT   max_z);    ! Maximum Z value of character
+
+
+
+BEGINMODULE
+
+; ! Does not to anything. Just registers data
+
+ENDMODULE
