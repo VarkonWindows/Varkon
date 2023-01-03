@@ -1,0 +1,302 @@
+!********************* conic_loft ***********************
+! +++
+! Bridget Riley conic loft surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-10-30  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley loft surface
+
+GLOBAL GEOMETRY MODULE conic_loft(
+
+INT    graphic_case:=        1      > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+CONSTANT FLOAT sur_length = 3000.0;! Surface length
+  VECTOR p_1_dir_1;                ! Point 1 directix 1
+  VECTOR tp_1_dir_1;               ! Tangent point 1 directix 1
+  VECTOR p_2_dir_1;                ! Point 2 directix 1
+  VECTOR tp_2_dir_1;               ! Tangent point 2 directix 1
+  VECTOR p_3_dir_1;                ! Point 3 directix 1
+  VECTOR tp_3_dir_1;               ! Tangent point 2 directix 1
+  VECTOR p_4_dir_1;                ! Point 4 directix 1
+  VECTOR tp_4_dir_1;               ! Tangent point 2 directix 1
+  VECTOR p_5_dir_1;                ! Point 5 directix 1
+  VECTOR tp_5_dir_1;               ! Tangent point 2 directix 1
+  
+  VECTOR p_1_dir_xz_1;             ! Point 1 directix xz 1
+  VECTOR tp_1_dir_xz_1;            ! Tangent point 1 directix xz 1
+  VECTOR p_2_dir_xz_1;             ! Point 1 directix xz 1
+  VECTOR tp_2_dir_xz_1;            ! Tangent point 1 directix xz 1
+  VECTOR p_3_dir_xz_1;             ! Point 1 directix xz 1
+  VECTOR tp_3_dir_xz_1;            ! Tangent point 1 directix xz 1
+  
+  CONSTANT INT n_inter = 31;       ! Number of intersect points
+  INT    n_spline_pts;             ! Number of points in inter_pts
+  INT    pt_number;                ! Index point number
+  VECTOR inter_pts(40);            ! Intersect points
+  VECTOR inter_tan(40);            ! Intersect tangents
+  INT    i_inter;                  ! Loop index intersect
+  FLOAT  delta_z;                  ! Delta X for intersect plane
+  INT    n_inter_dir;              ! Number of intersect with directix
+  INT    n_inter_dir_xz;           ! Number of intersect with directix xz
+  VECTOR inter_pt_dir;             ! Intersect point directix
+  VECTOR inter_pt_dir_xz;          ! Intersect point directix xz
+
+  INT p_pen;
+  INT p_pen_white;
+  INT p_pen_black;
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+  
+  FILE       f_d;                  ! Debug file
+  
+  CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug.txt"; 
+
+  STRING s_inpmt*132;              ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+BEGINMODULE
+     
+    ! Open debug file
+    OPEN(f_d, "W", file_name);
+	
+	OUTSTR(f_d, "Debug conic_loft.MBS");
+	OUTLIN(f_d);
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 4 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+
+	PART(#51,saabvyer());
+
+	CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+	CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+	CRE_COLOR(o_p_3, 255, 255, 255); ! White
+	CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+	p_pen_white := o_p_3;
+	p_pen_black := 1;
+
+    ! Point and tangent point 1 directix 1	
+    p_1_dir_1  := VEC(0.0,    0.0,    0.0);
+    tp_1_dir_1 := VEC(0.0, -150.0,  200.0);
+
+    ! Point and tangent point 2 directix 1	
+    p_2_dir_1 :=  VEC(0.0, -500.0, 1800.0);
+    tp_2_dir_1 := p_2_dir_1 + VEC(0.0, 0.0, 100.0);
+	
+    ! Point 3 directix 1	
+    p_3_dir_1 :=   VEC(0.0,  900.0, 6000.0);
+    !tp_3_dir_1 := VEC(0.0, 0.0, 0.0);
+	
+    ! Point and tangent point 4 directix 1	
+    p_4_dir_1 :=  VEC(0.0,   5500.0, 8000.0);
+    tp_4_dir_1 := p_4_dir_1 + VEC(0.0, 100.0, 0.0);
+	
+    ! Point and tangent point 5 directix 1	
+    p_5_dir_1 :=  VEC(0.0,  8000.0, 8000.0);
+    tp_5_dir_1 := p_5_dir_1 + VEC(0.0, 100.0, 0.0);
+	
+	!POI_FREE(#31,  p_1_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#41, tp_1_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#32,  p_2_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#42, tp_2_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#55,  VEC(0.0, 0.0, 4500):BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#56,  VEC(0.0, 2000.0, 7000):BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#57,  VEC(0.0, 3000.0, 7500):BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#33,  p_3_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#34,  p_4_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#44, tp_4_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#35,  p_5_dir_1:BLANK= b_val_poi, PEN=4);
+	!POI_FREE(#45, tp_5_dir_1:BLANK= b_val_poi, PEN=4);
+	
+    ! Directrix 1. Planar in X=0
+	CUR_CONIC(#11, "FREE", 
+              p_1_dir_1, tp_1_dir_1, 0.5,
+              p_2_dir_1, tp_2_dir_1, p_3_dir_1,
+              p_4_dir_1, tp_4_dir_1, 0.5,
+              p_5_dir_1, tp_5_dir_1 :BLANK= 1, PEN=4); ! b_val_cur
+			  
+    ! Point and tangent point 1 directix xz 1			  
+    p_1_dir_xz_1 := VEC(0.0,  0.0, 8.0);             
+    tp_1_dir_xz_1 := VEC(0.0,  0.0, 100.0);   
+	
+    ! Point and tangent point 1 directix xz 2			  
+    p_2_dir_xz_1 :=  VEC(5000.0,  0.0, 8000.0);             
+    tp_2_dir_xz_1 := VEC(5100.0,  0.0, 8000.0);   
+	
+    ! Point and tangent point 1 directix xz 2			  
+    p_3_dir_xz_1 :=  VEC(8000.0,  0.0, 8000.0);             
+    tp_3_dir_xz_1 := VEC(8100.0,  0.0, 8000.0); 
+	
+	CUR_CONIC(#10, "FREE", 
+	          p_1_dir_xz_1, tp_1_dir_xz_1, 0.5,
+			  p_2_dir_xz_1, tp_2_dir_xz_1, 0.5,
+			  p_3_dir_xz_1, tp_3_dir_xz_1:BLANK= 1, PEN=2); !b_val_cur
+			  
+			  
+	delta_z := 8000.0/(n_inter - 1);
+	
+	inter_pts(1) := p_1_dir_xz_1;
+	
+	inter_tan(1) := VEC(0.0, 0.0, 0.0);
+	
+	n_spline_pts := 1;
+	
+	FOR i_inter:= 1 TO n_inter-1 DO
+	
+	  CSYS_3P(#8, "INT_Z", VEC(0.0,   0.0, i_inter*delta_z), 
+	                       VEC(0.0,   0.0, i_inter*delta_z) + VEC(100.0,    0.0,   0.0),
+						   VEC(0.0,   0.0, i_inter*delta_z) + VEC(  0.0,  100.0,   0.0):
+						   BLANK=1);		
+						   
+	  CSYS_3P(#6, "INT_Z", VEC(0.0,   0.0, i_inter*delta_z), 
+	                       VEC(0.0,   0.0, i_inter*delta_z) + VEC(100.0,    0.0,   0.0),
+						   VEC(0.0,   0.0, i_inter*delta_z) + VEC(  0.0,  100.0,   0.0):
+						   BLANK=1);						  
+						   
+						   
+	   n_inter_dir_xz := N_INTERSECT(#10, #8);
+	   
+	   n_inter_dir    := N_INTERSECT(#11, #8);
+	   
+	   IF n_inter_dir_xz >= 1 AND n_inter_dir >= 1 THEN
+						   
+	     inter_pt_dir_xz := INTERSECT(#10, #8, 1);
+	   
+	     inter_pt_dir    := INTERSECT(#11, #8, 1);
+		 
+	    OUTSTR(f_d, "Intersect" + 
+			   " i_inter= " + STR(i_inter, 4, 0) + 
+			   " inter_pt_dir_xz= " + 
+			   STR(inter_pt_dir_xz.x, 8, 2) + ", " +
+			   STR(inter_pt_dir_xz.y, 8, 2) + ", " +
+			   STR(inter_pt_dir_xz.z, 8, 2)
+			   );
+	     OUTLIN(f_d);
+	    OUTSTR(f_d, "Intersect" + 
+			   " i_inter= " + STR(i_inter, 4, 0) + 
+			   " inter_pt_dir=    " + 
+			   STR(inter_pt_dir.x, 8, 2) + ", " +
+			   STR(inter_pt_dir.y, 8, 2) + ", " +
+			   STR(inter_pt_dir.z, 8, 2)
+			   );
+	     OUTLIN(f_d);
+	   
+	     inter_pts(i_inter + 1) := VEC(inter_pt_dir_xz.x, inter_pt_dir.y, inter_pt_dir.z);
+		 
+		 inter_tan(i_inter + 1) := VEC(0.0, 0.0, 0.0);
+		 
+		 n_spline_pts := n_spline_pts + 1;
+	   
+	     !POI_FREE(#49, inter_pts(i_inter + 1):BLANK= b_val_poi, PEN=1);
+		 
+		 
+	   ELIF n_inter_dir >= 1 AND n_inter_dir_xz = 0 THEN
+	   
+	     inter_pt_dir    := INTERSECT(#11, #8, 1);
+		 
+		 !POI_FREE(#48, inter_pt_dir:BLANK= b_val_poi, PEN=3);
+		 
+	     	OUTSTR(f_d, "No intersect" + 
+			   " i_inter= " + STR(i_inter, 4, 0) + 
+			   " n_inter_dir_xz= " + STR(n_inter_dir_xz, 4, 0)
+			   );
+	        OUTLIN(f_d);
+		 
+	   ELSE
+	     	OUTSTR(f_d, "No intersect" + 
+			   " i_inter= " + STR(i_inter, 4, 0) + 
+			   " n_inter_dir_xz= " + STR(n_inter_dir_xz, 4, 0) + 
+			   " n_inter_dir= " + STR(n_inter_dir, 4, 0)  
+			   );
+	        OUTLIN(f_d);
+	   ENDIF;
+	   
+	   DEL(#8);
+	
+	ENDFOR;
+	
+	n_spline_pts := n_spline_pts + 1;
+	
+	inter_pts(n_spline_pts) := VEC(p_3_dir_xz_1.x, p_5_dir_1.y, p_3_dir_xz_1.z);
+		 
+    !inter_tan(n_spline_pts) := VECN(inter_pts(n_spline_pts) - inter_pts(n_spline_pts - 1));
+	inter_tan(n_spline_pts) := VEC(0.0, 0.0, 0.0);
+	
+	FOR pt_number:= 1 TO n_spline_pts DO
+	
+	  OUTSTR(f_d, "Point " + 
+	      STR(inter_pts(pt_number).x, 8, 2) + ", " +
+		  STR(inter_pts(pt_number).y, 8, 2) + ", " +
+		  STR(inter_pts(pt_number).z, 8, 2) + ", " +
+		  STR(inter_tan(pt_number).x, 8, 6) + ", " +
+		  STR(inter_tan(pt_number).y, 8, 6) + ", " +
+		  STR(inter_tan(pt_number).z, 8, 6)	);
+	  OUTLIN(f_d);
+	  
+	  POI_FREE(#47, inter_pts(pt_number):BLANK= b_val_poi, PEN=2);
+	
+	ENDFOR;
+			  
+	CUR_SPLARR(#5, "CHORD", n_spline_pts,inter_pts, inter_tan:BLANK= b_val_cur, PEN=3);		  
+			  
+    TFORM_ROTL(#21, VEC(0.0, 0.0, 0.0), VEC(1.0, 0.0, 0.0), -90.0);
+	
+	TCOPY(#12,  #5, #21);
+	TCOPY(#13, #12, #21);
+	TCOPY(#14, #13, #21);
+                           
+	
+close_file:
+
+    ! Close debug file
+    CLOSE(f_d);
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

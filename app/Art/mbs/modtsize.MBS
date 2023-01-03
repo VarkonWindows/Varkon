@@ -1,0 +1,122 @@
+!********************* modtsize ****************************************
+!
+! +++  Modulen beräknar ny teckenstorlek när text inte får
+!      plats inom givet utrymme.
+!
+! Ändringshistorik:
+!
+!  1992-11-27  Ronny Gyllensten 
+!  1996-02-25  åäö Gunnar Liden 
+! ---
+!***********************************************************************
+
+!sdesce Calculates new TSIZE in text
+!sdescs Beräknar ny teckenstorlek i text
+
+BASIC GEOMETRY MODULE modtsize(
+STRING     intext*132:="Mellankropp / 2000"    >"Indata sträng ";
+FLOAT      faltbredd:= 119                     >"Fältbredd ";
+FLOAT      inhojd:= 4.0                        >"TSIZE ";
+FLOAT      inbredd:= 50                        >"TWIDTH ";
+VAR FLOAT  uthojd;              ! Teckenhöjd angivet i mm
+VAR FLOAT  utbredd);            ! Teckenbredd i % av teckenhöjd
+
+! Interna variabler:
+
+FLOAT       teckenhojd;          ! Teckenhöjd angivet i mm
+FLOAT       teckenbredd;         ! Teckenbredd i % av teckenhöjd
+FLOAT       stranglangd;         ! Antalet mm för given sträng
+INT         antal;               ! Antalet tecken i strängen
+STRING      s*1;                 ! För INPMT
+
+INT         DEBUG;               ! Eq. 0: Ingen Debug
+                                 ! Eq. 1: Full Debug
+
+BEGINMODULE
+
+
+    DEBUG := 0;                  ! Ändra Debug till 0 eller 1
+
+    antal := LENGTH(intext);     ! Beräknar antalet tecken i intext
+
+    IF DEBUG = 1  THEN           ! Utskrift för Debug = 1
+     s:=INPMT("modtsize:"        ! 
+        + "Antalet tecken = "    ! Antalet tecken =
+        +STR(antal,1,0)          !
+        +" Fortsätt=<CR>","",1); !
+    ENDIF;                       !
+
+     teckenhojd := inhojd;       ! mm
+
+     teckenbredd := inhojd *     !  % görs om till mm
+                    inbredd /    !
+                    100;         !
+
+     stranglangd := antal *      !  mm
+                    teckenbredd +!
+                    (antal - 1) *!
+                    teckenbredd *!
+                    0.67;
+
+    IF DEBUG = 1  THEN           ! Utskrift för Debug = 1
+     s:=INPMT("modtsize:"        !
+        + "Stränglängd = "       !
+        +STR(stranglangd,1,5)    !
+        +" Fortsätt=<CR>","",1); !
+    ENDIF;                       !
+
+ IF stranglangd < faltbredd  THEN   ! Texten får rum i fältet
+
+    IF DEBUG = 1  THEN           ! Utskrift för Debug = 1
+     s:=INPMT("modtsize:"        !
+        +"Stränglängd är < faltbredd = " !
+        +STR(faltbredd,1,5)    !
+        +"  Fortsätt=<CR>","",1);!
+    ENDIF;                       !
+
+            GOTO slut;           ! 
+
+    ELSE
+    
+    IF DEBUG = 1  THEN           ! Utskrift för Debug = 1
+     s:=INPMT("modtsize:"        !
+        +"Stränglängd är > faltbredd = " !
+        +STR(faltbredd,1,5)    !
+        +"  Fortsätt=<CR>","",1);!
+    ENDIF;
+
+      teckenbredd := 3 *
+                     faltbredd / !  Texten är för lång
+                     (5 * antal - 2); !  Ny teckenbredd i mm räknas ut
+
+      teckenhojd := 100 *
+                    teckenbredd /!  Detta ger ny teckenhöjd i mm
+                    inbredd;     !
+
+    IF DEBUG = 1  THEN           ! Utskrift för Debug = 1
+     s:=INPMT("modtsize:"        !
+        + "Teckenhojd =  "       !
+        +STR(teckenhojd,1,5)     !
+        + " Teckenbredd =  "      !
+        +STR(teckenbredd,1,5)    !
+        + "  Fortsätt=<CR>","",1);!
+    ENDIF;
+
+ ENDIF;
+
+         GOTO slut;
+
+slut:    uthojd := teckenhojd;   ! Det nya värdet på höjden
+
+         utbredd := inbredd;     ! Förhållandet ändras ej
+
+
+ENDMODULE
+
+
+
+
+
+
+
+

@@ -1,0 +1,398 @@
+!********************* squares ***********************
+! +++
+! Bridget Riley squares
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-10-21  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley squares 
+
+GLOBAL GEOMETRY MODULE squares(
+
+FLOAT  sur_width:= 5000.0           > "Surface width";
+FLOAT  sur_length_proj:=  4400.0    > "Surface length projected";
+FLOAT  sur_lenght_start:=   20.0    > "Surface length start (planar)";
+FLOAT  sur_lenght_end:=   3200.0    > "Surface length end (planar)";
+FLOAT  sur_depth:=        3800.0    > "Surface depth (curved)";
+FLOAT  bottom_length:=      50.0    > "Bottom curve length";
+FLOAT  squares_width:=     341.0    > "Width square";
+INT    graphic_case:=        1      > "Eq. 1 Surface Eq. 2 Curve Eq. 4 All");
+
+! part(#1,squares(5000, 4400, 20, 3200, 3800, 50, 341, 1));
+
+! Internal variables:
+
+VECTOR p_cur_1;                    ! Start point curve
+VECTOR tp_cur_1;                   ! Start tangent point
+VECTOR p_cur_2;                    ! Start point curved curve
+VECTOR tp_cur_2;                   ! Start tangent point curved curve
+VECTOR p_cur_3;                    ! Bottom point curved curve
+VECTOR tp_cur_3;                   ! Bottom tangent point curved curve
+VECTOR p_cur_4;                    ! End point curved curve
+VECTOR tp_cur_4;                   ! End tangent point curved curve
+VECTOR p_cur_5;                    ! End point curve
+VECTOR tp_cur_5;                   ! End tangent point curve
+
+VECTOR p_bottom_start;             ! Start bottom
+VECTOR p_bottom_end;               ! End bottom
+VECTOR tp_bottom_start;            ! Start tangent point bottom
+VECTOR tp_bottom_end;              ! End tangent point bottom
+
+CONSTANT FLOAT dist_factor= 0.8;
+
+CONSTANT FLOAT pixel_scale = 1.33; ! Correction for screen 2560 X 1440
+FLOAT  squares_width_y;            ! Corrected width
+
+CONSTANT FLOAT  p_value = 0.5;     ! P value for curved part
+
+FLOAT  cur_params(200);            ! Curve parameter values
+
+INT i_u, i_v;                      ! Loop indeces
+INT n_u, n_v;                      ! Number of surfaces in u and v direction
+INT index_u, index_v;              ! Loop indeces
+
+FLOAT u_start;                     ! Curve parameter u start
+FLOAT u_end;                       ! Curve parameter u end
+FLOAT cur_length_start;            ! Current curve length start
+
+VECTOR cur_point;                  ! Current point on curve
+VECTOR next_point;                 ! Next point on curve
+
+VECTOR start_point;                ! Start point ruling
+VECTOR end_point;                  ! End point ruling
+CONSTANT VECTOR vec_width = VEC(0.0, 10.0, 0.0); ! Correction vector
+FLOAT rul_length;                  ! Ruling length
+
+FLOAT arc_length_1;                ! Arclength trimmed curve 1
+FLOAT arc_length_2;                ! Arclength trimmed curve 2
+
+
+FLOAT  dist_p_3;                   ! Distance for point 3
+
+FLOAT  arc_total;                  ! Total arc length basic curve
+
+INT p_pen;
+INT p_pen_v_start;
+INT p_pen_white;
+INT p_pen_black;
+
+INT i_iso;                         ! Loop index iso
+CONSTANT INT n_iso = 80;           ! Number of iso curves
+FLOAT d_iso_u;                     ! Delta for iso u
+FLOAT d_arclength;                 ! Delta arclength
+FLOAT u_arclength;                 ! u value arclength
+FLOAT u_trim_end;                  ! End u value for trimmed curve
+
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+  
+
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+BEGINMODULE
+! Set blank values
+IF     graphic_case = 1 THEN
+  b_val_sur := 0;
+  b_val_cur := 1;
+  b_val_poi := 1;
+ELIF   graphic_case = 2 THEN
+  b_val_sur := 0;
+  b_val_cur := 0;
+  b_val_poi := 0;
+ELIF   graphic_case = 4 THEN
+  b_val_sur := 0;
+  b_val_cur := 0;
+  b_val_poi := 1;
+ELSE
+  b_val_sur := 0;
+  b_val_cur := 1;
+  b_val_poi := 1;
+ENDIF;
+
+  PART(#31,saabvyer());
+  
+  CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+  CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+  
+  p_pen_white := o_p_3;
+  p_pen_black := 1;
+  
+
+! Start point and start tangent points
+  p_cur_1 := VEC(0.0, 0.0, 0.0);
+  tp_cur_1 := VEC(0.0, 0.0, 0.0);
+  
+! Start curved curve
+  p_cur_2 := VEC(sur_lenght_start, 0.0, 0.0);
+  tp_cur_2 := tp_cur_1;
+  
+  
+! Bottom point curved curve
+  dist_p_3 := sur_lenght_start + (sur_lenght_end - sur_lenght_start)/2.0;  
+  
+  !s_inpmt := INPMT("dist_p_3= ", STR(dist_p_3, -12, 6), 1);
+  
+  p_bottom_start := p_cur_3 + VEC(-bottom_length/2.0, 0.0, bottom_length*1.8); 
+  
+  tp_bottom_start := p_cur_2 + VEC((sur_lenght_end - sur_lenght_start)/2.0*dist_factor, 0.0, 0.0);
+  
+  p_cur_3 := VEC(dist_p_3, 0.0, -sur_depth);
+  tp_cur_3 := p_cur_3 + VEC(200.0, 0.0, 0.0);  
+  
+  p_bottom_end := p_cur_3 + VEC(bottom_length/2.0, 0.0, bottom_length*1.8); 
+  tp_bottom_end := p_cur_4 - VEC((sur_lenght_end - sur_lenght_start)/2.0*dist_factor, 0.0, 0.0);
+  
+! End point curved curve
+  p_cur_4 := VEC(sur_lenght_end, 0.0, 0.0);
+  tp_cur_4 := p_cur_4 + VEC(20.0, 0.0, 0.0);  
+
+! End point curve
+  p_cur_5 := VEC(sur_length_proj, 0.0, 0.0);
+  tp_cur_5 := p_cur_5 + VEC(20.0, 0.0, 0.0); 
+  
+! Basic curve
+  CUR_CONIC(#11,"FREE", p_cur_1, tp_cur_1, 0.5,
+                        p_cur_2, tp_cur_2, p_value,
+						p_bottom_start, tp_bottom_start, p_value,
+                        p_cur_3, tp_cur_3, 0.5,
+						p_bottom_end, tp_bottom_end, p_value,
+                        p_cur_4, tp_cur_4, 0.5,
+                        p_cur_5, tp_cur_5:BLANK=b_val_cur);  
+						
+
+! Total arclength
+  arc_total := ARCL(GLOBAL_REF(#11));
+  
+!  s_inpmt := INPMT("Arc length ", STR(arc_total, -12, 6), 1);
+
+  squares_width_y := squares_width*pixel_scale;  
+  
+! Number of surfaces in u and v direction
+  n_u := TRUNC(arc_total/squares_width);
+  n_v := TRUNC(sur_width/squares_width); ! No pixel correction
+  
+  !s_inpmt := INPMT("n_u, n_v ", STR(n_u, 10, 0) + ", " + STR(n_v, 10, 0), 1);
+  
+! Current curve length start
+  cur_length_start := 0.0;
+  
+  cur_params(1) := 0.0;
+  
+  FOR i_u:=1 TO n_u DO 
+  
+!   Part curve parameter u end
+    u_end := INV_ARCL(GLOBAL_REF(#11), i_u*squares_width);
+	
+	cur_params(i_u + 1) := u_end;
+  
+  ENDFOR;
+  
+  
+  IF graphic_case = 2 OR graphic_case = 4 THEN
+  
+  
+    !LIN_FREE(#161, VEC(0.0, 0.0, 0.0), VEC(squares_width, 0.0, 0.0):PEN=2, WIDTH=5);
+	!LIN_FREE(#162, VEC(0.0, 0.0, 0.0), VEC(0.0, squares_width_y, 0.0):PEN=2, WIDTH=5);
+	!LIN_FREE(#163, VEC(squares_width, 0.0, 0.0), VEC(squares_width, squares_width_y, 0.0):PEN=2, WIDTH=5);
+	!LIN_FREE(#164, VEC(0.0, squares_width_y, 0.0), VEC(squares_width, squares_width_y, 0.0):PEN=2, WIDTH=5);
+  
+    POI_FREE(#102, p_cur_2:BLANK= b_val_poi);
+    POI_FREE(#122, tp_cur_2:BLANK= b_val_poi);
+  
+    POI_FREE(#132, p_bottom_start:BLANK= b_val_poi);
+    POI_FREE(#142, tp_bottom_start:BLANK= b_val_poi);
+	
+    POI_FREE(#103, p_cur_3:PEN=2,BLANK= b_val_poi);
+    POI_FREE(#123, tp_cur_3:PEN=4,BLANK= b_val_poi);
+	
+    POI_FREE(#133, p_bottom_end:BLANK= b_val_poi);
+    POI_FREE(#143, tp_bottom_end:BLANK= b_val_poi);
+	
+	!LIN_FREE(#152, p_bottom_start, p_bottom_end:WIDTH=10);
+  
+    POI_FREE(#104, p_cur_4:BLANK= b_val_poi);
+    POI_FREE(#124, tp_cur_4:BLANK= b_val_poi);
+	
+	p_pen := p_pen_white;
+	
+	FOR index_u := 1 TO n_u + 1 DO
+	
+	  cur_point := ON(GLOBAL_REF(#11), cur_params(index_u));
+
+      LIN_FREE(#49, cur_point, VEC(cur_point.x, 0.0, 300.0): PEN= 4); 
+	  
+	  IF index_u <= n_u THEN
+	  
+	    next_point := ON(GLOBAL_REF(#11), cur_params(index_u + 1));
+		
+		IF p_pen = p_pen_black THEN
+		
+		  p_pen := p_pen_white;
+		  
+		ELSE
+		
+		  p_pen := p_pen_black;
+		  
+		  !s_inpmt := INPMT("cur_point.x, next_point.x ", STR(cur_point.x, 10, 2) + ", " + STR(next_point.x, 10, 2), 1);
+		  
+		  LIN_FREE(#48, VEC(cur_point.x, 0.0, 300.0), VEC(next_point.x, 0.0, 300.0):PEN= p_pen, WIDTH = 20);
+		
+		ENDIF;
+		
+		
+	  
+	  ENDIF;
+
+    ENDFOR;	
+  
+    IF graphic_case = 2 THEN
+      EXIT();
+	ENDIF;
+	
+  ENDIF;  
+
+  FOR i_u:=1 TO n_u DO 
+    FOR i_v:=1 TO n_v DO
+	
+	  IF i_v = 1 THEN
+	  
+	    IF p_pen_v_start = p_pen_black THEN
+		
+		  p_pen_v_start := p_pen_white;
+		  
+		ELSE
+		
+		  p_pen_v_start := p_pen_black;
+		
+		ENDIF; 
+		
+		p_pen := p_pen_v_start;
+		
+	  ELSE
+	  
+		
+		IF p_pen = p_pen_black THEN
+		
+		  p_pen := p_pen_white;
+		  
+		ELSE
+		
+		  p_pen := p_pen_black;
+		
+		ENDIF;
+		
+	  ENDIF;
+	
+!     Curve parameter u start
+	  u_start := cur_params(i_u);
+	  
+	  IF ABS(u_start) < 0.00001 THEN
+	    ! TODO Problem ????
+	    u_start := 0.00001;
+	  ENDIF;
+	 
+	  
+!     Curve parameter u end
+	  u_end := cur_params(i_u + 1);
+	  
+	  !IF i_u = 1 AND i_v = 1 THEN
+	    !s_inpmt := INPMT("u_start ", STR(u_start, -12, 6), 1);
+		!s_inpmt := INPMT("u_end "  , STR(u_end,   -12, 6), 1);
+		!EXIT();
+	  !ENDIF;
+	  
+!     Trimmed curve
+      CUR_TRIM(#10, GLOBAL_REF(#11), u_start, u_end:PEN=2, BLANK=b_val_cur);
+	  
+      TFORM_MOVE(#21,vec(0.0, 0.0, 0.0), vec(0.0, (i_v-1)*squares_width_y,  0.0));
+      TCOPY(#9, GLOBAL_REF(#10), #21); 
+	  
+      TFORM_MOVE(#22,vec(0.0, 0.0, 0.0), vec(0.0, i_v*squares_width_y,  0.0));
+      TCOPY(#8, GLOBAL_REF(#10), #22); 	  
+	  
+	  
+	  DEL(GLOBAL_REF(#21));
+	  DEL(GLOBAL_REF(#22));
+	  
+	  !Not used SUR_RULED(#1, GLOBAL_REF(#9), GLOBAL_REF(#8): BLANK=b_val_cur, pen= p_pen);
+	  
+	  arc_length_1 := ARCL(GLOBAL_REF(#9));
+	  arc_length_2 := ARCL(GLOBAL_REF(#8));
+	  
+	  u_trim_end := INV_ARCL(GLOBAL_REF(#9), arc_length_1);
+	  
+	  
+	  
+	  
+	  IF p_pen = p_pen_black THEN
+	  
+!       Delta arclength		
+		d_arclength := arc_length_1/n_iso;                                 
+	  
+		FOR i_iso := 1 TO n_iso DO
+		
+		  ! u value arclength
+		  u_arclength := INV_ARCL(GLOBAL_REF(#9), (i_iso-1)*d_arclength); 
+		
+		  start_point := ON(GLOBAL_REF(#9), u_arclength);
+		  
+		  end_point := ON(GLOBAL_REF(#8), u_arclength);
+		  
+		  rul_length := VECL(end_point-start_point);
+		  
+	      !IF i_u = 1 AND i_v = 1 AND i_iso = 1 THEN
+	        !s_inpmt := INPMT("Arclength ", " 1= " + STR(arc_length_1, -12, 6)  + " 2= " + STR(arc_length_2, -12, 6) 
+		    !                             + " w= " + STR(squares_width, -12, 6) + " r= " + STR(rul_length, -12, 6), 1);
+	      !ENDIF;
+		
+		  LIN_FREE(#2, start_point, end_point: PEN= p_pen_black, BLANK= b_val_sur); 
+		
+		ENDFOR;
+	  
+	  ENDIF;
+	  
+	  ! Not used DEL(GLOBAL_REF(#1)); 
+	  DEL(GLOBAL_REF(#10));	  
+	  DEL(GLOBAL_REF(#9));
+	  DEL(GLOBAL_REF(#8));
+	  
+	  !DEL(GLOBAL_REF(#1));
+  
+    ENDFOR; 
+	
+	cur_length_start := cur_length_start + squares_width;
+	
+  ENDFOR;
+
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

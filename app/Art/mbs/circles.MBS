@@ -1,0 +1,569 @@
+!********************* circles ***********************
+! +++
+! Bridget Riley circles
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-10-24  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley circles 
+
+GLOBAL GEOMETRY MODULE circles(
+
+FLOAT  start_diam:=         75.0    > "Circle start diameter";
+FLOAT  end_diam:=         1200.0    > "Circle end diameter";
+FLOAT  orig_shift_perc:=    25.0    > "Origin shift in percentage";
+INT    n_circles:=           7      > "Total number of circles";
+INT    n_spikes:=           91      > "Number of spikes";
+INT    spike_shift_n:=       8      > "Maximum spike shift upper";
+INT    spike_case:=          1      > "Spike case Eq. 1: Black/black 2: Black/white";
+INT    graphic_case:=        1      > "Eq. 1 Surface Eq. 2 Curve Eq. 4 All");
+
+
+! Internal variables:
+
+  VECTOR p_origin_start;           ! Start (small) circle origin
+  VECTOR p_origin_end;             ! End (big) circle origin
+
+  INT p_pen;
+  INT p_pen_cir;
+  INT p_pen_white;
+  INT p_pen_black;
+
+  FLOAT  origin_shift;             ! Origin shift absolute
+  FLOAT  delta_shift;              ! Origin delta shift value absolute
+  FLOAT  delta_radius;             ! Delta radius
+  VECTOR cir_origins(20);          ! Circle origins
+  FLOAT  cir_radii(20);            ! Circle radii
+  REF    cir_refs(20);             ! Circle references
+  INT    spike_shifts(20);         ! Shift of spikes
+  INT    spike_shift_pos;          ! Shift positive or negative
+  
+  INT    i_cir;                    ! Circle number
+  INT    i_spike;                  ! Spike number
+  INT    i_rul;                    ! Ruling number
+  
+  VECTOR p_1, tp_1;                ! Point and tangent point for conic circle
+  VECTOR p_2, tp_2;                ! Point and tangent point for conic circle
+  VECTOR p_3, tp_3;                ! Point and tangent point for conic circle
+  VECTOR p_4, tp_4;                ! Point and tangent point for conic circle
+  FLOAT  p_value_cir;              ! P value for conic circle
+  
+  REF ref_cir_lower;               ! Reference to the lower circle
+  REF ref_cir_upper;               ! Reference to the upper circle
+  
+  FLOAT length_lower;              ! Arc length lower circle
+  FLOAT length_upper;              ! Arc length upper circle
+  FLOAT delta_lower;               ! Delta arc length lower circle
+  FLOAT delta_upper;               ! Delta arc length upper circle
+  FLOAT cir_length;                ! Arclength circle
+  
+  INT   n_spike_rulings;           ! Number of rulings for one spike
+  FLOAT delta_ruling_lower;        ! Delta arc length for the rulings lower circle
+  FLOAT delta_ruling_upper;        ! Delta arc length for the rulings upper circle
+  
+  FLOAT u_ruling_upper;            ! U value for ruler upper circle
+  FLOAT u_ruling_lower;            ! U value for ruler lower circle
+
+  INT spike_shift_upper_n;         ! Shift for spikes upper curve
+  INT spike_shift_lower_n;         ! Shift for spikes lower curve
+  
+  FLOAT length_to_spike_upper;     ! Arc length to the start of the spike upper circle
+  FLOAT length_to_spike_lower;     ! Arc length to the start of the spike lower circle
+  
+  FLOAT length_to_rul_upper;       ! Arc length to the ruling upper circle
+  FLOAT length_to_rul_lower;       ! Arc length to the ruling lower circle
+  
+  INT n_delta_to_spike_upper;      ! Number of segments to start spike upper
+  INT n_delta_to_spike_lower;      ! Number of segments to start spike lower
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+  
+  FILE       f_d;                  ! Debug file
+  
+  CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+CONSTANT FLOAT arc_l_tol = 0.001;
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+CONSTANT INT all_debug = 1; ! False, do not write to file
+
+CONSTANT FLOAT pixel_scale = 1.33; ! Correction for screen 2560 X 1440
+
+VECTOR p_rul_start;                ! Start point ruling
+VECTOR p_rul_end;                  ! End point ruling
+VECTOR p_rul_start_scaled;         ! Start point ruling pixel scaled
+VECTOR p_rul_end_scaled;           ! End point ruling pixel scaled
+
+BEGINMODULE
+
+    IF n_circles > 20 OR n_circles < 3 THEN
+	  s_inpmt := INPMT("Number of circles must be between 3 and 20! ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF start_diam > end_diam THEN
+	  s_inpmt := INPMT("Start diameter may not be greater than the end diameter ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF n_spikes < 5 THEN
+	  s_inpmt := INPMT("Number of spikes must not be less than five (5) ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF spike_shift_n < 0 THEN
+	  s_inpmt := INPMT("Spike shift cannot be less than zero(0) ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF spike_case < 0 OR spike_case > 1 THEN
+	  s_inpmt := INPMT("Spike case must be zero or one (0 or 1) ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    ! Open debug file
+    OPEN(f_d, "W", file_name);
+	
+	OUTSTR(f_d, "Debug circles.MBS");
+	OUTLIN(f_d);
+	
+	OUTSTR(f_d, "start_diam      " + STR(start_diam, 12, 6));
+	OUTLIN(f_d);
+	OUTSTR(f_d, "end_diam        " + STR(end_diam, 12, 6));
+	OUTLIN(f_d);	
+	OUTSTR(f_d, "orig_shift_perc " + STR(orig_shift_perc, 12, 6));
+	OUTLIN(f_d);	
+	OUTSTR(f_d, "n_circles       " + STR(n_circles, 8, 0));
+	OUTLIN(f_d);
+	OUTSTR(f_d, "n_spikes        " + STR(n_spikes, 8, 0));
+	OUTLIN(f_d);
+	OUTSTR(f_d, "spike_shift_n   " + STR(spike_shift_n, 8, 0));
+	OUTLIN(f_d);
+
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELIF   graphic_case = 4 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+
+	PART(#51,saabvyer());
+
+	CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+	CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+	CRE_COLOR(o_p_3, 255, 255, 255); ! White
+	CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+	p_pen_white := o_p_3;
+	p_pen_black := 1;
+	
+!   Origin shift
+    origin_shift := (end_diam - start_diam)*orig_shift_perc/100.0;
+	
+	delta_shift := origin_shift/n_circles; ! Not n_circles-1. First two diameters are equal
+	
+	delta_radius := (end_diam - start_diam)/2.0/(n_circles - 1);
+	
+	spike_shift_pos := 0;
+	
+	FOR i_cir := 1 TO n_circles DO
+	
+!     Origins and radii for the circles
+
+	  IF i_cir = 1 OR i_cir = 2 THEN 
+	    cir_origins(i_cir) := VEC(0.0, -n_circles*delta_shift, 0.0);
+	  ELSE
+	    cir_origins(i_cir) := VEC(0.0, -(n_circles - i_cir + 1)*delta_shift, 0.0);
+	  ENDIF;
+		  
+	  cir_radii(i_cir) := start_diam/2.0 + (i_cir - 1)*delta_radius;
+	  
+	  !IF i_cir = 2 THEN
+	  !cir_radii(2) := cir_radii(1) + (cir_radii(2) - cir_radii(1))*0.5;
+	  !ENDIF;
+	  
+!     Debug 2D circle (cannot be approximated with CUR_APPROX)
+	  
+	  ARC_1POS(#14, cir_origins(i_cir), cir_radii(i_cir):PEN=4, BLANK=1); 
+	  
+!     Spike shifts meaning angles between the spikes
+	  
+	  IF spike_shift_pos = 1 THEN
+	   spike_shifts(i_cir) := spike_shift_n;
+	   spike_shift_pos := 0;
+	  ELSE
+	   spike_shifts(i_cir) := -spike_shift_n;
+	   spike_shift_pos := 1;
+	  ENDIF;
+		
+!     Points and tangen points for the conic circle defined by four segments
+!     Please not that the points gets a z value that only is used for debug
+	  
+	  p_1 := VEC(cir_origins(i_cir).x - cir_radii(i_cir), cir_origins(i_cir).y, cir_radii(i_cir));
+	  
+	  p_2 := VEC(cir_origins(i_cir).x, cir_origins(i_cir).y + cir_radii(i_cir), cir_radii(i_cir));
+	  
+	  p_3 := VEC(cir_origins(i_cir).x + cir_radii(i_cir), cir_origins(i_cir).y, cir_radii(i_cir));
+	  
+	  p_4 := VEC(cir_origins(i_cir).x, cir_origins(i_cir).y - cir_radii(i_cir), cir_radii(i_cir));
+	  
+	  tp_1 := p_1 + VEC(0.0, 100.0, 0.0);
+	  
+	  tp_2 := p_2 + VEC(100.0, 0.0, 0.0);
+	  
+	  tp_3 := p_3 + VEC(0.0, -100.0, 0.0);
+	  
+	  tp_4 := p_4 + VEC(-100.0, 0.0, 0.0);
+	  
+!     Debug points and tangent points
+	  
+	  POI_FREE(#21, p_1:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#22, p_2:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#23, p_3:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#24, p_4:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#31, tp_1:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#32, tp_2:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#33, tp_3:PEN= 2, BLANK= b_val_poi);
+	  
+	  POI_FREE(#34, tp_4:PEN= 2, BLANK= b_val_poi);
+	  
+!     Create the conic circle
+	  
+	  p_value_cir := 0.4142;
+	  
+	  CUR_CONIC(#11, "FREE", p_1, tp_1, p_value_cir, 
+	                         p_2, tp_2, p_value_cir,
+							 p_3, tp_3, p_value_cir,
+							 p_4, tp_4, p_value_cir,
+							 p_1, tp_1 :PEN=2, BLANK=b_val_cur); 
+	  
+
+      IF i_cir = 1 THEN
+	    cir_refs(i_cir) := #11.1;
+	  ELIF i_cir = 2 THEN
+	    cir_refs(i_cir) := #11.2;
+	  ELIF i_cir = 3 THEN
+	    cir_refs(i_cir) := #11.3;	
+	  ELIF i_cir = 4 THEN
+	    cir_refs(i_cir) := #11.4;
+	  ELIF i_cir = 5 THEN
+	    cir_refs(i_cir) := #11.5;
+	  ELIF i_cir = 6 THEN
+	    cir_refs(i_cir) := #11.6;
+	  ELIF i_cir = 7 THEN
+	    cir_refs(i_cir) := #11.7;
+	  ELIF i_cir = 8 THEN
+	    cir_refs(i_cir) := #11.8;
+	  ELIF i_cir = 9 THEN
+	    cir_refs(i_cir) := #11.9;
+	  ELIF i_cir = 10 THEN
+	    cir_refs(i_cir) := #11.10;
+	  ELIF i_cir = 11 THEN
+	    cir_refs(i_cir) := #11.11;
+	  ELIF i_cir = 12 THEN
+	    cir_refs(i_cir) := #11.12;
+	  ELIF i_cir = 13 THEN
+	    cir_refs(i_cir) := #11.13;
+	  ELIF i_cir = 14 THEN
+	    cir_refs(i_cir) := #11.14;
+	  ELIF i_cir = 15 THEN
+	    cir_refs(i_cir) := #11.15;
+	  ELIF i_cir = 16 THEN
+	    cir_refs(i_cir) := #11.16;
+	  ELIF i_cir = 17 THEN
+	    cir_refs(i_cir) := #11.17;
+	  ELIF i_cir = 18 THEN
+	    cir_refs(i_cir) := #11.18;
+	  ELIF i_cir = 19 THEN
+	    cir_refs(i_cir) := #11.19;
+	  ELIF i_cir = 20 THEN
+	    cir_refs(i_cir) := #11.20;
+	  ENDIF;
+	  
+	  cir_length := ARCL(cir_refs(i_cir));
+	  
+	OUTSTR(f_d, "i_cir " + STR(i_cir, -3, 0) + " Radius "  + STR(cir_radii(i_cir), 12, 6) +
+	            " Shift "  + STR(spike_shifts(i_cir), -3, 0) + " Origin " + 
+				STR(cir_origins(i_cir).x, 8, 2) + ", " + STR(cir_origins(i_cir).y, 8, 2) + 
+				", " + STR(cir_origins(i_cir).z, 8, 2) + " Arc length " + STR(cir_length, 8, 2));
+	OUTLIN(f_d);
+	  
+	ENDFOR;
+	
+
+	  
+	  p_pen := p_pen_white;
+	  p_pen_cir := p_pen_white;
+	  
+      FOR i_cir:= 1 TO n_circles - 1 DO
+	  	  
+	  OUTLIN(f_d);
+
+      ref_cir_lower := cir_refs(i_cir);
+	  
+	  ref_cir_upper := cir_refs(i_cir + 1);
+	  
+!     Arc length and delta lower and upper circle
+	  length_lower := ARCL(ref_cir_lower);
+	  length_upper := ARCL(ref_cir_upper);
+	  
+	  delta_lower := length_lower/(n_spikes - 1);
+	  delta_upper := length_upper/(n_spikes - 1);
+	  
+      ! Number of rulings for one spike (TODO calculate)
+      n_spike_rulings:= TRUNC(delta_upper/0.5);
+	  
+	  IF n_spike_rulings <= 1 THEN
+	     n_spike_rulings := 2;
+	  ENDIF;
+
+      OUTLIN(f_d);
+	  OUTSTR(f_d, "n_spike_rulings " + STR(n_spike_rulings, 8, 0));
+	  OUTLIN(f_d); OUTLIN(f_d);
+	  
+	  delta_ruling_lower := delta_lower/(n_spike_rulings-1);
+	  delta_ruling_upper := delta_upper/(n_spike_rulings-1);
+	  
+!     Shift for spikes upper and lower curve
+      spike_shift_upper_n := spike_shifts(i_cir + 1);         
+      spike_shift_lower_n := spike_shifts(i_cir);	  
+	  
+	  
+	  IF   spike_case = 0 THEN
+	    p_pen := p_pen_white;
+	  ELIF spike_case = 1 AND p_pen_cir = p_pen_white THEN
+        p_pen := p_pen_black;	
+        p_pen_cir := p_pen_black;	
+	  ELIF spike_case = 1 AND p_pen_cir = p_pen_black THEN
+        p_pen := p_pen_white;	
+        p_pen_cir := p_pen_white;		
+	  ELSE
+	    p_pen := p_pen_black;
+	  ENDIF;	 
+	  
+	  !OUTSTR(f_d, " i_cir=  " + STR(i_cir, 5, 0) + " p_pen= " + STR(p_pen, 5, 0)  + 
+	  !  " p_pen_cir= " + STR(p_pen_cir, 5, 0));
+	  !OUTLIN(f_d);	  
+	  
+	  FOR i_spike:= 1 TO n_spikes-1 DO
+	  
+		IF p_pen = p_pen_white THEN
+		  p_pen := p_pen_black;
+		ELSE
+	      p_pen := p_pen_white;
+		ENDIF;
+		
+		!OUTSTR(f_d, " i_spike= " + STR(i_spike, 5, 0) + " p_pen= " + STR(p_pen, 5, 0));
+		!OUTLIN(f_d);
+		
+		! Number of segments to start spike lower
+		IF   spike_shift_lower_n = 0 THEN
+		  n_delta_to_spike_lower := i_spike-1;
+		ELIF spike_shift_lower_n > 0 AND i_spike < n_spikes - spike_shift_lower_n THEN
+		  n_delta_to_spike_lower := spike_shift_lower_n + i_spike-1;
+		!  OUTSTR(f_d, " spike_shift_lower_n > 0 AND i_spike < n_spikes - spike_shift_lower_n " +
+		!               "n_delta_to_spike_lower= " + STR(n_delta_to_spike_lower, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_lower_n > 0 AND i_spike >= n_spikes - spike_shift_lower_n THEN
+		  n_delta_to_spike_lower := i_spike - n_spikes + spike_shift_lower_n;
+		!  OUTSTR(f_d, " spike_shift_lower_n >  0 AND i_spike >= n_spikes - spike_shift_lower_n " +
+		!               "n_delta_to_spike_lower= " + STR(n_delta_to_spike_lower, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_lower_n < 0 AND i_spike < ABS(spike_shift_lower_n) THEN
+		  n_delta_to_spike_lower := n_spikes - ABS(spike_shift_lower_n) + i_spike - 1;
+		!  OUTSTR(f_d, " spike_shift_lower_n < 0 AND i_spike < ABS(spike_shift_lower_n) " +
+		!               "n_delta_to_spike_lower= " + STR(n_delta_to_spike_lower, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_lower_n < 0 AND i_spike >= ABS(spike_shift_lower_n) THEN
+		  n_delta_to_spike_lower := i_spike - ABS(spike_shift_lower_n);
+		!  OUTSTR(f_d, " spike_shift_lower_n < 0 AND i_spike >= ABS(spike_shift_lower_n) " +
+		!               "n_delta_to_spike_lower= " + STR(n_delta_to_spike_lower, 4, 0));
+		!   OUTLIN(f_d);
+		ENDIF;
+		
+		
+		! Arc length to the start of the spike lower circle
+		length_to_spike_lower := n_delta_to_spike_lower*delta_lower;
+
+		
+	    ! OUTSTR(f_d, "i_cir " + STR(i_cir, -3, 0) + 
+	    !        " spike_shift_lower_n " + STR(spike_shift_lower_n, 3, 0)
+	    !      + " delta_lower "  + STR(delta_lower, 8, 2)
+	    !      + " delta_ruling_lower " + STR(delta_ruling_lower, 8, 2) 
+		!		);
+	    ! OUTLIN(f_d);
+
+		! Number of segments to start spike upper
+		IF   spike_shift_upper_n = 0 THEN
+		  n_delta_to_spike_upper := i_spike-1;
+		ELIF spike_shift_upper_n > 0 AND i_spike < n_spikes - spike_shift_upper_n THEN
+		  n_delta_to_spike_upper := spike_shift_upper_n + i_spike-1;
+		!  OUTSTR(f_d, " spike_shift_upper_n > 0 AND i_spike < n_spikes - spike_shift_upper_n " +
+		!               "n_delta_to_spike_upper= " + STR(n_delta_to_spike_upper, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_upper_n > 0 AND i_spike >= n_spikes - spike_shift_upper_n THEN
+		  n_delta_to_spike_upper := i_spike - n_spikes + spike_shift_upper_n;
+		!  OUTSTR(f_d, " spike_shift_upper_n >  0 AND i_spike >= n_spikes - spike_shift_upper_n " +
+		!               "n_delta_to_spike_upper= " + STR(n_delta_to_spike_upper, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_upper_n < 0 AND i_spike < ABS(spike_shift_upper_n) THEN
+		  n_delta_to_spike_upper := n_spikes - ABS(spike_shift_upper_n) + i_spike - 1;
+		!  OUTSTR(f_d, " spike_shift_upper_n < 0 AND i_spike < ABS(spike_shift_upper_n) " +
+		!               "n_delta_to_spike_upper= " + STR(n_delta_to_spike_upper, 4, 0));
+		!   OUTLIN(f_d);
+		ELIF spike_shift_upper_n < 0 AND i_spike >= ABS(spike_shift_upper_n) THEN
+		  n_delta_to_spike_upper := i_spike - ABS(spike_shift_upper_n);
+		!  OUTSTR(f_d, " spike_shift_upper_n < 0 AND i_spike >= ABS(spike_shift_upper_n) " +
+		!               "n_delta_to_spike_upper= " + STR(n_delta_to_spike_upper, 4, 0));
+		!   OUTLIN(f_d);
+		ENDIF;
+		
+		! Arc length to the start of the spike upper circle
+		length_to_spike_upper := n_delta_to_spike_upper*delta_upper;
+
+		
+	    ! OUTSTR(f_d, "i_cir " + STR(i_cir, -3, 0) + 
+	    !        " spike_shift_upper_n " + STR(spike_shift_upper_n, 3, 0)
+	    !      + " delta_upper "  + STR(delta_upper, 8, 2)
+	    !      + " delta_ruling_upper " + STR(delta_ruling_upper, 8, 2) 
+		!		);
+	    ! OUTLIN(f_d);
+
+		
+        ! Arc length to the start of the spike lower circle	  
+	    FOR i_rul:= 1 TO n_spike_rulings DO
+		
+		  length_to_rul_upper := length_to_spike_upper + (i_rul-1)*delta_ruling_upper;
+		
+          length_to_rul_lower := length_to_spike_lower + (i_rul-1)*delta_ruling_lower;
+		  
+		  
+        !  IF all_debug > 0 THEN
+	    !   OUTSTR(f_d, "i_cir " + STR(i_cir, -3, 0) + 
+	    !        " i_spike "  + STR(i_spike, -3, 0) +
+		!		" i_rul "  + STR(i_rul, -3, 0) +
+	    !        " Delta lower "  + STR(n_delta_to_spike_lower, -3, 0) + 
+		!		" Spike lower " + STR(length_to_spike_lower, 8, 2) +
+		!		" Ruling lower " + STR(length_to_rul_lower, 8, 2)
+		!		);
+	    !  OUTLIN(f_d);		
+		
+	    !   OUTSTR(f_d, "i_cir " + STR(i_cir, -3, 0) + 
+	    !        " i_spike "  + STR(i_spike, -3, 0) +
+		!		" i_rul "  + STR(i_rul, -3, 0) +
+	    !        " Delta upper "  + STR(n_delta_to_spike_upper, -3, 0) + 
+		!		" Spike upper " + STR(length_to_spike_upper, 8, 2) +
+		!		" Ruling upper " + STR(length_to_rul_upper, 8, 2)
+		!		);
+	    !    OUTLIN(f_d);
+        !  ENDIF;	
+
+          IF length_to_rul_lower < arc_l_tol THEN
+			length_to_rul_lower := arc_l_tol;
+		  ENDIF;
+          IF length_to_rul_upper < arc_l_tol THEN
+			length_to_rul_upper := arc_l_tol;
+		  ENDIF;
+		  
+          IF length_to_rul_lower > ARCL(ref_cir_lower) + arc_l_tol THEN
+			OUTSTR(f_d, " length_to_rul_lower > ARCL(ref_cir_lower) + arc_l_tol");
+			OUTLIN(f_d);
+			GOTO close_file;
+		  ENDIF;
+		  
+          IF length_to_rul_upper > ARCL(ref_cir_upper) + arc_l_tol THEN
+			OUTSTR(f_d, " length_to_rul_upper > ARCL(ref_cir_upper) + arc_l_tol ");
+			OUTLIN(f_d);
+			GOTO close_file;
+		  ENDIF;
+		  
+          IF length_to_rul_lower > ARCL(ref_cir_lower) - arc_l_tol THEN
+			length_to_rul_lower := ARCL(ref_cir_lower) - arc_l_tol;
+		  ENDIF;
+		  
+          IF length_to_rul_upper > ARCL(ref_cir_upper) - arc_l_tol THEN
+			length_to_rul_upper := ARCL(ref_cir_upper) - arc_l_tol;
+		  ENDIF;
+		
+		  u_ruling_lower := INV_ARCL(ref_cir_lower, length_to_rul_lower);
+		  
+		  u_ruling_upper := INV_ARCL(ref_cir_upper, length_to_rul_upper);
+		  
+		  p_rul_start := ON(ref_cir_lower, u_ruling_lower);
+		  p_rul_end := ON(ref_cir_upper, u_ruling_upper);
+		  
+		  p_rul_start_scaled := VEC(p_rul_start.x, p_rul_start.y*pixel_scale, p_rul_start.z);
+		  
+		  p_rul_end_scaled := VEC(p_rul_end.x, p_rul_end.y*pixel_scale, p_rul_end.z);
+		  
+		  !IF p_pen = p_pen_black THEN ! QQQQQQQQQQQ
+		  LIN_FREE(#1, p_rul_start_scaled, p_rul_end_scaled:PEN= p_pen);
+		  !ENDIF; !QQQQQQQQQQQQQ
+
+	  
+	      !IF i_cir = 1 AND i_spike <= 2 AND i_rul < 3 THEN
+	      !  POI_FREE(#3, ON(ref_cir_upper, u_ruling_lower):PEN=2);
+		  !ENDIF;
+	  
+	    ENDFOR;	  
+	  
+	  ENDFOR;
+	  
+
+    ENDFOR;	
+	
+close_file:
+
+    ! Close debug file
+    CLOSE(f_d);
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

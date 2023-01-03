@@ -1,0 +1,172 @@
+!********************* squares ***********************
+! +++
+! Bridget Riley squares
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-10-19  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley squares 
+
+GLOBAL GEOMETRY MODULE squares_loft(
+
+FLOAT  sur_width:= 500.0           > "@ Surface width";
+FLOAT  sur_length_proj:= 1500.0    > "@ Surface length projected";
+FLOAT  sur_lenght_start:= 700.0    > "@ Surface length start (planar)";
+FLOAT  sur_lenght_end:=   300.0    > "@ Surface length end (planar)";
+FLOAT  sur_depth:=        200.0    > "@ Surface depth (curved)";
+INT    n_squares_width:=   20      > "@ Number of width squares";
+INT    graphic_case:=       4      > "@ Eq. 1 Surface Eq. 2 Xxx Eq. 4 All");
+
+! Internal variables:
+
+VECTOR p_start_line;               ! Start point line (first directrix)
+VECTOR p_end_line;                 ! End   point line (first directrix)
+VECTOR tp_start_line;              ! Start tangent point
+VECTOR tp_end_line;                ! End   tangent point
+CONSTANT FLOAT  p_value = 0.5;     ! P value for line
+
+CONSTANT FLOAT c_p_v =    0.2;     ! P value for surface
+
+INT n_u, n_v;                      ! Number of patches
+
+INT i_u, i_v;                      ! Loop indeces
+
+FLOAT d_u;                         ! Delta u
+FLOAT d_v;                         ! Delta v
+
+CONSTANT INT n_square_u =  30;     ! Number of squares u direction
+CONSTANT INT n_square_v =  10;     ! Number of squares v direction
+
+FLOAT  dist_dir_three;             ! Distance for directrix 3
+FLOAT  dist_dir_four;              ! Distance for directrix 4
+
+INT i_pen;
+INT p_pen;
+
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+BEGINMODULE
+! Set blank values
+IF     graphic_case = 1 THEN
+  b_val_sur := 0;
+  b_val_cur := 1;
+  b_val_poi := 1;
+ELIF   graphic_case = 4 THEN
+  b_val_sur := 0;
+  b_val_cur := 0;
+  b_val_poi := 0;
+ELSE
+  b_val_sur := 0;
+  b_val_cur := 1;
+  b_val_poi := 1;
+ENDIF;
+
+  PART(#9,saabvyer());
+  
+  CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+  CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+! Points first directrix
+  p_start_line := VEC(0.0, 0.0, 0.0);
+  p_end_line := VEC(0.0, sur_width, 0.0);
+  tp_start_line := p_end_line;
+  tp_end_line := p_start_line;
+  
+! First directrix and spine
+  CUR_CONIC(#11,"FREE", p_start_line, tp_start_line, p_value,
+                        p_end_line,   tp_end_line:BLANK=b_val_cur);  
+
+! Second directrix 
+  TFORM_MOVE(#22,vec(0.0, 0, 0), vec(sur_lenght_start,     0.0,  0.0));
+  TCOPY(#12, GLOBAL_REF(#11), #22);  
+  
+! Third directrix 
+  dist_dir_four := sur_length_proj - sur_lenght_end;
+  dist_dir_three := sur_lenght_start + (dist_dir_four - sur_lenght_start)/2.0;
+  TFORM_MOVE(#23,vec(0.0, 0, 0), vec(dist_dir_three ,     0.0,  sur_depth));
+  TCOPY(#13, GLOBAL_REF(#11), #23);  
+  
+! Fourth directrix 
+  TFORM_MOVE(#24,vec(0.0, 0, 0), vec(dist_dir_four,     0.0,  0.0));
+  TCOPY(#14, GLOBAL_REF(#11), #24);  
+  
+! Fifth directrix 
+  TFORM_MOVE(#25,vec(0.0, 0, 0), vec(sur_length_proj,     0.0,  0.0));
+  TCOPY(#15, GLOBAL_REF(#11), #25);  
+  
+! Tangent curve directrix three
+  TFORM_MOVE(#26,vec(0.0, 0, 0), vec(dist_dir_three + 30.0,     0.0,  sur_depth));
+  TCOPY(#16, GLOBAL_REF(#11), #26);  
+  
+! P-value curve
+  CUR_CONIC(#31, "FREE", VEC(0.0,        c_p_v, 0.0), 
+                         VEC(sur_width,  c_p_v, 0.0), 0.5,
+                         VEC(sur_width,  c_p_v, 0.0),
+                         VEC(0.0,        c_p_v, 0.0):BLANK=1, PEN=2);
+						 
+						 
+  SUR_CONIC(#8,#11, #11, #12, "P", #31, #12, #11, "P", #31, 
+                    #13, #16, "P", #31, #14, #15, "P", #31,
+					#15, #14:BLANK=b_val_cur, PEN=4);
+					
+! Approximate
+
+  SUR_APPROX(#7,#8, "CUB_SUR", 1, 8:PEN=3,BLANK=b_val_cur);
+  
+  GETSURH (#7, "NPATU", n_u);
+  GETSURH (#7, "NPATV", n_v);
+  
+  d_u := n_u/(n_square_u+1);
+  d_v := n_v/(n_square_v+1);
+  
+  FOR  i_u := 1 TO n_square_u DO
+    i_pen := 1;
+    FOR  i_v := 1 TO n_square_v DO
+	
+	  IF i_pen = 1 THEN
+	    p_pen := 4;
+		
+		i_pen := 2;
+	  ELSE
+	    p_pen := 2;
+		
+		i_pen := 1;	  
+	  ENDIF;
+  
+      SUR_TRIM(#6, #7, (i_u-1)*d_u, i_u*d_u, (i_v-1)*d_v, i_v*d_v:PEN=p_pen,BLANK=b_val_sur);
+  
+    ENDFOR;  
+  ENDFOR;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

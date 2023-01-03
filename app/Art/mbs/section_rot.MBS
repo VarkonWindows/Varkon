@@ -1,0 +1,557 @@
+!********************* section_rot ***********************
+! +++
+! Bridget Riley section rotation surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-11-25  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley section rotation surface
+
+GLOBAL GEOMETRY MODULE section_rot(
+
+INT    n_sections:=         23      > "Number of sections (Bridget Riley 23) Max 35";
+
+INT    rotation_case:=       1      > "Eq. 1 Bridget Riley Eq. 2 No rotation Eq. 3 Reverse";
+
+INT    color_case:=          1      > "Eq. 1 Only black Eq. 2 Black-White Eq. 3 Black-Red";
+
+INT    graphic_case:=        1      > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+CONSTANT FLOAT sur_length = 7000.0;! Surface length
+
+CONSTANT FLOAT sur_max_w = 16000.0;! Surface maximimum width
+
+CONSTANT FLOAT sur_start_w = 900.0;! Surface start width
+
+CONSTANT FLOAT radius_fillet=645.0;! Fillet radius
+CONSTANT FLOAT radius_mod=305.0;   ! Modified fillet radius when to big
+  FLOAT  radius_selected;          ! Selected radius 
+
+  FLOAT  delta_xy_section;         ! Delta x and y for section
+  FLOAT  delta_z_section;          ! Delta z for section
+  
+  FLOAT  z_value;                  ! Z value for the section
+  FLOAT  xy_value;                 ! X an Y value for the section
+
+  VECTOR pt_corner_1;              ! Corner point 1
+  VECTOR pt_corner_2;              ! Corner point 2
+  VECTOR pt_corner_3;              ! Corner point 3
+  VECTOR pt_corner_4;              ! Corner point 4
+  
+  VECTOR pt_start_fillet_1;        ! Start point fillet 1
+  VECTOR pt_start_fillet_2;        ! Start point fillet 2
+  VECTOR pt_start_fillet_3;        ! Start point fillet 3
+  VECTOR pt_start_fillet_4;        ! Start point fillet 4
+  VECTOR pt_end_fillet_1;          ! End point fillet 1
+  VECTOR pt_end_fillet_2;          ! End point fillet 2
+  VECTOR pt_end_fillet_3;          ! End point fillet 3
+  VECTOR pt_end_fillet_4;          ! End point fillet 4
+  
+!CONSTANT FLOAT factor_pt_mid= 0.90;! Factor determining the Z value for mid point
+CONSTANT FLOAT factor_pt_mid= 0.99;! Factor determining the Z value for mid point
+  VECTOR p_angle_s;                ! Start point angle (zx) curve
+  VECTOR tp_angle_s;               ! Start tangent point angle (zx) curve
+  VECTOR p_angle_n;                ! point angle (zx) curve
+  VECTOR tp_angle_n;               ! Max minus angle tangent point angle (zx) curve
+  VECTOR p_angle_m;                ! Mid point angle (zx) curve
+  VECTOR tp_angle_m;               ! Mid tangent point angle (zx) curve
+  VECTOR p_angle_e;                ! End point angle (zx) curve
+  VECTOR tp_angle_e;               ! End tangent point angle (zx) curve
+  
+  VECTOR p_xy_s;                   ! Start point xy width curve
+  VECTOR tp_xy_s;                  ! Start tangent point xy width curve
+  VECTOR p_xy_m;                   ! Mid point xy width curve
+  VECTOR tp_xy_m;                  ! Mid tangent point xy width curve
+  VECTOR p_xy_e;                   ! End point xy width curve
+  VECTOR tp_xy_e;                  ! End tangent point xy width curve
+  
+CONSTANT FLOAT end_angle = 450.0;  ! End rotation angle
+
+!CONSTANT FLOAT p_value = 0.50;     ! P-value angle curve
+CONSTANT FLOAT p_value = 0.35;     ! P-value angle curve
+  
+  VECTOR pt_angle_inter;           ! Intersect point angle curve
+  VECTOR pt_xy_inter;              ! Intersect point xy width curve
+  FLOAT  section_rot_angle;        ! Rotation angle for section
+  
+  INT    i_section;                ! Loop index section
+  
+  REF    section_refs(45);         ! References of the section curves
+  INT    i_ref;                    ! Loop index reference
+  
+CONSTANT FLOAT eps_inter = 0.1;    ! Epsilon for intersects
+CONSTANT FLOAT pixel_scale = 1.33; ! Correction for screen 2560 X 1440
+
+CONSTANT INT n_rulers = 800;       ! Number of rulers
+  FLOAT cur_length_one;            ! Curve one length
+  FLOAT cur_length_two;            ! Curve two length
+  FLOAT cur_delta_one;             ! Delta arc curve one
+  FLOAT cur_delta_two;             ! Delta arc curve two
+  FLOAT t_end_one;                 ! End parameter curve one
+  FLOAT t_end_two;                 ! End parameter curve two
+  FLOAT current_length_one;        ! Current curve length curve one
+  FLOAT current_length_two;        ! Current curve length curve two
+  FLOAT t_cur_one;                 ! Current parameter curve one
+  FLOAT t_cur_two;                 ! Current parameter curve two
+  INT   i_ruler;                   ! Loop index ruler
+  INT   i_sur;                     ! Loop index surface
+  INT   n_sur;                     ! Number of surfaces
+  
+CONSTANT FLOAT arcl_open = 1.1;   ! Arclength open for start sutface 
+  FLOAT t_arcl_start_1;            ! Start paramater curve 1
+  FLOAT t_arcl_end_1;              ! End paramater curve 1
+  FLOAT t_arcl_start_2;            ! Start paramater curve 2
+  FLOAT t_arcl_end_2;              ! End paramater curve 2
+  
+  INT p_pen;
+  INT p_pen_white;
+  INT p_pen_black;
+  INT p_pen_red;
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+  
+  FILE       f_d;                  ! Debug file
+  
+  CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug.txt"; 
+
+  STRING s_inpmt*132;              ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_2d;                   ! Blank value 2D curves
+INT    b_val_cir;                  ! Blank value circles
+INT    b_val_lin;                  ! Blank value lines
+INT    b_val_poi;                  ! Blank value points
+
+BEGINMODULE
+     
+    ! Open debug file
+    OPEN(f_d, "W", file_name);
+	
+	OUTSTR(f_d, "Debug section_rot.MBS");
+	OUTLIN(f_d);
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_2d  := 1;
+	  b_val_cir := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 0;
+	  b_val_2d  := 1;
+	  b_val_cir := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 4 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_2d  := 0;
+	  b_val_cir := 0;
+	  b_val_lin := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_2d  := 1;
+	  b_val_cir := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ENDIF;
+
+	PART(#91,saabvyer());
+
+	CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+	CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+	CRE_COLOR(o_p_3, 255, 255, 255); ! White
+	CRE_COLOR(o_p_4, 255,   0,  20); ! Red
+
+	p_pen_white := o_p_3;
+	p_pen_black := 1;
+	p_pen_red := o_p_4;
+	
+    delta_xy_section := (sur_max_w - sur_start_w)/(n_sections - 1)/2.0;
+ 
+    delta_z_section := sur_length/(n_sections - 1);	
+	
+	p_angle_s := VEC(0.0, 0.0, delta_z_section - eps_inter);
+	tp_angle_s := p_angle_s + VEC(-600.0, 0.0, 100.0);
+	
+	!p_angle_n := VEC(-100, 0.0, (sur_length + delta_z_section)*(1.0 - factor_pt_mid));	
+	p_angle_n := VEC(-100, 0.0, (sur_length + delta_z_section)*(1.0 - factor_pt_mid)*0.5);	
+	tp_angle_n := p_angle_n + VEC(0.0, 0.0, 1000.0);
+	
+	!p_angle_m := VEC(end_angle, 0.0, (sur_length + delta_z_section)*factor_pt_mid);
+	p_angle_m := VEC(end_angle, 0.0, (sur_length + delta_z_section)*factor_pt_mid*1.0);
+	tp_angle_m := p_angle_m + VEC(0.0, 0.0, 1000.0);
+	
+    p_angle_e := VEC(end_angle, 0.0, sur_length + delta_z_section + eps_inter);
+    tp_angle_e := p_angle_e + VEC(0.0, 0.0, 1000.0);
+	
+	LIN_FREE(#5, VEC(0.0, 0.0, 0.0), VEC(0.0, 0.0, sur_length + delta_z_section):BLANK=b_val_2d);
+  
+    CUR_CONIC(#8, "FREE", p_angle_s, tp_angle_s, p_value, 
+						  p_angle_n, tp_angle_n, p_value, 
+	                      p_angle_m, tp_angle_m, 0.5,
+	                      p_angle_e, tp_angle_e: PEN=4, BLANK= b_val_2d, WIDTH=2.0);
+						  
+	p_xy_s := VEC(sur_start_w/2.0, 0.0, delta_z_section - eps_inter);
+	tp_xy_s := p_xy_s + VEC(4400.0, 0.0, 1000.0);
+	
+	p_xy_m := VEC(sur_max_w/2.0, 0.0, (sur_length + delta_z_section)*factor_pt_mid);
+	tp_xy_m := p_xy_m + VEC(0.0, 0.0, 1000.0);
+	
+	p_xy_e := VEC(sur_max_w/2.0, 0.0, sur_length + delta_z_section + eps_inter);
+	!p_xy_e := VEC(sur_max_w/2.0 - radius_fillet*0.5, 0.0, sur_length + delta_z_section + eps_inter);
+	tp_xy_e := p_xy_e + VEC(0.0, 0.0, 1000.0);
+	!tp_xy_e := p_xy_e + VEC(-400.0, 0.0, 1000.0);
+	
+	OUTSTR(f_d,
+			   " p_xy_m= " + STR(p_xy_m.x, 8, 2) + 
+			   " , " + STR(p_xy_m.y, 8, 2)  +
+			   " , " + STR(p_xy_m.z, 8, 2) 
+			   );
+	OUTLIN(f_d);
+	
+	!LIN_FREE(#101, p_xy_s, tp_xy_s:PEN=3);
+	
+	!LIN_FREE(#102, p_xy_m, tp_xy_m:PEN=3);
+	
+	!LIN_FREE(#103, p_xy_e, tp_xy_e:PEN=3);
+	
+    CUR_CONIC(#7, "FREE", !p_xy_s, tp_xy_s, 0.2, 
+	                      p_xy_s, tp_xy_s, 0.14, 
+	                      p_xy_m, tp_xy_m, 0.5,
+	                      p_xy_e, tp_xy_e: PEN=2, BLANK= b_val_2d, WIDTH=2.0);
+  
+    FOR i_section:= 1 TO n_sections DO
+	
+	  CSYS_1P(#10, "SECTION_PLANE", VEC(0.0, 0.0, delta_z_section*i_section), 0.0, 0.0, 0.0: BLANK=1);
+  	
+      z_value := delta_z_section*(i_section - 1);
+	  ! Hill form
+	  z_value := -z_value; 
+	  
+      ! Intersect point xy width curve
+	  pt_xy_inter := INTERSECT(#7, #10);
+	  
+	  xy_value := pt_xy_inter.x;
+  
+	  pt_corner_1 := VEC(      0.0,  xy_value, z_value);
+      pt_corner_2 := VEC( xy_value,       0.0, z_value);
+      pt_corner_3 := VEC(      0.0, -xy_value, z_value);
+      pt_corner_4 := VEC(-xy_value,       0.0, z_value);
+   
+      LIN_FREE(#21, pt_corner_1, pt_corner_2:PEN=3, BLANK=1);
+	  LIN_FREE(#22, pt_corner_2, pt_corner_3:PEN=3, BLANK=1);
+	  LIN_FREE(#23, pt_corner_3, pt_corner_4:PEN=3, BLANK=1);
+	  LIN_FREE(#24, pt_corner_4, pt_corner_1:PEN=3, BLANK=1);
+	
+	
+	  MODE_LOCAL(#10);
+	  
+	  radius_selected := radius_fillet;
+	  
+	  IF xy_value < sur_start_w/2.0*1.1 THEN
+	    radius_selected := radius_mod;
+	  ELIF ABS(z_value) > (sur_length + delta_z_section)*factor_pt_mid * 0.80 THEN
+	  	radius_selected := 20.0;
+	  ENDIF;
+	  
+	
+	  ARC_FIL(#31, #24, #21, radius_selected, 1:PEN=2, BLANK=b_val_cir);
+	  ARC_FIL(#32, #21, #22, radius_selected, 1:PEN=2, BLANK=b_val_cir);
+	  ARC_FIL(#33, #22, #23, radius_selected, 1:PEN=2, BLANK=b_val_cir);
+	  ARC_FIL(#34, #23, #24, radius_selected, 1:PEN=2, BLANK=b_val_cir);
+	  
+	   MODE_GLOBAL();
+	
+      pt_start_fillet_1 := ON(#31, 1.0);
+	  pt_end_fillet_1 := ON(#31, 0.0);
+	  pt_start_fillet_2 := ON(#32, 1.0);
+	  pt_end_fillet_2 := ON(#32, 0.0);
+	  pt_start_fillet_3 := ON(#33, 1.0);
+	  pt_end_fillet_3 := ON(#33, 0.0);	
+	  pt_start_fillet_4 := ON(#34, 1.0);
+	  pt_end_fillet_4 := ON(#34, 0.0);
+	
+	
+	  LIN_FREE(#51, pt_start_fillet_2, pt_end_fillet_1:PEN=4,  BLANK=b_val_lin);
+	  LIN_FREE(#52, pt_start_fillet_3, pt_end_fillet_2:PEN=4,  BLANK=b_val_lin);
+	  LIN_FREE(#53, pt_start_fillet_4, pt_end_fillet_3:PEN=4,  BLANK=b_val_lin);
+	  LIN_FREE(#54, pt_start_fillet_1, pt_end_fillet_4:PEN=4,  BLANK=b_val_lin);
+	
+	  CUR_COMP(#61, #31, #51, #32, #52, #33, #53, #34, #54: PEN=1, BLANK=b_val_cur, WIDTH=5.0);
+	  
+      ! Intersect point angle curve
+	  pt_angle_inter := INTERSECT(#8, #10);
+	  
+	  ! Rotation angle for section
+	  IF rotation_case = 1 THEN
+	    section_rot_angle := -pt_angle_inter.x/10.0;
+	  ELIF rotation_case = 2 THEN
+	    section_rot_angle := 45.0;
+	  ELIF rotation_case = 3 THEN
+	    section_rot_angle := pt_angle_inter.x/10.0;
+	  ELSE
+	    OUTSTR(f_d, "rotation_case= " + STR(rotation_case, 4, 0) + " is not implemented ");
+		OUTLIN(f_d);
+	    section_rot_angle := -pt_angle_inter.x/10.0;
+	  ENDIF;
+	  
+	  TFORM_ROTL(#62, VEC(0.0, 0.0, 0.0), VEC(0.0, 0.0, 1.0), section_rot_angle);
+	  
+	  TFORM_ROTL(#63, VEC(0.0, 0.0, 0.0), VEC(0.0, 0.0, 1.0), 0.0, 1.0, pixel_scale, 1.0);
+  
+	  TCOPY(#64, #61, #62);
+	  
+	  TCOPY(#2, #64, #63);
+	  
+      IF i_section = 1 THEN
+	    section_refs(i_section) := #2.1;
+	  ELIF i_section = 2 THEN
+	    section_refs(i_section) := #2.2;
+	  ELIF i_section = 3 THEN
+	    section_refs(i_section) := #2.3;	
+	  ELIF i_section = 4 THEN
+	    section_refs(i_section) := #2.4;
+	  ELIF i_section = 5 THEN
+	    section_refs(i_section) := #2.5;
+	  ELIF i_section = 6 THEN
+	    section_refs(i_section) := #2.6;
+	  ELIF i_section = 7 THEN
+	    section_refs(i_section) := #2.7;
+	  ELIF i_section = 8 THEN
+	    section_refs(i_section) := #2.8;
+	  ELIF i_section = 9 THEN
+	    section_refs(i_section) := #2.9;
+	  ELIF i_section = 10 THEN
+	    section_refs(i_section) := #2.10;
+	  ELIF i_section = 11 THEN
+	    section_refs(i_section) := #2.11;
+	  ELIF i_section = 12 THEN
+	    section_refs(i_section) := #2.12;
+	  ELIF i_section = 13 THEN
+	    section_refs(i_section) := #2.13;
+	  ELIF i_section = 14 THEN
+	    section_refs(i_section) := #2.14;
+	  ELIF i_section = 15 THEN
+	    section_refs(i_section) := #2.15;
+	  ELIF i_section = 16 THEN
+	    section_refs(i_section) := #2.16;
+	  ELIF i_section = 17 THEN
+	    section_refs(i_section) := #2.17;
+	  ELIF i_section = 18 THEN
+	    section_refs(i_section) := #2.18;
+	  ELIF i_section = 19 THEN
+	    section_refs(i_section) := #2.19;
+	  ELIF i_section = 20 THEN
+	    section_refs(i_section) := #2.20;
+      ELIF i_section = 21 THEN
+	    section_refs(i_section) := #2.21;
+	  ELIF i_section = 22 THEN
+	    section_refs(i_section) := #2.22;
+	  ELIF i_section = 23 THEN
+	    section_refs(i_section) := #2.23;	
+	  ELIF i_section = 24 THEN
+	    section_refs(i_section) := #2.24;
+	  ELIF i_section = 25 THEN
+	    section_refs(i_section) := #2.25;
+	  ELIF i_section = 26 THEN
+	    section_refs(i_section) := #2.26;
+	  ELIF i_section = 27 THEN
+	    section_refs(i_section) := #2.27;
+	  ELIF i_section = 28 THEN
+	    section_refs(i_section) := #2.28;
+	  ELIF i_section = 29 THEN
+	    section_refs(i_section) := #2.29;
+	  ELIF i_section = 30 THEN
+	    section_refs(i_section) := #2.30;
+	  ELIF i_section = 31 THEN
+	    section_refs(i_section) := #2.31;
+	  ELIF i_section = 32 THEN
+	    section_refs(i_section) := #2.32;
+	  ELIF i_section = 33 THEN
+	    section_refs(i_section) := #2.33;
+	  ELIF i_section = 34 THEN
+	    section_refs(i_section) := #2.34;
+	  ELIF i_section = 35 THEN
+	    section_refs(i_section) := #2.35;
+	  ELIF i_section = 36 THEN
+	    section_refs(i_section) := #2.36;
+	  ELIF i_section = 37 THEN
+	    section_refs(i_section) := #2.37;
+	  ELIF i_section = 38 THEN
+	    section_refs(i_section) := #2.38;
+	  ELIF i_section = 39 THEN
+	    section_refs(i_section) := #2.39;
+	  ELIF i_section = 40 THEN
+	    section_refs(i_section) := #2.40;
+	  ENDIF;
+  	  
+	  OUTSTR(f_d,
+			   "i_section= " + STR(i_section, 4, 0) + 
+			   " xy_value= " + STR(xy_value, 8, 2) + 
+			   "  z_value= " + STR(z_value, 8, 2)  +
+			   "  section_rot_angle= " + STR(section_rot_angle, 8, 2) +
+			   "  radius_selected= " + STR(radius_selected, 8, 2) 
+			   );
+	  OUTLIN(f_d);
+	
+	  DEL(GLOBAL_REF(#10));
+	  DEL(GLOBAL_REF(#21));
+	  DEL(GLOBAL_REF(#22));
+	  DEL(GLOBAL_REF(#23));
+   	  DEL(GLOBAL_REF(#24));
+	
+	  DEL(GLOBAL_REF(#31));
+	  DEL(GLOBAL_REF(#32));
+	  DEL(GLOBAL_REF(#33));
+	  DEL(GLOBAL_REF(#34));
+	
+	  DEL(GLOBAL_REF(#51));
+	  DEL(GLOBAL_REF(#52));
+	  DEL(GLOBAL_REF(#53));
+	  DEL(GLOBAL_REF(#54));
+	  
+	  DEL(GLOBAL_REF(#61));
+	  DEL(GLOBAL_REF(#62));
+	  DEL(GLOBAL_REF(#63));  
+	  DEL(GLOBAL_REF(#64));
+  
+    ENDFOR;
+	
+	p_pen := p_pen_black;
+	
+	FOR i_ref := 1 TO n_sections - 1 DO
+	
+	  IF p_pen = p_pen_white THEN
+	    p_pen := p_pen_black;
+	  ELSE
+	    p_pen := p_pen_white;
+	  ENDIF;
+	  
+	  OUTSTR(f_d,"Surface " +
+			   "number " + STR(i_ref, 4, 0) + " References " 
+			   + RSTR(section_refs(i_ref)) + ", " + RSTR(section_refs(i_ref + 1))
+			   );
+	  OUTLIN(f_d);
+	
+	  ! Curve lengths
+	  cur_length_one := ARCL(section_refs(i_ref));
+	  cur_length_two := ARCL(section_refs(i_ref + 1));
+	  
+	  ! End curve parameter
+      t_end_one := INV_ARCL(section_refs(i_ref),     cur_length_one);
+	  t_end_two := INV_ARCL(section_refs(i_ref + 1), cur_length_two);
+	  
+	  ! Delta curve lengths
+	  cur_delta_one := cur_length_one/(n_rulers - 1);
+	  cur_delta_two := cur_length_two/(n_rulers - 1);
+
+		
+	  OUTSTR(f_d,
+			   "i_ref= " + STR(i_ref, 4, 0) + " Curve one " +
+			   " Length " + STR(cur_length_one, 8, 2) + 
+			   " Delta " + STR(cur_delta_one, 8, 2) + 
+			   " End parameter " + STR(t_end_one, 8, 6) 
+			   );		
+	  OUTLIN(f_d);
+	  OUTSTR(f_d,
+			   "i_ref= " + STR(i_ref, 4, 0) + " Curve two " +
+			   " Length " + STR(cur_length_two, 8, 2) + 
+			   " Delta " + STR(cur_delta_two, 8, 2) + 
+			   " End parameter " + STR(t_end_two, 8, 6) 
+			   );		
+	  OUTLIN(f_d);
+	  
+	  n_sur := ROUND(t_end_one); ! Check equal t_end_two
+	  
+	  FOR i_sur := 1 TO n_sur DO
+	  
+		CUR_TRIM(#77, section_refs(i_ref), i_sur - 1.0, i_sur: BLANK=0);
+		
+		CUR_TRIM(#78, section_refs(i_ref + 1), i_sur - 1.0, i_sur: BLANK=0);
+		
+		IF (color_case = 1 AND p_pen = p_pen_black) OR (color_case = 3 AND p_pen = p_pen_black) THEN
+		  SUR_RULED(#1, #78, #77, 2:PEN=p_pen, BLANK=b_val_sur); 
+		ELIF color_case = 2 THEN
+		  SUR_RULED(#4, #78, #77, 2:PEN=p_pen, BLANK=b_val_sur); 
+		ELIF color_case = 3 AND p_pen = p_pen_white THEN
+		  SUR_RULED(#9, #78, #77, 2:PEN= p_pen_red, BLANK=b_val_sur); 	  
+		ELSE
+		  OUTSTR(f_d, "color_case= " + STR(color_case, 4, 0) + " is not implemented ");
+		  OUTLIN(f_d);
+		ENDIF;
+		
+		DEL(#77);
+		DEL(#78);
+	  
+	  ENDFOR;
+	
+	
+	ENDFOR;
+	
+	! Start surface defined by curve section_refs(1)
+	! Start paramater curve 1
+	t_arcl_start_1 := INV_ARCL(section_refs(1), arcl_open);
+	
+	CUR_TRIM(#87, section_refs(1), t_arcl_start_1, n_sur/2.0:PEN=2, BLANK= 1, WIDTH=3.0);
+	
+	! End paramater curve 1
+	t_arcl_end_1 := INV_ARCL(#87, ARCL(#87) - arcl_open);
+	
+	CUR_TRIM(#97, #87, 0.0, t_arcl_end_1:PEN=1, BLANK= b_val_cur, WIDTH=3.0);
+	
+	! Start paramater curve 2
+	t_arcl_start_2 := INV_ARCL(section_refs(1), ARCL(section_refs(1))/2.0 + arcl_open);
+	
+	CUR_TRIM(#88, section_refs(1), t_arcl_start_2, n_sur:PEN=2, BLANK= 1, WIDTH=3.0);
+	
+	! End paramater curve 2
+	t_arcl_end_2 := INV_ARCL(#88, ARCL(#88) - arcl_open);
+	
+	CUR_TRIM(#98, #88, 0.0, t_arcl_end_2:PEN=1, BLANK= b_val_cur, WIDTH=3.0);
+	
+	SUR_RULED(#3, #98, #97, 2:PEN=p_pen_black, BLANK=b_val_sur); 
+	
+
+
+	
+close_file:
+
+    ! Close debug file
+    CLOSE(f_d);
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

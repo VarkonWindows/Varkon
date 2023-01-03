@@ -1,0 +1,234 @@
+!********************* waves ***********************
+! +++
+! Bridget Riley waves
+!
+! ---
+! Revision history
+! ________________
+!
+! 2005-12-25  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley waves 
+
+GLOBAL GEOMETRY MODULE waves();
+
+CONSTANT INT n_s = 130; ! Number of strips
+CONSTANT INT p_1 = 2;
+CONSTANT INT p_2 = 3;
+CONSTANT INT p_3 = 4;
+
+CONSTANT FLOAT x_s =   50.0;
+CONSTANT FLOAT x_d =   50.0;
+CONSTANT FLOAT x_t =   25.0;
+CONSTANT FLOAT y_s = -100.0;
+CONSTANT FLOAT y_d =   50.0;
+CONSTANT FLOAT y_t =   25.0;
+CONSTANT FLOAT p_v =    0.5;
+CONSTANT FLOAT c_t =    1.0; 
+
+CONSTANT FLOAT w_height=20.0; 
+
+VECTOR c_1_p_1; 
+VECTOR c_1_pt_1; 
+VECTOR c_1_p_2; 
+VECTOR c_1_pt_2; 
+VECTOR c_1_p_3; 
+VECTOR c_1_pt_3; 
+VECTOR c_1_p_4; 
+VECTOR c_1_pt_4; 
+
+CONSTANT FLOAT c_p_v =    0.4;
+
+CONSTANT INT b_val_a = 1;
+
+INT n_u, n_v; ! Number of patches
+
+INT  i_s; ! Loop index strip
+FLOAT d_s; ! Delta u
+
+INT i_pen;
+INT p_pen;
+
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+
+
+INT b_val_s;
+
+BEGINMODULE
+
+  CRE_COLOR(o_p_1,  38,  79, 146); ! Blue
+  CRE_COLOR(o_p_2,  38, 154,  38); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+
+  CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+  CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+  
+
+
+
+  b_val_s := 0;
+
+! Points first curve
+  c_1_p_1  := VEC(x_s+0*x_d,     y_s+0*y_d,     w_height);
+  c_1_pt_1 := VEC(x_s+0*x_d+c_t, y_s+0*y_d+c_t, w_height);
+  c_1_p_2  := VEC(x_s+1*x_d,     y_s+1*y_d,     w_height);
+  c_1_pt_2 := VEC(x_s+1*x_d+0.0, y_s+1*y_d+c_t, w_height);
+  c_1_p_3  := VEC(x_s+0*x_d,     y_s+2*y_d,     w_height);
+  c_1_pt_3 := VEC(x_s+0*x_d+0.0, y_s+2*y_d+c_t, w_height);
+  c_1_p_4  := VEC(x_s+1*x_d,     y_s+3*y_d,     w_height);
+  c_1_pt_4 := VEC(x_s+1*x_d+c_t, y_s+3*y_d+c_t, w_height);
+
+
+  POI_FREE(#101, c_1_p_1:BLANK=b_val_a);
+  POI_FREE(#102, c_1_pt_1:BLANK=b_val_a);
+  POI_FREE(#103, c_1_p_2:BLANK=b_val_a);
+  POI_FREE(#104, c_1_pt_2:BLANK=b_val_a);
+  POI_FREE(#105, c_1_p_3:BLANK=b_val_a);
+  POI_FREE(#106, c_1_pt_3:BLANK=b_val_a);
+  POI_FREE(#107, c_1_p_4:BLANK=b_val_a);
+  POI_FREE(#108, c_1_pt_4:BLANK=b_val_a);
+
+! Wave top curve 1 (first directrix)
+  CUR_CONIC(#2,"FREE", c_1_p_1, c_1_pt_1, p_v,
+                       c_1_p_2, c_1_pt_2, p_v,
+                       c_1_p_3, c_1_pt_3, p_v,
+                       c_1_p_4, c_1_pt_4:BLANK=b_val_a);
+
+
+! Transformationer
+  TFORM_MOVE(#20,vec(0.0, 0, 0), vec(x_d/2.0, 0.0, -w_height));
+  TFORM_MOVE(#21,vec(0.0, 0, 0), vec(x_d,     0.0,  0.0));
+  TFORM_MOVE(#22,vec(0.0, 0, 0), vec(x_d/20,  0.0,  0.0));
+
+  TFORM_ROTL(#23,vec(0, 0, 0), vec(100, 5, 0), 10.0 + 180.0 - 180 );
+
+  TFORM_MOVE(#24,vec(0.0, 0, 0), vec(0.0,  0.0,  0.0),10.0);
+
+! Copy and transform directrices
+  TCOPY(#3, #2, #20);
+  TCOPY(#4, #2, #21);
+  TCOPY(#5, #3, #21);
+  TCOPY(#6, #4, #21);
+  TCOPY(#7, #5, #21);
+  TCOPY(#8, #6, #21);
+  TCOPY(#9, #7, #21);
+
+! Tangent curves
+  TCOPY(#12, #2, #22);
+  TCOPY(#13, #3, #22);
+  TCOPY(#14, #4, #22);
+  TCOPY(#15, #5, #22);
+  TCOPY(#16, #6, #22);
+  TCOPY(#17, #7, #22);
+  TCOPY(#18, #8, #22);
+  TCOPY(#19, #9, #22);
+
+! Spine
+  CUR_CONIC(#30, "FREE", VEC(x_s,   y_s+0.001, 0.0), 
+                         VEC(x_s,   y_s+3*y_d-0.001, 0.0), 0.5,
+                         VEC(x_s,   y_s+3*y_d-0.001, 0.0),
+                         VEC(x_s,   y_s+0.001, 0.0):BLANK=b_val_a);
+
+! P-value curve
+  CUR_CONIC(#31, "FREE", VEC(0.0,        c_p_v, 0.0), 
+                         VEC(ARCL(#30),  c_p_v, 0.0), 0.5,
+                         VEC(ARCL(#30),  c_p_v, 0.0),
+                         VEC(0.0,        c_p_v, 0.0):BLANK=b_val_a);
+
+! Surface
+  SUR_CONIC(#32,#30, #2, #12, "P", #31,
+                     #3, #13, "P", #31, 
+                     #4, #14, "P", #31,
+                     #5, #15, "P", #31,
+                     #6, #16, "P", #31,
+                     #7, #17, "P", #31,
+                     #8, #18, "P", #31,
+                     #9, #19:PEN=3,BLANK=b_val_a);
+
+! Approximate
+
+  SUR_APPROX(#33,#32, "CUB_SUR", 1, 8:PEN=3,BLANK=b_val_a);
+
+  TCOPY(#34, #33, #23);
+  TCOPY( #1, #34, #24);
+
+
+! Colored strips
+  GETSURH (#1, "NPATU", n_u);
+  GETSURH (#1, "NPATV", n_v);
+
+  d_s := n_u/(n_s+1);
+
+  i_pen := 0;
+  FOR  i_s := 1 TO n_s DO
+    i_pen := i_pen + 1;
+    IF   i_pen = 1 THEN
+      p_pen := o_p_1;
+!      p_pen := 4;
+      b_val_s := 0;
+    ELIF i_pen = 2 THEN
+      p_pen := o_p_2;
+!      p_pen := 3;
+      b_val_s := 0;
+    ELIF i_pen = 3 THEN
+      p_pen := o_p_3;
+      b_val_s := 1;
+    ELIF i_pen = 4 THEN
+      p_pen := o_p_4;
+!      p_pen := 2;
+      b_val_s := 0;
+    ELIF i_pen = 5 THEN
+      p_pen := o_p_1;
+!      p_pen := 4;
+      b_val_s := 0;
+      i_pen := 1;
+    ENDIF;
+
+    SUR_TRIM(#50, #1, (i_s-1)*d_s, i_s*d_s,0.0, n_v:PEN=p_pen,BLANK=b_val_s);
+  ENDFOR;
+
+
+
+!  csys_1p(#50,"nose_z", vec(0, 0, 0), -120, -70, 0:BLANK=1);
+!  cre_view("nose_z", #50);
+!  act_view("nose_z");
+!  rep_view(1);
+
+! Set curve_accuracy to value suitable for "smooth" shading
+
+!  CACC_VIEW(20);
+
+! Define light
+
+!  LIGHT_VIEW(0, VEC(x_s+4*x_d, y_s+2*y_d, -30*w_height));
+
+!  shade_view(0,1);
+
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

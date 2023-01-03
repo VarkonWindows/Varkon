@@ -1,0 +1,376 @@
+!******************* kurvtext **************************
+! +++
+! Funktionen skapar text längs en kurva. Om texten är för
+! lång modifieras textstorleken så att texten får plats.
+!
+! Ändringshistorik:
+!
+! 1992-11-20 Gunnar Liden
+! 1992-11-26 Ronny Gyllensten
+! 1993-02-24 Kontroll kurvidentitet (ej #0) samt ändrat
+!            GLOBAL_REF så att rutinen kan anropas av
+!            annan rutin. Dessutom har ett större tillägg
+!            gjorts. Endast en delkurva av ursprungliga 
+!            kurvan utnyttjas. Det var tidigare nödvändigt
+!            att offset existerade för hela kurvan. 
+!            För det tredje har indata kurvan projicerats
+!            i XY planet (CUR_OFFS med offset=0) eftersom
+!            båglängden beräknas på 3D kurvan ! Ska det vara
+!            på detta sätt (Johan Kjellander) ?   Gunnar Liden
+! 1995-03-13 Dokumentation                        R Gyllensten
+! 1996-02-25 Kommentarer, åäö, GLOBAL_REF borttaget Gunnar Liden
+! ---
+!********************************************************
+
+!sdesce Writes text along a curve
+!sdescs Skiver text längs en kurva
+
+GLOBAL GEOMETRY MODULE kurvtext(
+
+REF     cur_id               > "@t13 Peka på kurva";
+STRING  intext*132:="VARKON för figurblad "   > "Textsträng längs kurvan";
+FLOAT   rels:= 0.20          > "Parametervärde för textstartpunkt (0-1)";
+STRING dir*3:="pos"     > "@ Riktning längs kurvan, pos/neg ,<CR>=pos)";
+FLOAT  teckenhojd:= 3.0      > "@ TSIZE";
+FLOAT  teckenbredd:= 50.0    > "@ TWIDTH";
+FLOAT  avstand:=  1.0        > "@ Textens avstånd till kurvan (offset)");
+
+! Interna variabler:
+
+  VECTOR  p_in;              ! Point corresponding to input rels
+  FLOAT   t_leng;            ! Längd (förlängd) med tecken av intext
+  FLOAT   tot_arcl;          ! Totala båglängden hos indata kurvan
+  FLOAT   rels_end;          ! Relativa båglängden till slutpunkt
+  FLOAT   u_str;             ! Start parameter värde för trimning
+  FLOAT   u_end;             ! Slut  parameter värde för trimming
+  FLOAT   faltbredd;         ! Möjlig textlängd (eg kurvlängd)
+  FLOAT   stranglangd;       ! Textens längd
+  FLOAT   intextlangd;       ! Textens längd före modifiering av TSIZE
+  INT     antal;             ! Antal bokstäver i textsträngen
+  FLOAT   delta;             ! Relativ delta båglängd för bokstav
+  INT     bokstavsnr;        ! Räknare för bokstav
+  FLOAT   alfa;              ! Vinkel för text
+  VECTOR  bokstavslutning;   ! Bokstavens lutning (i startpunkten)
+
+  FLOAT   uthojd;            ! Teckenhöjd i mm
+  FLOAT   utbredd;           ! Teckenbredd i % av teckenhöjd
+  VECTOR  xaxis;             ! X-axeln
+
+  STRING  s*1;               ! För INPMT
+
+  INT     DEBUG;             ! Eq. 0: Ingen Debug
+                             ! Eq. 1: Full Debug
+
+
+BEGINMODULE
+
+! +++
+! 1. Initieringar och kontroller
+! ---
+
+  DEBUG := 0;                ! Ändra Debug till 0 eller 1
+
+
+  IF cur_id <> #0 THEN       ! Kontrollera att cur_id
+!    OK                      ! inte är #0
+     ;                       !
+  ELSE                       !
+     EXIT("kurvtext:"+       !
+    " Program error"+
+    " (cur_id)");            !
+  ENDIF;                     !
+
+  xaxis := VEC(1.0,0.0);     ! X-axeln
+
+  SET(TSIZE=teckenhojd);     ! Inhöjd i modtsize
+  SET(TWIDTH=teckenbredd);   ! Inbredd i modtsize
+
+!QQ  cur_id:=GLOBAL_REF         ! Två nivå referens
+!QQ                  (cur_id,2);!
+
+  IF rels >= 0.0 AND         ! Kontroll av rels
+     rels <= 1.0       THEN  !
+    ;                        !
+  ELSE                       !
+   EXIT("kurvtext:Felaktigt "!
+        + "parametervärde"); !
+  ENDIF;                     !
+
+! +++
+! 2. Skapa kopia som är 2D kurva
+! ---
+
+    tot_arcl:= ARCL(cur_id); ! Totala båglängden för 3D kurva
+
+    u_str:=  INV_ARCL(cur_id,! Globalt parametervärde som hör ihop
+           rels*tot_arcl);   ! med indata rels
+    CUR_OFFS(#11,cur_id,0    ! Innebär att kurva projiceras
+    :BLANK=1);               ! 
+
+    CUR_TRIM(#10,#11,0.0,    ! Ett nytt rels måste räknas ut för
+    u_str:BLANK=1);          ! projicerade kurvan. u_str får
+    rels:=ARCL(#10)/         ! duga som parametervärde
+          ARCL(#11);         !
+
+    cur_id:= #11;            ! Byt värde på cur_id
+                             ! (Ej vacker programmering)
+
+!    s:= INPMT(" "            !
+!     + " ARCL(#10) "+        !
+!        STR(ARCL(#10),-12,6)+!
+!        " ARCL(#11) "+       !
+!    STR( ARCL(#11) ,-12,6)+  !
+!        " rels "+            !
+!        STR(rels,-12,6)+     !
+!        " ",                 !
+!        "",1);               !
+
+
+! +++
+! 3. Skapa delkurva
+! ---
+
+!    Försök skapa delkurva. Offset kontroll görs då bara i
+!    denna del
+
+  t_leng:= TEXTL(intext);    ! Ursprunglig längd av intext (mm)
+
+  IF dir = "neg"  THEN       ! Öka längden (p.g.a) offset
+    t_leng:= -1.05*t_leng;   ! (faktorn 1.05 är lite godtycklig)
+  ELSE                       !
+    t_leng:= +1.05*t_leng;   !
+  ENDIF;                     !
+
+  tot_arcl:= ARCL(cur_id);   ! Totala båglängden
+
+  rels_end:=rels+            ! Relativa båglängden till 
+   t_leng/tot_arcl;          ! slut trimningspunkt
+
+  IF  rels_end < 1           ! Trimma bara kurva om texten
+    AND rels_end > 0 THEN    ! får plats
+    u_str:= INV_ARCL(cur_id, ! Parameter start värde för trimning
+           rels*tot_arcl);   ! 
+    u_end:= INV_ARCL(cur_id, ! Parameter slut  värde för trimning
+       rels_end*tot_arcl);   !
+   IF  dir = "pos"  THEN     !
+   CUR_TRIM(#12,cur_id,u_str,! Trimma kurva
+              u_end:BLANK=1);! Låt indata referensen cur_id nu betyda
+    cur_id := #12;           ! den trimmade kurvan och indata 
+   ELSE                      ! relativa båglängden gälla nya kurvan
+   CUR_TRIM(#13,cur_id,u_end,! dvs rels=0
+              u_str:BLANK=1);!
+    cur_id := #13;           ! 
+   ENDIF;                    !
+    rels   := 0.0;           ! Detta är inte vacker programmering !
+  ELSE                       ! Nya variabler borde införas !!!!!!!
+   ;                         ! (Hinner ej detta nu .... )
+  ENDIF;                     ! Dessutom förstår jag inte riktigt
+                             ! själv hur det fungerar när kurv-
+                             ! riktningen är negativ (Gunnar L)
+
+    IF DEBUG = 1 THEN        ! Utskrift för DEBUG = 1
+    s:= INPMT(" "            !
+     + " tot_arcl "+      !
+        STR(tot_arcl,-12,6)+ !
+        " rels "+            !
+        STR(rels,-12,6)+     !
+        " t_leng/tot_arcl "+ !
+    STR(t_leng/tot_arcl,-12,6)+    !
+        " ",                 !
+        "",1);               !
+
+    s:= INPMT(" "            !
+        + " t_leng "+        !
+        STR(t_leng,-12,6) +  !
+        " rels_end "+        !
+        STR(rels_end,-12,6)+ !
+        " u_str "+           !
+        STR(u_str,-12,6)+    !
+        " u_end "+           !
+        STR(u_end,-12,6)+    !
+        " ",                 !
+        "",1);               !
+                             !
+    ENDIF;                   !
+
+! +++
+! 3. Skapa textplacerings kurva
+! ---
+
+  CUR_OFFS(#2,cur_id,-avstand ! Skapa offset kurva
+           :BLANK=1);         !
+
+  IF dir = "neg" OR          ! Skapa omvänd kurva för dir=neg
+     dir = "n"   THEN
+
+    CUR_TRIM(#1,#2,          ! Vänd kurva
+            INV_ARCL(#2,
+            ARCL(#2)),       ! Start= slut parameter offset kurva
+            0.0:BLANK=1);    ! Slut = 0.0
+
+  ENDIF;                     !
+
+! +++
+! 3. Båglängder och textstorlek(teckenhojd)
+! ---
+
+  IF dir = "neg"  OR  
+     dir = "n"   THEN        !
+
+   faltbredd:= (1.0-rels)*   !
+               ARCL(#1);     ! Båglängd från start punkt för #1
+  ELSE                       !
+   faltbredd:= (1.0-rels)*   !
+               ARCL(#2);     ! Båglängd från start punkt för #2
+  ENDIF;                     !
+
+  IF faltbredd < 0.001 THEN  ! Kontroll av fältbredd
+    EXIT("kurvtext:Fel riktning vald");   !
+  ENDIF;                     !
+
+  intextlangd := TEXTL(intext);! Textens längd före modifiering av TSIZE
+                             !    (bara för test)
+
+  PART(#7,modtsize(intext,     ! Beräkna lämplig teckenstorlek
+                   faltbredd*  !
+                   0.97,       !
+                   teckenhojd, !
+                   teckenbredd,!
+                   uthojd,     !
+                   utbredd));  !
+
+  SET(TSIZE=uthojd);           ! Teckenhöjd
+  SET(TWIDTH=utbredd);         ! Teckenbredd (%)
+
+  stranglangd := TEXTL(intext);! Textens längd efter modtsize
+
+    IF DEBUG = 1 THEN          ! Utskrift för DEBUG = 1
+
+    s:= INPMT("kurvtext:"      !
+        + " faltbredd "+       !
+        STR(faltbredd,-12,6) + !
+        " stranglangd "+       !
+        STR(stranglangd,-12,6)+!
+        " intextlangd "+       !
+        STR(intextlangd,-12,6)+!
+        " ",                   !
+        "",1);                 !
+
+    ENDIF;
+
+  antal := LENGTH(intext);     ! Antal tecken i textsträngen
+
+  IF antal > 0 THEN            !
+
+    IF dir = "neg"  OR
+       dir = "n"   THEN        !
+       delta:= stranglangd/    !
+            ARCL(#1)/antal;    ! Delta relativ båglängd för #1
+    ELSE
+       delta:= stranglangd/    !
+            ARCL(#2)/antal;    ! Delta relativ båglängd för #2
+    ENDIF;
+
+  ELSE                         !
+    EXIT("kurvtext:Tom textstrang");   !
+  ENDIF;                       !
+
+! +++
+! 4. Skapa texten längs kurvan
+! ---
+
+
+  FOR bokstavsnr := 1 TO antal DO  ! Start loop bokstavsnr
+
+   IF dir = "neg" OR         !
+     dir = "n"   THEN        !
+
+    POI_FREE(#5,ON(#1,       ! Skapa placeringspunkt för dir=neg
+            INV_ARCL(#1,     !
+            (rels+(bokstavsnr-1)* !
+            delta)*          ! Relativ båglängd bestämd av bokstavsnr,
+            ARCL(#1))));     ! delta och totala båglängden
+   ELSE                      !
+
+    POI_FREE(#3,ON(#2,       ! Skapa placeringspunkt för dir=pos
+             INV_ARCL(#2,    !
+             (rels+(bokstavsnr-1)* !
+             delta)*         ! Relativ båglängd bestämd av bokstavsnr,
+             ARCL(#2))));    ! delta och totala båglängden
+
+    IF DEBUG = 1 THEN        ! Utskrift för DEBUG = 1
+
+    s:= INPMT("kurvtext:"    !
+        + " Bokstav "+       !
+        STR(bokstavsnr,-1,0)+!
+        " Relativ båglängd "+!
+        STR(rels+(bokstavsnr-1)* !
+        delta,               !
+        -12,6)  +            !
+        " delta "+           !
+        STR(delta,-12,6) +   !
+        " ",                 !
+        "",1);               !
+    ENDIF;
+
+   ENDIF;                    !
+    
+   IF dir = "neg" OR         !
+     dir = "n"   THEN        !
+
+    bokstavslutning :=
+                 TANG(#1,    ! Tangent i placeringspunkten (kurva #1)
+                 INV_ARCL(#1,!
+                 (rels+(bokstavsnr-1)*
+                 delta)*     !
+                 ARCL(#1))); !
+   ELSE                      !
+
+    bokstavslutning :=
+                  TANG(#2,   ! Tangent i placeringspunkten (kurva #1)
+                  INV_ARCL(#2,!
+                  (rels+(bokstavsnr-1)* !
+                  delta)*    !
+                  ARCL(#2)));!
+   ENDIF;                    !
+
+    bokstavslutning := VECN(bokstavslutning);! Normalisering (eg onödig)
+
+                             !  Vinkel bestäms med formel:
+                             !
+                             ! (bokstavslutning!xaxis)=
+                             !  !bokstavslutning! * !xaxis! * COS(alfa)
+
+      alfa:=ARCCOS(bokstavslutning * xaxis);  ! där !bokstavslutning!
+                                              !  och !xaxis! = 1.0
+
+      IF bokstavslutning.y < 0.0 THEN    ! Vinkelns tecken
+                                         !   bestäms av tangenten
+        alfa:= -alfa;                  ! bokstavslutningens Y komponent
+      ENDIF;                 
+
+
+
+   IF dir = "neg" OR         !
+     dir = "n"   THEN        !
+                             !  Skriv bokstav bokstavsnr i strängen intext:
+    TEXT(#6,ON(#5,0.0),alfa, ! På punkt #5 (för dir=neg)
+         SUBSTR(intext,      !
+         bokstavsnr,1));     !
+    DEL(#5);                 !
+
+   ELSE                      !
+
+    TEXT(#4,ON(#3,0.0),alfa, ! På punkt #4 (för dir=pos)
+         SUBSTR(intext,      !
+         bokstavsnr,1));     !
+    DEL(#3);                 !
+
+   ENDIF;
+
+  ENDFOR;                    ! Slut  loop bokstavsnr
+
+
+ENDMODULE
+
+

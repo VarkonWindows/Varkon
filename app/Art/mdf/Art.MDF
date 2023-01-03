@@ -1,0 +1,16 @@
+#include "$VARKON_MDF\v319.MDF"
+
+m3  = "MAIN MENU 3D"
+      "create",m11
+      "edit",m15
+      "delete",m22
+      "variation",m34
+      "analysis",m75  
+      "graphics",m66 
+      "levels",m65
+      "attributes",m14
+      "MBS edit"       ,f217
+      "MBS active"     ,f216
+      "MBS compile all",f220
+      "mbs",m58
+      "file",m5;

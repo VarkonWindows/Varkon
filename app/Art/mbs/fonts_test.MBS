@@ -1,0 +1,91 @@
+!********************* fonts_test ***********************
+! +++
+! Test of 3D fonts
+!
+! ---
+! Revision history
+! ________________
+!
+! 2022-12-16  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Arial fonts as STL
+
+GLOBAL GEOMETRY MODULE fonts_test();
+
+FILE f_stl; 
+FILE f_log; 
+CONSTANT STRING stl_name_1="C:\Varkon\STLModels\Buchstaben\LowerCase\l_ascii.stl"; 
+CONSTANT STRING stl_name_2="C:\Varkon\STLModels\Buchstaben\LowerCase\i_ascii.stl"; 
+CONSTANT STRING stl_name_3="C:\Varkon\STLModels\Buchstaben\LowerCase\i_ascii_2.stl"; 
+CONSTANT STRING stl_name_4="C:\Varkon\STLModels\Buchstaben\LowerCase\v_ascii.stl"; 
+CONSTANT STRING stl_name_5="C:\Varkon\STLModels\Buchstaben\LowerCase\e_ascii.stl"; 
+! CONSTANT STRING stl_name="C:\Varkon\STLModels\Buchstaben\UpperCase\J_ascii.stl"; 
+
+CONSTANT STRING stl_log_1= "C:\Varkon\app\Art\stl\buchstaben_log_1.txt"; 
+CONSTANT STRING stl_log_2= "C:\Varkon\app\Art\stl\buchstaben_log_2.txt";
+CONSTANT STRING stl_log_3= "C:\Varkon\app\Art\stl\buchstaben_log_3.txt";
+CONSTANT STRING stl_log_4= "C:\Varkon\app\Art\stl\buchstaben_log_4.txt";
+CONSTANT STRING stl_log_5= "C:\Varkon\app\Art\stl\buchstaben_log_5.txt";
+
+BEGINMODULE
+
+OPEN(f_stl, "r", stl_name_1);
+
+OPEN(f_log, "w", stl_log_1);
+
+PART(#1,stl_ina_gunnar(f_stl, f_log, 1.0, 1.0, 1.0, "n", 2, 3 ));
+
+CLOSE(f_log);
+
+OPEN(f_stl, "r", stl_name_2);
+
+OPEN(f_log, "w", stl_log_2);
+
+PART(#2,stl_ina_gunnar(f_stl, f_log, 1.0, 1.0, 1.0, "n", 2, 3 ));
+
+CLOSE(f_log);
+
+OPEN(f_stl, "r", stl_name_3);
+
+OPEN(f_log, "w", stl_log_3);
+
+PART(#3,stl_ina_gunnar(f_stl, f_log, 1.0, 1.0, 1.0, "n", 2, 3 ));
+
+CLOSE(f_log);
+
+OPEN(f_stl, "r", stl_name_4);
+
+OPEN(f_log, "w", stl_log_4);
+
+PART(#4,stl_ina_gunnar(f_stl, f_log, 1.0, 1.0, 1.0, "n", 2, 3 ));
+
+CLOSE(f_log);
+
+OPEN(f_stl, "r", stl_name_5);
+
+OPEN(f_log, "w", stl_log_5);
+
+PART(#5,stl_ina_gunnar(f_stl, f_log, 1.0, 1.0, 1.0, "n", 2, 3 ));
+
+CLOSE(f_log);
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

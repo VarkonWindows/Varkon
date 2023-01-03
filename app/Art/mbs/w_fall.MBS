@@ -1,0 +1,265 @@
+!********************* w_fall ***********************
+! +++
+! Bridget Riley waterfall
+!
+! ---
+! Revision history
+! ________________
+!
+! 2005-12-25  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Bridget Riley waterfall
+
+GLOBAL GEOMETRY MODULE w_fall();
+
+CONSTANT INT n_s = 50; ! Number of strips
+CONSTANT INT p_1 = 2;
+CONSTANT INT p_2 = 3;
+CONSTANT INT p_3 = 4;
+
+CONSTANT FLOAT x_s =   50.0;
+CONSTANT FLOAT x_d =   50.0;
+CONSTANT FLOAT x_t =   25.0;
+CONSTANT FLOAT y_s = -100.0;
+CONSTANT FLOAT y_d =   50.0;
+CONSTANT FLOAT y_t =   25.0;
+CONSTANT FLOAT p_v =    0.5;
+CONSTANT FLOAT c_t =    1.0; 
+
+CONSTANT FLOAT c_1_height= 20.0; 
+CONSTANT FLOAT c_2_height=300.0; 
+
+VECTOR c_1_p_1; 
+VECTOR c_1_pt_1; 
+VECTOR c_1_p_2; 
+VECTOR c_1_pt_2; 
+VECTOR c_1_p_3; 
+VECTOR c_1_pt_3; 
+VECTOR c_1_p_4; 
+VECTOR c_1_pt_4; 
+
+VECTOR c_2_p_1; 
+VECTOR c_2_pt_1; 
+VECTOR c_2_p_2; 
+VECTOR c_2_pt_2; 
+VECTOR c_2_p_3; 
+VECTOR c_2_pt_3; 
+VECTOR c_2_p_4; 
+VECTOR c_2_pt_4; 
+
+CONSTANT FLOAT c_1_p_v_1 =    0.8;
+CONSTANT FLOAT c_1_p_v_2 =    0.5;
+CONSTANT FLOAT c_1_p_v_3 =    0.3;
+
+CONSTANT FLOAT c_2_p_v_1 =    0.2;
+CONSTANT FLOAT c_2_p_v_2 =    0.4;
+CONSTANT FLOAT c_2_p_v_3 =    0.7;
+
+
+CONSTANT FLOAT c_p_v =    0.4;
+
+CONSTANT INT b_val_a = 1;
+
+INT n_u, n_v; ! Number of patches
+
+INT  i_s; ! Loop index strip
+FLOAT d_s; ! Delta u
+
+INT i_pen;
+INT p_pen;
+
+
+  CONSTANT INT o_p_1=10;           ! Colours
+  CONSTANT INT o_p_2=11; 
+  CONSTANT INT o_p_3=12; 
+  CONSTANT INT o_p_4=13; 
+
+
+INT b_val_s;
+
+BEGINMODULE
+
+  CRE_COLOR(o_p_1,  38,  79, 146); ! Blue
+  CRE_COLOR(o_p_2,  38, 154,  38); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+
+  CRE_COLOR(o_p_1,  26, 141, 220); ! Blue
+  CRE_COLOR(o_p_2,  99, 238,  22); ! Green
+  CRE_COLOR(o_p_3, 255, 255, 255); ! White
+  CRE_COLOR(o_p_4, 252,  49,  44); ! Red
+
+  
+
+
+
+  b_val_s := 0;
+
+! Points first curve
+  c_1_p_1  := VEC(x_s+0*x_d,     y_s+0*y_d,     c_1_height);
+  c_1_pt_1 := VEC(x_s+0*x_d+0.0, y_s+0*y_d+c_t, c_1_height);
+  c_1_p_2  := VEC(x_s+1*x_d,     y_s+1*y_d,     c_1_height);
+  c_1_pt_2 := VEC(x_s+1*x_d+c_t, y_s+1*y_d+0.0, c_1_height);
+  c_1_p_3  := VEC(x_s+2*x_d,     y_s+2*y_d,     c_1_height);
+  c_1_pt_3 := VEC(x_s+2*x_d+0.0, y_s+2*y_d+c_t, c_1_height);
+  c_1_p_4  := VEC(x_s+3*x_d,     y_s+3*y_d,     c_1_height);
+  c_1_pt_4 := VEC(x_s+3*x_d+c_t, y_s+3*y_d+0.0, c_1_height);
+
+
+  POI_FREE(#101, c_1_p_1:BLANK=b_val_a);
+  POI_FREE(#102, c_1_pt_1:BLANK=b_val_a);
+  POI_FREE(#103, c_1_p_2:BLANK=b_val_a);
+  POI_FREE(#104, c_1_pt_2:BLANK=b_val_a);
+  POI_FREE(#105, c_1_p_3:BLANK=b_val_a);
+  POI_FREE(#106, c_1_pt_3:BLANK=b_val_a);
+  POI_FREE(#107, c_1_p_4:BLANK=b_val_a);
+  POI_FREE(#108, c_1_pt_4:BLANK=b_val_a);
+
+! Points second curve
+  c_2_p_1  := VEC(x_s+0*x_d,     y_s+0*y_d,     c_2_height);
+  c_2_pt_1 := VEC(x_s+0*x_d+0.0, y_s+0*y_d+c_t, c_2_height);
+  c_2_p_2  := VEC(x_s+1*x_d,     y_s+1*y_d,     c_2_height);
+  c_2_pt_2 := VEC(x_s+1*x_d+c_t, y_s+1*y_d+0.0, c_2_height);
+  c_2_p_3  := VEC(x_s+2*x_d,     y_s+2*y_d,     c_2_height);
+  c_2_pt_3 := VEC(x_s+2*x_d+0.0, y_s+2*y_d+c_t, c_2_height);
+  c_2_p_4  := VEC(x_s+3*x_d,     y_s+3*y_d,     c_2_height);
+  c_2_pt_4 := VEC(x_s+3*x_d+c_t, y_s+3*y_d+0.0, c_2_height);
+
+
+
+! Water fall curve 1 (first generatrix)
+  CUR_CONIC(#2,"FREE", c_1_p_1, c_1_pt_1, c_1_p_v_1,
+                       c_1_p_2, c_1_pt_2, c_1_p_v_2,
+                       c_1_p_3, c_1_pt_3, c_1_p_v_3,
+                       c_1_p_4, c_1_pt_4:BLANK=b_val_a);
+
+! Water fall curve 1 (first generatrix)
+  CUR_CONIC(#3,"FREE", c_2_p_1, c_2_pt_1, c_2_p_v_1,
+                       c_2_p_2, c_2_pt_2, c_2_p_v_2,
+                       c_2_p_3, c_2_pt_3, c_2_p_v_3,
+                       c_2_p_4, c_2_pt_4:BLANK=b_val_a);
+
+! Directrix 1
+  CUR_CONIC(#11,"FREE", c_1_p_1, c_2_p_1+VEC(173,60,0), 0.5,
+                        c_2_p_1, c_1_p_1+VEC(30,-60,0):BLANK=b_val_a);
+
+ 
+! Directrix 2
+  CUR_CONIC(#12,"FREE", c_1_p_2, c_2_p_2+VEC(53,-60,0), 0.5,
+                        c_2_p_2, c_1_p_2+VEC(248,55,0):BLANK=b_val_a);
+
+
+ 
+! Directrix 3
+  CUR_CONIC(#13,"FREE", c_1_p_3, c_2_p_3+VEC(-148,10,0), 0.5,
+                        c_2_p_3, c_1_p_3+VEC(61,-15,0):BLANK=b_val_a);
+
+
+
+! Directrix 4
+  CUR_CONIC(#14,"FREE", c_1_p_4, c_2_p_4+VEC(38,-40,0), 0.5,
+                        c_2_p_4, c_1_p_4+VEC(-41, 25,0):BLANK=b_val_a);
+
+
+! Transformationer
+
+  TFORM_ROTL(#18,vec(0, 0, 0), vec(3, 5, 100), 20.0 );
+
+  TFORM_MOVE(#19,vec(0.0, 0, 0), vec(0.0, 10.0, 0));
+  TFORM_MOVE(#20,vec(0.0, 0, 0), vec(10.0, 0.0, 0));
+
+  TCOPY(#21, #11, #19);
+  TCOPY(#22, #12, #20);
+  TCOPY(#23, #13, #19);
+  TCOPY(#24, #14, #20);
+
+
+! Spine
+  CUR_CONIC(#30,"FREE", c_1_p_1+VEC(0,0,0.01), c_2_p_1, 0.5,
+                        c_2_p_1-VEC(0,0,0.01), c_1_p_1:BLANK=b_val_a);
+
+
+! P-value curve 1
+  CUR_CONIC(#31, "FREE", VEC(0.0,        c_1_p_v_1, 0.0), 
+                         VEC(ARCL(#30),  c_2_p_v_1, 0.0), 0.5,
+                         VEC(ARCL(#30),  c_2_p_v_1, 0.0),
+                         VEC(0.0,        c_1_p_v_1, 0.0):BLANK=b_val_a);
+
+
+! P-value curve 2
+  CUR_CONIC(#32, "FREE", VEC(0.0,        c_1_p_v_2, 0.0), 
+                         VEC(ARCL(#30),  c_2_p_v_2, 0.0), 0.5,
+                         VEC(ARCL(#30),  c_2_p_v_2, 0.0),
+                         VEC(0.0,        c_1_p_v_2, 0.0):BLANK=b_val_a);
+
+! P-value curve 3
+  CUR_CONIC(#33, "FREE", VEC(0.0,        c_1_p_v_3, 0.0), 
+                         VEC(ARCL(#30),  c_2_p_v_3, 0.0), 0.5,
+                         VEC(ARCL(#30),  c_2_p_v_3, 0.0),
+                         VEC(0.0,        c_1_p_v_3, 0.0):BLANK=b_val_a);
+
+
+
+! Surface
+  SUR_CONIC(#44,#30, #11, #21, "P", #31,
+                     #12, #22, "P", #32, 
+                     #13, #23, "P", #33,
+                     #14, #24:PEN=3,BLANK=b_val_a);
+
+
+! Approximate
+
+  SUR_APPROX(#45,#44, "CUB_SUR", 1, 8:PEN=3,BLANK=b_val_a);
+
+  TCOPY(#5, #45, #18);
+
+
+  GETSURH (#5, "NPATU", n_u);
+  GETSURH (#5, "NPATV", n_v);
+
+  d_s := n_v/(n_s+1);
+
+  i_pen := 0;
+  FOR  i_s := 1 TO n_s DO
+
+    i_pen := i_pen + 1;
+    IF   i_pen = 1 THEN
+      p_pen := 1;
+      b_val_s := 0;
+    ELIF i_pen = 2 THEN
+      p_pen := o_p_3;
+      b_val_s := 1;
+    ELIF i_pen = 3 THEN
+      p_pen := 1;
+      b_val_s := 0;
+      i_pen := 1;
+    ENDIF;
+
+    SUR_TRIM(#1, #5, 0.0, n_u, (i_s-1)*d_s, i_s*d_s:PEN=p_pen,BLANK=b_val_s);
+  ENDFOR;
+
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
