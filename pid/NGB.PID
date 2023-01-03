@@ -1,0 +1,6 @@
+$VARKON_PRD\NGB\job
+$VARKON_PRD\NGB\lib;$VARKON_PRD\optim\lib;$VARKON_PRD\partlib\lib;$VARKON_PRD\sur\lib;$VARKON_PRD\surmacro\lib;$VARKON_PRD\tutorial\lib
+$VARKON_PRD\NGB\sym
+$VARKON_PRD\NGB\doc
+$VARKON_PRD\NGB\mdf\NGB.MDF
+$VARKON_PRD\NGB\mbs

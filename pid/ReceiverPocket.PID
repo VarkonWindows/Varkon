@@ -1,0 +1,6 @@
+$VARKON_PRD\ReceiverPocket\job
+$VARKON_PRD\ReceiverPocket\lib;$VARKON_PRD\impressions\lib
+$VARKON_PRD\ReceiverPocket\sym
+$VARKON_PRD\ReceiverPocket\doc
+$VARKON_PRD\ReceiverPocket\mdf\ReceiverPocket.MDF
+$VARKON_PRD\ReceiverPocket\mbs
