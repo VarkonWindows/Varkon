@@ -1,0 +1,70 @@
+! ***************** ruth_texts ****************************
+!
+! +++
+! Creates curves and calls char_curve
+!
+!
+! 2023-01-02 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates curves and calls char_curve
+
+GLOBAL GEOMETRY MODULE ruth_texts(
+REF     id_surface_u := #0   > "Upper surface of glass";
+REF     id_csys      := #0   > "Coordinate system for surface";
+FLOAT   height_glass := 100.0 >"Height of surface";
+INT	    text_color   :=  3   > "Texts color";
+INT     graphic      :=  1   > "Graphic flag");
+
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("ruth_texts Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  MODE_LOCAL(id_csys);
+  
+  CSYS_1P(#6,"CsysTextOne", vec(0.0, height_glass*0.999, 0.0), 170.0, 0.0, 0.0:BLANK=1);
+	
+  CSYS_1P(#7,"CsysTextTwo", vec(0.0, height_glass*0.999, 0.0), 160.0, 0.0, 0.0:BLANK=1);
+  
+  CSYS_1P(#8,"CsysTextThree", vec(0.0, height_glass*0.999, 0.0), 129.0, 0.0, 0.0:BLANK=1);
+  
+  CSYS_1P(#9,"CsysTextFour", vec(0.0, height_glass*0.999, 0.0), 120.0, 0.0, 0.0:BLANK=1);
+  
+  MODE_GLOBAL();
+  
+  CUR_INT(#11,id_surface_u, #6, 1:BLANK=b_val);
+  
+  CUR_INT(#12,id_surface_u, #7, 1:BLANK=b_val);
+  
+  CUR_INT(#13,id_surface_u, #8, 1:BLANK=b_val);
+  
+  CUR_INT(#14,id_surface_u, #9, 1:BLANK=b_val);
+  
+  PART(#1,char_curve("Liebe Ruth", 
+      GLOBAL_REF(#13), GLOBAL_REF(#14), 
+	  text_color, text_color, text_color, 5.3, 3.1, 0, 2.9, 2.9, 1));
+	  
+  PART(#2,char_curve("Guten Rutsch ins neue Jahr", 
+      GLOBAL_REF(#12), GLOBAL_REF(#13), 
+	  text_color, text_color, text_color, 3.3, 3.1, 0, 1.4, 1.4, 1));
+	  
+  PART(#3,char_curve("Tolles Gedicht Riffi im Schnee  Danke", 
+       GLOBAL_REF(#11), GLOBAL_REF(#12), 
+	   text_color, text_color, text_color, 2.3, 3.1, 0, 1.4, 1.4, 1));
+	  
+ENDMODULE
+
+ 

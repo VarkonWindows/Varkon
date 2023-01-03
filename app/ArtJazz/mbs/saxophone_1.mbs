@@ -1,0 +1,31 @@
+!***********************************************************
+!
+! Defines a saxophone
+!
+! 2022-12-22 Gunnar Liden
+!
+!***********************************************************
+
+LOCAL GEOMETRY MODULE saxophone_1(
+INT     stl_col      :=  8   > "Color for the STL";
+FLOAT   scale_factor :=  1.0 > "Scale factor";
+INT     graphic      :=  1   > "Graphic flag");
+
+! Full name of the input TXT file with point data for the character
+CONSTANT STRING stl_file_name= "C:\Varkon\STLModels\saxophone_ascii.stl";
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELSE
+    EXIT("saxophone_1 Graphic flag not 0 or 1");
+  ENDIF;
+
+  PART(#1, stl_in(stl_file_name, scale_factor, scale_factor, scale_factor, "n", 0.91, stl_col):BLANK= b_val); 
+
+ENDMODULE

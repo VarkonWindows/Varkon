@@ -1,0 +1,158 @@
+! ***************** ruth_curves_iso ****************************
+!
+! +++
+! Creates iso curves and calls icon_curve for small icons
+!
+!
+! 2023-01-02 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates iso curves and calls icon_curve for small icons
+
+GLOBAL GEOMETRY MODULE ruth_curves_iso(
+REF     id_surface   := #0       > "Surface";
+STRING  icon_name*15 := "star_1" > "Name of icon";
+FLOAT   start_u      := 0.75     > "Start U (0-1)";
+FLOAT   end_u        := 1.00     > "End U (0-1)";
+INT     n_curves     :=  15      > "Number of curves";
+INT	    icons_color  :=  3       > "Icons color";
+FLOAT   icons_scale  :=  1.1     > "Icons scale";
+INT     graphic      :=  1       > "Graphic flag");
+
+
+STRING icon_scale_str*10;  ! Icons scale as string
+
+! Debug case
+CONSTANT INT  debug_case = 0;
+
+! File name for the log file
+CONSTANT STRING name_logfile= "C:\Varkon\app\ArtJazz\job\debug\ruth_curves_iso.log";
+FILE f_log; ! File object for the log file
+
+INT     curve_number;      ! Curve number for loop
+STRING  id_entity_str*30;  ! Reference as string
+REF     current_1_id;      ! Current reference 1
+REF     current_2_id;      ! Current reference 2
+
+INT     n_pat_u;           ! Number of patches in U-direction
+INT     n_pat_v;           ! Number of patches in V-direction
+FLOAT   delta_u;           ! Delta parameter value
+FLOAT   current_u;         ! Current parameter value U
+FLOAT   current_v;         ! Current parameter value V
+
+STRING  icons_color_str*5; ! Icons color as string
+
+
+INT     b_val;             ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("ruth_curves_iso Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  icons_color_str := STR(icons_color, -1, 0);
+  
+  icon_scale_str := STR(icons_scale, -1, 0);
+  
+  IF n_curves <= 0 THEN
+    EXIT("ruth_curves_iso Number of curves must be greater than zero");
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OPEN(f_log, "w", name_logfile);
+   IF IOSTAT(f_log) < 0 THEN
+     EXIT("ruth_curves_iso Failure opening LOG file " + name_logfile);
+   ENDIF;
+   
+   OUTSTR(f_log,"Debug output from part icon_curve");
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"================================");
+   OUTLIN(f_log);
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"icon_name= " + icon_name + 
+                     " start_u= " + STR(start_u, -1, 4) +
+                     " end_u= " + STR(end_u, -1, 4));
+   OUTLIN(f_log);
+
+  ENDIF;
+  
+
+  GETSURH(id_surface, "NPATU", n_pat_u);
+  
+  GETSURH(id_surface, "NPATV", n_pat_v);
+  
+  IF n_curves > 1 THEN
+    delta_u := (start_u*n_pat_u - end_u*n_pat_u)/(n_curves - 1);
+  ELSE
+     delta_u := (start_u*n_pat_u - end_u*n_pat_u);
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+
+	OUTSTR(f_log,"n_pat_u= " + STR(n_pat_u, -1, 0) + " n_pat_v= " + STR(n_pat_v, -1, 0));
+	OUTLIN(f_log);
+
+	OUTSTR(f_log,"Start U start_u*n_pat_u= " + STR(start_u*n_pat_u, -1, 4) + 
+				 " End U end_u*n_pat_u= " + STR(end_u*n_pat_u, -1, 4)  + 
+				 " delta_u= " + STR(delta_u, -1, 4));
+	OUTLIN(f_log);
+	
+  ENDIF;
+  
+  FOR curve_number := 1 TO n_curves DO 
+  
+	current_u := start_u*n_pat_u - (curve_number - 1)*delta_u;
+	
+	IF debug_case = 1 THEN
+
+	  OUTSTR(f_log,STR(curve_number, 3, 0) + " current_u= " + STR(current_u, -1, 4));
+	  OUTLIN(f_log);
+	  
+	  OUTSTR(f_log,STR(curve_number, 3, 0) + " current_u+0.001= " + STR(current_u+0.1, -1, 4));
+	  OUTLIN(f_log);
+	
+    ENDIF;
+  
+	CUR_ISO(#10,id_surface, "U", current_u, 0.0, n_pat_v:BLANK=1);
+
+	CUR_ISO(#11,id_surface, "U", current_u + 0.001, 0.0, n_pat_v:BLANK=1);
+	
+	id_entity_str := "#10." + STR(curve_number, -1, 0);
+	
+	current_1_id := RVAL(id_entity_str);
+	  
+	id_entity_str := "#11." + STR(curve_number, -1, 0);
+	
+	current_2_id := RVAL(id_entity_str);		
+
+	PART(#3,icon_curve(
+	   icon_name, 
+		GLOBAL_REF(current_1_id),  GLOBAL_REF(current_2_id), 
+		icons_color_str, icon_scale_str, 0.01, 1.1, 0, graphic));		
+
+  ENDFOR;
+  
+
+  !QQMODE_GLOBAL();
+ 
+  
+  IF debug_case = 1 THEN
+    CLOSE(f_log);
+  ENDIF;
+
+	  
+ENDMODULE
+
+ 

@@ -1,0 +1,82 @@
+! ***************** ruth_icons ****************************
+!
+! +++
+! Creates curves and calls icon_curve
+!
+!
+! 2023-01-02 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates curves and calls icon_curve
+
+GLOBAL GEOMETRY MODULE ruth_icons(
+REF     id_surface_u := #0   > "Upper surface of glass";
+REF     id_surface_b := #0   > "Bottom surface of glass";
+REF     id_csys      := #0   > "Coordinate system for surface";
+FLOAT   height_glass := 100.0 >"Height of surface";
+INT	    icons_color  :=  3   > "Icons color";
+INT     graphic      :=  1   > "Graphic flag");
+
+STRING icons_color_str*10;
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("ruth_icons Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  icons_color_str := STR(icons_color, -1, 0);
+  
+  MODE_LOCAL(id_csys);
+  
+  CSYS_1P(#6,"CsysIcons", VEC(0.0, height_glass*0.995, 0.0), 90.0, 0.0, 0.0:BLANK=1);
+  
+  CSYS_1P(#7,"CsysIcons", VEC(0.0, height_glass*0.999, 0.0), 90.0, 0.0, 0.0:BLANK=1);
+  
+	
+  MODE_GLOBAL();
+  
+  CUR_INT(#8,id_surface_u, #6, 1:BLANK=b_val);
+  
+  CUR_INT(#9,id_surface_u, #7, 1:BLANK=b_val);
+  
+  CUR_ISO(#10,id_surface_b, "U", 0.95, 0.0, 4.0:BLANK=b_val);
+  
+  CUR_ISO(#11,id_surface_b, "U", 0.99, 0.0, 4.0:BLANK=b_val);
+  
+  CUR_ISO(#12,id_surface_b, "U", 0.5, 0.0, 4.0:BLANK=b_val);
+
+  
+  PART(#1,icon_curve(
+      "bike_1 bike_2 bike_3 bike_4 bike_1 bike_2 bike_3 bike_4  ", 
+	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
+      icons_color_str, "6.0", 0.3, 1.1, 180.0, graphic));
+	  
+  PART(#2,icon_curve(
+      "bike_1 bike_2 bike_3 bike_4 bike_1 bike_2 bike_3 bike_4  ", 
+	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
+      icons_color_str, "6.0", 6.3, 1.1, 180.0, graphic));
+	  
+  PART(#3,icon_curve(
+      "bike_1  bike_2   bike_3  bike_4 bike_1  bike_2   bike_3  bike_4  ", 
+      GLOBAL_REF(#10),  GLOBAL_REF(#11), 
+	  icons_color_str, "9.0", 0.01, 1.1, -90.0, graphic));
+	  
+  PART(#4,icon_curve(
+      "bike_1  bike_2   bike_3  bike_4 bike_1  bike_2 bike_3  ", 
+	  GLOBAL_REF(#12),  GLOBAL_REF(#11), 
+      icons_color_str, "6.2", 0.01, 1.1, -90.0, graphic));
+	  
+ENDMODULE
+
+ 

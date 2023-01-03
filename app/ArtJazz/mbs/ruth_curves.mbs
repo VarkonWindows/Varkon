@@ -1,0 +1,139 @@
+! ***************** ruth_curves ****************************
+!
+! +++
+! Creates intersect curves and calls icon_curve for small icons
+!
+!
+! 2023-01-02 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates intersect curves and calls icon_curve for small icons
+
+GLOBAL GEOMETRY MODULE ruth_curves(
+REF     id_surface   := #0   > "Surface (a glass)";
+REF     id_csys      := #0   > "Coordinate system for surface";
+INT     n_curves     :=  15  > "Number of curves";
+FLOAT   height_glass := 100.0 >"Height of surface";
+INT	    icons_color  :=  3   > "Icons color";
+INT     graphic      :=  1   > "Graphic flag");
+
+!CONSTANT FLOAT start_angle= -115.0;
+
+CONSTANT FLOAT start_angle= -165.0;
+
+CONSTANT FLOAT end_angle= -178.0;
+
+
+CONSTANT STRING star_scale_str = "1.1";
+
+! Debug case
+CONSTANT INT  debug_case = 0;
+
+! File name for the log file
+CONSTANT STRING name_logfile= "C:\Varkon\app\ArtJazz\job\debug\ruth_curves.log";
+FILE f_log; ! File object for the log file
+
+FLOAT   delta_angle;       ! Delta angle for intersection curves
+FLOAT   current_angle;     ! Current angle for an intersection curve
+
+INT     curve_number;      ! Curve number for loop
+STRING  id_entity_str*30;  ! Reference as string
+REF     current_1_id;      ! Current reference 1
+REF     current_2_id;      ! Current reference 2
+
+
+
+
+INT     b_val;             ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("ruth_curves Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  MODE_LOCAL(id_csys);
+  
+  IF n_curves <= 0 THEN
+    EXIT("icon_curves Number of curves must be greater than zero");
+  ENDIF;
+  
+  IF debug_case = 1 THEN
+  
+   OPEN(f_log, "w", name_logfile);
+   IF IOSTAT(f_log) < 0 THEN
+     EXIT("ruth_curves Failure opening LOG file " + name_logfile);
+   ENDIF;
+   
+   OUTSTR(f_log,"Debug output from part icon_curve");
+   OUTLIN(f_log);
+   
+   OUTSTR(f_log,"================================");
+   OUTLIN(f_log);
+   OUTLIN(f_log);
+
+  ENDIF;
+  
+  
+  delta_angle :=  (ABS(start_angle) - ABS(end_angle))/n_curves;
+
+  FOR curve_number := 1 TO n_curves DO 
+  
+	current_angle := end_angle - (curve_number - 1)*delta_angle;
+	
+	CSYS_1P(#6,"CsysInt", vec(0.0, height_glass*0.999, -3.0), current_angle, 0.0, 0.0:BLANK=1);
+	
+	id_entity_str := "#6." + STR(curve_number, -1, 0);
+	
+	current_1_id := RVAL(id_entity_str);
+	
+	CUR_INT(#8,id_surface, current_1_id, 1:BLANK=0, PEN=4);
+	
+	IF curve_number >= 2 THEN
+	
+	  id_entity_str := "#8." + STR(curve_number, -1, 0);
+	
+	  current_1_id := RVAL(id_entity_str);
+	  
+	  id_entity_str := "#8." + STR(curve_number - 1, -1, 0);
+	
+	  current_2_id := RVAL(id_entity_str);
+	
+	  PART(#1,icon_curve(
+	   "star_1 ", 
+		GLOBAL_REF(current_2_id),  GLOBAL_REF(current_1_id), 
+		"9", star_scale_str, 0.3, 1.1, 0, graphic));
+		
+	  IF curve_number = 2 THEN
+		PART(#2,icon_curve(
+		 "star_1 ", 
+		  GLOBAL_REF(current_1_id),  GLOBAL_REF(current_2_id), 
+		  "9", star_scale_str, 0.3, 1.1, 0, graphic));	  
+	  ENDIF;
+	  
+	ENDIF;
+	
+  
+  ENDFOR;
+	  
+ 
+  MODE_GLOBAL();
+ 
+error_case:
+  
+  IF debug_case = 1 THEN
+    CLOSE(f_log);
+  ENDIF;
+
+	  
+ENDMODULE
+
+ 
