@@ -1,0 +1,96 @@
+! ***************** brain_surf ****************************
+!
+! +++
+! Creates the brain surface 
+!
+!
+! 2023-01-07 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates the brain surface
+
+LOCAL GEOMETRY MODULE brain_surf(
+REF     id_icon_part := #0    > "Part with the brain 2D curves";
+FLOAT   brain_scale  :=  1.0  > "Brain scale";
+INT     graphic      :=  1    > "Graphic flag");
+
+
+STRING id_entity_str*30;    ! Reference to entity as string
+REF    id_cur_head;         ! Reference 2D head curve
+
+! Start and end parameter values for directrices
+CONSTANT FLOAT  t_start_dir_1 = 3.8;
+CONSTANT FLOAT  t_end_dir_1 = 6.5;
+CONSTANT FLOAT  t_end_one_dir_3 = 3.0;
+CONSTANT FLOAT  t_start_one_dir_3 = 7.6;
+CONSTANT FLOAT eps_dir = 0.1;
+
+CONSTANT INT cur_width= 10; ! Curve width
+CONSTANT INT dir_color=  2; ! Directrix color
+CONSTANT INT tan_color=  4; ! Tangent curve color
+CONSTANT INT surf_color= 3; ! Surface color
+
+INT    b_val;               ! Blank value surface
+INT    b_val_cur;           ! Blank value curves
+INT    b_val_pts;           ! Blank value points
+
+VECTOR dir_3_start_pt;      ! Start point mid directrix 3
+VECTOR dir_3_start_tpt;     ! Start tangent point mid directrix 3
+VECTOR dir_3_end_pt;        ! End point mid directrix 3
+VECTOR dir_3_end_tpt;       ! End tangent point mid directrix 3
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+	b_val_cur := 1;
+	b_val_pts := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+	 b_val_cur := 1;
+	 b_val_pts := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+	 b_val_cur := 0;
+	 b_val_pts := 0;
+  ELSE
+    EXIT("brain_surf Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+! Construct the reference to the 2D head curve
+
+  id_entity_str:= RSTR(id_icon_part) + "#50.1";
+  
+  id_cur_head := RVAL(id_entity_str);
+  
+! Directrix 1
+
+  CUR_TRIM(#2, id_cur_head, t_start_dir_1, t_end_dir_1
+          :BLANK=b_val_cur, WIDTH= cur_width, PEN= dir_color);
+
+! Directrix 3
+
+  CUR_TRIM(#10, id_cur_head, t_start_dir_1 - eps_dir, t_end_one_dir_3
+          :BLANK=b_val_cur, WIDTH= cur_width, PEN= dir_color);  
+		  
+  CUR_TRIM(#11, id_cur_head, t_start_one_dir_3 - eps_dir, t_end_dir_1 + eps_dir
+          :BLANK=b_val_cur, WIDTH= cur_width, PEN= dir_color);  
+		  
+		  
+  dir_3_start_pt  := ON(#10, 1.0);  
+  dir_3_start_tpt := ON(#10, 1.0) + TANG(#10, 1.0); 
+  
+  dir_3_end_pt  := ON(#11, 0.0);  
+  dir_3_end_tpt := ON(#11, 0.0) + TANG(#11, 0.0);   
+		  
+  CUR_CONIC(#12, "FREE", dir_3_start_pt, dir_3_start_tpt, 0.1,
+                         dir_3_end_pt, dir_3_end_tpt
+		  :BLANK=b_val_cur, WIDTH= cur_width, PEN= dir_color);  
+		  
+  
+
+ENDMODULE
+
+ 

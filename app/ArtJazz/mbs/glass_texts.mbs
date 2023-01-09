@@ -1,0 +1,67 @@
+! ***************** glass_texts ****************************
+!
+! +++
+! Creates curves and calls char_curve
+!
+!
+! 2023-01-06 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates curves and calls char_curve
+
+GLOBAL GEOMETRY MODULE glass_texts(
+REF     id_surface_u := #0    > "Upper surface of glass";
+REF     id_csys      := #0    > "Coordinate system for surface";
+FLOAT   height_glass := 100.0 >"Height of surface";
+INT	    text_color   :=  2    > "Texts color";
+INT     graphic      :=  1    > "Graphic flag");
+
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("glass_texts Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  MODE_LOCAL(id_csys);
+  
+  CSYS_1P(#6,"CsysTextOne", vec(0.0, height_glass*0.999, 0.0), 165.0, 0.0, 0.0:BLANK=1);
+	
+  CSYS_1P(#7,"CsysTextTwo", vec(0.0, height_glass*0.999, 0.0), 163.0, 0.0, 0.0:BLANK=1);
+  
+  CSYS_1P(#8,"CsysTextThree", vec(0.0, height_glass*0.999, 0.0), 150.0, 0.0, 0.0:BLANK=1);
+  
+  CSYS_1P(#9,"CsysTextFour", vec(0.0, height_glass*0.999, 0.0), 140.0, 0.0, 0.0:BLANK=1);
+  
+  MODE_GLOBAL();
+  
+  CUR_INT(#11,id_surface_u, #6, 1:BLANK=b_val, PEN=4);
+  
+  CUR_INT(#12,id_surface_u, #7, 1:BLANK=b_val, PEN=3);
+  
+  CUR_INT(#13,id_surface_u, #8, 1:BLANK=b_val);
+  
+  CUR_INT(#14,id_surface_u, #9, 1:BLANK=b_val);
+  
+  PART(#1,char_curve("JAZZ i(live) AARAU", 
+      GLOBAL_REF(#13), GLOBAL_REF(#14), 
+	  text_color, text_color, text_color, 5.3, 3.1, 0, 2.7, 2.5, 1));
+	  
+  PART(#2,char_curve("27 Jahre", 
+      GLOBAL_REF(#12), GLOBAL_REF(#13), 
+	  text_color, text_color, text_color, 10.0, 3.1, 0, 2.4, 2.4, 1));
+	  
+	  
+ENDMODULE
+
+ 

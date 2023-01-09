@@ -1,0 +1,53 @@
+! ***************** brain_bike ****************************
+!
+! +++
+! Creates brain surface and curves with bikes
+!
+!
+! 2023-01-07 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates brain surface and curves with bike
+
+GLOBAL GEOMETRY MODULE brain_bike(
+INT     graphic      :=  1    > "Graphic flag");
+
+
+INT    b_val;              ! Blank value
+
+CONSTANT INT display_head=0; 
+CONSTANT INT color_icon = 4;
+
+CONSTANT FLOAT   brain_scale =  1.0;
+
+! Graphic flag for brain_surf
+CONSTANT INT graphic_surf = 2;
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("brain_bike Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+
+  CSYS_1P(#1,"CsysBrain", vec(0, 0, 0), 0.0, 0.0, 0.0:BLANK=0);
+
+  IF display_head = 1 THEN 
+    PART(#2,mail_head(8, 1, 1),#1);
+  ENDIF;
+
+  PART(#3,icon_brain(brain_scale, color_icon, graphic),#1); 
+  
+  PART(#4,brain_surf(GLOBAL_REF(#3), brain_scale, graphic_surf),#1); 
+	  
+ENDMODULE
+
+ 

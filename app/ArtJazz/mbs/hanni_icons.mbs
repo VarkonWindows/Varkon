@@ -1,17 +1,17 @@
-! ***************** ruth_icons ****************************
+! ***************** hanni_icons ****************************
 !
 ! +++
 ! Creates curves and calls icon_curve
 !
 !
-! 2023-01-05 Gunnar Liden
+! 2023-01-09 Gunnar Liden
 ! ---
 
 !************************************************************
 
 !sdesce Creates curves and calls icon_curve
 
-GLOBAL GEOMETRY MODULE ruth_icons(
+GLOBAL GEOMETRY MODULE hanni_icons(
 REF     id_surface_u := #0   > "Upper surface of glass";
 REF     id_surface_b := #0   > "Bottom surface of glass";
 REF     id_csys      := #0   > "Coordinate system for surface";
@@ -32,16 +32,16 @@ BEGINMODULE
   ELIF graphic = 2 THEN
      b_val := 0;
   ELSE
-    EXIT("ruth_icons Graphic flag not 0, 1 or 2");
+    EXIT("hanni_icons Graphic flag not 0, 1 or 2");
   ENDIF;
   
   icons_color_str := STR(icons_color, -1, 0);
   
   MODE_LOCAL(id_csys);
   
-  CSYS_1P(#6,"CsysIcons", VEC(0.0, height_glass*0.995, 0.0), 90.0, 0.0, 0.0:BLANK=1);
+  CSYS_1P(#6,"CsysIcons", VEC(0.0, height_glass*0.98, 0.0), 90.0, 0.0, 0.0:BLANK=1);
   
-  CSYS_1P(#7,"CsysIcons", VEC(0.0, height_glass*0.999, 0.0), 90.0, 0.0, 0.0:BLANK=1);
+  CSYS_1P(#7,"CsysIcons", VEC(0.0, height_glass*0.99, 0.0), 90.0, 0.0, 0.0:BLANK=1);
   
 	
   MODE_GLOBAL();
@@ -58,22 +58,32 @@ BEGINMODULE
 
   
   PART(#1,icon_curve(
-      "bike_1 bike_1 bike_1 bike_1 bike_1 bike_1 bike_1 bike_1  ", 
+      "sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1  ", 
 	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
-      icons_color_str, "6.0", 0.3, 1.1, 180.0, graphic));
+      icons_color_str, "3.0", 0.3, 1.1, 180.0, graphic));
+	  
+  PART(#5,icon_curve(
+      "sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1  ", 
+	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
+      icons_color_str, "3.0", 3.3, 1.1, 180.0, graphic));
 	  
   PART(#2,icon_curve(
-      "bike_1 bike_1 bike_1 bike_1 bike_1 bike_1 bike_1 bike_1  ", 
+      "sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1  ", 
 	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
-      icons_color_str, "6.0", 6.3, 1.1, 180.0, graphic));
+      icons_color_str, "3.0", 6.3, 1.1, 180.0, graphic));
+	  
+  PART(#17,icon_curve(
+      "sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1 sax_1  ", 
+	  GLOBAL_REF(#9),  GLOBAL_REF(#8), 
+      icons_color_str, "3.0", 9.3, 1.1, 180.0, graphic));
 	  
   PART(#3,icon_curve(
-      "bike_1  bike_1   bike_1  bike_1 bike_1  bike_1   bike_1  bike_1  ", 
+      "sax_1  sax_1   sax_1  sax_1 sax_1  sax_1   sax_1  sax_1  ", 
       GLOBAL_REF(#10),  GLOBAL_REF(#11), 
 	  icons_color_str, "9.0", 0.01, 1.1, -90.0, graphic));
 	  
   PART(#4,icon_curve(
-      "bike_1  bike_1   bike_1  bike_1 bike_1  bike_1 bike_1  ", 
+      "sax_1  sax_1   sax_1  sax_1 sax_1  sax_1 sax_1  ", 
 	  GLOBAL_REF(#12),  GLOBAL_REF(#11), 
       icons_color_str, "6.2", 0.01, 1.1, -90.0, graphic));
 	  

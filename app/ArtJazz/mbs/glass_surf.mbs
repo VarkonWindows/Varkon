@@ -1,0 +1,85 @@
+! ***************** glass_surf ****************************
+!
+! +++
+! Creates the glass surface
+!
+!
+! 2023-01-06 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates the glass surface
+
+GLOBAL GEOMETRY MODULE glass_surf(
+REF     id_csys       :=    #0   > "Csys for surface";
+FLOAT   height_top    :=   500.0 > "Top part height";
+FLOAT   width_top     :=  -200.0 > "Top part width";
+FLOAT   height_mid    :=   100.0 > "Mid part height";
+FLOAT   width_mid     :=   -15.0 >" Mit part width";
+FLOAT   height_bottom :=    50.0 > "Bottom part height";
+FLOAT   width_bottom  :=  -150.0 > "Mit part width";
+INT	    surf_color    :=     1   > "Outer surface color";
+INT	    inner_color   :=     2   > "Inner surface color";
+FLOAT   scale_glass   :=     2.0 > "Scale of glass";
+INT     graphic       :=     1   > "Graphic flag");
+
+CONSTANT FLOAT end_rotation = 359.9; 
+
+FLOAT height_total_scaled; ! Total scaled height of glass
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("glass_surf Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+   height_total_scaled:=(height_top + height_mid + height_bottom)*scale_glass;
+  
+  MODE_LOCAL(id_csys);
+  
+! Rotation line
+  LIN_FREE(#2,VEC(0.0, 0.0, 0.0), VEC(0.0, height_total_scaled, 0.0):BLANK=1);
+	
+! Line to rotate for the top surface
+  LIN_FREE(#3,VEC(width_top*scale_glass, height_total_scaled, 0.0), 
+    VEC(width_mid*scale_glass, height_total_scaled - height_top*scale_glass, 0.0):BLANK=1);
+	
+  LIN_FREE(#4,VEC(width_mid*scale_glass, height_total_scaled - height_top*scale_glass, 0.0), 
+           VEC(width_mid*scale_glass, height_bottom*scale_glass, 0.0):BLANK=1);
+	
+  LIN_FREE(#5,VEC(width_mid*scale_glass, height_bottom*scale_glass, 0.0), 
+              VEC(width_bottom*scale_glass, 0.0, 0.0):BLANK=1);
+	
+	
+  MODE_GLOBAL();
+  
+  SUR_ROT(#10,#3, ON(#2, 0.0), ON(#2, 1.0), 0.0, end_rotation
+                  :BLANK= 1, PEN= 3);
+  SUR_ROT(#11,#4, ON(#2, 0.0), ON(#2, 1.0), 0.0, end_rotation
+                  :BLANK= b_val, PEN= surf_color);
+  SUR_ROT(#12,#5, ON(#2, 0.0), ON(#2, 1.0), 0.0, end_rotation
+                  :BLANK= 1,PEN= inner_color);
+  
+
+  SUR_OFFS(#20, #10, -7.0:BLANK= b_val, PEN= surf_color);
+  
+  !
+  
+  SUR_TRIM(#23, #10, 1.0, 0.0, 0.0, 4.0: BLANK= 1, PEN= inner_color);
+  
+  SUR_OFFS(#24, #23, 8.0:BLANK= b_val, PEN= inner_color);
+  
+  SUR_OFFS(#22, #12, -10.0:BLANK= b_val, PEN= surf_color);
+	  
+ENDMODULE
+
+ 
