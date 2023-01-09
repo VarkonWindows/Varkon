@@ -1,0 +1,279 @@
+!***********************************************************
+!
+! Defines a saxophone
+!
+! 2023-01-09 Gunnar Liden
+!
+!***********************************************************
+
+LOCAL GEOMETRY MODULE icon_sax(
+INT     sax_number :=  1   > "Saxophone number";
+FLOAT   scale_sax  :=  1.0 > "Scale saxophone";
+INT	    sax_color  :=  8   > "Saxophone color. Lt. one (1) => Programmed colors";
+INT     graphic    :=  1   > "Graphic flag");
+
+
+! saxophone 1 start ********************************************
+CONSTANT VECTOR pt_sax_start_1      = VEC(  50, 1400, 0);
+CONSTANT VECTOR pt_neck_start_1     = VEC( 200, 1300, 0);
+CONSTANT VECTOR pt_neck_end_1       = VEC( 250, 1150, 0);
+CONSTANT VECTOR pt_elbow_start_1    = VEC( 300,  300, 0);
+CONSTANT VECTOR pt_elbow_mid_1      = VEC( 450,  150, 0);
+CONSTANT VECTOR pt_elbow_end_1      = VEC( 600,  300, 0);
+CONSTANT VECTOR pt_bell_start_1     = VEC( 650,  650, 0);
+CONSTANT VECTOR pt_bell_end_1       = VEC( 760,  900, 0);
+CONSTANT VECTOR vec_bell_end_1      = VEC( 100,  100, 0);
+CONSTANT FLOAT  sax_start_radius_1  =  30.0;
+CONSTANT FLOAT  neck_start_radius_1 =  50.0;
+CONSTANT FLOAT  neck_end_radius_1   =  60.0;
+CONSTANT FLOAT  elbow_start_radius_1= 110.0;
+CONSTANT FLOAT  elbow_end_radius_1  = 130.0;
+CONSTANT FLOAT  bell_start_radius_1 = 140.0;
+CONSTANT FLOAT  bell_end_radius_1   = 210.0;
+CONSTANT INT    n_keys_1            =   10;
+CONSTANT FLOAT  key_radius_1        =   30.0;
+CONSTANT INT    body_color_1        =    9;
+CONSTANT INT    key_color_1         =    4;
+! saxophone 1 end **********************************************
+
+
+
+VECTOR pt_sax_start_scaled;
+VECTOR pt_neck_start_scaled;
+VECTOR pt_neck_end_scaled;
+VECTOR pt_elbow_start_scaled;
+VECTOR pt_elbow_mid_scaled;
+VECTOR pt_elbow_end_scaled;
+VECTOR pt_bell_start_scaled;
+VECTOR pt_bell_end_scaled;
+VECTOR vec_bell_end;
+
+FLOAT  sax_start_radius;
+FLOAT  neck_start_radius;
+FLOAT  neck_end_radius;
+FLOAT  elbow_start_radius;
+FLOAT  elbow_end_radius;
+FLOAT  bell_start_radius;      ! Bell start radius
+FLOAT  bell_end_radius;        ! Bell end radius
+
+INT	    key_color;             ! Key color
+INT	    body_color;            ! Body color
+INT     n_keys;                ! Number of keys
+FLOAT   key_radius;            ! Key radius
+
+STRING  id_surf_str*30;        ! Reference as string
+REF     id_surfaces(15);       ! Array of surface references
+INT     n_surfaces;            ! Number of surfaces
+INT     surface_number;        ! Loop variable surface
+
+INT    b_val;                  ! Blank value
+INT    b_val_curve;            ! Blank value curves
+INT    b_val_pts;              ! Blank value points
+INT    graphic_ruled;          ! Graphic for sax_ruled
+INT    graphic_keys;           ! Graphic for sax_keys
+
+FLOAT  scale_sax_char;         ! Sax scaled to char size
+
+! Make the saxophone icon the same size as the characters
+CONSTANT FLOAT scale_to_char = 0.026;
+
+STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+	b_val_curve := 1;
+	b_val_pts := 1;
+	graphic_ruled := 0;
+	graphic_keys := 0;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+	 b_val_curve := 1;
+	 b_val_pts := 1;
+	 graphic_ruled := 1;
+	 graphic_keys := 2;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+	 b_val_curve := 0;
+	 b_val_pts := 1;
+	 graphic_ruled := 0;
+	 graphic_keys := 2;
+  ELSE
+    EXIT("saxophone Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  scale_sax_char  := scale_sax*scale_to_char;
+  
+  IF sax_number = 1 THEN
+  
+    pt_sax_start_scaled   := pt_sax_start_1*scale_sax_char;
+    pt_neck_start_scaled  := pt_neck_start_1*scale_sax_char;
+    pt_neck_end_scaled    := pt_neck_end_1*scale_sax_char;
+    pt_elbow_start_scaled := pt_elbow_start_1*scale_sax_char;
+	pt_elbow_mid_scaled   := pt_elbow_mid_1*scale_sax_char;
+    pt_elbow_end_scaled   := pt_elbow_end_1*scale_sax_char;
+    pt_bell_start_scaled  := pt_bell_start_1*scale_sax_char;
+	pt_bell_end_scaled    := pt_bell_end_1*scale_sax_char;
+	vec_bell_end          := vec_bell_end_1;
+
+    sax_start_radius   := sax_start_radius_1;
+    neck_start_radius  := neck_start_radius_1;
+    neck_end_radius    := neck_end_radius_1; 
+    elbow_start_radius := elbow_start_radius_1;
+    elbow_end_radius   := elbow_end_radius_1;
+	bell_start_radius  := bell_start_radius_1;
+	bell_end_radius    := bell_end_radius_1;
+	n_keys             := n_keys_1;	 
+    key_radius	       := key_radius_1;
+
+    IF sax_color >= 1 THEN
+      body_color        := sax_color;
+      key_color         := sax_color;
+    ELSE
+      body_color        := body_color_1;
+      key_color         := key_color_1;
+    ENDIF;
+
+ 
+  ELSE
+  
+    EXIT("sax Saxophone number " + STR(sax_number, -1, 0) + " is not yet implemented");
+	
+  ENDIF;
+
+  POI_FREE(#52,  pt_sax_start_scaled                :BLANK=b_val_pts);
+  POI_FREE(#53,  pt_neck_start_scaled               :BLANK=b_val_pts);
+  POI_FREE(#54,  pt_neck_end_scaled                 :BLANK=b_val_pts);
+  POI_FREE(#55,  pt_elbow_start_scaled              :BLANK=b_val_pts);
+  POI_FREE(#56,  pt_elbow_mid_scaled                :BLANK=b_val_pts);
+  POI_FREE(#57,  pt_elbow_end_scaled                :BLANK=b_val_pts);
+  POI_FREE(#58,  pt_bell_start_scaled               :BLANK=b_val_pts);
+  POI_FREE(#59,  pt_bell_end_scaled                 :BLANK=b_val_pts);
+  POI_FREE(#60, pt_bell_end_scaled + vec_bell_end   :BLANK=b_val_pts);
+
+  
+  CUR_CONIC(#11, "FREE", pt_sax_start_scaled,  pt_neck_start_scaled, 0.5, 
+                         pt_neck_start_scaled, pt_sax_start_scaled
+						 :BLANK=b_val_curve, PEN=2);
+  
+  CUR_CONIC(#12, "FREE", pt_neck_start_scaled, pt_sax_start_scaled, 0.5, 
+                         pt_neck_end_scaled,   pt_elbow_start_scaled
+						 :BLANK=b_val_curve, PEN=3);
+
+  CUR_TRIM(#13, #12, 0.0, 0.5:BLANK=b_val_curve, PEN=2);
+  
+  CUR_TRIM(#14, #12, 0.5, 1.0:BLANK=b_val_curve, PEN=2);
+
+  CUR_CONIC(#15, "FREE", pt_neck_end_scaled,    pt_elbow_start_scaled, 0.5, 
+                         pt_elbow_start_scaled, pt_neck_end_scaled
+						:BLANK=b_val_curve, PEN=1);
+						
+
+  CUR_CONIC(#16, "FREE", pt_elbow_start_scaled, pt_neck_end_scaled, 0.5, 
+                         pt_elbow_mid_scaled,   pt_elbow_mid_scaled + VEC(100.0, 0.0, 0.0)
+				         :BLANK=1, PEN=3);
+						 
+  CUR_TRIM(#17, #16, 0.0, 0.5:BLANK=b_val_curve, PEN=2);
+  
+  CUR_TRIM(#18, #16, 0.5, 1.0:BLANK=b_val_curve, PEN=2);
+						 
+  CUR_CONIC(#19, "FREE", pt_elbow_mid_scaled, pt_elbow_mid_scaled + VEC(100.0, 0.0, 0.0), 0.5, 
+                         pt_elbow_end_scaled, pt_bell_start_scaled
+						 :BLANK=1, PEN=3);
+						 
+  CUR_TRIM(#20, #19, 0.0, 0.5:BLANK=b_val_curve, PEN=2);
+  
+  CUR_TRIM(#21, #19, 0.5, 1.0:BLANK=b_val_curve, PEN=2);
+
+  CUR_CONIC(#22, "FREE", pt_elbow_end_scaled,  pt_bell_start_scaled, 0.5, 
+                         pt_bell_start_scaled, pt_elbow_end_scaled
+						 :BLANK=1, PEN=3);
+						 
+  CUR_TRIM(#23, #22, 0.0, 0.5:BLANK=b_val_curve, PEN=2);
+  
+  CUR_TRIM(#24, #22, 0.5, 1.0:BLANK=b_val_curve, PEN=2);
+  
+  CUR_CONIC(#25, "FREE", pt_bell_start_scaled, pt_elbow_end_scaled, 0.5, 
+                         pt_bell_end_scaled,   pt_bell_end_scaled + vec_bell_end
+						 :BLANK=1, PEN=4);
+
+  CUR_TRIM(#26, #25, 0.00, 0.25:BLANK=b_val_curve, PEN=4);
+  
+  CUR_TRIM(#27, #25, 0.25, 0.50:BLANK=b_val_curve, PEN=10);
+  
+  CUR_TRIM(#28, #25, 0.50, 0.75:BLANK=b_val_curve, PEN=10);
+  
+  CUR_TRIM(#29, #25, 0.75, 1.00:BLANK=b_val_curve, PEN=10);
+  
+  PART(#31, sax_ruled(GLOBAL_REF(#11), sax_start_radius*scale_sax_char, 
+                      neck_start_radius*scale_sax_char, body_color, graphic_ruled));
+  
+  PART(#32, sax_ruled(GLOBAL_REF(#13), neck_start_radius*scale_sax_char, 
+                     (neck_start_radius + (neck_end_radius-neck_start_radius)*0.5)*scale_sax_char, body_color, graphic_ruled));
+ 
+  PART(#33, sax_ruled(GLOBAL_REF(#14), (neck_start_radius + (neck_end_radius-neck_start_radius)*0.5)*scale_sax_char, 
+                      neck_end_radius*scale_sax_char, body_color, graphic_ruled));
+					  
+  PART(#34, sax_ruled(GLOBAL_REF(#15), neck_end_radius*scale_sax_char, 
+                                       neck_end_radius*scale_sax_char, body_color, graphic_ruled));
+									   
+  PART(#35, sax_ruled(GLOBAL_REF(#17), neck_end_radius*scale_sax_char, 
+                  (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.25)*scale_sax_char, body_color, graphic_ruled));
+				  
+  PART(#36, sax_ruled(GLOBAL_REF(#18), (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.25)*scale_sax_char, 
+                  (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.50)*scale_sax_char, body_color, graphic_ruled));
+   
+  PART(#37, sax_ruled(GLOBAL_REF(#20), (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.50)*scale_sax_char, 
+                  (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.75)*scale_sax_char, body_color, graphic_ruled));  
+  
+  PART(#38, sax_ruled(GLOBAL_REF(#21), (neck_end_radius + (elbow_end_radius-neck_end_radius)*0.75)*scale_sax_char, 
+                                        elbow_end_radius*scale_sax_char, body_color, graphic_ruled));  
+    
+  PART(#39, sax_ruled(GLOBAL_REF(#22), elbow_end_radius*scale_sax_char, 
+                                       bell_start_radius*scale_sax_char, body_color, graphic_ruled));	
+									   
+  PART(#40, sax_ruled(GLOBAL_REF(#26), bell_start_radius*scale_sax_char, 
+                     (bell_start_radius + (bell_end_radius-bell_start_radius)*0.25)*scale_sax_char, body_color, graphic_ruled));
+					 
+  PART(#41, sax_ruled(GLOBAL_REF(#27),  (bell_start_radius + (bell_end_radius-bell_start_radius)*0.25)*scale_sax_char, 
+                     (bell_start_radius + (bell_end_radius-bell_start_radius)*0.50)*scale_sax_char, body_color, graphic_ruled));
+					 
+  PART(#42, sax_ruled(GLOBAL_REF(#28),  (bell_start_radius + (bell_end_radius-bell_start_radius)*0.50)*scale_sax_char, 
+                     (bell_start_radius + (bell_end_radius-bell_start_radius)*0.75)*scale_sax_char, body_color, graphic_ruled));					 
+
+  PART(#43, sax_ruled(GLOBAL_REF(#29),  (bell_start_radius + (bell_end_radius-bell_start_radius)*0.75)*scale_sax_char, 
+                     (bell_start_radius + (bell_end_radius-bell_start_radius)*1.00)*scale_sax_char, body_color, graphic_ruled));					 
+
+
+
+
+  n_surfaces := 12;
+  
+  FOR surface_number:= 1 TO 13 DO
+  
+    id_surf_str := "#" + STR(surface_number + 30, -1, 0) + ".1#1.1";
+	
+	!s := INPMT("Reference= " + id_surf_str,"y");
+	
+	id_surfaces(surface_number) := RVAL(id_surf_str);
+  
+  ENDFOR;
+  
+  SUR_COMP(#1, id_surfaces(1), id_surfaces(2),  id_surfaces(3),  id_surfaces(4),
+               id_surfaces(5), id_surfaces(6),  id_surfaces(7),  id_surfaces(8),
+			   id_surfaces(9), id_surfaces(10), id_surfaces(11), id_surfaces(12),
+			   id_surfaces(13)
+           :BLANK=b_val, PEN= body_color);
+		   
+  PART(#2, sax_keys(GLOBAL_REF(#15), neck_end_radius*scale_sax_char, neck_end_radius*scale_sax_char,
+                    n_keys, key_radius*scale_sax_char, key_color, graphic_keys));
+		   
+
+  FOR surface_number:= 1 TO 13 DO
+
+    DEL(id_surfaces(surface_number));
+	
+  ENDFOR;
+  
+ENDMODULE

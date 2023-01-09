@@ -1,0 +1,71 @@
+! ***************** sax_pipe ****************************
+!
+! +++
+! Create pipe around input spine curve, i.e. profile= circle
+!
+!
+! 2023-01-09 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Create pipe around input spine curve
+
+GLOBAL GEOMETRY MODULE sax_pipe(
+REF     id_spine     := #0   > "@t10 Spine";
+FLOAT   diameter     := 20.0 > "Diameter";
+INT	    reverse      := -1   > "Reverse for SUR_SWEEP";
+INT	    sur_color    :=  3   > "Surface color";
+INT     graphic      :=  1   > "Graphic flag");
+
+
+CONSTANT VECTOR y_dir = VEC(1.0, 0.0, 0.0);
+
+!INT    plane_number;       ! B-Plane number
+!INT    n_planes;           ! Number of planes
+!FLOAT  
+
+INT    b_val;              ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("sax_pipe Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+! Profile
+
+  MODE_BASIC();
+
+  ARC_1POS(#3, vec(0,0,0), 0.5*diameter:PEN=sur_color, BLANK= 1);
+
+  MODE_GLOBAL();
+
+
+! Surface
+
+  SUR_SWEEP(#1, #3, id_spine, reverse, y_dir:BLANK=b_val, PEN=sur_color);
+  
+! End surface
+
+  CUR_ISO(#4, #1, "U", 0.0, 0.1, 0.9:BLANK=1, PEN=4);
+  
+  CUR_ISO(#5, #1, "U", 0.0, 1.9, 1.1:BLANK=1, PEN=4);
+  
+  SUR_RULED(#2, #4, #5 : BLANK=b_val, PEN=sur_color);
+  
+  
+  DEL(#3);
+  DEL(#4);
+  DEL(#5);
+
+
+ENDMODULE
+
+ 

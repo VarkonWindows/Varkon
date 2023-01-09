@@ -2,7 +2,7 @@
 ! +++
 ! Create icons along a curve
 !
-! 2023-01-02 Gunnar Liden
+! 2023-01-09 Gunnar Liden
 ! ---
 !****************************************************************************
 !sdesce Create icons along a curve
@@ -21,11 +21,11 @@ INT    graphic      :=  1        >"Graphic case");
 ! Defined icons (TODO Should be moved to a file)
 ! -------------
 
-CONSTANT INT n_defined_icon = 5;
+CONSTANT INT n_defined_icon = 6;
 
-STRING icon_def_name_array(5)*15;
+STRING icon_def_name_array(6)*15;
 
-FLOAT  icon_def_width_array(5);
+FLOAT  icon_def_width_array(6);
 
 ! Current icon category: bike or star
 STRING icon_category*10; 
@@ -74,12 +74,14 @@ FLOAT  current_scale;      ! Current icon scale as float
 
 INT    pos_bike_str;       ! Position bike for function FINDS
 INT    pos_star_str;       ! Position star for function FINDS
-
+INT    pos_sax_str;        ! Position star for function FINDS
 
 STRING bike_number_str*2;  ! Bike number als string
-INT    bike_number;         ! Bike number
+INT    bike_number;        ! Bike number
 STRING star_number_str*2;  ! Star number als string
-INT    star_number;         ! Star number
+INT    star_number;        ! Star number
+STRING sax_number_str*2;   ! Sax number als string
+INT    sax_number;         ! Sax number
 
 
 STRING n_icons*30;         ! Next icon
@@ -119,12 +121,14 @@ BEGINMODULE
   icon_def_name_array(3) := "bike_3";
   icon_def_name_array(4) := "bike_4";
   icon_def_name_array(5) := "star_1";
+  icon_def_name_array(6) := "sax_1";
   
   icon_def_width_array(1) := 24.0;
-  icon_def_width_array(2) := 24.1;
-  icon_def_width_array(3) := 24.2;
-  icon_def_width_array(4) := 24.3;
+  icon_def_width_array(2) := 21.0;
+  icon_def_width_array(3) := 21.8;
+  icon_def_width_array(4) := 28.0;
   icon_def_width_array(5) := 14.2;
+  icon_def_width_array(6) := 25.0;
   
   icon_category:= "undefined";
 
@@ -244,7 +248,7 @@ BEGINMODULE
 	  current_icon := current_icon + current_char;
 	  
       IF n_icon + 1 >= max_n_icon_bike THEN
-	    s:= INPMT("icon_curve Number of icons must nod exceed " + STR(max_n_icon_bike, -1, 0), "");
+	    s:= INPMT("icon_curve Number of icons must not exceed " + STR(max_n_icon_bike, -1, 0), "");
 		GOTO max_n_icon_bike_exceeded;
 	  ENDIF;
 
@@ -772,21 +776,34 @@ max_length_exceeded:
   
     current_icon := icon_array(icon_number);
 	
-	pos_bike_str := FINDS(current_icon, "bike_");
-	pos_star_str := FINDS(current_icon, "star_");
+	pos_bike_str := FINDS(current_icon, "bike_"); ! Length 5
+	pos_star_str := FINDS(current_icon, "star_"); ! Length 5
+	pos_sax_str  := FINDS(current_icon, "sax_" ); ! Length 4
 	
 	IF pos_bike_str = 1 THEN
+	
 	  icon_category:= "bike";
 		
-	  bike_number_str := SUBSTR(current_icon, pos_bike_str);
+	  bike_number_str := SUBSTR(current_icon, 6);
 	
 	  bike_number := IVAL(bike_number_str);
+	  
 	ELIF pos_star_str = 1 THEN
+	
 	  icon_category:= "star";
 		
-	  star_number_str := SUBSTR(current_icon, pos_star_str);
+	  star_number_str := SUBSTR(current_icon, 6);
 	
 	  star_number := IVAL(star_number_str);
+	  
+	ELIF pos_sax_str = 1 THEN
+	
+	  icon_category:= "sax";
+		
+	  sax_number_str := SUBSTR(current_icon, 5);
+	
+	  sax_number := IVAL(sax_number_str);
+	  
 	ELSE
 	  IF debug_case = 1 THEN
         CLOSE(f_log);
@@ -890,15 +907,16 @@ max_length_exceeded:
 	current_scale := scale_array(icon_number);
 	
 	IF icon_category = "bike" THEN
-	
-	  bike_number := 1; ! QQQQQQQQQQQQQQQQQQ
 	  
-      PART(#1,bike(bike_number, 1360.0, 1360.0, 80.0, 10.0, 100.0, 24, current_color, 100.0, 500.0, 
-      70.0, 40.0, current_color, 490.0, 220.0, 90.0, 49.0, current_color, current_scale, 1), ref_csys_rot);
+      PART(#1,bike(bike_number, current_color, current_scale, 1), ref_csys_rot);
 	
 	ELIF icon_category = "star" THEN
 	
 	  PART(#11, icon_star(star_number, current_scale, current_color, 2), ref_csys_rot);
+	  
+	ELIF icon_category = "sax" THEN
+	
+	  PART(#12, icon_sax(sax_number, current_scale, current_color, 1), ref_csys_rot);
 	
 	ENDIF;
 	

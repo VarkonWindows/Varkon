@@ -4,7 +4,7 @@
 ! Creates a star
 !
 !
-! 2023-01-01 Gunnar Liden
+! 2023-01-05 Gunnar Liden
 ! ---
 
 !************************************************************
@@ -35,6 +35,10 @@ BEGINMODULE
      b_val := 0;
   ELSE
     EXIT("icon_star Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  IF star_number <> 1 THEN
+    EXIT("icon_star A star with number " + STR(star_number, -1, 0) + " is not yet implemented");
   ENDIF;
 
   TFORM_MOVE(#10, VEC(0.0, 0.0, 0.0), VEC(7.0710678, pixel_scale*10.0, 0.0), star_scale, star_scale, star_scale);

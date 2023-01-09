@@ -1,0 +1,120 @@
+! ***************** sax_ruled ****************************
+!
+! +++
+! Creates a ruled around an input spine curve
+!
+! It is assumed that the input curve is in the XY plane
+!
+!
+! 2023-01-08 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates a ruled around an input spine curve
+
+GLOBAL GEOMETRY MODULE sax_ruled(
+REF     id_spine     := #0   > "@t10 Spine";
+FLOAT   s_radius     := 20.0 > "Start radius";
+FLOAT   e_radius     := 20.0 > "End radius";
+INT	    sur_color    :=  3   > "Surface color";
+INT     graphic      :=  1   > "Graphic flag");
+
+VECTOR pt_start;           ! Start point
+VECTOR pt_end;             ! End point
+VECTOR vec_start;          ! Start vector (X axis)
+VECTOR vec_end;            ! End vector (X axis)
+VECTOR y_axis;             ! Y axis
+FLOAT  t_end;              ! Curve end parameter
+
+CONSTANT VECTOR z_axis = VEC(0.0, 0.0, 1.0);
+
+CONSTANT INT sax_reverse = -1;
+
+
+VECTOR pt_cir_1;
+VECTOR pt_cir_2;
+VECTOR pt_cir_3;
+VECTOR pt_cir_4;
+CONSTANT VECTOR vec_cir_down  = VEC( 0.0, -1.0, 0.0);
+CONSTANT VECTOR vec_cir_left  = VEC(-1.0,  0.0, 0.0);
+CONSTANT VECTOR vec_cir_up    = VEC( 0.0,  1.0, 0.0);
+CONSTANT VECTOR vec_cir_right = VEC( 1.0,  0.0, 0.0);
+CONSTANT FLOAT p_val_c = 0.4142;
+
+INT    b_val_curve;            ! Blank value curves
+INT    b_val_pts;              ! Blank value points
+INT    b_val;                  ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+	b_val_curve := 1;
+	b_val_pts := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+	b_val_curve := 1;
+	b_val_pts := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+	b_val_curve := 0;
+	b_val_pts := 0;
+  ELSE
+    EXIT("sax_ruled Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+! Start circle coordinate system
+
+  pt_start  := ON(id_spine, 0.0);
+  vec_start := TANG(id_spine, 0.0);
+  y_axis := VPROD(vec_start, z_axis);
+  
+  CSYS_3P(#2, "StartCsys", pt_start, pt_start + z_axis, pt_start + y_axis:BLANK=1); 
+
+! End circle coordinate system
+
+  t_end := INV_ARCL(id_spine,ARCL(id_spine));
+
+  pt_end  := ON(id_spine, t_end);
+  vec_start := TANG(id_spine, t_end);
+  y_axis := VPROD(vec_start, z_axis);
+  
+  CSYS_3P(#3, "EndCsys", pt_end, pt_end + z_axis, pt_end + y_axis:BLANK=1);
+  
+
+! Start circle
+
+  MODE_LOCAL(#2);
+
+  CUR_CONIC(#4, "FREE",
+                s_radius*vec_cir_right, s_radius*vec_cir_right + vec_cir_down, p_val_c,
+                s_radius*vec_cir_down, s_radius*vec_cir_down + vec_cir_left, p_val_c,
+				s_radius*vec_cir_left, s_radius*vec_cir_left + vec_cir_up, p_val_c,
+				s_radius*vec_cir_up, s_radius*vec_cir_up + vec_cir_right, p_val_c,
+				s_radius*vec_cir_right, s_radius*vec_cir_right + vec_cir_down
+				:BLANK= b_val_curve, WIDTH=2, PEN=3);
+  
+  MODE_GLOBAL();
+  
+  MODE_LOCAL(#3);
+
+  CUR_CONIC(#5, "FREE",
+                e_radius*vec_cir_right, e_radius*vec_cir_right + vec_cir_down, p_val_c,
+                e_radius*vec_cir_down, e_radius*vec_cir_down + vec_cir_left, p_val_c,
+				e_radius*vec_cir_left, e_radius*vec_cir_left + vec_cir_up, p_val_c,
+				e_radius*vec_cir_up, e_radius*vec_cir_up + vec_cir_right, p_val_c,
+				e_radius*vec_cir_right, e_radius*vec_cir_right + vec_cir_down
+				:BLANK= b_val_curve, WIDTH=4, PEN=2);
+  
+  MODE_GLOBAL();
+  
+  
+! Surface
+
+  SUR_RULED(#1, #4, #5, sax_reverse, 1:BLANK=b_val, PEN=sur_color);
+  
+
+ENDMODULE
+
+ 

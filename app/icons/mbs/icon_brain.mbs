@@ -1,0 +1,483 @@
+! ***************** icon_brain ****************************
+!
+! +++
+! Creates a net of 2D curves representing the brain
+!
+!
+! 2023-01-07 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates a net of 2D curves representing the brain
+
+LOCAL GEOMETRY MODULE icon_brain(
+FLOAT   brain_scale    :=  1.0   > "Brain scale";
+INT     brain_color    :=  4     > "Brain color";
+INT     graphic        :=  1     > "Graphic flag");
+
+CONSTANT FLOAT offset_curve = 10.0;
+
+! Correction for screen 2560 X 1440
+CONSTANT FLOAT pixel_scale = 1.33; 
+
+VECTOR pts(10);               ! Array of points
+INT    n_pts;                 ! Number of points
+
+INT    b_val;                 ! Blank value curves
+CONSTANT INT b_val_pts= 1;    ! Blank value points
+CONSTANT INT b_val_offset= 0; ! Blank value offset curves
+CONSTANT INT pen_offset= 1;   ! Color for offset curve
+
+CONSTANT INT cur_width= 5;   ! Curve width
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+  ELSE
+    EXIT("icon_brain Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+! Curve 1
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*  90.0, brain_scale* 800.0, 0.0);
+  pts(2) := VEC(brain_scale*  50.0, brain_scale* 900.0, 0.0);
+  pts(3) := VEC(brain_scale*  70.0, brain_scale*1030.0, 0.0); 
+  pts(4) := VEC(brain_scale* 140.0, brain_scale*1070.0, 0.0);
+  
+  CUR_SPLARR(#1, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#101, #1, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 2
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 140.0, brain_scale*1070.0, 0.0);
+  pts(2) := VEC(brain_scale* 170.0, brain_scale*1170.0, 0.0);
+  pts(3) := VEC(brain_scale* 200.0, brain_scale*1280.0, 0.0); 
+  pts(4) := VEC(brain_scale* 350.0, brain_scale*1300.0, 0.0);
+  
+  CUR_SPLARR(#2, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#102, #2, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 3
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 350.0, brain_scale*1300.0, 0.0);
+  pts(2) := VEC(brain_scale* 358.0, brain_scale*1350.0, 0.0);
+  pts(3) := VEC(brain_scale* 450.0, brain_scale*1420.0, 0.0); 
+  pts(4) := VEC(brain_scale* 600.0, brain_scale*1400.0, 0.0);
+  
+  CUR_SPLARR(#3, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#103, #3, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 4
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 600.0, brain_scale*1400.0, 0.0);
+  pts(2) := VEC(brain_scale* 650.0, brain_scale*1480.0, 0.0);
+  pts(3) := VEC(brain_scale* 750.0, brain_scale*1500.0, 0.0); 
+  pts(4) := VEC(brain_scale* 850.0, brain_scale*1470.0, 0.0);
+  
+  CUR_SPLARR(#4, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#104, #4, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 5
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 850.0, brain_scale*1470.0, 0.0);
+  pts(2) := VEC(brain_scale* 900.0, brain_scale*1510.0, 0.0);
+  pts(3) := VEC(brain_scale*1000.0, brain_scale*1520.0, 0.0); 
+  pts(4) := VEC(brain_scale*1080.0, brain_scale*1470.0, 0.0);
+  
+  CUR_SPLARR(#5, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#105, #5, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 6
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1080.0, brain_scale*1470.0, 0.0);
+  pts(2) := VEC(brain_scale*1150.0, brain_scale*1510.0, 0.0);
+  pts(3) := VEC(brain_scale*1300.0, brain_scale*1500.0, 0.0); 
+  pts(4) := VEC(brain_scale*1450.0, brain_scale*1380.0, 0.0);
+  
+  CUR_SPLARR(#6, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#106, #6, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+
+! Curve 7
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1450.0, brain_scale*1380.0, 0.0);
+  pts(2) := VEC(brain_scale*1550.0, brain_scale*1370.0, 0.0);
+  pts(3) := VEC(brain_scale*1650.0, brain_scale*1290.0, 0.0); 
+  pts(4) := VEC(brain_scale*1660.0, brain_scale*1180.0, 0.0);
+  
+  CUR_SPLARR(#7, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#107, #7, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 8
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1660.0, brain_scale*1180.0, 0.0);
+  pts(2) := VEC(brain_scale*1750.0, brain_scale*1110.0, 0.0);
+  pts(3) := VEC(brain_scale*1750.0, brain_scale*1000.0, 0.0); 
+  pts(4) := VEC(brain_scale*1710.0, brain_scale* 920.0, 0.0);
+  
+  CUR_SPLARR(#8, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#108, #8, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 9
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1710.0, brain_scale* 920.0, 0.0);
+  pts(2) := VEC(brain_scale*1730.0, brain_scale* 880.0, 0.0);
+  pts(3) := VEC(brain_scale*1750.0, brain_scale* 760.0, 0.0); 
+  pts(4) := VEC(brain_scale*1650.0, brain_scale* 680.0, 0.0);
+  
+  CUR_SPLARR(#9, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#109, #9, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 10
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1650.0, brain_scale* 680.0, 0.0);
+  pts(2) := VEC(brain_scale*1600.0, brain_scale* 610.0, 0.0);
+  pts(3) := VEC(brain_scale*1490.0, brain_scale* 570.0, 0.0); 
+  pts(4) := VEC(brain_scale*1400.0, brain_scale* 570.0, 0.0);
+  
+  CUR_SPLARR(#10, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#110, #10, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 11
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1400.0, brain_scale* 570.0, 0.0);
+  pts(2) := VEC(brain_scale*1350.0, brain_scale* 530.0, 0.0);
+  pts(3) := VEC(brain_scale*1250.0, brain_scale* 490.0, 0.0); 
+  pts(4) := VEC(brain_scale*1150.0, brain_scale* 500.0, 0.0);
+  
+  CUR_SPLARR(#11, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#111, #11, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 12
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1150.0, brain_scale* 500.0, 0.0);
+  pts(2) := VEC(brain_scale*1100.0, brain_scale* 450.0, 0.0);
+  pts(3) := VEC(brain_scale*1000.0, brain_scale* 420.0, 0.0); 
+  pts(4) := VEC(brain_scale* 850.0, brain_scale* 480.0, 0.0);
+  
+  CUR_SPLARR(#12, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#112, #12, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 13
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 850.0, brain_scale* 480.0, 0.0);
+  pts(2) := VEC(brain_scale* 750.0, brain_scale* 470.0, 0.0);
+  pts(3) := VEC(brain_scale* 650.0, brain_scale* 500.0, 0.0); 
+  pts(4) := VEC(brain_scale* 530.0, brain_scale* 550.0, 0.0);
+  
+  CUR_SPLARR(#13, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#113, #13, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 14
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 530.0, brain_scale* 550.0, 0.0);
+  pts(2) := VEC(brain_scale* 450.0, brain_scale* 540.0, 0.0);
+  pts(3) := VEC(brain_scale* 350.0, brain_scale* 570.0, 0.0); 
+  pts(4) := VEC(brain_scale* 300.0, brain_scale* 600.0, 0.0);
+  
+  CUR_SPLARR(#14, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#114, #14, offset_curve:BLANK= b_val_offset, PEN= pen_offset);   
+  
+! Curve 15
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 300.0, brain_scale* 600.0, 0.0);
+  pts(2) := VEC(brain_scale* 200.0, brain_scale* 590.0, 0.0);
+  pts(3) := VEC(brain_scale* 100.0, brain_scale* 640.0, 0.0); 
+  pts(4) := VEC(brain_scale*  90.0, brain_scale* 800.0, 0.0);
+  
+  CUR_SPLARR(#15, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#115, #15, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 21
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1700.0, brain_scale* 700.0, 0.0);
+  pts(2) := VEC(brain_scale*1650.0, brain_scale* 460.0, 0.0);
+  pts(3) := VEC(brain_scale*1500.0, brain_scale* 380.0, 0.0); 
+  pts(4) := VEC(brain_scale*1370.0, brain_scale* 300.0, 0.0);
+  
+  CUR_SPLARR(#21, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#121, #21, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 22
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1370.0, brain_scale* 300.0, 0.0);
+  pts(2) := VEC(brain_scale*1250.0, brain_scale* 330.0, 0.0);
+  pts(3) := VEC(brain_scale*1200.0, brain_scale* 380.0, 0.0); 
+  pts(4) := VEC(brain_scale*1150.0, brain_scale* 500.0, 0.0);
+  
+  CUR_SPLARR(#22, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#122, #22, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 23
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1370.0, brain_scale* 300.0, 0.0);
+  pts(2) := VEC(brain_scale*1400.0, brain_scale*  80.0, 0.0);
+  pts(3) := VEC(brain_scale*1230.0, brain_scale*  40.0, 0.0); 
+  pts(4) := VEC(brain_scale*1170.0, brain_scale* 200.0, 0.0);
+  
+  CUR_SPLARR(#23, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#123, #23, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+
+! Curve 24
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1170.0, brain_scale* 200.0, 0.0);
+  pts(2) := VEC(brain_scale*1050.0, brain_scale* 220.0, 0.0);
+  pts(3) := VEC(brain_scale* 900.0, brain_scale* 380.0, 0.0); 
+  pts(4) := VEC(brain_scale* 910.0, brain_scale* 440.0, 0.0);
+  
+  CUR_SPLARR(#24, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#124, #24, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 25
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1400.0, brain_scale* 570.0, 0.0);
+  pts(2) := VEC(brain_scale*1380.0, brain_scale* 600.0, 0.0);
+  pts(3) := VEC(brain_scale*1440.0, brain_scale* 730.0, 0.0); 
+  pts(4) := VEC(brain_scale*1350.0, brain_scale* 820.0, 0.0);
+  
+  CUR_SPLARR(#25, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#125, #25, offset_curve:BLANK= b_val_offset, PEN= pen_offset); 
+  
+! Curve 26
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1650.0, brain_scale* 680.0, 0.0);
+  pts(2) := VEC(brain_scale*1660.0, brain_scale* 800.0, 0.0);
+  pts(3) := VEC(brain_scale*1550.0, brain_scale* 800.0, 0.0); 
+  pts(4) := VEC(brain_scale*1450.0, brain_scale* 870.0, 0.0);
+  
+  CUR_SPLARR(#26, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#126, #26, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+
+! Curve 27
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 850.0, brain_scale* 480.0, 0.0);
+  pts(2) := VEC(brain_scale* 900.0, brain_scale* 580.0, 0.0);
+  pts(3) := VEC(brain_scale*1000.0, brain_scale* 650.0, 0.0); 
+  pts(4) := VEC(brain_scale*1100.0, brain_scale* 640.0, 0.0);
+  
+  CUR_SPLARR(#27, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#127, #27, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 28
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1030.0, brain_scale* 900.0, 0.0);
+  pts(2) := VEC(brain_scale*1100.0, brain_scale* 860.0, 0.0);
+  pts(3) := VEC(brain_scale*1350.0, brain_scale* 990.0, 0.0); 
+  pts(4) := VEC(brain_scale*1400.0, brain_scale* 960.0, 0.0);
+  
+  CUR_SPLARR(#28, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#128, #28, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 29
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1450.0, brain_scale*1380.0, 0.0);
+  pts(2) := VEC(brain_scale*1400.0, brain_scale*1300.0, 0.0);
+  pts(3) := VEC(brain_scale*1520.0, brain_scale*1100.0, 0.0); 
+  pts(4) := VEC(brain_scale*1500.0, brain_scale*1030.0, 0.0);
+  
+  CUR_SPLARR(#29, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#129, #29, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 30
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1450.0, brain_scale*1380.0, 0.0);
+  pts(2) := VEC(brain_scale*1350.0, brain_scale*1350.0, 0.0);
+  pts(3) := VEC(brain_scale*1300.0, brain_scale*1270.0, 0.0); 
+  pts(4) := VEC(brain_scale*1310.0, brain_scale*1180.0, 0.0);
+  
+  CUR_SPLARR(#30, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#130, #30, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+
+! Curve 31
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale*1080.0, brain_scale*1470.0, 0.0);
+  pts(2) := VEC(brain_scale*1000.0, brain_scale*1420.0, 0.0);
+  pts(3) := VEC(brain_scale* 950.0, brain_scale*1330.0, 0.0); 
+  pts(4) := VEC(brain_scale* 960.0, brain_scale*1250.0, 0.0);
+  
+  CUR_SPLARR(#31, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#131, #31, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 32
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 960.0, brain_scale*1250.0, 0.0);
+  pts(2) := VEC(brain_scale*1050.0, brain_scale*1220.0, 0.0);
+  pts(3) := VEC(brain_scale*1140.0, brain_scale*1160.0, 0.0); 
+  pts(4) := VEC(brain_scale*1150.0, brain_scale*1100.0, 0.0);
+  
+  CUR_SPLARR(#32, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#132, #32, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 33
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 960.0, brain_scale*1250.0, 0.0);
+  pts(2) := VEC(brain_scale*1000.0, brain_scale*1160.0, 0.0);
+  pts(3) := VEC(brain_scale*1020.0, brain_scale*1070.0, 0.0); 
+  pts(4) := VEC(brain_scale* 930.0, brain_scale*1050.0, 0.0);
+  
+  CUR_SPLARR(#33, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#133, #33, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 34
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 600.0, brain_scale*1400.0, 0.0);
+  pts(2) := VEC(brain_scale* 650.0, brain_scale*1350.0, 0.0);
+  pts(3) := VEC(brain_scale* 700.0, brain_scale*1280.0, 0.0); 
+  pts(4) := VEC(brain_scale* 720.0, brain_scale*1230.0, 0.0);
+  
+  CUR_SPLARR(#34, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#134, #34, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 35
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 140.0, brain_scale*1070.0, 0.0);
+  pts(2) := VEC(brain_scale* 300.0, brain_scale*1050.0, 0.0);
+  pts(3) := VEC(brain_scale* 400.0, brain_scale* 880.0, 0.0); 
+  pts(4) := VEC(brain_scale* 500.0, brain_scale* 910.0, 0.0);
+  
+  CUR_SPLARR(#35, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#135, #35, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 36
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 500.0, brain_scale* 910.0, 0.0);
+  pts(2) := VEC(brain_scale* 550.0, brain_scale* 900.0, 0.0);
+  pts(3) := VEC(brain_scale* 700.0, brain_scale* 930.0, 0.0); 
+  pts(4) := VEC(brain_scale* 740.0, brain_scale* 970.0, 0.0);
+  
+  CUR_SPLARR(#36, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#136, #36, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 37
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 500.0, brain_scale* 910.0, 0.0);
+  pts(2) := VEC(brain_scale* 480.0, brain_scale*1030.0, 0.0);
+  pts(3) := VEC(brain_scale* 550.0, brain_scale*1130.0, 0.0); 
+  pts(4) := VEC(brain_scale* 600.0, brain_scale*1150.0, 0.0);
+  
+  CUR_SPLARR(#37, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#137, #37, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 38
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 530.0, brain_scale* 550.0, 0.0);
+  pts(2) := VEC(brain_scale* 500.0, brain_scale* 630.0, 0.0);
+  pts(3) := VEC(brain_scale* 400.0, brain_scale* 710.0, 0.0); 
+  pts(4) := VEC(brain_scale* 320.0, brain_scale* 750.0, 0.0);
+  
+  CUR_SPLARR(#38, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#138, #38, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 39
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 530.0, brain_scale* 550.0, 0.0);
+  pts(2) := VEC(brain_scale* 650.0, brain_scale* 570.0, 0.0);
+  pts(3) := VEC(brain_scale* 750.0, brain_scale* 660.0, 0.0); 
+  pts(4) := VEC(brain_scale* 770.0, brain_scale* 700.0, 0.0);
+  
+  CUR_SPLARR(#39, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#139, #39, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 40
+  n_pts := 4; 
+  pts(1) := VEC(brain_scale* 770.0, brain_scale* 700.0, 0.0);
+  pts(2) := VEC(brain_scale* 780.0, brain_scale* 780.0, 0.0);
+  pts(3) := VEC(brain_scale* 760.0, brain_scale* 820.0, 0.0); 
+  pts(4) := VEC(brain_scale* 750.0, brain_scale* 850.0, 0.0);
+  
+  CUR_SPLARR(#40, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#140, #40, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 41
+  n_pts := 3; 
+  pts(1) := VEC(brain_scale* 770.0, brain_scale* 700.0, 0.0);
+  pts(2) := VEC(brain_scale* 730.0, brain_scale* 730.0, 0.0);
+  pts(3) := VEC(brain_scale* 650.0, brain_scale* 700.0, 0.0); 
+  
+  CUR_SPLARR(#41, "CHORD", n_pts, pts:BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+  
+  CUR_OFFS(#141, #41, offset_curve:BLANK= b_val_offset, PEN= pen_offset);
+  
+! Curve 50
+
+  POI_FREE(#51, VEC(brain_scale* 900.0, brain_scale*1570.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#52, VEC(brain_scale* (900.0 + 100.0), brain_scale*(1570.0 + 8.0), 0.0): BLANK= b_val_pts);
+
+  POI_FREE(#53, VEC(brain_scale*1800.0, brain_scale*1110.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#54, VEC(brain_scale*(1800.0 + 25.0), brain_scale*(1110.0 - 100.0), 0.0): BLANK= b_val_pts);
+  
+  POI_FREE(#55, VEC(brain_scale*1800.0, brain_scale* 760.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#56, VEC(brain_scale*(1800.0 - 20.0), brain_scale* (760.0 - 100.0), 0.0): BLANK= b_val_pts);
+  
+  POI_FREE(#57, VEC(brain_scale*1470.0, -brain_scale* 300.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#58, VEC(brain_scale*1470.0, -brain_scale* 400.0, 0.0): BLANK= b_val_pts);
+  
+  POI_FREE(#59, VEC(brain_scale*  10.0, brain_scale*1030.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#60, VEC(brain_scale*  30.0, brain_scale*(1030.0 + 100), 0.0): BLANK= b_val_pts);
+  
+  POI_FREE(#61, VEC(brain_scale*  30.0, brain_scale* 640.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#62, VEC(brain_scale*  (30.0 - 20.0), brain_scale* (640.0 + 100.0), 0.0): BLANK= b_val_pts);
+
+  POI_FREE(#63, VEC(-brain_scale*120.0, brain_scale*  40.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#64, VEC(-brain_scale*80.0, brain_scale*  (40.0+100.0), 0.0): BLANK= b_val_pts); 
+
+  POI_FREE(#65, VEC(brain_scale* 40.0, -brain_scale*  70.0, 0.0): BLANK= b_val_pts);  
+  POI_FREE(#66, VEC(brain_scale* 70.0, -brain_scale*  80.0, 0.0): BLANK= b_val_pts);
+  
+  POI_FREE(#67, VEC(brain_scale* 20.0, -brain_scale* 270.0, 0.0): BLANK= b_val_pts);
+  POI_FREE(#68, VEC(brain_scale* 10.0, -brain_scale* 300.0, 0.0): BLANK= b_val_pts);
+  
+  CUR_CONIC(#50, "FREE", 
+                 ON(#68), ON(#67), 0.5,
+                 ON(#66), ON(#65), 0.7,
+                 ON(#63), ON(#64), 0.7,
+                 ON(#61), ON(#62), 0.5,
+                 ON(#59), ON(#60), 0.5,
+                 ON(#51), ON(#52), 0.4, 
+				 ON(#53), ON(#54), 0.5,
+				 ON(#55), ON(#56), 0.6, 
+				 ON(#57), ON(#58)
+				 :BLANK= b_val, WIDTH= cur_width, PEN= brain_color);
+ENDMODULE
+
+ 

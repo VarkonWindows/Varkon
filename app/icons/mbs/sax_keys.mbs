@@ -1,0 +1,126 @@
+! ***************** sax_keys ****************************
+!
+! +++
+! Creates saxophone keys
+!
+! It is assumed that the input curve is in the XY plane
+!
+!
+! 2023-01-09 Gunnar Liden
+! ---
+
+!************************************************************
+
+!sdesce Creates saxophone keys
+
+GLOBAL GEOMETRY MODULE sax_keys(
+REF     id_spine     := #0   > "@t10 Spine";
+FLOAT   s_radius     := 20.0 > "Start radius saxophone";
+FLOAT   e_radius     := 20.0 > "End radius saxophone";
+INT     n_keys       :=  8   > "Number of keys";
+FLOAT   key_radius   :=  4.0 > "Key radius";
+INT	    key_color    :=  3   > "Key color";
+INT     graphic      :=  1   > "Graphic flag");
+
+VECTOR pt_start;           ! Start point
+VECTOR pt_end;             ! End point
+VECTOR vec_start;          ! Start vector (X axis)
+VECTOR vec_end;            ! End vector (X axis)
+VECTOR y_axis;             ! Y axis
+FLOAT  t_end;              ! Curve end parameter
+
+CONSTANT VECTOR z_axis = VEC(0.0, 0.0, 1.0);
+
+CONSTANT INT sax_reverse = -1;
+
+FLOAT  delta_t;                ! Delta parameter value
+FLOAT  end_t;                  ! End parameter value
+FLOAT  current_t;              ! Current parameter value
+INT    key_number;             ! Loop variable key
+FLOAT  key_rot_ang;            ! Key rotation angle
+
+FLOAT  delta_radius;           ! Delta saxophone radius
+FLOAT  current_radius;         ! Current saxophone radius
+
+VECTOR pt_lin_start;           ! Start point line
+VECTOR pt_lin_end;             ! End point line
+
+INT    b_val_curve;            ! Blank value curves
+INT    b_val_pts;              ! Blank value points
+INT    b_val;                  ! Blank value
+
+BEGINMODULE
+
+  IF   graphic = 0 THEN
+    b_val := 1;
+	b_val_curve := 1;
+	b_val_pts := 1;
+  ELIF graphic = 1 THEN
+     b_val := 0;
+	b_val_curve := 1;
+	b_val_pts := 1;
+  ELIF graphic = 2 THEN
+     b_val := 0;
+	b_val_curve := 0;
+	b_val_pts := 0;
+  ELSE
+    EXIT("sax_keys Graphic flag not 0, 1 or 2");
+  ENDIF;
+  
+  IF n_keys <= 1 THEN
+    EXIT("sax_keys n_keys <= 1");
+  ENDIF;
+  
+  end_t := INV_ARCL(id_spine, ARCL(id_spine));
+  
+  delta_t := end_t/(n_keys-1);
+  
+  delta_radius := (e_radius - s_radius)/n_keys;
+  
+  key_rot_ang := -0.12345;
+  
+  FOR key_number := 1 TO n_keys DO
+  
+    current_t := (key_number-1)*delta_t;
+ 
+    pt_start  :=   ON(id_spine, current_t);
+    vec_start := TANG(id_spine, current_t);
+    y_axis := VPROD(vec_start, z_axis); 
+	
+	CSYS_3P(#2, "KeyCsys", pt_start, pt_start + z_axis, pt_start + y_axis:BLANK=1);
+	
+	MODE_LOCAL(#2);
+	
+	IF key_rot_ang < 0.0 THEN 
+	  key_rot_ang :=  310.0;
+	ELSE
+	  key_rot_ang := -120.0;
+	ENDIF;
+	
+	pt_lin_start := VEC(current_radius - key_radius,     0.0, 0.0);
+	pt_lin_end   := VEC(current_radius + key_radius/2.0, 0.0, 0.0);
+	
+	CSYS_1P(#3, "KeyRotCsys", VEC(0.0, 0.0, 0.0), 0.0, 0.0, key_rot_ang: BLANK=1);
+	
+	MODE_LOCAL(#3);
+	
+	current_radius := s_radius + key_number*delta_radius;
+	
+	LIN_FREE(#4, pt_lin_start, pt_lin_end:BLANK=1, WIDTH=1, PEN=2);
+	
+	MODE_GLOBAL();
+	
+	PART(#1, sax_pipe(GLOBAL_REF(#4), 2.0*key_radius,  sax_reverse, key_color, graphic));
+	
+	DEL(#2);
+	
+	DEL(#3);
+	
+	DEL(#4);
+  
+  ENDFOR;
+  
+
+ENDMODULE
+
+ 
