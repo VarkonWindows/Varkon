@@ -2,7 +2,7 @@
 ! +++
 ! Create all solid character TXT files with point data
 !
-! 2022-12-27 Gunnar Liden
+! 2023-01-06 Gunnar Liden
 ! ---
 !****************************************************************************
 !sdesce Create all solid character TXT files with point data
@@ -18,6 +18,9 @@ CONSTANT STRING stl_lc_dir= "C:\Varkon\app\chars\stl\LowerCase\";
 
 ! Directory with the STL upper case characters
 CONSTANT STRING stl_uc_dir= "C:\Varkon\app\chars\stl\UpperCase\";
+
+! Directory with the STL numbers
+CONSTANT STRING stl_numbers_dir= "C:\Varkon\app\chars\stl\Numbers\";
 
 ! End of file name for an STL character
 CONSTANT STRING stl_end_fname= "_ascii.stl";
@@ -44,10 +47,15 @@ CONSTANT INT array_length=26;   ! Character array length
 STRING upper_case_array(26)*1;  ! Array with upper case characters
 STRING lower_case_array(26)*1;  ! Array with lower case characters
 
+CONSTANT INT number_length=10;  ! Numbar array length
+STRING number_array(10)*1;      ! Array with numbers
+
 INT char_number;                ! Loop variable character
 
 STRING stl_file_name*132;       ! STL full file name
 STRING txt_file_name*132;       ! TXT full file name
+
+FLOAT  scale_stl;               ! Scale factor for STL data
 
 STRING char_code_name*30;       ! Character code name equal TXT file name
 
@@ -111,6 +119,17 @@ BEGINMODULE
   lower_case_array(25):= "y";
   lower_case_array(26):= "z";
   
+  number_array( 1):= "0";
+  number_array( 2):= "1";
+  number_array( 3):= "2";
+  number_array( 4):= "3";
+  number_array( 5):= "4";
+  number_array( 6):= "5";
+  number_array( 7):= "6";
+  number_array( 8):= "7";
+  number_array( 9):= "8";
+  number_array(10):= "9";
+  
   
   OPEN(f_sizes, "w", file_char_sizes);
   IF IOSTAT(f_sizes) < 0 THEN
@@ -141,7 +160,9 @@ BEGINMODULE
 	
 	char_code_name := txt_start_fname + txt_uc + current_char;
 	
-	PART(#1, stl_to_txt(stl_file_name, txt_file_name, file_char_sizes, char_code_name, debug_case));
+	scale_stl := 1.0;
+	
+	PART(#1, stl_to_txt(stl_file_name, txt_file_name, scale_stl, file_char_sizes, char_code_name, debug_case));
   
   ENDFOR;
 
@@ -156,7 +177,26 @@ BEGINMODULE
 	
 	char_code_name := txt_start_fname + txt_lc + current_char;
 	
-	PART(#2, stl_to_txt(stl_file_name, txt_file_name, file_char_sizes, char_code_name, debug_case));
+	scale_stl := 1.0;
+	
+	PART(#2, stl_to_txt(stl_file_name, txt_file_name, scale_stl, file_char_sizes, char_code_name, debug_case));
+  
+  ENDFOR;
+  
+! Loop for the numbers
+  FOR char_number:= 1 TO number_length DO
+  
+    current_char := number_array(char_number);
+
+    stl_file_name := stl_numbers_dir + current_char + stl_end_fname;
+  
+    txt_file_name := txt_dir + txt_start_fname + current_char + txt_end_fname;  
+	
+	char_code_name := txt_start_fname + current_char;
+	
+	scale_stl := 0.11;
+	
+	PART(#3, stl_to_txt(stl_file_name, txt_file_name, scale_stl, file_char_sizes, char_code_name, debug_case));
   
   ENDFOR;
   

@@ -2,14 +2,14 @@
 ! +++
 ! Creates one solid character
 !
-! 2022-12-30 Gunnar Liden
+! 2023-01-06 Gunnar Liden
 ! ---
 !****************************************************************************
 !sdesce Creates one solid character
 
 GLOBAL GEOMETRY MODULE char_csys (
 REF    ref_csys    := #0     >"@t8192 Coordinate system for the character";
-STRING in_char*1   := "a"    >"Input text";
+STRING in_char*1   := "a"    >"Input character or number";
 INT    pen_top     :=  2     > "Color for top facets";
 INT    pen_bottom  :=  3     > "Color for bottom facets";
 INT    pen_side    :=  4     > "Color for side facets";
@@ -99,6 +99,10 @@ BEGINMODULE
   ELIF ascii_number >= 97 AND ascii_number <= 122 THEN
   
     char_code_name := start_file_name + txt_lc + in_char;
+	
+  ELIF ascii_number >= 48 AND ascii_number <= 57 THEN
+  
+    char_code_name := start_file_name + in_char;
   
   ELSE
      IF debug_case = 1 THEN

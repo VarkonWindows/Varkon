@@ -2,17 +2,18 @@
 ! +++
 ! Create TXT file with point data for one character
 !
-! 2022-12-27 Gunnar Liden
+! 2023-01-06 Gunnar Liden
 ! ---
 !****************************************************************************
 !sdesce Create TXT file with point data for one character
 
 GLOBAL GEOMETRY MODULE stl_to_txt (
-STRING stl_file_name*132   := "" >"STL full file name ";
-STRING txt_file_name*132   := "" >"TXT full file name ";
-STRING file_char_sizes*132 := "" >"Name of the file with character sizes ";
-STRING char_code_name*30   := "" >"Character code name (Equal TXT file name)";
-INT  debug_case            := 1  >"Debug case ");
+STRING stl_file_name*132   := ""  >"STL full file name ";
+STRING txt_file_name*132   := ""  >"TXT full file name ";
+FLOAT  scale_stl           := 1.0 >"Scale factor for STL data";
+STRING file_char_sizes*132 := ""  >"Name of the file with character sizes ";
+STRING char_code_name*30   := ""  >"Character code name (Equal TXT file name)";
+INT  debug_case            := 1   >"Debug case ");
 
 ! Internal variables
 !===================
@@ -30,11 +31,11 @@ VECTOR swap;                    ! For normal reversal
 INT    n_facet;                 ! STL facet count
 
 
-CONSTANT INT array_max = 1200;  ! Maximum point array size
+CONSTANT INT array_max = 4700;  ! Maximum point array size
  
-VECTOR p1_array(1200);          ! Array of p1 points
-VECTOR p2_array(1200);          ! Array of p2 points
-VECTOR p3_array(1200);          ! Array of p3 points
+VECTOR p1_array(4700);          ! Array of p1 points
+VECTOR p2_array(4700);          ! Array of p2 points
+VECTOR p3_array(4700);          ! Array of p3 points
 
 INT    p_number;                ! Point number in loop
 
@@ -216,9 +217,9 @@ findvertex3:
      EXIT("stl_to_txt Point array size must be increased");
    ENDIF;
  
-   p1_array(n_facet):= p_1;
-   p2_array(n_facet):= p_2;
-   p3_array(n_facet):= p_3;
+   p1_array(n_facet):= scale_stl*p_1;
+   p2_array(n_facet):= scale_stl*p_2;
+   p3_array(n_facet):= scale_stl*p_3;
    
    
 !  Eat lines until "endloop" found.

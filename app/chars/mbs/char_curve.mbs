@@ -2,7 +2,7 @@
 ! +++
 ! Create solids text along a curve
 !
-! 2022-12-26 Gunnar Liden
+! 2023-01-06 Gunnar Liden
 ! ---
 !****************************************************************************
 !sdesce Create solids text along a curve
@@ -260,6 +260,10 @@ BEGINMODULE
 	  ! Lower case
 	  
 	  file_name := start_file_name + txt_lc + c_char;
+	  
+    ELIF ascii_number >= 48 AND ascii_number <= 57 THEN
+  
+      file_name := start_file_name + c_char;
 	  
 	ELIF ascii_number = 32 THEN
 	  ! Lower case
