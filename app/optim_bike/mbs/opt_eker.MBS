@@ -1,0 +1,30 @@
+!*************************** opt_eker *************************************
+! +++
+! Spoke
+!
+! ---
+!****************************************************************************
+!sdesce Spoke
+
+BASIC DRAWING MODULE opt_eker(
+
+REF nav  > "@t4 Select hub for the spoke !";
+
+REF falg > "@t4 Select rim for the spoke !";
+
+FLOAT p  > "Parameter value !");
+
+
+
+
+
+BEGINMODULE
+
+
+
+  lin_free(#1,on(global_ref(nav,2),p),on(global_ref(falg,2),p));
+
+
+
+ENDMODULE
+

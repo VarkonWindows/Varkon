@@ -1,0 +1,162 @@
+! *************** OPT_PATHV0 ***************************
+! +++ 
+! Definition of (search) path for the extraction of text 
+! from MBS source code
+! 
+! A User of optimization routines shall replace (add) all 
+! directory names defined below ....
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! 1997-11-18  New paths    Gunnar Liden
+! 1998-02-03  GET_ENVIRONMENT    Gunnar Liden
+! --- 
+! ****************************************************
+
+!sdesce Defines search path for extraction of text 
+!sdescs Definierar sökväg för extrahering av text  
+
+BASIC  DRAWING MODULE OPT_PATHV0    (
+VAR STRING  path(20)*50;            ! Output directories
+VAR INT     n_path);                ! Number of directories
+
+! Internal variables
+
+  STRING  mbs*132;                 ! Source code directory
+  FILE    f_pid;                   ! PID file
+  STRING  f_name*132;              ! Full PID file name
+
+
+BEGINMODULE
+
+! +++
+! 1. Initializations
+! ---
+
+  n_path:= 0;                       ! Initiate n_path
+
+! +++
+! 2. Get source code directory from the PID file
+! ---
+
+  mbs := "Undefined";
+  f_name := "Undefined";
+
+  f_name := GET_ENVIRONMENT("VARKON_PID");
+  IF  ACT_OSTYPE() = "WIN" THEN 
+    f_name := f_name + "\";
+  ELSE
+    f_name := f_name + "/";
+  ENDIF;
+
+  f_name := f_name + ACT_PID()+".PID";
+
+  OPEN(f_pid, "R", f_name);
+  IF  IOSTAT(f_pid) <> 0 THEN
+    ; ! Do nothing
+  ELSE
+!   Read mbs name on line 6
+    mbs := INLIN(f_pid); 
+    mbs := INLIN(f_pid); 
+    mbs := INLIN(f_pid); 
+    mbs := INLIN(f_pid);
+    mbs := INLIN(f_pid);
+    mbs := INLIN(f_pid);
+    IF  IOSTAT(f_pid) <> 0 THEN
+      mbs := "No_line_6_in_PID";
+    ENDIF;
+    CLOSE(f_pid);
+    IF  ACT_OSTYPE() = "WIN" THEN 
+      mbs := mbs + "\";
+    ELSE
+      mbs := mbs + "/";
+    ENDIF;
+  ENDIF;
+
+! LST_INI("OPT_PATHV0 Debug");
+! LST_LIN("Env=    "+ GET_ENVIRONMENT("VARKON_PID"));
+! LST_LIN("pid=    "+ ACT_PID());
+! LST_LIN("f_name= "+ f_name);
+! LST_LIN("mbs=    "+ mbs   );
+! LST_EXI();
+! EXIT("Tillfalligt fel");
+
+! +++
+! 3. Definition of search path, i.e all directories with MBS code
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= ACT_JOBDIR();
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= mbs;
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/optim/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/partlib/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/sur/code/";     
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/figurblad/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/manual/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/optics/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/cur/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/lynx/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/odin/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/vikt/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/intag/code/";
+! ---
+
+   n_path:= n_path + 1; 
+! +++
+   path(n_path):= "/u/prjlib/tank/code/";
+! ---
+
+
+ENDMODULE
+

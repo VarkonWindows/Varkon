@@ -1,0 +1,47 @@
+!*************************** opt_ekrar *************************************
+! +++
+! Spokes
+!
+! ---
+!****************************************************************************
+!sdesce Spokes
+
+
+BASIC DRAWING MODULE opt_ekrar(
+
+REF nav  > "@t4 Select hub for the spokes !";
+
+REF falg > "@t4 Select rim for the spokes !";
+
+INT n    > "Number of spokes ( 10-100 ) !");
+
+
+
+INT i;
+
+
+
+BEGINMODULE
+
+
+
+  if n < 10  or  n > 100 then
+
+    part(#2,opt_eker(global_ref(nav,9),global_ref(falg,9),0));
+
+    exit("opt_ekrar Number of spokes not allowed !");
+
+  endif;
+
+
+
+  for i:=0 to n-1 do
+
+    part(#1,opt_eker(global_ref(nav,9),global_ref(falg,9),i/n));
+
+  endfor;
+
+
+
+ENDMODULE
+

@@ -1,0 +1,330 @@
+!********************* opt_surf   ****************************************
+
+! +++
+
+! Create a surface
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-06-26  (OBS att Ronny har originalet !!!! ) Gunnar Liden
+
+! ---
+
+!*********************************************************************
+
+
+
+GLOBAL GEOMETRY MODULE opt_surf (
+
+FLOAT d1:=10.0 > "Delta y for plane point 1";
+
+FLOAT d2:=10.0 > "Delta y for point 2 and 3 of plane";
+
+FLOAT d4:=10.0 > "Delta y for point 4 of plane";
+
+FLOAT dus:=-150.0 > "Delta z for upper definition curve";
+
+FLOAT due:=-150.0 > "Delta z for end of upper curve";
+
+FLOAT zconst:=2900.0 > "Constant Z for lower curve (not a variable)";
+
+FLOAT dls:=75.0 > "Delta y for start of lower curve";
+
+FLOAT dle:=75.0 > "Delta y for end of lower curve";
+
+FLOAT dusdz:=  0.0 > "Delta for tangent to upper curve start";
+
+FLOAT duedz:=  3.0 > "Delta z for tangent to upper crv end";
+
+FLOAT dlsdz:= -0.5947 > "Delta y for tangent to lower crv start";
+
+FLOAT dledz:= 8.4586> "Delta z for tangent to lower crv end";
+
+INT   graphic:= 1 > "Graphic =0: No graphics =1: Show surfaces and spine");
+
+
+
+!sdesce Create a surface
+
+!sdescs Skapa en yta   
+
+
+
+! Internal variables
+
+
+
+  INT   s_blank;                  ! BLANK value for surfaces and spine
+
+  INT   a_blank;                  ! BLANK value for other entities    
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! _________
+
+! ---
+
+
+
+! Initializations
+
+
+
+  IF   graphic = 0  THEN  
+
+    s_blank := 1;
+
+    a_blank := 1;
+
+  ELIF graphic = 1  THEN
+
+    s_blank := 0;
+
+    a_blank := 1;
+
+  ELIF graphic = 2  THEN
+
+    s_blank := 0;
+
+    a_blank := 0;
+
+  ELSE
+
+    EXIT("opt_surf graphic not OK");
+
+  ENDIF;
+
+
+
+! +++
+
+! Define limits for the parameters of this part
+
+! ---
+
+
+
+  PART(#27,OPT_LIMV0(#0, 12, -50, 75, 1));
+
+  PART(#28,OPT_LIMV0(#0, 12, -60, 80, 2));
+
+  PART(#29,OPT_LIMV0(#0, 12, -40, 60, 3));
+
+  PART(#34,OPT_LIMV0(#0, 1,-300, 100000, 4));
+
+  PART(#35,OPT_LIMV0(#0, 1,-400, 100000, 5));
+
+  PART(#37,OPT_LIMV0(#0, 12, 10, 150, 7));
+
+  PART(#38,OPT_LIMV0(#0, 12, 30, 200, 8));
+
+
+
+! +++
+
+! Import reference surface, which cannot be changed
+
+! ---
+
+
+
+  SUR_EXDEF(#2,"/u/optim/code/refsur.F07", "NMG_F07", "LFT_SUR":BLANK=s_blank);
+
+
+
+! +++
+
+! Calculate the planar curve, which shall be a curve in the new surface
+
+! The position of the plane may be changed with parameters d1, d2 and d3
+
+! within limits defined with OPT_LIMV0.
+
+! ---
+
+
+
+! Intersect plane
+
+  B_PLANE(#7,VEC(5000, 300 + d1, 2600), VEC(6000, 300 + d2, 2900), 
+
+             VEC(6000, 300 + d2, 2900), VEC(6000, 300 + d4, 2600):BLANK=a_blank);
+
+
+
+! Intersect curve
+
+  CUR_INT(#19,GLOBAL_REF(#2), GLOBAL_REF(#7), 1:BLANK=a_blank);
+
+
+
+! SUR_CONIC does not yet accept a U,V curve as input. Approximation to conics
+
+  PART(#73,c_reduc1v0(GLOBAL_REF(#19), 0.02, 0.1, 5, 1, a_blank));
+
+
+
+! +++
+
+! Points and lines for the definition of limit curves for the new surface
+
+! ---
+
+
+
+  POI_FREE(#21,on(#2, VEC(0, 2)):BLANK=a_blank);
+
+  POI_FREE(#23,on(#2, VEC(4, 2)):BLANK=a_blank);
+
+  POI_FREE(#24,on(#19, 0):BLANK=a_blank);
+
+  POI_FREE(#30,on(#19, 4.0):BLANK=a_blank);
+
+  POI_FREE(#31,on(#21, 0.0) + VEC(0, 0, dus):BLANK=a_blank);
+
+  POI_FREE(#32,on(#23, 0.0) + VEC(0, 0, due):BLANK=a_blank);
+
+  LIN_FREE(#33,on(#31, 0.0), on(#32, 0.0):BLANK=a_blank);
+
+  
+
+! Plane for the lower maxwidth curve for the new surface
+
+  B_PLANE(#36,VEC(9000, 0, zconst), VEC(9500, 500, zconst), VEC(9500, 500, 
+
+    zconst), VEC(10000, 0, zconst):BLANK=a_blank);
+
+ 
+
+  LIN_FREE(#40,on(#24, 0.0), on(#24, 0.0) + VEC(0, 0, 200):BLANK=a_blank);
+
+  LIN_FREE(#41,on(#30, 0.0), on(#30, 0.0) + VEC(0, 0, 200):BLANK=a_blank);
+
+  POI_FREE(#43,intersect(#36, #40, -1):BLANK=a_blank);
+
+  POI_FREE(#44,intersect(#36, #41, -1):BLANK=a_blank);
+
+  LIN_FREE(#46,on(#43, 0.0) + VEC(0, dls, 0), on(#44, 0.0) + VEC(0, dle, 0):
+
+    BLANK=a_blank);
+
+  POI_FREE(#47,on(#33, 0.1):BLANK=a_blank);
+
+  POI_FREE(#48,on(#33, 0.9):BLANK=a_blank);
+
+  POI_FREE(#49,on(#47, 0.0) + VEC(0, 0, dusdz):BLANK=a_blank);
+
+  POI_FREE(#50,on(#48, 0.0) + VEC(0, 0, duedz):BLANK=a_blank);
+
+  POI_FREE(#51,on(#46, 0.1):BLANK=a_blank);
+
+  POI_FREE(#52,on(#46, 0.9):BLANK=a_blank);
+
+  POI_FREE(#53,on(#51, 0.0) + VEC(0, dlsdz, 0):BLANK=a_blank);
+
+  POI_FREE(#54,on(#52, 0.0) + VEC(0, dledz, 0):BLANK=a_blank);
+
+
+
+! +++
+
+! Top curve with four (direct) parameters dus, due, dusdz and duedz
+
+! ---
+
+
+
+  CUR_CONIC(#55,"FREE", on(#31, 0.0), on(#49, 0.0), 0.45, on(#32, 0.0), on(
+
+    #50, 0.0):BLANK=a_blank);
+
+
+
+! +++
+
+! Maxwidth curve with four (direct) parameters dls, dle, dlsdz and dledz
+
+! ---
+
+
+
+  CUR_CONIC(#56,"FREE", on(#46, 0.0), on(#53, 0.0), 0.6, on(#46, 1.0), on(#54
+
+    , 0.0):BLANK=a_blank);
+
+
+
+! +++
+
+! Definition of the spine
+
+! ---
+
+
+
+  LIN_FREE(#57,on(#21, 0.0), on(#21, 0.0) + VEC(0, 0, -200):BLANK=a_blank);
+
+  LIN_FREE(#58,on(#23, 0.0), on(#23, 0.0) + VEC(0, 0, -200):BLANK=a_blank);
+
+  POI_FREE(#59,intersect(#36, #57, -1):BLANK=a_blank);
+
+  POI_FREE(#60,intersect(#36, #58, -1):BLANK=a_blank);
+
+  LIN_FREE(#61,on(#59, 0.0), on(#60, 0.0):PEN=2,BLANK=a_blank);
+
+
+
+  CUR_COMP(#77,#61:BLANK=s_blank);
+
+
+
+! +++
+
+! Definition of tangent definition curves for the new surface
+
+! Limit curves are translated.
+
+! ---
+
+
+
+  TFORM_MOVE(#64,VEC(0.0, 0.0, 0.0), VEC(0, 100.0, 0));
+
+  TCOPY(#66,#55, GLOBAL_REF(#64):BLANK=a_blank);
+
+  TFORM_MOVE(#68,VEC(0.0, 0.0, 0.0), VEC(0, 0, 100.0));
+
+  TCOPY(#70,#56, GLOBAL_REF(#68):BLANK=a_blank);
+
+
+
+! +++
+
+! Create the conic lofting surface with the planar intersect 
+
+! as a mid curve.
+
+! ---
+
+
+
+  SUR_CONIC(#1 ,#77, #56, #70, "m", #73#1, #55, #66:BLANK=s_blank);
+
+
+
+ENDMODULE
+

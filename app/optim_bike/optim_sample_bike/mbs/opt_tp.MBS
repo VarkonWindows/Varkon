@@ -1,0 +1,245 @@
+!*************************** opt_falg *************************************
+! +++
+! Calculates the center of gravity for the bicycle
+!
+! ---
+!****************************************************************************
+!sdesce Center of gravity for the bicycle
+
+
+ basic drawing module opt_tp(
+
+ VAR VECTOR tpos;
+
+ VAR FLOAT  vikt);
+
+
+ STRING pnamn*20,code*1,s*1;
+
+ INT    typ,att,np,nm,blnk,niv,pen,nref,antal_ekrar;
+
+ REF    kid,idm(10),gid(3),id;
+
+ FLOAT  tpx,tpy,tp,ram_höjd,ram_vikt,bakgaffel_storlek,bakgaffel_vikt,
+
+        framgaffel_vinkel,framgaffel_vikt,x1,x2,x3,y1,y2,y3,tp1,tp2,
+
+        tp3,hjul_storlek;
+
+ FLOAT  antal_ekrar_f;
+
+ VECTOR ram_pos,hjul_pos;
+
+
+
+ beginmodule
+
+
+
+! +++
+! Initial value
+! ---
+
+   tpx:=0;
+
+   tpy:=0;
+
+   tp:=0;
+
+! +++
+! Search in GM for parts with name opt_ram (frame), opt_hjul (wheel)
+! and opt_styre (handbarrels) 
+! ---   
+
+   code:="F";
+
+
+
+loop: 
+
+   id := getid(code);
+
+   code := "P";
+
+   if id <> #0 then
+
+   
+! +++
+! Check that identity it is part
+! ---
+
+     gethdr(id,typ,nref,blnk,niv,pen,gid);
+
+     if typ <> 16384 then goto loop; endif;
+
+	 
+! +++
+! Get the part name
+! ---
+
+     getprt(id,pnamn,typ,att,kid,np,nm,idm);
+
+	 
+! +++
+! Frame
+! ---
+
+     if pnamn = "opt_ram" then
+
+       ram_pos:=getvec(id,1);
+
+       ram_höjd:=getflt(id,3);
+
+       bakgaffel_storlek:=getflt(id,4);
+
+       framgaffel_vinkel:=getflt(id,5);
+
+       bakgaffel_vikt:=bakgaffel_storlek*0.003;                  ! 3 kg/meter.
+
+       framgaffel_vikt:=ram_höjd/cos(framgaffel_vinkel)*0.0025;  ! 2.5 kg/meter.
+
+       ram_vikt:=2 + ram_höjd*0.004;                             ! 2 kg + 4kg/meter.
+
+       tp1:=ram_vikt;
+
+       x1:=ram_pos.x + ram_höjd/6;
+
+       y1:=ram_pos.y + ram_höjd*2/3;
+
+       tp2:=bakgaffel_vikt;
+
+       x2:=ram_pos.x - bakgaffel_storlek/3;
+
+       y2:=ram_pos.y + ram_höjd/3;
+
+       tp3:=framgaffel_vikt;
+
+       x3:=ram_pos.x + ram_höjd*(0.87+sin(framgaffel_vinkel)/2);
+
+       y3:=ram_pos.y + ram_höjd/2;
+
+       tp:= tp1 + tp2 + tp3;
+
+       tpx:=(tp1*x1+tp2*x2+tp3*x3)/tp;
+
+       tpy:=(tp1*y1+tp2*y2+tp3*y3)/tp;
+
+       goto loop;
+
+! +++
+! Wheel
+! ---
+
+     elif pnamn = "opt_hjul" then
+
+       hjul_pos:=getvec(id,1);
+
+       hjul_storlek:=getflt(id,2);
+
+       antal_ekrar_f:=getflt(id,4);
+
+       antal_ekrar:=ROUND(antal_ekrar_f);
+
+       tp1:=1+hjul_storlek*0.001+antal_ekrar*hjul_storlek*0.0001;
+
+       x1:=hjul_pos.x;
+
+       y1:=hjul_pos.y;
+
+       tpx:=(tp*tpx+tp1*x1)/(tp+tp1);
+
+       tpy:=(tp*tpy+tp1*y1)/(tp+tp1);
+
+       tp:=tp+tp1;
+
+       goto loop;
+
+! +++
+! Handlebar
+! ---
+
+     elif pnamn = "opt_styre" then
+
+       tp1:=1;
+
+       x1:=ram_pos.x + 0.8*ram_höjd;
+
+       y1:=ram_pos.y + 1.2*ram_höjd;
+
+       tpx:=(tp*tpx+tp1*x1)/(tp+tp1);
+
+       tpy:=(tp*tpy+tp1*y1)/(tp+tp1);
+
+       tp:=tp+tp1;
+
+       goto loop;
+
+     else
+
+       goto loop;
+
+     endif;
+
+   endif;
+
+! +++
+! Result
+! ---
+
+   part(#1,opt_tpsymb(tp,tpx,tpy));
+
+   tpos:=vec(tpx,tpy);
+
+   vikt:=tp;
+
+
+
+ endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

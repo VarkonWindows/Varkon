@@ -1,0 +1,208 @@
+! *************** OPT_PATHV0 ***************************
+
+! +++ 
+
+! Definition of (search) path for the extraction of text 
+
+! from MBS source code
+
+! 
+
+! A User of optimization routines shall replace (add) all 
+
+! directory names defined below ....
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-06-16  Gunnar Liden
+
+! 1997-11-18  New paths    Gunnar Liden
+
+! --- 
+
+! ****************************************************
+
+
+
+!sdesce Defines search path for extraction of text 
+
+!sdescs Definierar sökväg för extrahering av text  
+
+
+
+BASIC  DRAWING MODULE OPT_PATHV0    (
+
+VAR STRING  path(20)*50;            ! Output directories
+
+VAR INT     n_path);                ! Number of directories
+
+
+
+
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! 1. Initializations
+
+! ---
+
+
+
+  n_path:= 0;                       ! Initiate n_path
+
+
+
+! +++
+
+! 2. Definition of search path, i.e all directories with MBS code
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= ACT_JOBDIR();
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/optim/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/partlib/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/sur/code/";     
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/figurblad/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/manual/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/optics/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/cur/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/lynx/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/odin/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/vikt/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/intag/code/";
+
+! ---
+
+
+
+   n_path:= n_path + 1; 
+
+! +++
+
+   path(n_path):= "/u/prjlib/tank/code/";
+
+! ---
+
+
+
+
+
+ENDMODULE
+

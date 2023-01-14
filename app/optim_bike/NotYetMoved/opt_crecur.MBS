@@ -1,0 +1,620 @@
+! ***************** opt_crecur *******************************************
+
+!
+
+! +++
+
+! The module creates a curve which is defined by a number of optimization 
+
+! variables, with limits for the variables, with constraints on the curve
+
+! and with different objective functions.
+
+! 
+
+! It is not a realistic curve creation example. It is a constructed example 
+
+! which hopefully will illustrate how other, real problems can be formulated 
+
+! and solved with non-linear optimization techniques in the VARKON system.
+
+! 
+
+! Instructions for the test example
+
+! _________________________________
+
+!
+
+! 1. Read information in this document.
+
+!
+
+! 2. Start a VARKON session: 
+
+!    xv3    optdemo curvetest  (or   varkon optim curvetest )
+
+!
+
+! 3. Select menues: 
+
+!    examples - curve - create  (calls opt_crecur which calls OPT_LIMV0)
+
+!    examples - curve - analyze (calls opt_anacur which calls OPT_FUNCV0) 
+
+!    Use the default input values for opt_crecur and opt_anacur.
+
+!
+
+! 4. Select menue: optimize
+
+!    Input data for the optimization is given in three panels (Xwindows)
+
+!
+
+!    Requested number of iterations: 20 or more          Panel 1
+
+!    Case:                           optimize
+
+!    Module 1 with variables:        opt_crecur
+
+!    Objective function value:       OPT_FUNCV0
+
+!    Variable limit module:          OPT_LIMV0
+
+!    No Gradient, Hessian or Constraint module
+
+!    Select all variables except P-value and Penalty     Panel 2
+
+!    Epsilon gradient calculation:   0.1                 Panel 3
+
+!    Step one-dimensional search     0.5
+
+!    Use default values for all other input data
+
+!
+
+! Input data to a the optimization problem. 
+
+! _________________________________________
+
+!
+
+! A one-segment smooth CUR_CONIC shall be created. The input data to the 
+
+! curve is:
+
+!
+
+! Start point          p1 = ( p1_x,  p1_y,  p1_z ) =  (   0.0, 0.0, 0.0 )  
+
+! Start tangent point tp1 = (tp1_x, tp1_y, tp1_z ) =  (  10.0, 5.0, 0.0 )
+
+! A mid point          pm = ( pm_x,  pm_y,  pm_z ) =  ( 500.0,50.0, 8.0 )
+
+! End   point          p2 = ( p2_x,  p2_y,  p2_z ) =  (1000.0, 0.0, 3.0 )  
+
+! End   tangent        t2 = ( t2_x,  t2_y,  t2_z ) =  (   5.0, 0.0, 0.4 )
+
+! 
+
+! It is not possible to create a one segment CUR_CONIC curve, which satifies
+
+! all these conditions . The CUR_CONIC is a generalized conic curve and there is 
+
+! no so called P value which will make the curve interpolate the mid point for
+
+! the given end points and tangent conditions. This is explained below.
+
+! The input data to a CUR_CONIC is a start point, an end point and tangent 
+
+! definition points to these points. In the example is an end tangent t2 given 
+
+! as input. The corresponding end tangent point tp2 will be: 
+
+! tp2= p2 + t2 = ( p2_x,  p2_y,  p2_z ) + ( t2_x,  t2_y,  t2_z ) =
+
+!              = ( p2_x + t2_x,  p2_y + t2_y,  p2_z + t2_z )
+
+!
+
+! There is also a requirement on the curvature of the curve. The minimum
+
+! value for the curvature radius r_min is ?? mm.
+
+!
+
+! All input data may be changed except for the start point p1. There are
+
+! however limits for the changes. The Y component of the start tangent point
+
+! must for example be within limits 1.1 <= tp_y <= 10.0
+
+! 
+
+! Variables for the optimization problems
+
+! _______________________________________
+
+!
+
+! An optimization variable must be a parameter of the type FLOAT. In this 
+
+! example is the curve fully defined by the parameters in one VARKON module. 
+
+! Geometry (objects in general) are often defined by parameters in many
+
+! modules. This is also possible in this VARKON application. Up to three
+
+! modules may be used and it is easy for an experienced user of VARKON to 
+
+! change this to any number (an unlimited number) of modules.
+
+! 
+
+! More commonly used names for modules and parameters are objects and 
+
+! attributes to objects. A VARKON module is a generic object which can
+
+! create many variants, also called instances, of an object.
+
+!
+
+! In other systems are objects often called features, which normally
+
+! are form features, i.e geometric objects.....
+
+! 
+
+! All input data that can be changed are defined as FLOAT parameters to this
+
+! module opt_crecur, except for the X components of p2 and t2 since it is   
+
+! assumed that the start and end tangents shall have X components.
+
+!
+
+! Note that this module opt_crecur also have additional parameters. The FLOAT
+
+! penalty is an attribute to a constraint. This parameter is part of the 
+
+! optimization calculation but the parameter shall not be optimized. The
+
+! INT type parameters graphic and color cannot be variables in the non-linear
+
+! optimization problem.
+
+!
+
+! Limits for the optimization problem
+
+! ___________________________________
+
+!
+
+! There is one input limit for parameter tp_y:   1.1 <= tp_y <= 10
+
+! Another limit is added. The P-value must theoretically be between
+
+! 0.0 and 1.0, but P-values are normally between 0.3 and 0.6. since
+
+! the shapes of the curve will be unacceptable for other values.
+
+!
+
+! The definition of limits for the optimization variables is optional.
+
+! It is not necessary to define limits for all variables.
+
+!
+
+! Limit values are registered in the model as parameters to a module.
+
+! The registration can be made in the module where the parameter is
+
+! defined (prt_id= #0 case defined below) but the call of the 
+
+! "registration module" can be made anywhere in the model if the
+
+! reference (# identity) to is known. In this example are all
+
+! limits defined in this module.
+
+!
+
+! The requirements on the module which "registrates" limits for the
+
+! optimization variables are defined in the GET-routine OPT_GETLV0.
+
+! The name of the module is free (in this case is OPT_LIMV0 used),
+
+! but there are requirements on the parameters of the module:
+
+!
+
+! The first five attributes of the "registration object" must be:
+
+! REF   prt_id    Reference to part with the variable
+
+!                 Eq. #0: Parameter is defined in this module 
+
+! INT   l_flag    Limit flag
+
+!                 Eq.  1: Only lower limit defined
+
+!                 Eq.  2: Only upper limit defined
+
+!                 Eq. 12: Both limits defined
+
+!                 Eq. -1: Not defined
+
+! FLOAT l_limit   Lower limit
+
+! FLOAT u_limit   Upper limit
+
+! INT   p_numb    Parameter number      
+
+!
+
+! Note that other GET-routines can be written by an experienced VARKON user.
+
+! The order of attributes and also the method used for the handling of limits
+
+! are only proposals. VARKON is a so called Product Model System and there  
+
+! are many other ways to implement limits and the whole optimization model.
+
+!
+
+! 
+
+! Constraint for the optimization problem
+
+! _______________________________________
+
+! 
+
+! The mid point requirement is defined as a constraint in the optimization
+
+! model. Constraints are also registered as call to modules and there are,
+
+! as for the limits, requirements on the attributes of the "registration 
+
+! module". The first three attributes must (in this VARKON application) be:
+
+! FLOAT  c_value   Contraint function value
+
+! FLOAT  penalty   Start radius for penalty function Y= X**2
+
+! STRING c_desc    Constraint description
+
+!
+
+! A generalized conic is a rational cubic curve which will be a true conic
+
+! if (the extrapolated) lines between the input points (p1, p2, tp1, tp2) are
+
+! in the same plane and if the lines intersect in three points p1, p2 and
+
+! pi (=the tangent lines intersection point). A mid point pm must be 
+
+! within the triangle p1, p2, pi for a CUR_CONIC. For a non-planar CUR_CONIC
+
+! can another triangle be constructed and the (projected) mid point must be 
+
+! within this triangle. This will not be explained further. It is for this 
+
+! example sufficient to know that a CUR_CONIC cannot be created for any
+
+! mid point.
+
+!
+
+! The distance between the given mid point and the curve is calculated.
+
+! 
+
+! Constraints must be defined as a constraint function, in such a way that 
+
+! the function value is negative if the constraint is fulfilled. In this
+
+! case is the distance always positive. This means that the distance can  
+
+! be the constraint function.
+
+!
+
+! Objective function for the optimization problem
+
+! _______________________________________________
+
+! 
+
+! The curve must be smooth is one of the requirements on the curve. This will
+
+! be the objective function for the optimization problem. The energy of the
+
+! curve is calculated (integral of curvature**2). The optimization algorithm 
+
+! will change the optimization variables so that the energy will be minimized.
+
+!
+
+! The calculation of the energy and the registration of the objective function
+
+! value can be made in this module. But more common is that an analysis of
+
+! a created object is made in another module. In this example is the analysis
+
+! made in module opt_anacur.
+
+! 
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-11-25 Gunnar Liden
+
+! ---
+
+!***************************************************************************
+
+
+
+!sdesce Curve defined by optimization variables, limits and constraints
+
+!sdescs Kurva definierad av optimeringsvariabler, gränser och villkor
+
+
+
+GLOBAL GEOMETRY MODULE opt_crecur (
+
+FLOAT  tp1_y       :=    5.0  > "Start tangent point, Y component";
+
+FLOAT  tp1_z       :=    0.0  > "Start tangent point, Z component";
+
+FLOAT  p_value     :=    0.45 > "P-value for the generalized conic";
+
+FLOAT  p2_x        := 1000.0  > "End point X component";
+
+FLOAT  p2_y        :=  100.0  > "End point Y component";
+
+INT    color       :=    2    > "Colour of curve";
+
+FLOAT  p2_z        :=    3.0  > "End point, Z component";
+
+FLOAT  t2_x        :=    1.0  > "End tangent, pt X component ";
+
+FLOAT  t2_y        :=    3.2  > "End tangent, pt Y component ";
+
+FLOAT  t2_z        :=   -3.8  > "End tangent, pt Z component ";
+
+FLOAT  penalty     :=    9.08 > "Penalty radius for mid pt constraint";
+
+INT    graphic     :=    1    > "Graphics =1: Show curve =2: Show mid pt");
+
+
+
+! Internal variables
+
+
+
+  FLOAT  tp1_x;                    ! Start tangent point, X component
+
+!QQ  FLOAT  t2_x;                     ! End tangent, X component
+
+
+
+  VECTOR p_start;                  ! Start point
+
+  VECTOR tp_start;                 ! Start tangent point
+
+  VECTOR p_end;                    ! End   point
+
+  VECTOR tp_end;                   ! End   tangent point
+
+  VECTOR pm;                       ! Mid point   
+
+
+
+  FLOAT  u_clo;                    ! Parameter for closest point
+
+  VECTOR p_clo;                    ! Closest point on curve
+
+  FLOAT  dist;                     ! Distance between pm and p_clo
+
+
+
+  FLOAT  cst_val;                  ! Constraint function value
+
+  STRING cst_str*30;               ! Constraint name
+
+
+
+  INT    b_flag;                   ! BLANK value for curve
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! _________
+
+! ---
+
+
+
+! +++
+
+! 0. Initializations and checks      
+
+! ---
+
+
+
+  IF     graphic  =  0  THEN            ! Check graphic 
+
+    b_flag := 1;                        !
+
+  ELIF   graphic  =  1  THEN            ! 
+
+    b_flag := 0;                        !
+
+  ELIF   graphic  =  2  THEN            ! 
+
+    b_flag := 0;                        !
+
+  ELSE                                  !
+
+    EXIT("opt_crecur graphic not OK");  !
+
+  ENDIF;                                !
+
+  
+
+! +++
+
+! 1. Create object (geometry) defined by input parameters
+
+! ---
+
+
+
+  tp1_x := 10.0;                        ! Start tangent point, X component
+
+
+
+  p_start := VEC(0.0,0.0,0.0);          ! Start point
+
+  tp_start:= VEC(tp1_x,tp1_y,tp1_z);    ! Start tangent point
+
+  p_end   := VEC( p2_x, p2_y, p2_z);    ! End   point
+
+  tp_end  := VEC( p2_x, p2_y, p2_z) +   ! End   tangent point
+
+             VEC( t2_x, t2_y, t2_z);    !
+
+
+
+
+
+  CUR_CONIC(#1,"FREE",                  ! Create a generalized conic
+
+  p_start, tp_start, p_value,           !
+
+  p_end  , tp_end                       !
+
+  :BLANK=b_flag,PEN=color);             !
+
+
+
+
+
+! +++
+
+! 2. Registrate limits for optimization variables
+
+! ---
+
+
+
+  PART(#2,OPT_LIMV0 (                   ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      1.1 ,10.0,        ! Lower and upper limit
+
+                      1  ));            ! Parameter number in module
+
+
+
+  PART(#3,OPT_LIMV0 (                   ! Registrate P-value limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      0.3 , 0.6,        ! Lower and upper limit
+
+                      3  ));            ! Parameter number in module
+
+
+
+! +++
+
+! 3. Calculate and registrate constraint for the optimization calculation
+
+! ---
+
+
+
+! +++
+
+! Calculate distance from curve to the given mid point
+
+! ---
+
+
+
+  pm := VEC(500.0, 50.0,  8.0 );        ! Mid point
+
+
+
+  u_clo := INV_ON(GLOBAL_REF(#1),pm,1); ! Closest point U value on curve
+
+
+
+  p_clo := ON(GLOBAL_REF(#1),u_clo);    ! Closest point
+
+
+
+  dist  := VECL(p_clo-pm);              ! Distance p_clo to pm
+
+
+
+  IF     graphic  =  2  THEN            ! Graphical representation of
+
+    IF VECL(pm-p_clo) > 0.1 THEN        ! distance (constraint)
+
+      LIN_FREE(#5, pm, p_clo :PEN=4);   ! 
+
+    ELSE                                !
+
+      POI_FREE(#6, pm        :PEN=4);   ! 
+
+    ENDIF;                              !
+
+  ENDIF;                                !
+
+
+
+  cst_val:= dist;                       ! Value of constraint function
+
+  cst_str:= "Chord_min";                ! Name (description) of constraint
+
+
+
+  PART(#4,OPT_CSTV0 (                   ! Registrate constraint
+
+                      cst_val,          ! Constraint value
+
+                      penalty,          ! Penalty radius 
+
+                      cst_str ));       ! Description
+
+
+
+ENDMODULE
+

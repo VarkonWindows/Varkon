@@ -1,0 +1,21 @@
+!*************************** opt_falg *************************************
+! +++
+! Rim
+!
+! ---
+!****************************************************************************
+!sdesce Rim
+
+BASIC DRAWING MODULE opt_falg(
+VECTOR p:=vec(0.0,0.0) > "Centre for rim";
+FLOAT d:=700.0 > "Rim diameter" );
+
+BEGINMODULE
+
+  set(PEN=4);
+
+  arc_1pos(#1,p, d/2);
+
+  arc_offs(#2,#1,-5);
+
+ENDMODULE

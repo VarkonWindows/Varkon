@@ -1,0 +1,288 @@
+!********************  opt_3shoot **********************
+
+! +++
+
+! Read and write of bounce UV points
+
+! 
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-10-05  Gunnar Liden
+
+!
+
+! ---
+
+!*******************************************************
+
+
+
+!sdesce Read and write of bounce UV points
+
+!sdescs Läs och skriv studs UV punkter
+
+
+
+GLOBAL GEOMETRY MODULE  opt_3shoot (
+
+
+
+    STRING h_case*5;               ! Case read or write
+
+VAR VECTOR bou_uv(20);             ! Bounce points
+
+VAR INT    n_bou);                 ! Number of bounce points
+
+
+
+                     
+
+! Internal variables:
+
+
+
+  FILE   dat;                         ! File with bounce points
+
+  INT    i_b;                         ! Loop index bounce point
+
+
+
+  STRING str1*132;                    ! Full file name
+
+
+
+  STRING rad*132;                     ! Whole line from file
+
+
+
+  STRING s*1;                         ! For INPMT
+
+
+
+  INT    DEBUG;                       ! Eq. 0: No Debug  
+
+                                      ! Eq. 1: Full Debug
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! ---
+
+
+
+! +++
+
+! 0. Initializations and checks
+
+! ---
+
+ 
+
+  DEBUG := 0;                        ! Change to 0 or 1
+
+
+
+  IF  DEBUG = 1 THEN                 ! List Window for Debug
+
+    LST_INI("opt_3shoot Bounce "     !
+
+     +"data on file "+               !
+
+     ACT_JOBDIR()+"opt_shoot.DAT "+  !
+
+     " Case: "+h_case);              !
+
+  ENDIF;                             !
+
+
+
+! +++
+
+! File name (direcory data)
+
+! ---
+
+
+
+
+
+  str1 := ACT_JOBDIR() +             ! Data file name
+
+     "opt_shoot.DAT";                !
+
+
+
+
+
+
+
+  IF    h_case  = "read"   THEN      ! Check h_case
+
+    ;                                !
+
+  ELIF  h_case  = "write"  THEN      ! 
+
+    ;                                !
+
+  ELSE                               !
+
+    EXIT("opt_3shoot h_case "+h_case !
+
+        + " not OK");                !
+
+  ENDIF;                             !
+
+
+
+  IF  h_case = "read" THEN           ! Read or write ?
+
+    GOTO  read; 
+
+  ENDIF;
+
+
+
+
+
+  IF  DEBUG = 1  THEN    ! List Window for Debug
+
+    LST_LIN("Number of bounces n_bou   "+ STR(n_bou  ,5,0));
+
+    FOR i_b:= 1 TO n_bou DO
+
+    LST_LIN("bou_uv( "+ STR(i_b,2,0) + ") = VEC("
+
+     + STR(bou_uv(i_b).x,5,3)+ ","+ STR(bou_uv(i_b).y,5,3)+")");
+
+    ENDFOR;
+
+  ENDIF;  
+
+
+
+  OPEN(dat,"w", str1 );            ! Open new file for write
+
+    IF (IOSTAT(dat) <> 0 ) THEN    ! 
+
+      EXIT("opt_3shoot " +         !
+
+        "Open failed (write)");    !
+
+  ENDIF;                           !
+
+
+
+  OUTSTR(dat,STR(n_bou,5,0)    + "           Number of bounces in the cavity");
+
+  OUTLIN(dat);
+
+
+
+  FOR i_b:= 1 TO n_bou DO
+
+    OUTSTR(dat,STR(bou_uv(i_b).x,11,8)+ "   "+ STR(bou_uv(i_b).y,11,8) + 
+
+              " Bounce point " + STR(i_b,-1,0) );
+
+    OUTLIN(dat);
+
+  ENDFOR;
+
+
+
+  CLOSE(dat);
+
+
+
+  GOTO slut;
+
+                     
+
+
+
+read:;                                ! Label read data
+
+
+
+  OPEN(dat,"r", str1 );               ! Open file for read  
+
+  IF (IOSTAT(dat) <> 0 ) THEN         ! 
+
+      n_bou := 0;                     !
+
+      EXIT();                         !
+
+  ENDIF;                              !
+
+
+
+  n_bou := ININT(dat);                ! Number of bounces in the cavity
+
+  rad   := INLIN(dat);                ! End of line
+
+
+
+  FOR i_b:= 1 TO n_bou DO
+
+    bou_uv(i_b).x := INFLT(dat);      ! Bounce point U coordinate
+
+    bou_uv(i_b).y := INFLT(dat);      ! Bounce point V coordinate
+
+    rad   := INLIN(dat);              ! End of line
+
+    bou_uv(i_b).z := 0.0;             ! 
+
+  ENDFOR;
+
+
+
+  CLOSE(dat);
+
+
+
+  IF  DEBUG = 1  THEN    ! List Window for Debug
+
+    LST_LIN("Number of bounces n_bou   "+ STR(n_bou  ,5,0));
+
+    FOR i_b:= 1 TO n_bou DO
+
+    LST_LIN("bou_uv( "+ STR(i_b,2,0) + ") = VEC("
+
+     + STR(bou_uv(i_b).x,5,3)+ ","+ STR(bou_uv(i_b).y,5,3)+")");
+
+    ENDFOR;
+
+  ENDIF;  
+
+
+
+  GOTO  slut;
+
+
+
+slut:;
+
+
+
+  IF  DEBUG = 1 THEN  
+
+    LST_EXI();       
+
+  ENDIF;            
+
+
+
+ENDMODULE
+

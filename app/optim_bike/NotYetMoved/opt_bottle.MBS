@@ -1,0 +1,510 @@
+!********************* opt_bottle ****************************************
+
+! +++
+
+! Create a bottle 
+
+!
+
+! Instructions for the test example
+
+! _________________________________
+
+!
+
+! 1. Read information in this document.
+
+!
+
+! 2. Start a VARKON session: 
+
+!    xv3    optdemo  bottletest  (or   varkon optim  bottletest )
+
+!
+
+! 3. Select menues: 
+
+!    examples - bottle - create  (calls opt_bottle which calls OPT_LIMV0)
+
+!    examples - bottle - analyze (calls opt_anbott which calls OPT_FUNCV0) 
+
+!    Use the default input values for opt_bottle and opt_anbott.
+
+!
+
+! 4. Select menue: optimize
+
+!    Input data for the optimization is given in three panels (Xwindows)
+
+!
+
+!    Requested number of iterations: 30                  Panel 1
+
+!    Case:                           optimize
+
+!    Module 1 with variables:        opt_bottle
+
+!    Objective function value:       OPT_FUNCV0
+
+!    Variable limit module:          OPT_LIMV0
+
+!    No Gradient, Hessian or Constraint module
+
+!    Select all variables except last three              Panel 2
+
+!    Epsilon gradient calculation:   0.1                 Panel 3
+
+!    Step one-dimensional search     0.5
+
+!    Use default values for all other input data
+
+!
+
+! 5. Change opt_anbott and change variable print to 1
+
+!    Select menue undo and switch between 0 and 30 iterations
+
+!
+
+! 6. Select menue analysis variables, constraints, objective, ..
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-11-25  Gunnar Liden
+
+!
+
+! ---
+
+!*********************************************************************
+
+
+
+GLOBAL GEOMETRY MODULE opt_bottle  (
+
+FLOAT  bradie   :=   30.47  > "Bottom radius";
+
+FLOAT  hmax     :=  108.91  > "Height for maximum radius";
+
+FLOAT  bdydx    :=    6.07  > "Start slope for profile curve (bottom)";
+
+FLOAT  d_infm   :=    7.87  > "Delta from maxim point for inflexion slope line";
+
+FLOAT  d_infn   :=   50.14  > "Delta from bottle neck for inflexion slope line";
+
+FLOAT  hinflex  :=  178.97  > "Height for inflexion point";
+
+FLOAT  hhals    :=  239.76  > "Height for start of bottle neck";
+
+FLOAT  radiusb  :=    2.41  > "Curvature radius bottom point";
+
+FLOAT  radiusm  :=    9.96  > "Curvature radius start of max-inflexion curve";
+
+FLOAT  radiusn  :=  935.00  > "Curvature radius end inflexion-bottle_neck curve";
+
+FLOAT  hradie   :=    5.5   > "Bottle neck radius (standardized for capsule)";
+
+FLOAT  höjd     :=  270.0   > "Height    (standardized for case (box?))";
+
+FLOAT  mradie   :=   45.0   > "Max radius  (standardized for case (box?)";
+
+INT    grafik   :=    0     > "Graphic: 0= Profile 1= Surface ");
+
+
+
+!sdesce Create a bottle
+
+!sdescs Skapa en flaska
+
+
+
+
+
+! Internal variables
+
+
+
+  REF    cur1_id;                          ! Id curve bottom-max
+
+  REF    cur2_id;                          ! Id curve max-inflexion
+
+  REF    cur3_id;                          ! Id curve neck-inflexion
+
+  REF    cur4_id;                          ! Id curve bottle neck     
+
+
+
+  VECTOR p_inf;                            ! Inflexion point
+
+
+
+  FLOAT  l_pv;                             ! Lower limit for P-value
+
+  FLOAT  u_pv;                             ! Upper limit for P-value
+
+  INT    case;                             ! Case for c_econicv0, ...
+
+
+
+  INT    DEBUG;                            ! Debug
+
+  INT    b_flag;                           ! BLANK value
+
+
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! _________
+
+! ---
+
+
+
+! 0. Initializations
+
+
+
+  DEBUG := 0;                              ! Change to 0 or 1
+
+
+
+  IF DEBUG = 0 THEN                        ! All curves, except the profile,
+
+    b_flag:= 1;                            ! will be blanked for DEBUG= 0
+
+  ELSE                                     !
+
+    b_flag:= 0;                            !
+
+  ENDIF;                                   !
+
+
+
+! +++
+
+! 1. Limitations on optimization variables
+
+! ---
+
+
+
+  PART(#21,OPT_LIMV0 (                     ! Registrate bdradie limits
+
+                      #0,                  ! No id, parameter in this module
+
+                      12,                  ! Both limits are defined
+
+                  20 , mradie,             ! Lower and upper limit
+
+                      1  ));               ! Parameter number in module
+
+
+
+  PART(#22,OPT_LIMV0(#0,12,   80.0   ,hhals*0.8 , 2));  ! hmax
+
+  PART(#23,OPT_LIMV0(#0,12,    5.0   ,  50000.0 , 3));  ! bdydx
+
+  PART(#24,OPT_LIMV0(#0, 1,    4.0   ,    300.0 , 4));  ! d_infm
+
+  PART(#25,OPT_LIMV0(#0, 1,    4.0   ,    100.0 , 5));  ! d_infn 
+
+  PART(#26,OPT_LIMV0(#0,12, hmax*1.1 ,hhals*0.9 , 6));  ! hinflex
+
+  PART(#27,OPT_LIMV0(#0,12, höjd*0.8 , höjd*0.98, 7));  ! hhals  
+
+  PART(#28,OPT_LIMV0(#0, 1,     0.1  ,  50000.0 , 8));  ! radiusb
+
+  PART(#29,OPT_LIMV0(#0, 1,     0.1  ,  50000.0 , 9));  ! radiusm
+
+  PART(#30,OPT_LIMV0(#0, 1,     0.1  ,  50000.0 ,10));  ! radiusn
+
+
+
+! +++
+
+! 2. Create rotation axis 
+
+! ---
+
+
+
+  LIN_FREE(#2,VEC(0,0,0), VEC(0,höjd,0):PEN=3,BLANK=b_flag);
+
+
+
+! +++
+
+! 3. Create profile curve                                  
+
+! ---
+
+
+
+! +++
+
+! Curve segment cur1_id is a conic from the bottom point to the 
+
+! maximum width point. The conic is defined by start (bottom) 
+
+! point, start vector, start curvature radius, end (maxwidth)
+
+! point and end tangent.
+
+!
+
+! The given input data may result in unacceptable P-values. In order
+
+! to avoid a stop in the optimization calculation has the used conic
+
+! creation module (c_econicv0) limit attributes for this case. The 
+
+! P-value of the output curve will always be between a lower and an
+
+! upper limit.
+
+!
+
+! Curve segment cur1_id will not be defined by a curvature radius if
+
+! the conic is close to a straight line, i.e when the bottom radius
+
+! is nearly (= 1.0 mm) equal to the maximum radius. The conic will
+
+! in this case be reblaced by a stright line.
+
+! ---
+
+
+
+! There will in general be additional requirements on geometry creation
+
+! modules when they are used in optimization. This is one way to handle
+
+! this kind of constraints. There are also other possibilities ......
+
+! Also the switch of curve creation routines will be a normal problem.
+
+! This can be solved in many ways in a product model system ......
+
+
+
+  case := 2;                ! Do not stop for p-value 
+
+  l_pv := 0.3;              ! less than l_pv or greater
+
+  u_pv := 0.7;              ! than u_pv. 
+
+
+
+  IF  ABS(bradie - mradie ) >  1.0 THEN 
+
+!   Definition of conic with start curvature radius
+
+    PART(#3, c_econicv0 ( 
+
+     VEC(bradie,  0    ,0),VEC( 1.0, bdydx, 0), radiusb,
+
+     VEC(mradie, hmax  ,0),VEC( 0.0,  20.0, 0),
+
+     l_pv,u_pv,case) :BLANK=b_flag);
+
+    cur1_id := GLOBAL_REF(#3#1);
+
+  ELSE
+
+!   Definition of a straight line
+
+    CUR_CONIC(#15,"FREE", 
+
+    VEC(bradie,  0    ,0),VEC(mradie    , hmax       ,0),  0.5  ,
+
+    VEC(mradie, hmax  ,0),VEC(mradie+0.0, hmax + 1.0 ,0) :BLANK=b_flag);
+
+    cur1_id := GLOBAL_REF(#15);
+
+  ENDIF;
+
+
+
+! +++
+
+! Straight line segment cur4_id for the bottle neck
+
+! ---
+
+
+
+  LIN_FREE(#5, VEC(hradie*1.4, hhals ,0), VEC(hradie , höjd ,0):BLANK=1);
+
+  cur4_id := GLOBAL_REF(#5);
+
+
+
+! +++
+
+! The curve from the bottle neck to the the maximimum width point shall
+
+! be defined by two conic segments with an inflexion. The inflexion point
+
+! and the inflexion slope cannot be choosen freely, i.e. directly be i
+
+! variables in the optimization problem. There must be constraints or     
+
+! limits which prevent that extra inflexion points (additional conic 
+
+! segments) will be necessary. 
+
+!
+
+! But a better way to handle this type of problem is to define variables
+
+! which only can result in one inflexion point. In this case is a straight
+
+! line created. This line controls the position and slope of the inflexion.
+
+! The line starts in the extrapolated bottle neck line and the extrapolated 
+
+! bottom to max. width curve. The inflexion point is the intersect with 
+
+! the input (a variable) height for the inflexion point and the inflexion
+
+! slope is defined by the straight line tangent. If the extrapolation 
+
+! distances are positive ( defined as > 4.0 here), then there will not be
+
+! any extra inflexion points.
+
+!
+
+! The two conics are defined by start point, start tangent, start radius,
+
+! end point and end tangent. The curvature radius is preferred since a
+
+! P-value will result in a not well-conditioned objective function. All
+
+! other variables are distances (mm) but the P-value is a relative distance
+
+! and a small change of the P-value may result in big changes of the curve
+
+! ---
+
+
+
+! Straight line for the inflexion point
+
+
+
+  LIN_FREE(#14, ON(cur4_id,0.0)-d_infn*TANG(cur4_id,0.0), 
+
+                ON(cur1_id,1.0)+d_infm*TANG(cur1_id,1.0):BLANK=b_flag);
+
+
+
+! Inflexion point is the intersect between hinflex line and #14
+
+
+
+  LIN_FREE(#13, VEC(0, hinflex, 0) ,VEC(100, hinflex, 0):PEN=3,BLANK=b_flag );
+
+
+
+  p_inf := INTERSECT(GLOBAL_REF(#14), GLOBAL_REF(#13), -1);
+
+
+
+
+
+! Conic from max. point to inflexion point
+
+
+
+  PART(#4, c_econicv0 ( 
+
+           ON(cur1_id,1.0), TANG(  cur1_id      ,1.0), radiusm, 
+
+               p_inf      , TANG(GLOBAL_REF(#14),0.5), 
+
+           l_pv,u_pv,case) :BLANK=b_flag);
+
+  cur2_id := GLOBAL_REF(#4#1);
+
+
+
+! Conic from inflexion point to bottle neck 
+
+
+
+  PART(#6, c_fconicv0 ( 
+
+           p_inf    , TANG(GLOBAL_REF(#14),0.5), radiusn,
+
+     ON(cur4_id,0.0), TANG( cur4_id       ,0.0), 
+
+     l_pv,u_pv,case):BLANK=b_flag);
+
+  cur3_id := GLOBAL_REF(#6#1);
+
+
+
+! +++
+
+! Create a composit curve        
+
+! ---
+
+
+
+  CUR_COMP(#7, cur1_id, cur2_id, cur3_id, cur4_id :BLANK=1);
+
+
+
+! +++
+
+! 4. Give the rotation axis and the profile curve names as GROUPS
+
+! ---
+
+
+
+  GROUP(#8,"ROTAXIS",GLOBAL_REF(#2));
+
+  GROUP(#9,"PROFILE",GLOBAL_REF(#7));
+
+
+
+! +++
+
+! 5. Create surface if grafik not is zero (0).
+
+! ---
+
+
+
+  IF grafik <> 0 THEN
+
+    PART(#1,s_rotsurv0 (GLOBAL_REF(#2),GLOBAL_REF(#7),grafik));
+
+  ELSE
+
+    CUR_COMP(#10,#7:PEN=4);
+
+  ENDIF;
+
+
+
+ENDMODULE
+

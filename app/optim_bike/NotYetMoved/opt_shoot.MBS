@@ -1,0 +1,1096 @@
+!***************** opt_shoot  ****************************
+
+!
+
+! +++
+
+! Shooting and bouncing a ray in a cavity
+
+!
+
+! Data for sucessfull optimization (with below default values):
+
+! Number of iterations: 10
+
+! Gradient epsilon:      0.3
+
+! Step:                  1.0
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-10-11 Gunnar Liden
+
+!
+
+! ---
+
+!************************************************************
+
+
+
+!sdesce Shooting and bouncing a ray in a cavity
+
+!sdescs Skjuta och studsa stråle i hålrum
+
+
+
+GLOBAL GEOMETRY MODULE opt_shoot (
+
+REF   prt_id             >"@t16384 Select cavity (part) with start hole and end hole";
+
+FLOAT a_y    :=  9.0     >"Shooting azimuth   angle";
+
+FLOAT a_z    := 33.0     >"Shooting elevation angle";
+
+INT   n_r    :=  4       >"Set number of bounces to the output hole of the cavity";    
+
+INT   print  :=  0       >"Eq. 1: Result to list window";    
+
+INT   check  :=  0       >"Eq. 1: Check input and output holes";    
+
+INT   graphic:=  2       >"=1: Show rays =2: Show rays and distance to hole");
+
+
+
+! Internal variables
+
+
+
+  INT    status;                 ! Eq.  0: Last bounce inside cavity
+
+                                 ! Eq.  1: Successful shot
+
+                                 ! Eq.  2: Got out before it should ...
+
+                                 ! Eq. -1: Line/intersect calculation failed
+
+                                 ! Eq. -2: You are dead ....
+
+
+
+  VECTOR p_s;                    ! Source point
+
+  VECTOR v_s;                    ! Source vector
+
+
+
+  INT    nu;                     ! Number of U patches
+
+  INT    nv;                     ! Number of V patches
+
+  VECTOR p_e;                    ! End spine point
+
+
+
+  VECTOR xpt;                    ! X point for coordinate system
+
+  VECTOR ypt;                    ! Y point for coordinate system
+
+
+
+
+
+  VECTOR uv_start;               ! Start UV point and surface (from
+
+                                 ! a previous calculation. Z value is
+
+                                 ! the surface number in surall_id.
+
+                                 ! Negative values: Not defined
+
+  VECTOR p_s_in;                 ! Source point   input
+
+  VECTOR v_s_in;                 ! Source vector  input
+
+  VECTOR p_s_out;                ! Source point  output
+
+  VECTOR v_s_out;                ! Source vector output
+
+  VECTOR uv_out;                 ! Output UV pt corresp. to p_s_out
+
+  REF    s_min_id;               ! Surface for uv_out  
+
+
+
+  INT    pre_flag;               ! Flag for previous ray
+
+
+
+  INT    i_c;                    ! Loop index
+
+
+
+  VECTOR uv;                     ! UV point    
+
+  VECTOR d_a;                    ! Vector
+
+  FLOAT  f_segtype;              ! Segment type  
+
+                                 ! 1.0: CUB_SEG
+
+                                 ! 2.0:  UV_SEG
+
+
+
+  FLOAT  s_h_radius;             ! Start hole radius
+
+  FLOAT  e_h_radius;             ! End   hole radius
+
+
+
+  REF    sb_id;                  ! B plane identity for plane in start hole
+
+  REF    eb_id;                  ! B plane identity for plane in end   hole
+
+  VECTOR p_int;                  ! Intersect point 
+
+  INT    n_int_e;                ! No of intersects in end   plane (0 or 1)
+
+  INT    n_int_s;                ! No of intersects in start plane (0 or 1)
+
+
+
+  FLOAT  dist;                   ! Distance to center of hole
+
+
+
+  INT    i_b;                    ! Loop index pre_uv and cur_uv
+
+  VECTOR pre_uv(20);             ! Previous bounce points
+
+  INT    n_pre;                  ! Number of previous bounces
+
+  VECTOR cur_uv(20);             ! Current  bounce points
+
+  INT    n_cur;                  ! Number of current bounces
+
+
+
+  STRING h_case*5;               ! Case read or write for opt_3shoot
+
+
+
+  INT    i_bou;                  ! Loop index bounce
+
+  FLOAT  dist_b(50);             ! Distance between bouncing points
+
+  FLOAT  dist_s_h(50);           ! Distance to start hole           
+
+  FLOAT  dist_e_h(50);           ! Distance to end   hole           
+
+  FLOAT  straff;                 ! Penalty radius for constraint
+
+  FLOAT  cst_val;                ! Constraint function value
+
+  STRING cst_str*30;             ! Constraint description name
+
+
+
+  INT    i_ent;                  ! Loop index entity
+
+
+
+  REF    sur_id;                 ! Reference to surface (cavity) in the input part 
+
+
+
+                                 ! For function GETPRT:
+
+  STRING namn*10;                ! Name of part
+
+  INT    mtyp;                   ! Module type
+
+                                 ! Eq. 2: DRAWING
+
+                                 ! Eq. 3: GEOMETRY
+
+  INT    mattr;                  ! Module attribute
+
+                                 ! Eq. 1: LOCAL
+
+                                 ! Eq. 2: GLOBAL
+
+                                 ! Eq. 3: BASIC
+
+  REF    kid;                    ! Global identity for the
+
+                                 ! coordinate system which has 
+
+                                 ! been used to position a
+
+                                 ! module of type LOCAL
+
+  INT    np;                     ! Number of parameters in the part
+
+  INT    mant;                   ! Number of entities in the part
+
+  REF    idm(500);               ! Array with global identities to
+
+                                 ! all entities in the part (if 
+
+                                 ! (there is space for all of them)
+
+
+
+                                 ! For function GETHDR:
+
+  INT    typ;                    ! Type of entity
+
+  INT    nref;                   ! Version number
+
+  INT    blank;                  ! Eq. 0: Unblanked  Eq. 1: Blanked
+
+  INT    nivå;                   ! Layer for entity
+
+  INT    penna;                  ! Pen number for entity
+
+  REF    grupp_id(3);            ! Global identities for GROUP's
+
+                                 ! which the entity is s part of
+
+
+
+  FLOAT  che_d;                  ! Check distance
+
+
+
+  INT    n_sur;                  ! Number of surfaces in input part
+
+
+
+  STRING s*1;                    ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Initializations and checks
+
+! ---
+
+
+
+  status := 0;                    ! Intialize to bounce within cavity
+
+
+
+  dist := -12345.6789;            !
+
+  uv_start:= VEC(-1.0,-1.0,-1.0); !
+
+
+
+  FOR  i_b:= 1 TO 20 DO           !
+
+    cur_uv(i_b):= VEC(-2,-2,-2);  !
+
+    pre_uv(i_b):= VEC(-2,-2,-2);  !
+
+  ENDFOR;                         !
+
+  n_cur:= 0;                      !
+
+  n_pre:= 0;                      !
+
+
+
+  IF   n_r <= 0  THEN             ! Check n_r
+
+     EXIT("opt_shoot n_r <= 0");  !
+
+  ENDIF;                          !
+
+
+
+  IF print = 1 THEN               ! Open List Window
+
+    LST_INI("opt_shoot");         !
+
+  ENDIF;                          !
+
+
+
+  FOR i_bou:= 1 TO 50 DO          !
+
+    dist_b(i_bou):= -0.12345;     !
+
+    dist_s_h(i_bou):= -0.12345;   !
+
+    dist_e_h(i_bou):= -0.12345;   !
+
+  ENDFOR;                         !
+
+
+
+  GETPRT(prt_id,namn,mtyp,        ! Get all entities in the input part
+
+     mattr,kid,np,mant,idm);      !
+
+  sur_id := #0;                   !
+
+  n_sur:= 0;                      !
+
+  FOR i_ent:= 1 TO mant DO        !
+
+    GETHDR(idm(i_ent),typ,nref,   ! Header data for entity    
+
+    blank,nivå,penna,grupp_id);   ! 
+
+    IF typ = 16 THEN              ! Entity a surface ?
+
+      n_sur:= n_sur + 1;          !
+
+      sur_id:= idm(i_ent);        !
+
+    ENDIF;                        !
+
+  ENDFOR;                         !
+
+  IF n_sur = 1 THEN               !
+
+    ;                             !
+
+  ELSE                            !
+
+    EXIT("opt_shoot Not one (1) "+!
+
+         "but "+STR(n_sur,-1,0)+  !
+
+          " surfaces");           !
+
+  ENDIF;                          !
+
+
+
+! +++
+
+! Retrieve previous chain of rays
+
+! ---
+
+
+
+! +++
+
+! Read  bounce data to text file
+
+! ---
+
+  h_case := "read";               !
+
+  PART(#23, opt_3shoot ( h_case,  ! 
+
+        pre_uv, n_pre ):SAVE=0);  !
+
+       
+
+  IF n_pre > 0 THEN               !
+
+    pre_flag :=  1;               ! Use history file 
+
+  ELSE                            !
+
+    pre_flag :=  0;               ! There is no history file
+
+  ENDIF;                          !
+
+
+
+! +++
+
+! Retrieve number of patches and check surface for check= 1
+
+! ---
+
+
+
+  GETSURH(sur_id ,"NPATU",nu );   ! Number of U patches
+
+  GETSURH(sur_id ,"NPATV",nv );   ! Number of V patches
+
+
+
+  IF  check = 1 THEN              !
+
+    che_d:= VECL(                 !
+
+    ON(sur_id,VEC( 0, 0,0)) -     !
+
+    ON(sur_id,VEC( 0,nv,0)));     !
+
+    IF che_d > 0.1 THEN           !
+
+      EXIT("opt_shoot Start of "+ !
+
+         "surface not closed");   !
+
+    ENDIF;                        !
+
+    che_d:= VECL(                 !
+
+    ON(sur_id,VEC(nu, 0,0)) -     !
+
+    ON(sur_id,VEC(nu,nv,0)));     !
+
+    IF che_d > 0.1 THEN           !
+
+      EXIT("opt_shoot End   of "+ !
+
+         "surface not closed");   !
+
+    ENDIF;                        !
+
+  ENDIF;                          !
+
+
+
+! +++
+
+! Calculate shooting point as midpoint of start hole
+
+! Create intersect plane in cavity start hole              
+
+! ---
+
+
+
+  CUR_ISO(#33,sur_id, "U",0.0,     !
+
+          0.0,nv:BLANK=0,PEN=2);   !
+
+  PART (#35, c_aplanev0 (          ! Average point and plane
+
+   GLOBAL_REF(#33), 20, 1 , 2 ));  !
+
+  p_s:= ON(GLOBAL_REF(#35#1),0.0); !
+
+
+
+  B_PLANE(#34,                     !
+
+        ON(sur_id,VEC(0.0,nv/4,0)),!
+
+               p_s,p_s,            !
+
+        ON(sur_id,VEC(0.0,0.0,0))  !
+
+          :BLANK=1,PEN=4);         !
+
+  sb_id:= GLOBAL_REF(#34);         !
+
+
+
+  s_h_radius:= VECL(p_s-           ! Start hole radius
+
+       ON(sur_id,VEC(0.0,0.0,0))); !
+
+
+
+! +++
+
+! Create intersect plane in cavity end hole              
+
+! ---
+
+
+
+  CUR_ISO(#44,sur_id, "U", nu,     !
+
+          0.0,nv:BLANK=0,PEN=2);   !
+
+  PART (#45, c_aplanev0 (          ! Average point and plane
+
+   GLOBAL_REF(#44), 20, 1 , 2 ));  !
+
+  p_e:= ON(GLOBAL_REF(#45#1),0.0); !
+
+
+
+  B_PLANE(#14,                     !
+
+        ON(sur_id,VEC(nu,nv/4,0)), !
+
+               p_e,p_e,            !
+
+        ON(sur_id,VEC(nu,0.0,0))   !
+
+          :BLANK=1,PEN=4);         !
+
+  eb_id:= GLOBAL_REF(#14);         !
+
+
+
+  xpt := p_e;                     !
+
+  uv  := VEC(0.0,0.0,0);          !
+
+  ypt := ON(sur_id,uv);           !
+
+
+
+  e_h_radius:= VECL(p_s-ypt);      ! End   hole radius
+
+
+
+  CSYS_3P( #9,"Spine", p_s, xpt,  ! Spine system
+
+           ypt:BLANK=1,PEN=3);    !
+
+  MODE_LOCAL(GLOBAL_REF( #9));    !
+
+  CSYS_1P(#10,"Shoot", VEC(0,0,0),! Shooting system
+
+     0.0, a_y  , a_z  :BLANK=1);  !
+
+  MODE_LOCAL(GLOBAL_REF(#10));    !
+
+  LIN_FREE(#11,VEC(0,0,0),        ! Create temporary line
+
+          VEC(1,0,0):BLANK=1);    !
+
+  MODE_GLOBAL();                  ! Activate global system
+
+  v_s := TANG(GLOBAL_REF(#11,0)); !
+
+  DEL(GLOBAL_REF(#11));           !
+
+
+
+! +++
+
+! Create straight line for graphic = 2 (blue line)
+
+! ---
+
+
+
+  IF  graphic = 2 THEN            !
+
+  LIN_FREE(#3,p_s,p_s+90*v_s:     !
+
+           PEN=4);                !
+
+  ENDIF;                          !
+
+
+
+! +++
+
+! Get previous bounce data 
+
+! ---
+
+
+
+
+
+! +++
+
+! Loop for all reflection lines i_c= 1,2,3,4, .. ,n_r
+
+!    i. Calculate one reflection line
+
+!   ii. Create red line between intersect (reflection) points
+
+! ---
+
+
+
+  p_s_out := p_s;                 !
+
+  v_s_out := v_s;                 !
+
+
+
+  FOR i_c := 1 TO n_r   DO        ! Start loop bounces
+
+
+
+    p_s_in := p_s_out;            ! Input point
+
+    v_s_in := v_s_out;            ! Input vector
+
+    IF   pre_flag > 0  AND        !
+
+       i_c  <=  n_pre    THEN     !
+
+      uv_start:= pre_uv(i_c);     ! Use previous point
+
+    ELIF pre_flag > 0  AND        !
+
+       i_c  >   n_pre    THEN     !
+
+      pre_flag:= 0;               !
+
+      uv_start:=VEC(-1.,-1.,-1.); !
+
+    ELSE                          !
+
+      uv_start:=VEC(-1.,-1.,-1.); !
+
+    ENDIF;                        !
+
+
+
+    PART(#2, opt_1shoot (         ! Calculate ray bounce
+
+         sur_id, uv_start,        !
+
+         p_s_in,  v_s_in,         !
+
+         p_s_out, v_s_out, uv_out,!
+
+         graphic));               !
+
+
+
+    IF VECL(v_s_out) <  0.01 THEN ! No intersect in the cavity surface 
+
+      LIN_FREE(#4,p_s_in,p_s_in + ! Create blue line 
+
+              40.0*v_s_in         !
+
+                :PEN=4);          !
+
+      n_int_e:= N_INTERSECT(eb_id,!
+
+       GLOBAL_REF(#4),-1);        !
+
+      n_int_s:= N_INTERSECT(sb_id,!
+
+       GLOBAL_REF(#4),-1);        !
+
+      IF n_int_e = 0 AND          !
+
+         n_int_s = 0      THEN    !
+
+        IF print = 1 THEN         !
+
+        LST_LIN("No intersect in"+!
+
+        " the plane !!!!");       !
+
+        LST_EXI();                !
+
+        ENDIF;                    !
+
+        status := -1;             !
+
+        EXIT("opt_shoot Line" +   !
+
+         "/surface function "+    !
+
+          "failed !");            !
+
+      ENDIF;                      !
+
+      IF n_int_e = 1    THEN      !
+
+        p_int:= INTERSECT(eb_id,  !
+
+         GLOBAL_REF(#4),-1);      !
+
+        DEL(GLOBAL_REF(#4));      !
+
+      ELSE                        !
+
+        status := -2;             !
+
+        EXIT("opt_shoot You " +   !
+
+         "are dead !!!");         !
+
+      ENDIF;                      !
+
+    ENDIF;                        !
+
+
+
+    IF   VECL(v_s_out)<  0.01 AND ! Ray gets out of the cavity to early
+
+       i_c  <>  n_r         THEN  !
+
+      POI_FREE(#15,p_int:PEN=3,   !
+
+               BLANK=0);          !
+
+      LIN_FREE(#16,p_s_in,p_int   ! Create green line 
+
+                :PEN=3);          !
+
+      IF print = 1 THEN           !
+
+        LST_LIN("The ray got out"+!
+
+        " of the cavity after "   !
+
+         +STR(i_c,-1,0)+          !
+
+           " bounces (not "+      !
+
+          STR(n_r,-1,0)+")");     !
+
+       ENDIF;                     !
+
+       dist := 1000000.0;         !
+
+       status := 2;               !
+
+       GOTO slut;                 !
+
+    ELIF VECL(v_s_out)<  0.01 AND ! Bingo !   
+
+       i_c  =   n_r         THEN  !
+
+      POI_FREE(#17,p_int:PEN=2,   !
+
+               BLANK=0);          !
+
+      LIN_FREE(#18,p_s_in,p_int   ! Create red line 
+
+                :PEN=2);          !
+
+      IF print = 1 THEN           !
+
+        LST_LIN("The ray got out"+!
+
+        " of the cavity after "   !
+
+         +STR(n_r,-1,0)+          !
+
+           " bounces!");          !
+
+       ENDIF;                     !
+
+       dist:= VECL(p_int-p_e);    ! Distance to center of hole
+
+       status := 1;               !
+
+      GOTO slut;                  !
+
+    ENDIF;                        !
+
+
+
+    IF graphic >= 1 THEN          !
+
+      IF VECL(p_s_in-p_s_out) >   !
+
+           0.2           THEN     !
+
+      LIN_FREE(#6,p_s_in,p_s_out  ! Create red line 
+
+                :PEN=2);          !
+
+      ENDIF;                      !
+
+    ENDIF;                        !
+
+
+
+    n_cur := n_cur + 1;           ! An additional bounce point
+
+    cur_uv(n_cur):= uv_out;       !
+
+    dist_b(n_cur):=               ! Distance between bounces
+
+        VECL(p_s_in-p_s_out);     !
+
+    dist_s_h(n_cur):=             ! Distance to start hole  
+
+        VECL(p_s-p_s_out);        !
+
+    dist_e_h(n_cur):=             ! Distance to end   hole  
+
+        VECL(p_e-p_s_out);        !
+
+
+
+    
+
+  ENDFOR;
+
+
+
+
+
+! +++
+
+! Calculate objective function value for optimization 
+
+! ---
+
+
+
+  dist:= VECL(p_s_out-p_e);       ! Distance to center of hole
+
+
+
+  IF graphic = 2 THEN             ! Graphic
+
+    LIN_FREE(#20,p_s_out,p_e      !
+
+   :PEN=5,LFONT=1,LDASHL=dist/20);!
+
+  ENDIF;                          !
+
+  IF print = 1 THEN               ! To  List Window
+
+    LST_LIN("Distance to the "+   !
+
+    " end hole is "+              !
+
+        STR(dist,-15,8));         !
+
+  ENDIF;                          !
+
+
+
+
+
+
+
+slut:;
+
+
+
+! +++
+
+! Registrate objective function value. Call of OPT_FUNCV0
+
+! ---
+
+
+
+  PART(#1,OPT_FUNCV0(dist ));     ! Registrate objective fctn value
+
+
+
+! +++
+
+! Registrate constraint function value. Call of OPT_CSTV0 
+
+! ---
+
+
+
+  straff   := 0.0001;                   ! Penalty radius for constraint
+
+
+
+  FOR  i_bou:= 1 TO n_cur     DO        !
+
+    cst_val:= 1.0 - dist_b(i_bou);      ! Constraint value
+
+    cst_str:= "Dist_"+STR(i_bou,-1,0);  ! Description
+
+
+
+    IF print = 1 THEN                   ! To  List Window
+
+      LST_LIN("Distance between "+      !
+
+      "bounce pts "+                    !
+
+          STR(dist_b(i_bou),-15,8));    !
+
+      LST_LIN("Constraint value "+      !
+
+          STR(cst_val      ,-15,8));    !
+
+    ENDIF;                              !
+
+
+
+    PART(#5,OPT_CSTV0 ( cst_val,        ! Registrate
+
+                        straff ,        !
+
+                        cst_str ));     !
+
+
+
+!För många begr.    cst_val:= 1.2*s_h_radius            ! Constraint value
+
+!För många begr.              - dist_s_h(i_bou);        ! 
+
+!För många begr.    cst_str:= "Shole_"+STR(i_bou,-1,0); ! Description
+
+
+
+!För många begr.    IF print = 1 THEN                   ! To  List Window
+
+!För många begr.      LST_LIN("Distance to start "+     !
+
+!För många begr.      "hole "+                          !
+
+!För många begr.          STR(dist_s_h(i_bou),-15,8));  !
+
+!För många begr.      LST_LIN("Constraint value "+      !
+
+!För många begr.          STR(cst_val      ,-15,8));    !
+
+!För många begr.    ENDIF;                              !
+
+
+
+!För många begr.    PART(#25,OPT_CSTV0 ( cst_val,       ! Registrate
+
+!För många begr.                        straff ,        !
+
+!För många begr.                        cst_str ));     !
+
+
+
+    cst_val:= 1.2*e_h_radius            ! Constraint value
+
+              - dist_e_h(i_bou);        ! 
+
+    cst_str:= "Ehole_"+STR(i_bou,-1,0); ! Description
+
+
+
+    IF print = 1 THEN                   ! To  List Window
+
+      LST_LIN("Distance to end   "+     !
+
+      "hole "+                          !
+
+          STR(dist_e_h(i_bou),-15,8)+   !
+
+          " i_bou "+STR(i_bou,-1,0)+    !
+
+          " n_r " + STR(n_r,-1,0));     !
+
+      LST_LIN("Constraint value "+      !
+
+          STR(cst_val      ,-15,8));    !
+
+    ENDIF;                              !
+
+
+
+    IF i_bou < n_r THEN                 !
+
+      PART(#26,OPT_CSTV0 ( cst_val,     ! Registrate
+
+                        straff ,        !
+
+                        cst_str ));     !
+
+    ENDIF;                              !
+
+  ENDFOR;                               !
+
+
+
+
+
+! +++
+
+! Write bounce data to text file
+
+! ---
+
+  h_case := "write";              !
+
+  PART(#22, opt_3shoot ( h_case,  ! 
+
+        cur_uv, n_cur ):SAVE=0);  !
+
+       
+
+  IF print = 1 THEN               ! Close List Window
+
+    LST_EXI();                    !
+
+  ENDIF;                          !
+
+
+
+! +++
+
+! End with error for successful shot or ..
+
+! ---
+
+
+
+  IF status = 1 THEN
+
+    LST_INI("opt_shoot SKJUTRESULTAT"); 
+
+    LST_LIN("  ");
+
+    LST_LIN("Du lyckades hitta hålet med det bestämda antalet ("
+
+             +STR(n_r,-1,0)+") studsar!");
+
+    LST_EXI();
+
+    s:= INPMT("opt_shoot Du har hittat hålet"," ",1);
+
+    s:= INPMT("opt_shoot Vill Du fortsätta y/n ?","y",1);
+
+    IF s <> "y" THEN
+
+      EXIT("opt_shoot INGET FEL, BARA SLUT PÅ SPEL .....");
+
+    ENDIF;
+
+
+
+!    EXIT("opt_shoot INGET FEL, BARA SLUT PÅ SPEL .....");
+
+  ELIF status = -2 THEN
+
+    LST_INI("opt_shoot SKJUTRESULTAT"); 
+
+    LST_LIN("  ");
+
+    LST_LIN("Du har skjutit Dig själv efter studs nummer "+STR(i_c,-1,0)+" !!!");
+
+    LST_EXI();
+
+  ELIF status = 2 THEN
+
+    LST_INI("opt_shoot SKJUTRESULTAT"); 
+
+    LST_LIN("  ");
+
+    LST_LIN("Strålen slank ut redan efter studs "+STR(i_c,-1,0)+"!");
+
+    IF n_r-i_c > 1 THEN
+
+    LST_LIN("Den skulle ha studsat "+STR(n_r-i_c,-1,0)+" gånger till !!!");
+
+    ELSE
+
+    LST_LIN("Den skulle ha studsat "+STR(n_r-i_c,-1,0)+" gång till !!!");
+
+    ENDIF;
+
+    LST_EXI();
+
+  ENDIF;
+
+
+
+
+
+
+
+
+
+ENDMODULE
+

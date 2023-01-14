@@ -1,0 +1,724 @@
+! ***************** opt_duct   ****************************
+
+!
+
+! +++
+
+! Create a duct surface for shooting and bouncing of rays
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-10-10 Gunnar Liden
+
+!
+
+! ---
+
+!************************************************************
+
+
+
+!sdesce Create a duct surface for shooting and bouncing of rays
+
+!sdescs Skapa en kanal yta att skjuta och studsa strålar i
+
+
+
+GLOBAL  GEOMETRY MODULE opt_duct   (
+
+FLOAT s_leng :=   400.00 > "Length (half length) of spine curve";
+
+FLOAT d_hole :=     0.35 > "End hole position (relative length of spine)";
+
+FLOAT hole   :=     0.10 > "Output hole size  (relative length of spine)";
+
+FLOAT d_umax :=     0.45 > "Upper maximum     (relative length of spine)";
+
+FLOAT d_lmax :=     0.70 > "Lower maximum     (relative length of spine)";
+
+FLOAT d_mmax :=     0.25 > "Width maximum     (relative length of spine)";
+
+FLOAT u_pval :=     0.65 > "P value upper    curve";
+
+FLOAT l_pval :=     0.55 > "P value lower    curve";
+
+FLOAT m_pval :=     0.50 > "P value maxwidth curve";
+
+FLOAT c_pval :=     0.40 > "P value for all cross-section curves";
+
+INT   no_ulin:=     5    > "Number of U lines for LFT_SUR";  
+
+INT   d_case :=     1    > "=1: LFT_SUR =2: Create CUB_SUR =3: Use CUB_SUR";
+
+STRING s_name*50:="SUR1" > "Name of CUB_SUR surface (text file on job direct.)";
+
+INT   no_u   :=     2    > "Number of extra U patches for CUB_SUR creation";  
+
+INT   no_v   :=     4    > "Number of extra V patches for CUB_SUR creation";  
+
+INT   graphic:=     1    >"=0: None =1: Show surface =2: Show all");
+
+
+
+! Internal variables
+
+
+
+  INT    i_p;                    ! Loop index point
+
+  FLOAT  d_x;                    ! Delta X for spine
+
+  VECTOR poi(40);                ! Points
+
+  VECTOR tanpoi(40);             ! Tangent points 
+
+
+
+  FLOAT  delta_tp;               ! Delta for tangent points
+
+  FLOAT  s_hole;                 ! Start hole
+
+
+
+  VECTOR u_s_p;                  ! Start         point for upper curve
+
+  VECTOR u_s_tp;                 ! Start tangent point for upper curve
+
+  VECTOR u_e_p;                  ! End           point for upper curve
+
+  VECTOR u_e_tp;                 ! End   tangent point for upper curve
+
+  VECTOR u_m_p;                  ! Maxim         point for upper curve
+
+  VECTOR u_m_tp;                 ! Maxim tangent point for upper curve
+
+
+
+  VECTOR l_s_p;                  ! Start         point for lower curve
+
+  VECTOR l_s_tp;                 ! Start tangent point for lower curve
+
+  VECTOR l_e_p;                  ! End           point for lower curve
+
+  VECTOR l_e_tp;                 ! End   tangent point for lower curve
+
+  VECTOR l_m_p;                  ! Maxim         point for lower curve
+
+  VECTOR l_m_tp;                 ! Maxim tangent point for lower curve
+
+
+
+  VECTOR m_s_p;                  ! Start         point for max w curve
+
+  VECTOR m_s_tp;                 ! Start tangent point for max w curve
+
+  VECTOR m_e_p;                  ! End           point for max w curve
+
+  VECTOR m_e_tp;                 ! End   tangent point for max w curve
+
+  VECTOR m_m_p;                  ! Maxim         point for max w curve
+
+  VECTOR m_m_tp;                 ! Maxim tangent point for max w curve
+
+
+
+  VECTOR n_s_p;                  ! Start         point for max w curve
+
+  VECTOR n_s_tp;                 ! Start tangent point for max w curve
+
+  VECTOR n_e_p;                  ! End           point for max w curve
+
+  VECTOR n_e_tp;                 ! End   tangent point for max w curve
+
+  VECTOR n_m_p;                  ! Maxim         point for max w curve
+
+  VECTOR n_m_tp;                 ! Maxim tangent point for max w curve
+
+
+
+  FLOAT  pval;                   ! P-value
+
+  FLOAT  eps;                    ! Mathematical epsilon for spine
+
+
+
+  REF    spine_id;               ! Spine curve identity
+
+  REF    lim1_id;                ! Maxwidth 1 curve
+
+  REF    lim2_id;                ! Top curve        
+
+  REF    lim3_id;                ! Maxwidth 2 curve
+
+  REF    lim4_id;                ! Bottom curve     
+
+  REF    tan1_id;                ! Tangent curve to maxwidth 1
+
+  REF    tan2_id;                ! Tangent curve to top curve        
+
+  REF    tan3_id;                ! Tangent curve to maxwidth 2
+
+  REF    tan4_id;                ! Tangent curve to bottom curve     
+
+
+
+  REF    bpval_id;                ! Pvalue function for b axis
+
+
+
+  INT    bflag_c;                ! Blank flag for curves
+
+  INT    bflag_s;                ! Blank flag for surface
+
+
+
+  INT    DEBUG;                  ! Debug
+
+  STRING s*1;                    ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! =========
+
+! ---
+
+
+
+! +++
+
+! 1. Initializations and checks      
+
+! ---
+
+
+
+  DEBUG := 0;                       ! Debug printout
+
+
+
+  s_hole := 0.02*s_leng;            ! Start hole
+
+
+
+  delta_tp := 0.40;                 ! Delta for tangent points
+
+
+
+  IF   graphic = 0 THEN             ! 
+
+    bflag_c := 1;                   !
+
+    bflag_s := 1;                   !
+
+  ELIF graphic = 1 THEN             ! 
+
+    bflag_c := 1;                   !
+
+    bflag_s := 0;                   !
+
+  ELIF graphic = 2 THEN             ! 
+
+    bflag_c := 0;                   !
+
+    bflag_s := 0;                   !
+
+  ELSE                              !
+
+    bflag_c := 0;                   !
+
+    bflag_s := 0;                   ! 
+
+  ENDIF;                            !
+
+
+
+! +++
+
+! 2. Import CUB_SUR surface for d_case= 3 and return
+
+! ---
+
+
+
+  IF d_case = 3 THEN
+
+    SUR_EXDEF(#19,ACT_JOBDIR()+s_name+".DAT", "NMG_F07", "CUB_SUR":BLANK=bflag_s);
+
+!!! PSH_PMT("opt_duct Bicubic surface "+RSTR(GLOBAL_REF(#19))+" is created");
+
+    EXIT();
+
+  ENDIF;
+
+
+
+! +++
+
+! 2. Create the spine curve
+
+! ---
+
+
+
+  eps := 0.001; 
+
+  d_x  := 2.0*(s_leng-eps)/(no_ulin-1);
+
+  FOR i_p := 1 TO no_ulin DO 
+
+    poi(i_p):= VEC(-s_leng+eps+d_x*(i_p-1), 0.0 ,0);
+
+    tanpoi(i_p):= poi(i_p) + VEC(1,0,0);
+
+  ENDFOR;
+
+
+
+  CUR_SPLARR(#2, "FREE", no_ulin, poi,tanpoi
+
+   :PEN=2,BLANK=bflag_c); 
+
+
+
+  spine_id:=GLOBAL_REF(#2 );        !
+
+
+
+! +++
+
+!  3. Create one P value curve for all strips
+
+! ---
+
+
+
+! +++
+
+! The P value curve is a scalar function (not a R*3 curve),
+
+! and shall not be transformed with the active coordinate 
+
+! system. The P value curve must therefore be defined with
+
+! the basic system active.
+
+! ---
+
+
+
+  IF u_pval  > 0.05 AND             ! Check P values
+
+     u_pval <  0.70      THEN       !
+
+    ;                               !
+
+  ELSE                              !
+
+    EXIT("opt_duct   u_pvalue not"+ !
+
+         " OK");                    !
+
+  ENDIF;                            !
+
+  IF c_pval  > 0.05 AND             !
+
+     c_pval <  0.70      THEN       !
+
+    ;                               !
+
+  ELSE                              !
+
+    EXIT("opt_duct   c_pvalue not"+ !
+
+         " OK");                    !
+
+  ENDIF;                            !
+
+
+
+  MODE_BASIC();                     !
+
+  CUR_CONIC(#3 , "FREE",            ! 
+
+    VEC(  0.0,   c_pval, 0.0),      !
+
+    VEC(2*s_leng,c_pval, 0.0), 0.5, !
+
+    VEC(2*s_leng,c_pval, 0.0),      !
+
+    VEC(  0.0,   c_pval, 0.0)       !
+
+   :PEN=1,BLANK=bflag_c);           !
+
+  MODE_GLOBAL();                    !
+
+
+
+  bpval_id:=GLOBAL_REF(#3 );        !
+
+
+
+! +++
+
+!  4. Upper curve (limit 1)
+
+! ---
+
+
+
+  u_s_p := VEC(-s_leng, -s_hole ,       0.0  ); 
+
+  u_m_p := VEC(   0.0 ,-d_umax*s_leng,  0.0  );
+
+  u_m_tp:= VEC(   1.0 ,-d_umax*s_leng,  0.0  );
+
+  u_s_tp:= u_m_p + VEC(0,-delta_tp*s_leng,0);
+
+  u_e_p := VEC(s_leng,(d_hole-hole)*s_leng,0.0);
+
+  u_e_tp:= u_m_p + VEC(0,-delta_tp*s_leng,0);
+
+
+
+  CUR_CONIC(#4, "FREE",   
+
+   u_s_p, u_s_tp, u_pval,
+
+   u_m_p, u_m_tp, u_pval, 
+
+   u_e_p, u_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  lim1_id:= GLOBAL_REF(#4 ); 
+
+
+
+! +++
+
+!  5. Lower curve (limit 3)
+
+! ---
+
+
+
+  l_s_p := VEC(-s_leng,  s_hole ,       0.0  ); 
+
+  l_m_p := VEC(   0.0 , d_lmax*s_leng,  0.0  );
+
+  l_m_tp:= VEC(   1.0 , d_lmax*s_leng,  0.0  );
+
+  l_s_tp:= l_m_p + VEC(0, delta_tp*s_leng,0);
+
+  l_e_p := VEC(s_leng,(d_hole+hole)*s_leng,0.0);
+
+  l_e_tp:= l_m_p + VEC(0, delta_tp*s_leng,0);
+
+
+
+  CUR_CONIC(#5, "FREE",   
+
+   l_s_p, l_s_tp, l_pval,
+
+   l_m_p, l_m_tp, l_pval, 
+
+   l_e_p, l_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  lim3_id:= GLOBAL_REF(#5 ); 
+
+
+
+! +++
+
+!  5. Upper tangent curve (tangent 1)
+
+! ---
+
+
+
+  CSYS_1P(#6 ,"Transl_1",  
+
+      VEC(0,0,s_leng*0.2),0,0,0  
+
+   :PEN=3,BLANK=bflag_c); 
+
+
+
+  MODE_LOCAL(GLOBAL_REF(#6));
+
+
+
+  CUR_CONIC(#7, "FREE",   
+
+   u_s_p, u_s_tp, u_pval,
+
+   u_m_p, u_m_tp, u_pval, 
+
+   u_e_p, u_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  tan1_id:= GLOBAL_REF(#7 );
+
+
+
+! +++
+
+!  6. Lower tangent curve (tangent 3)
+
+! ---
+
+
+
+  CUR_CONIC(#8, "FREE",   
+
+   l_s_p, l_s_tp, l_pval,
+
+   l_m_p, l_m_tp, l_pval, 
+
+   l_e_p, l_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  tan3_id:= GLOBAL_REF(#8 ); 
+
+
+
+  MODE_GLOBAL(); 
+
+
+
+! +++
+
+!  7. Maximum width curve (limit 2)  
+
+! ---
+
+
+
+  CSYS_1P(#9 ,"Rotation", 
+
+      VEC(0,0,  0.0 ),90.0,0,0 
+
+   :PEN=3,BLANK=bflag_c); 
+
+
+
+  MODE_LOCAL(GLOBAL_REF(#9)); 
+
+
+
+  m_s_p := VEC(-s_leng, -s_hole ,       0.0  ); 
+
+  m_m_p := VEC(   0.0 ,-d_mmax*s_leng,  0.0  );
+
+  m_m_tp:= VEC(   1.0 ,-d_mmax*s_leng,  0.0  );
+
+  m_s_tp:= m_m_p + VEC(0,-delta_tp*s_leng,0);
+
+  m_e_p := VEC(s_leng,       -hole *s_leng,-d_hole*s_leng );
+
+  m_e_tp:= m_m_p + VEC(0,-delta_tp*s_leng,0);
+
+
+
+  CUR_CONIC(#10, "FREE",   
+
+   m_s_p, m_s_tp, m_pval,
+
+   m_m_p, m_m_tp, m_pval, 
+
+   m_e_p, m_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  lim2_id:= GLOBAL_REF(#10);
+
+
+
+! +++
+
+!  8. Maximum width curve (limit 2)  
+
+! ---
+
+
+
+  n_s_p := VEC(-s_leng,  s_hole ,       0.0  ); 
+
+  n_m_p := VEC(   0.0 , d_mmax*s_leng,  0.0  );
+
+  n_m_tp:= VEC(   1.0 , d_mmax*s_leng,  0.0  );
+
+  n_s_tp:= n_m_p + VEC(0, delta_tp*s_leng,0);
+
+  n_e_p := VEC(s_leng,        hole *s_leng,-d_hole*s_leng);
+
+  n_e_tp:= n_m_p + VEC(0, delta_tp*s_leng,0);
+
+
+
+  CUR_CONIC(#11, "FREE",   
+
+   n_s_p, n_s_tp, m_pval,
+
+   n_m_p, n_m_tp, m_pval, 
+
+   n_e_p, n_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  lim4_id:= GLOBAL_REF(#11); 
+
+
+
+! +++
+
+!  9. Maximum width tangent curve (tangent 2)  
+
+! ---
+
+
+
+  CSYS_1P(#12,"Transl_1",  
+
+      VEC(0,0,s_leng*0.2),0,0,0  
+
+   :PEN=3,BLANK=bflag_c);     
+
+
+
+  MODE_LOCAL(GLOBAL_REF(#12)); 
+
+
+
+  CUR_CONIC(#13, "FREE",   
+
+   m_s_p, m_s_tp, m_pval,
+
+   m_m_p, m_m_tp, m_pval, 
+
+   m_e_p, m_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  tan2_id:= GLOBAL_REF(#13);
+
+
+
+! +++
+
+! 10. Maximum width tangent curve (tangent 4)  
+
+! ---
+
+
+
+  CUR_CONIC(#14, "FREE",   
+
+   n_s_p, n_s_tp, m_pval,
+
+   n_m_p, n_m_tp, m_pval, 
+
+   n_e_p, n_e_tp         
+
+   :PEN=4,BLANK=bflag_c);
+
+
+
+  tan4_id:= GLOBAL_REF(#14);
+
+
+
+
+
+  MODE_GLOBAL(); 
+
+
+
+! +++
+
+! 11. Create the surface (identity #1)   
+
+! ---
+
+
+
+  SUR_CONIC(#1 , spine_id,          
+
+     lim1_id,tan1_id,"P",bpval_id, 
+
+     lim2_id,tan2_id,"P",bpval_id,
+
+     lim3_id,tan3_id,"P",bpval_id, 
+
+     lim4_id,tan4_id,"P",bpval_id,
+
+     lim1_id,tan1_id             
+
+            :BLANK=bflag_s);    
+
+
+
+  IF d_case = 1  THEN
+
+    EXIT();
+
+  ENDIF;
+
+
+
+! +++
+
+! 12. Create CUB_SUR approximation and write to text file
+
+! ---
+
+
+
+  IF d_case <> 2 THEN
+
+    EXIT("opt_duct d_case "+STR(d_case,-1,0)+" not OK");
+
+  ENDIF;
+
+
+
+  SUR_APPROX(#20,GLOBAL_REF(#1), "CUB_SUR", 1, no_u, no_v );
+
+  PART(#21,ex_nmgbic(GLOBAL_REF(#20), s_name ));
+
+
+
+ENDMODULE
+

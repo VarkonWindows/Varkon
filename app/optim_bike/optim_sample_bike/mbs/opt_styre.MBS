@@ -1,0 +1,67 @@
+!*************************** opt_styre *************************************
+! +++
+! Handlebars
+!
+! ---
+!****************************************************************************
+!sdesce Handlebars
+
+
+
+BASIC DRAWING MODULE opt_styre(
+
+REF ram > "@t2 Position of handlebars";
+
+FLOAT sh:=80 >"Height" );
+
+
+
+REF pp;
+
+FLOAT fl;
+
+
+
+BEGINMODULE
+
+
+
+  pp:=global_ref(ram,1);
+
+  fl:=15;
+
+
+
+  lin_ang(#31,on(pp,0.2),90+fl,sh+70:BLANK=1);
+
+  lin_ang(#32,on(pp,0.8),90+fl,sh+50);
+
+  lin_perp(#33,on(#31,1),#31,50:BLANK=1);
+
+  lin_perp(#34,on(#32,1),#32,40:BLANK=1);
+
+  lin_free(#60,on(#33,1),on(#34,1):BLANK=1);
+
+  arc_1pos(#35,on(#60,0.5),18);
+
+  arc_fil(#36,#33,#31,15,1);
+
+  trim(#33,1,#35,1);
+
+  trim(#33,0,#36,-1);
+
+  unblank(#33);
+
+  trim(#34,1,#35,-1);
+
+  unblank(#34);
+
+  trim(#31,1,#36,-1);
+
+  unblank(#31);
+
+
+
+ENDMODULE
+
+

@@ -1,0 +1,12 @@
+GLOBAL DRAWING MODULE bike_1();
+
+
+BEGINMODULE
+
+  part(#2,opt_ram(vec(0, 0), "M", 600.0, 450.0, 15.0, 80.0));
+  part(#3,opt_hjul(centre(#2#15, 0.0), 620.0, 50.0, 36));
+  part(#4,opt_hjul(centre(#2#29, 0.0), 620.0, 50.0, 36));
+  part(#5,opt_styre(global_ref(#2#30), 80));
+  part(#6,opt_cykana("weight"));
+
+ENDMODULE

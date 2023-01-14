@@ -1,0 +1,66 @@
+!*************************** opt_cykana *************************************
+! +++
+! Optimization case
+! cog: Move center of gravity to X= 100.0
+! weight: Create a bycicle with the weight 17.0 kilo
+!
+! ---
+!****************************************************************************
+!sdesce Optimization case
+
+BASIC DRAWING MODULE opt_cykana (
+
+STRING  o_case*10 := "tp" >"Analyzation/optimization  case  (cog or weight) ");
+
+VECTOR tpos; 
+
+FLOAT vikt; 
+
+BEGINMODULE
+
+  part(#1,opt_tp(tpos, vikt));
+
+  IF  o_case = "cog" OR o_case = "COG" THEN
+
+    part(#2,OPT_FUNCV0((tpos.x - 100)**2));
+
+  ELSE
+
+    part(#3,OPT_FUNCV0((vikt-17)**2));
+
+  ENDIF;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

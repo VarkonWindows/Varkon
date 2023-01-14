@@ -1,0 +1,26 @@
+!*************************** opt_dack *************************************
+! +++
+! Tube
+!
+! ---
+!****************************************************************************
+!sdesce Tube
+
+
+BASIC DRAWING MODULE opt_dack(
+
+REF falg > "@t4 Position of the tube";
+
+FLOAT t:=25 >"Size of the tube !");
+
+
+BEGINMODULE
+
+
+
+  arc_offs(#1,global_ref(falg,1),t);
+
+
+
+ENDMODULE
+

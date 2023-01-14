@@ -1,0 +1,47 @@
+!sdesce Menu for the optimization demonstration sample Bicycle 
+
+! 2009-01-04  Gunnar Liden
+
+#include "$VARKON_MDF\v319.MDF"
+
+Main_menu = 200
+
+m200    = "OPTIMIZATION OF BIKE"
+        "bicycle"      ,m258
+        "optimize"     ,M659
+        "undo"         ,M661
+        "analyze"      ,m252
+        "limit"        ,p670		
+        "terminate"    ,f173
+        "varkon"       ,m2;
+
+m252 = "ANALYZE"
+!       "plot"              ,r660
+!       "iso-objective"     ,M669
+       "variables"         ,F668
+       "objective"         ,F663
+       "gradient"          ,F664
+       "constraint"        ,F662;
+
+m258 = "BICYCLE"  
+       "frame"             ,p674
+       "wheel"             ,p675
+       "handlebar"         ,p676
+       "analysis"          ,p677
+	   "partslist"         ,M678;
+
+t659 = "OPT_CONTV2"
+t660 = "OPT_SHOWV1"
+t661 = "OPT_BACKV0"
+t662 = "OPT_HLSCV1"
+t663 = "OPT_HLSOV1"
+t664 = "OPT_HLSGV1"	  
+t668 = "OPT_HLSPV1"
+t669 = "OPT_OBJAV0"
+t670 = "OPT_LIMV0"
+
+t674 = "opt_ram"   
+t675 = "opt_hjul"  
+t676 = "opt_styre" 
+t677 = "opt_cykana" 
+t678 = "opt_detlis"

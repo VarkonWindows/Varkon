@@ -1,0 +1,210 @@
+!***************** opt_2shoot ****************************
+
+!
+
+! +++
+
+! Bounce a ray in the surface normal plane
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-10-02 Gunnar Liden
+
+!
+
+! ---
+
+!************************************************************
+
+
+
+!sdesce Bounce a ray in the surface normal plane
+
+!sdescs Reflektera en stråle i tangentplan till yta
+
+
+
+GLOBAL GEOMETRY MODULE opt_2shoot (
+
+    VECTOR    v_s_in;             ! Source vector  input
+
+    VECTOR    i_p;                ! Surface (intersect) R*3 point
+
+    VECTOR    i_s;                ! Surface normal 
+
+VAR VECTOR    v_s_out;            ! Source vector output
+
+    INT       graphic);           ! Graphical representation
+
+
+
+
+
+
+
+! Internal variables
+
+
+
+  STRING s*1;                    ! For INPMT
+
+
+
+  FLOAT  dot;                    ! Scalar product      
+
+  FLOAT length;                  ! Circle radius 
+
+  FLOAT ang;                     ! Angle between normal and input  vector
+
+
+
+  INT   DEBUG;                   ! Debug
+
+
+
+BEGINMODULE
+
+
+
+  DEBUG := 0;
+
+
+
+! +++
+
+! Graphical representation of input data for graphic= 2 (green lines)
+
+! ---
+
+
+
+
+
+  IF graphic  = 2 THEN
+
+    LIN_FREE(#2,i_p-20*v_s_in,i_p :PEN=3);
+
+    LIN_FREE(#3,i_p,i_p+90.0*i_s  :PEN=3);
+
+  ENDIF;     
+
+
+
+  IF DEBUG = 1 THEN
+
+  s:= INPMT("opt_2shoot i_p " 
+
+      + STR(i_p.x,8,2) +" "
+
+      + STR(i_p.y,8,2) +" "
+
+      + STR(i_p.z,8,2) ," ",1);
+
+  ENDIF;
+
+
+
+! +++
+
+! Calculate angle ang between the surface normal and input vector     
+
+! ---
+
+
+
+  length:= 10.0;
+
+
+
+  dot := VECN(i_s)*VECN(v_s_in);         ! Scalar product    
+
+  ang:=ARCCOS(dot);
+
+
+
+  IF    ang > 90.0 THEN 
+
+      ang:= 180.0 - ang;  
+
+  ENDIF;
+
+
+
+! +++
+
+! Create local system with X axis equal to surface normal,   
+
+! origin equal to i_p and Y axis in the i_s-v_s_in plane.
+
+! ---
+
+
+
+  CSYS_3P(#6,"REFL",i_p,i_p+i_s ,i_p+v_s_in:BLANK=1);
+
+
+
+! +++
+
+! Activate the local system and create a circle with start angle  
+
+! equal to zero and end angle equal to the angle ang.
+
+! ---
+
+
+
+  MODE_LOCAL(#6);
+
+
+
+  ARC_1POS(#7,VEC(0,0,0),length,0,ang:BLANK=1);
+
+
+
+! +++
+
+! Activate the global system and create a point PC on the arc end.    
+
+! Let output vector v_s_out = PC - i_p
+
+! ---
+
+
+
+  MODE_GLOBAL();
+
+
+
+  v_s_out := VECN( ON(#7,1.0)-i_p );
+
+  
+
+
+
+! +++
+
+! Graphical representation of output vector for graphic= 2 (green line)
+
+! ---
+
+
+
+  IF graphic = 2 THEN
+
+    LIN_FREE(#8,i_p,i_p+ 75.0*v_s_out:PEN=3);
+
+  ENDIF;
+
+
+
+
+
+ENDMODULE
+
