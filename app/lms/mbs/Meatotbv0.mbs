@@ -1,0 +1,74 @@
+!******************** meatotbv0 *****************************************
+! +++
+! Determine the number of point subsets
+!
+! ---
+! 
+! Revision history
+! ________________
+!
+! 1996-03-21 Gunnar Liden
+! 
+!************************************************************************
+
+!sdescs Bestäm antal subgrupper med punkter i en given punktmängd
+!sdesce Determine the number of point subsets
+
+GLOBAL DRAWING MODULE meatotbv0  (
+   REF    ppts_id;                ! Reference to set of points
+VAR INT   n_subsets);             ! Number of subsets
+
+! Internal variables:
+
+                                   ! For get funktion meagetpv0:
+  INT    n_p;                      ! Number of pts in section i_snitt
+  VECTOR m_points(200);            ! Measured  points 
+  VECTOR r_points(200);            ! Reference points 
+  FLOAT  devtot(200);              ! Total (perpendicular) deviation 
+  INT    ptnumber(200);            ! Point number for measured point
+  STRING p_descr(200)*132;         ! Point description 
+
+  INT    i_grupp;                  ! Loop index subset (section) of points
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations 
+! ---
+
+  DEBUG := 0;                      ! Change to  0 or 1
+  
+
+! +++
+! 2. Determine number of subsets (get points for for all subsets)
+! ---
+
+  n_subsets := 0;
+
+  FOR  i_grupp:= 1 TO 300 DO        ! Start loop subsets
+    PART(#1,meagetpv0( ppts_id,  
+      i_grupp,n_p,           
+      m_points,r_points,    
+      devtot,ptnumber,p_descr)
+      :SAVE=0);  ! (not saved in GM)
+
+    IF     n_p = 0 THEN
+      GOTO  nomore;
+    ENDIF;
+
+    n_subsets := n_subsets + 1;
+
+  ENDFOR;                          ! End   loop subsets
+
+  EXIT("meatotbv0 More than 300 subsets");
+
+! +++
+! 3. Exit 
+! ---
+
+nomore:;                           ! Label: There are nomore subsets
+
+ENDMODULE

@@ -1,0 +1,282 @@
+!******************** meapanal1 **********************
+! +++
+! The function analysis a subset of measured points with
+! respect to mean, maximum and minimum deviations.
+!
+! A proposal for a plane (X, Y or Z) and proposal for
+! X axis in diagrams are also calculated.
+!
+! Remark:
+!
+! This module can only be called by another module since
+! there are VAR variables
+! ---
+!s+++
+! Funktionen analyserar en uppmätt punktmängd med
+! avseende på medelvärden för koordinater, min/max värden
+! för koordinater och min/max-värden för fel
+! 
+! Detta är en analys funktion som ska anropas av en annan
+! funktion (modulen har VAR variabler).
+!s---
+!
+! Revision history
+! ________________
+!
+! 1993-10-08 Gunnar Liden
+! 1995-03-09 Documentation            Gunnar Liden
+! 1997-04-25 Documentation in English Gunnar Liden
+!
+!****************************************************
+
+!sdescs Analyserar uppmätt punktmängd m.a.p medelvärde, min och max fel
+!sdesce Analyses measured points w.r.t mean, maximum and minimum deviations
+
+BASIC GEOMETRY MODULE meapanal1  (
+
+     REF    csys;                 ! Local coordinate system for the analysis
+
+     INT    n_p;                  ! Number of points in the subset 
+VAR  VECTOR m_points(200) ;       ! Measured points 
+VAR  VECTOR r_points(200) ;       ! Reference points
+VAR  FLOAT  devtot(200) ;         ! Total (perpendicular) deviation
+VAR  INT    ptnumber(200) ;       ! Point number for measured point 
+
+VAR  FLOAT  max_x;                ! Maximum  value X
+VAR  FLOAT  min_x;                ! Minimum  value X
+VAR  FLOAT  med_x;                ! Average  value X
+VAR  FLOAT  max_y;                ! Maximum  value Y
+VAR  FLOAT  min_y;                ! Minimum  value Y
+VAR  FLOAT  med_y;                ! Average  value Y
+VAR  FLOAT  max_z;                ! Maximum  value Z
+VAR  FLOAT  min_z;                ! Minimum  value Z
+VAR  FLOAT  med_z;                ! Average  value Z
+VAR  STRING plane*1;              ! Plane  proposal (min deviation)
+VAR  STRING xaxis*1;              ! X axis proposal (max deviation)
+VAR  FLOAT  max_d_pos;            ! Maximum  positive error value
+VAR  FLOAT  max_d_neg);           ! Maximum  negative error value
+
+
+! Interna variabler:
+
+ 
+
+  INT       i_p;                  ! Loop index point    
+  
+  STRING    s*1;                  ! String for DEBUG (INPMT)
+  INT       DEBUG;                ! For Debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations and checks 
+! ---
+
+! Change to 0, 1 or 2
+  DEBUG := 2;                  
+
+  IF csys <> #0 THEN     
+    EXIT("meapanal1: csys not yet programmed");  
+  ENDIF;               
+
+
+! +++
+! 2. Calculate max, min and avrage values 
+! ---
+
+                                   ! Start values:
+  max_x := -50000.0;               ! Maximum  value X
+  min_x:=  +50000.0;               ! Minimum  value X
+  med_x:=       0.0;               ! Average  value X
+  max_y:=  -50000.0;               ! Maximum  value Y
+  min_y:=  +50000.0;               ! Minimum  value Y
+  med_y:=       0.0;               ! Average  value Y
+  max_z:=  -50000.0;               ! Maximum  value Z
+  min_z:=  +50000.0;               ! Minimum  value Z
+  med_z:=       0.0;               ! Average  value Z
+
+  max_d_pos := -50000.0;           ! Maximum positive value
+  max_d_neg := +50000.0;           ! Maximum negative value
+
+  
+  FOR i_p := 1 TO n_p DO          ! Start loop all points in the subset 
+
+    IF m_points(i_p).x > max_x THEN! Maximum  X value
+      max_x := m_points(i_p).x;    !
+    ENDIF;                         !
+    IF m_points(i_p).x < min_x THEN! Minimum  X value
+      min_x := m_points(i_p).x;    !
+    ENDIF;                         !
+    IF m_points(i_p).y > max_y THEN! Maximum  Y value
+      max_y := m_points(i_p).y;    !
+    ENDIF;                         !
+    IF m_points(i_p).y < min_y THEN! Minimum  Y value
+      min_y := m_points(i_p).y;    !
+    ENDIF;                         !
+    IF m_points(i_p).z > max_z THEN! Maximum  Z value
+      max_z := m_points(i_p).z;    !
+    ENDIF;                         !
+    IF m_points(i_p).z < min_z THEN! Minimum  Z value
+      min_z := m_points(i_p).z;    !
+    ENDIF;                         !
+
+    med_x :=  med_x +              ! Average value X
+             m_points(i_p).x;      !
+    med_y :=  med_y +              ! Average value Y
+             m_points(i_p).y;      !
+    med_z :=  med_z +              ! Average value Z
+             m_points(i_p).z;      !
+
+    IF devtot(i_p) > max_d_pos THEN! Maximum positive deviation 
+      max_d_pos := devtot(i_p);    !
+    ENDIF;                         !
+    IF devtot(i_p) < max_d_neg THEN! Maximum negative deviation 
+      max_d_neg := devtot(i_p);    !
+    ENDIF;                         !
+
+       IF DEBUG = 1 THEN           !
+       s:= INPMT("meapanal1: i_p " !
+       +STR(i_p,-1,0) + " X "  !
+ +STR(m_points(i_p).x,-12,6)+" Z " !
+ +STR(m_points(i_p).z,-12,6)+  " " !
+          ,"",1);                  !
+       s:= INPMT("meapanal1: i_p " !
+       +STR(i_p,-1,0) + " min_x "  !
+       +STR(min_x,-12,6)+" max_x " !
+       +STR(max_x,-12,6)+  " "     !
+          ,"",1);                  !
+       ENDIF;                      !
+
+  ENDFOR;                          ! End   loop all points in the subset 
+
+  med_x  := med_x/n_p;             ! Average value X
+  med_y  := med_y/n_p;             ! Average value Y
+  med_z  := med_z/n_p;             ! Average value Z
+
+
+! +++
+! 3. Plane for points and propose X axis for diagrams 
+! ---
+
+  IF   ABS(max_x-min_x) <          !
+       ABS(max_y-min_y)   AND      !
+       ABS(max_x-min_x) <          !
+       ABS(max_z-min_z)   THEN     !
+
+       plane:= "X";                ! X is the plane
+
+  ELIF ABS(max_y-min_y) <          !
+       ABS(max_x-min_x)   AND      !
+       ABS(max_y-min_y) <          !
+       ABS(max_z-min_z)   THEN     !
+
+       plane:= "Y";                ! Y is the plane
+
+
+  ELIF ABS(max_z-min_z) <          !
+       ABS(max_y-min_y)   AND      !
+       ABS(max_z-min_z) <          !
+       ABS(max_x-min_x)   THEN     !
+
+       plane:= "Z";                ! Z is the plane
+
+  ELSE                             !
+       plane:= "U";                ! Not possible to define a plane 
+  ENDIF;                           !
+
+  IF   ABS(max_x-min_x) >          ! 
+       ABS(max_y-min_y)   AND      !
+       ABS(max_x-min_x) >          !
+       ABS(max_z-min_z)   THEN     !
+
+       xaxis:= "X";                ! X axis is X 
+
+       IF DEBUG = 1 THEN           !
+       s:= INPMT("X axel. Min "    !
+       +STR(min_x,-12,6)+  " Max " !
+       +STR(max_x,-12,6)+" "       !
+          ,"",1);                  !
+       ENDIF;                      !
+
+  ELIF ABS(max_y-min_y) >          !
+       ABS(max_x-min_x)   AND      !
+       ABS(max_y-min_y) >          !
+       ABS(max_z-min_z)   THEN     !
+
+       xaxis:= "Y";                ! X axis is Y
+
+
+       IF DEBUG = 1 THEN           !
+       s:= INPMT("Y axel. Min "    !
+       +STR(min_y,-12,6)+  " Max " !
+       +STR(max_y,-12,6)+  " "     !
+          ,"",1);                  !
+       ENDIF;                      !
+  ELIF ABS(max_z-min_z) >          !
+       ABS(max_y-min_y)   AND      !
+       ABS(max_z-min_z) >          !
+       ABS(max_x-min_x)   THEN     !
+
+       xaxis:= "Z";                ! X axis is Z
+
+       IF DEBUG = 1 THEN           !
+       s:= INPMT("Z axel. Min "    !
+       +STR(min_z,-12,6)+  " Max " !
+       +STR(max_z,-12,6)+  " "     !
+          ,"",1);                  !
+       ENDIF;                      !
+  ELSE                             !
+       xaxis:= "U";                ! X axis is U (not defined)
+  ENDIF;                           !
+
+
+
+! +++
+! 4. Presentation of resultat for DEBUG
+! ---
+
+ IF DEBUG = 1 THEN                 !
+   s:= INPMT("Maximum  pos. fel "  !
+       +STR(max_d_pos,-12,6)+      !
+       " Maximum  neg. fel "       !
+       +STR(max_d_neg,-12,6)+ " "  !
+          ,"",1);                  !
+
+  IF   ABS(max_x-min_x) <          ! 
+       ABS(max_y-min_y)   AND      !
+       ABS(max_x-min_x) <          !
+       ABS(max_z-min_z)   THEN     !
+    s:= INPMT("Average value X  "  !
+       +STR(med_x,-12,6)+  " Min " !
+       +STR(min_x,-12,6)+  " Max " !
+       +STR(max_x,-12,6)+  " "     !
+          ,"",1);                  !
+  ELIF ABS(max_y-min_y) <          !
+       ABS(max_x-min_x)   AND      !
+       ABS(max_y-min_y) <          !
+       ABS(max_z-min_z)   THEN     !
+    s:= INPMT("Average value Y  "  !
+       +STR(med_y,-12,6)+  " Min " !
+       +STR(min_y,-12,6)+  " Max " !
+       +STR(max_y,-12,6)+  " "     !
+          ,"",1);                  !
+  ELIF ABS(max_z-min_z) <          !
+       ABS(max_y-min_y)   AND      !
+       ABS(max_z-min_z) <          !
+       ABS(max_x-min_x)   THEN     !
+    s:= INPMT("Average value Z  "  !
+       +STR(med_z,-12,6)+  " Min " !
+       +STR(min_z,-12,6)+  " Max " !
+       +STR(max_z,-12,6)+  " "     !
+          ,"",1);                  !
+  ELSE                             !
+   s:= INPMT("Average value: X= "  !
+       +STR(med_x,-12,6)+  " Y= "  !
+       +STR(med_y,-12,6)+  " Z= "  !
+       +STR(med_z,-12,6)+  " "     !
+          ,"",1);                  !
+  ENDIF;                           !
+  ENDIF;                           !
+
+
+ENDMODULE

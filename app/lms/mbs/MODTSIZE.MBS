@@ -1,0 +1,131 @@
+!********************* modtsize ****************************************
+!
+! +++
+! Calculates text size for a given space (in a table)
+! ---
+!
+!s+++  
+!      Modulen beräknar ny teckenstorlek när text inte får
+!      plats inom givet utrymme.
+!s---
+!
+! Ändringshistorik:
+!
+!  1992-11-27  Ronny Gyllensten 
+!  1996-02-25  åäö Gunnar Liden 
+! ---
+!***********************************************************************
+
+!sdesce Calculates new TSIZE in text
+!sdescs Beräknar ny teckenstorlek i text
+
+BASIC GEOMETRY MODULE modtsize(
+    STRING intext*132;        ! Input string
+    FLOAT  faltbredd;         ! Available space (mm)
+    FLOAT  inhojd;            ! Input TSIZE
+    FLOAT  inbredd;           ! Input TWIDTH
+VAR FLOAT  uthojd;            ! Output TSIZE
+VAR FLOAT  utbredd);          ! Output TWIDTH
+
+! Internal variables:
+
+  FLOAT       teckenhojd;          ! Size of text in mm       
+  FLOAT       teckenbredd;         ! Width of text in % of TSIZE
+  FLOAT       stranglangd;         ! Length in mm of a string    
+  INT         antal;               ! Number of characters in the string
+  STRING      s*1;                 ! For INPMT
+
+  INT         DEBUG;               ! Eq. 0: No   Debug
+                                   ! Eq. 1: Full Debug
+
+BEGINMODULE
+
+
+    DEBUG := 0;                  ! Change Debug to 0 or 1
+
+    antal := LENGTH(intext);     ! Number of characters in the string 
+
+    IF DEBUG = 1  THEN           ! Output for   Debug = 1
+     s:=INPMT("modtsize:"        ! 
+        + "No. of char's  = "    ! No. of char's  =
+        +STR(antal,1,0)          !
+        +" Continue=<CR>","",1); !
+    ENDIF;                       !
+
+     teckenhojd := inhojd;       ! mm
+
+     teckenbredd := inhojd *     !  Convert % to mmm 
+                    inbredd /    !
+                    100;         !
+
+     stranglangd := antal *      !  mm
+                    teckenbredd +!
+                    (antal - 1) *!
+                    teckenbredd *!
+                    0.67;
+
+    IF DEBUG = 1  THEN           ! Debug 
+     s:=INPMT("modtsize:"        !
+        + "stranglangd = "       !
+        +STR(stranglangd,1,5)    !
+        +" Continue=<CR>","",1); !
+    ENDIF;                       !
+
+! Check if there is enough space for the text
+! Goto slut if modification not is necessary
+ IF stranglangd < faltbredd  THEN 
+
+    IF DEBUG = 1  THEN           ! Debug
+     s:=INPMT("modtsize:"        !
+        +"Stränglängd är < faltbredd = " !
+        +STR(faltbredd,1,5)    !
+        +"  Continue=<CR>","",1);!
+    ENDIF;                       !
+
+            GOTO slut;           ! 
+
+    ELSE
+    
+    IF DEBUG = 1  THEN           ! Debug
+     s:=INPMT("modtsize:"        !
+        +"Stränglängd är > faltbredd = " !
+        +STR(faltbredd,1,5)    !
+        +"  Continue=<CR>","",1);!
+    ENDIF;
+
+!   There is not enough space for the text
+!   Calculate a new size
+      teckenbredd := 3 *
+                     faltbredd / 
+                     (5 * antal - 2); 
+
+      teckenhojd := 100 *
+                    teckenbredd /
+                    inbredd;    
+
+    IF DEBUG = 1  THEN           ! Debug
+     s:=INPMT("modtsize:"        !
+        + "Teckenhojd =  "       !
+        +STR(teckenhojd,1,5)     !
+        + " Teckenbredd =  "      !
+        +STR(teckenbredd,1,5)    !
+        + "  Continue=<CR>","",1);!
+    ENDIF;
+
+ ENDIF;
+
+         GOTO slut;
+
+slut:    uthojd := teckenhojd;   ! The output new value on TSIZE
+
+         utbredd := inbredd;     ! No change of TWIDTH       
+
+
+ENDMODULE
+
+
+
+
+
+
+

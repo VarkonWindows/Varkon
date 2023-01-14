@@ -1,0 +1,126 @@
+!******************** meacordv0 **********************
+! +++
+! Calculates the chord length for a given f(x) value. The wing
+! plane is defined by two lines. The leading and trailing edges
+! are defined by points (x1,f(x1)) , (x2,f(x2)) and 
+! (x3,f(x3)) , (x4,f(x4)).
+!
+! Remark:
+!
+! This is a module (procedure) which only can be called by 
+! another module since there are VAR (output) parameters.
+! ---
+!s+++
+! Beräknar kordalängden för ett givet f(x)-värde, när vingytan
+! definieras av 2 linjer (1 linje för framkant och 1 linje för
+! bakkant). Linje 1 defineras av 2 punkter: (x1,f(x1)) och (x2,f(x2)).
+! Linje 2 defineras av 2 punkter: (x3,f(x3)) och (x4,f(x4)).
+!
+! Detta är en funktion (procedur) som bara ska (kan) anropas 
+! av en annan modul.
+!
+!s---
+! Revision history
+! ________________
+!
+! 1993-10-27 Karl-Erik Eklund
+! 1995-03-09 Dokumentation Gunnar Liden
+! 1996-02-13 meacordv0 Ronny Gyllensten 
+! 1996-03-11 Bug for check of input with negative values G Liden
+! 1997-04-25 Documentation in English                    G Liden
+!
+!****************************************************
+
+!sdescs Beräkna kordalängd för given sektion i vinge 
+!sdesce Calculate chord length for a given section in a wing
+
+BASIC GEOMETRY MODULE meacordv0 (
+
+    FLOAT  x1;                     ! x-value line  1
+    FLOAT  fx1;                    ! f(x)-value line  1
+    FLOAT  x2;                     ! x-value line  1
+    FLOAT  fx2;                    ! f(x)-value line  1
+    FLOAT  x3;                     ! x-value line  2
+    FLOAT  fx3;                    ! f(x)-value line  2
+    FLOAT  x4;                     ! x-value line  2
+    FLOAT  fx4;                    ! f(x)-value line  2
+    FLOAT  fx;                     ! f(x)-value for intersect calculation
+VAR FLOAT  xA;                     ! Calculated x-value line  1
+VAR FLOAT  xB;                     ! Calculated x-value line  2
+VAR FLOAT  kl);                    ! Chord length ABS(xB-xA)
+
+! Internal variables:
+
+  FLOAT       l1x;                 ! Direction for line  1 in x
+  FLOAT       l1fx;                ! Direction for line  1 in f(x)
+
+  FLOAT       l2x;                 ! Direction for line  2 in x
+  FLOAT       l2fx;                ! Direction for line  2 in f(x)
+
+  STRING      s*1;                 ! For debug
+  INT         DEBUG;               ! For debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Initializations
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+
+! +++
+! 2. Calculate directions of lines
+! ---
+
+  l1x:= x2-x1;                     ! 
+  l1fx:= fx2-fx1;                  !
+
+  IF ABS(l1fx) < 0.0001 THEN
+     EXIT("meacordv0: !f(x2)-"+    !
+     "f(x1)! < 0.0001");           !
+  ENDIF;
+
+!1996-03-11  IF ABS(fx) < ABS(fx1) AND        
+!1996-03-11     ABS(fx) < ABS(fx2) OR        
+!1996-03-11     ABS(fx) > ABS(fx1) AND      
+!1996-03-11     ABS(fx) > ABS(fx2) THEN       
+!1996-03-11     EXIT("meacordv0: f(x) ligger "
+!1996-03-11       +"ej emellan f(x1) och"+   
+!1996-03-11       " f(x2)");                
+!1996-03-11  ENDIF;
+
+
+  l2x:= x4-x3;                     !
+  l2fx:= fx4-fx3;                  !
+
+  IF ABS(l2fx) < 0.0001 THEN
+     EXIT("meacordv0: !f(x4)-"+    !
+     "f(x3)! < 0.0001");           !
+  ENDIF;
+
+!1996-03-11  IF ABS(fx) < ABS(fx3) AND        !
+!1996-03-11     ABS(fx) < ABS(fx4) OR         !
+!1996-03-11     ABS(fx) > ABS(fx3) AND        !
+!1996-03-11     ABS(fx) > ABS(fx4) THEN       !
+!1996-03-11     EXIT("meacordv0: f(x) ligger "!
+!1996-03-11       +"ej emellan f(x3) och"+    !
+!1996-03-11       " f(x4)");                  !
+!1996-03-11  ENDIF;
+
+! +++
+! 3. Calculate X value on line 1 and 2 and chord length
+! ---
+
+  xA:= (fx-fx1)*l1x/l1fx+x1;       !
+
+  xB:= (fx-fx3)*l2x/l2fx+x3;       !
+
+  kl:= ABS(xB-xA);                 !
+
+ENDMODULE

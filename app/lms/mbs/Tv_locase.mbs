@@ -1,0 +1,40 @@
+!******************************************************************
+! +++
+! Converts text to lower case (small) letters.
+!
+!  Revision history
+!  ________________
+!
+!  1996-02-22 Gunnar Liden
+! ---
+!******************************************************************
+
+!sdescs Konverterar text till sm} bokst{ver.
+!sdesce Converts text to lower case (small) letters
+
+BASIC GEOMETRY MODULE tv_locase(
+VAR STRING s*132);               ! Input and output string
+
+! Internal variables
+
+  STRING tmp*132;                ! Temporary used string
+  INT    i;                      ! Loop index letter
+  INT    n;                      ! ASCII code
+
+ BEGINMODULE
+
+   tmp:="";                      ! Initialize output (temporary) string
+
+   FOR i:=1 TO length(s) DO      ! Start loop characters in string
+     n:=ASCII(SUBSTR(s,i,1));    ! ASCII code for character i in string
+     IF n >=64 AND n <= 94 THEN  ! ASCII codes for capital letters
+       tmp:=tmp+CHR(n+32);       ! Add 32 for corresp. small letter
+     ELSE                        ! Not a capital
+       tmp:=tmp+CHR(n);          ! Just add input character to output
+     ENDIF;                      !
+   ENDFOR;                       !
+
+   s:=tmp;                       ! Temporary string to output string
+
+ ENDMODULE
+

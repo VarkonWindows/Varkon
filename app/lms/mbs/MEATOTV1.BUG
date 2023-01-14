@@ -1,0 +1,1233 @@
+!********************* meatotv1 ********************************
+! +++
+! MACRO module creating all diagrams
+!
+! (Call the MACRO with Mnnn in the menue file or 
+!  as "eget kom" in Varkon menue !)        
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-29 Gunnar Liden
+! 1996-04-25 meatotv0 -> meatotv1 Gunnar Liden
+! 1997-04-08 figytav0->figytav1   Gunnar Liden
+! 1997-06-29 Special Lille        Gunnar Lille
+!
+!************************************************************
+
+!sdesce MACRO module creating all diagrams
+!sdescs MACRO modul som skapar alla diagram
+
+MACRO DRAWING MODULE meatotv1 ();
+
+
+! Internal variables:
+
+  STRING metfil*132;                ! File with METRONOR data
+  FLOAT  offset;                    ! Offset for points <CR>=0";
+  INT    case;                      ! Format d: Case= 1 
+                                    !        b: Case= 2: 
+                                    !        d(red) Case= 3
+
+  STRING c_flag*3;                  ! Eq NO: No calculation
+  STRING prepres*10;                ! Varkon preparation .RES file
+  INT    plot_f;                    ! Eq. 1: Create plots automatically
+  INT    notify_f;                  ! Eq. 1: Notify by mail
+  STRING mailadr*132;               ! Mail address
+
+
+  STRING  p1*80;                    ! Parameter  1 for  part
+
+                                    ! For GET_NEXT_GM:
+  INT    tmod;                      ! 0: All entities 1: Parts on same level
+  REF    test_id;                   ! For test if new job
+  REF    ram_id;                    ! Reference to drawing sheet
+  REF    txt_id;                    ! Reference to text for drawing sheet
+  REF    wpla_id;                   ! Reference to wing plane
+  REF    plan_id;                   ! Reference to wing plane
+  REF    rsur_id;                   ! Reference to reference surface
+  REF    diag3_id;                  ! Reference to diagram 3
+  REF    diag4_id;                  ! Reference to diagram 4
+  REF    diag5_id;                  ! Reference to diagram 5
+  REF    diag6_id;                  ! Reference to diagram 6
+  REF    diag7_id;                  ! Reference to diagram 7
+  REF    diag8_id;                  ! Reference to diagram 8
+  REF    metro_id;                  ! Reference to measured points
+  REF    pen_id;                    ! Reference to colour definition part
+  STRING pen_id_s*132;              ! Reference to colour definition part as string
+
+  STRING prtname*10;                ! Name of part (figvyv2 for example)
+  REF view_all_id(20);              ! All views
+  INT n_view;                       ! Number of views
+  REF view_first_id;                ! First created view
+  REF view_last_id;                 ! Last  created view
+  REF surf_all_id(20);              ! All surfaces
+  INT n_surf;                       ! Number of surfaces
+  REF surf_first_id;                ! First created surfaces
+  REF surf_last_id;                 ! Last  created surfaces
+
+
+  STRING all_analysis(20)*10;       ! All analysis methods
+  INT    no_analysis;               ! Number of  analysis methods
+  INT    i_analysis;                ! Loop index analysis methods
+
+  STRING s_origin*80;               ! Position for drawing sheet as string
+  STRING benamning*132;             ! Description of surface (Swedish)
+  STRING description*132;           ! Description of surface
+  STRING projyt*132;                ! Name of surface
+  STRING bladnr*132;                ! Page number
+  STRING date_d*132;                ! Date
+  STRING avdsign1*132;              ! Department
+  STRING ref1*132;                  ! Reference
+  STRING modul*132;                 ! VARKON module
+  INT    text_pen;                  ! Colour (line width) for text
+  INT    text_niva;                 ! Level for text
+  STRING s_text_pen*80;             ! Colour as string
+  STRING s_text_niva*80;            ! Level  as string
+
+  STRING  vy*6;                     ! View
+  STRING  fplproj*44;               ! Aircraft (or other) project
+  STRING  datum*28;                 ! Coordinate system (name)
+  STRING  coname*30;                ! Axis text
+  FLOAT   skala;                    ! Drawing scale
+  VECTOR  origo;                    ! Position for axis origin
+  FLOAT   x0;                       ! Origin x coordinate
+  FLOAT   y0;                       ! Origin y coordinate
+  FLOAT   z0;                       ! Origin z coordinate
+  FLOAT   xlangd;                   ! Length of x axis
+  FLOAT   ylangd;                   ! Length of y axis
+  FLOAT   zlangd;                   ! Length of z axis
+  INT     grafik;                   ! Graphics
+  VECTOR  ang;                      ! Eulervinklar
+  STRING  reserv2*80;               ! Extra parameter (not yet used)
+  STRING  s_vy*80;                  ! View as string
+  STRING  s_fplproj*80;             ! Aircraft (or other) project as string
+  STRING  s_datum*80;               ! Coordinate system (name) as string
+  STRING  s_coname*80;              ! Axis text as string
+  STRING  s_skala*80;               ! Drawing scale as string
+  STRING  s_origo*80;               ! Position for axis origin as string
+  STRING  s_x0*80;                  ! Origin x coordinate as string
+  STRING  s_y0*80;                  ! Origin y coordinate as string
+  STRING  s_z0*80;                  ! Origin z coordinate as string
+  STRING  s_xlangd*80;              ! Length of x axis as string
+  STRING  s_ylangd*80;              ! Length of y axis as string
+  STRING  s_zlangd*80;              ! Length of z axis as string
+  STRING  s_grafik*80;              ! Graphics as string
+  STRING  s_ang*80;                 ! Eulervinklar as string
+  STRING  s_reserv2*80;             ! Extra parameter as string
+
+  STRING  c_tol_s*132;              ! Colour definition data as strings
+  STRING  i_pen_s*132;              !
+  STRING  p_pen_s*132;              !
+  STRING  n_pen_s*132;              !
+  STRING  origin_pen_s*132;         !
+
+                                    ! Data for diagrams:
+  INT    i_grupp;                   ! Subset (section) of points 1, 2, 3, ..
+  VECTOR d_origo;                   ! Position for the diagram
+  FLOAT  d_xlangd;                  ! Length of X axis for the diagram
+  FLOAT  skalf_y;                   ! Scale factor for Y (deviation) values
+  FLOAT  d_ylangd;                  ! Length of Y axis for the diagram
+  FLOAT  d_ylangd_3;                ! Length of Y axis for the diagram 3
+  FLOAT  d_ylangd_4;                ! Length of Y axis for the diagram 5
+  FLOAT  d_ylangd_5;                ! Length of Y axis for the diagram 4
+  FLOAT  d_ylangd_6;                ! Length of Y axis for the diagram 6
+  FLOAT  d_ylangd_7;                ! Length of Y axis for the diagram 7
+  FLOAT  d_ylangd_8;                ! Length of Y axis for the diagram 8
+  
+  STRING kdesc*28;                  ! Text for the curve (Upper/Lower)
+  STRING twistdata*20;              ! File with twist data 
+  INT    d_case;                    ! 0:Nothing 10: Line 1: Text 11: Text & line
+  STRING s_i_grupp*80;              ! Subset   as string
+  STRING s_i_grupp2*80;             ! Subset 2 as string
+  STRING s_d_origo*80;              ! Position as string                   
+  STRING s_d_xlangd*80;             ! Length of X axis as string                   
+  STRING s_skalf_y*80;              ! Scale factor for Y as string                   
+  STRING s_d_ylangd*80;             ! Length of Y axis as string                   
+  STRING s_kdesc*80;                ! Text for the curve (Upper/Lower)
+  STRING s_twistdata*80;            ! File with twist data as string
+  STRING s_d_case*80;               ! Case as string  
+
+                                    ! Diagram 3:
+  STRING s_d_xlangd_3*80;           ! Length of X axis as string
+  STRING s_skalf_y_3*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_3*80;           ! Length of Y axis as string
+  STRING s_kdesc_3*80;              ! Text for the curve (Upper/Lower)
+  STRING s_d_case_3*80;             ! Case as string
+                                    ! Diagram 4:
+  STRING s_d_xlangd_4*80;           ! Length of X axis as string
+  STRING s_skalf_y_4*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_4*80;           ! Length of Y axis as string
+  STRING s_d_case_4*80;             ! Case as string
+                                    ! Diagram 5:
+  STRING s_d_xlangd_5*80;           ! Length of X axis as string
+  STRING s_skalf_y_5*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_5*80;           ! Length of Y axis as string
+  STRING s_d_case_5*80;             ! Case as string
+                                    ! Diagram 6:
+  STRING s_d_origo_6*80;            ! Origin for diagram
+  STRING s_d_xlangd_6*80;           ! Length of X axis as string
+  STRING s_skalf_y_6*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_6*80;           ! Length of Y axis as string
+  STRING s_d_case_6*80;             ! Case as string
+
+
+
+                                    ! Diagram 7:
+  STRING s_d_origo_7*80;            ! Origin for diagram
+  STRING s_d_xlangd_7*80;           ! Length of X axis as string
+  STRING s_skalf_y_7*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_7*80;           ! Length of Y axis as string
+  STRING s_d_case_7*80;             ! Case as string
+                                    ! Diagram 8:
+  STRING s_d_origo_8*80;            ! Origin for diagram
+  STRING s_d_xlangd_8*80;           ! Length of X axis as string
+  STRING s_skalf_y_8*80;            ! Scale factor for Y as string
+  STRING s_d_ylangd_8*80;           ! Length of Y axis as string
+  STRING s_d_case_8*80;             ! Case as string
+
+  FLOAT  c_tol;                     ! Criterion for acceptable deviations
+  INT    i_pen;                     ! Pen (colour) for pts within tolerance
+  INT    p_pen;                     ! Pen (colour) for pts outside + tolerance
+  INT    n_pen;                     ! Pen (colour) for pts outside - tolerance
+  VECTOR origin_pen;                ! Description coloured points
+
+
+                                    ! For figytav1
+  REF    view_id;                   ! View
+  STRING surface*28;                ! Surface
+  INT    grafik_surf;               ! Graphic
+  FLOAT  ustart;                    ! Ustart <CR>= Ej definierad
+  FLOAT  udelta;                    ! Udelta
+  FLOAT  uslut ;                    ! Uslut
+  FLOAT  vstart;                    ! Vstart
+  FLOAT  vdelta;                    ! Vdelta
+  FLOAT  vslut ;                    ! Vslut
+  INT    case_surf;                 ! Case
+  STRING surflib*1;                 ! Library r/p (reference/project)
+  STRING uvfil*80;                  ! UV file 
+  STRING reserv2_surf*80;           ! Extra parameter 
+  
+  STRING s_view_id*80;              ! View
+  STRING s_surface*80;              ! Surface
+  STRING s_grafik_surf*80;          ! Graphic
+  STRING s_ustart*80;               ! Ustart <CR>= Ej definierad
+  STRING s_udelta*80;               ! Udelta
+  STRING s_uslut*80;                ! Uslut
+  STRING s_vstart*80;               ! Vstart
+  STRING s_vdelta*80;               ! Vdelta
+  STRING s_vslut*80;                ! Vslut
+  STRING s_case_surf*80;            ! Case
+  STRING s_surflib*1*80;            ! Library r/p (reference/project)
+  STRING s_uvfil*80;                ! UV file 
+  STRING s_reserv2_surf*80;         ! Extra parameter 
+
+                                    ! For meawingpv0
+  REF    view_id_plan;              ! Coordinate system (view)
+  STRING proj_dir*1;                ! Projection direction (only Z implem.)
+  VECTOR fkstart_uv;                ! Leading edge UV start point <CR>=demo
+  VECTOR fkslut_uv;                 ! Leading edge UV end   point
+  VECTOR bkstart_uv;                ! Trailing edge UV start point
+  VECTOR bkslut_uv;                 ! Trailing edge UV end   point
+  FLOAT  delta_l;                   ! Delta for leading edge (normal direction)
+  INT    grafik_plan;               ! 0: No graphic 1: Show plane
+  STRING s_view_id_plan*80;         ! Coordinate system (view)
+  STRING s_proj_dir*1*80;           ! Projection direction (only Z implem.)
+  STRING s_fkstart_uv*80;           ! Leading edge UV start point <CR>=demo
+  STRING s_fkslut_uv*80;            ! Leading edge UV end   point
+  STRING s_bkstart_uv*80;           ! Trailing edge UV start point
+  STRING s_bkslut_uv*80;            ! Trailing edge UV end   point
+  STRING s_delta_l*80;              ! Delta for leading edge (normal direction)
+  STRING s_grafik_plan*80;          ! 0: No graphic 1: Show plane
+
+  INT    n_subsets;                 ! Number of subsets in metro_id
+
+  INT    n_diagr;                   ! Number of diagrams
+
+  INT    DEBUG;                     ! Eq. 0: No    Debug
+                                    ! Eq. 1: Full  Debug
+
+  STRING s*1;                       ! For INPMT
+
+  REF    a_id;                      ! Identity for ADD_MBS
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations
+! +++
+
+  DEBUG := 0;                 ! Change to 0 or 1 
+
+  metfil     := "Undefined";  ! File with METRONOR data
+  metfil     := "FLAP.METRO"; ! File with METRONOR data Tillfalligt
+  offset     :=  0.0;         ! Offset for points 
+  case       :=  -12345;      ! Format for METRONOR file
+  case       :=  1;           ! Format for METRONOR file Tillfalligt  
+  c_flag     := "U";          ! Eq NO: No calculation
+  prepres    := "Undef";      ! Varkon preparation .RES file
+  prepres    := "slaskwin";   ! Varkon preparation .RES file Tillfalligt 
+  plot_f     := -12345;       ! Eq. 1: Create plots automatically
+  notify_f   := -12345;       ! Eq. 1: Notify by mail
+  mailadr    := "Undefined";  ! Mail address
+
+
+! +++
+! Scale graphic window                            
+! ---
+
+  CEN_VIEW("xy",VEC(390.0,270.0));
+  SCL_VIEW("xy",0.1);
+  REP_VIEW(0);
+
+
+! +++
+! Check that GM is empty, i.e. active module is a new job
+! +++
+
+!  tmod := 0;
+
+!  SET_ROOT_GM(#0);
+!  test_id := GET_NEXT_GM (tmod);
+!  IF  test_id = #0 THEN
+!    ;
+!  ELSE
+!    EXIT("meatotv1 Not a new job! Delete "+ACT_JOBNAM()+".MBO .JOB and .RES");
+!  ENDIF;
+
+! +++
+! Get input data for the off-line analysis from X window
+! +++
+
+  PART(#1,  meawin1v0    (   ! Get input data
+       c_flag, metfil,       !
+       prepres, offset,      !
+       case, plot_f,         !
+       notify_f, mailadr )); !
+
+  IF c_flag = "NO"  THEN     !
+    EXIT();                  !
+  ENDIF;                     !
+
+
+  PSH_PMT("Retrieve data from "+prepres);
+
+
+! +++
+! Open Debug Window for DEBUG=1
+! ---
+
+  IF  DEBUG = 1 THEN 
+  LST_INI("Debug printout from meatotv1");
+  ENDIF;
+
+! +++
+! Check that the measurement data file exists on active job directory
+! ---
+
+  IF TEST_FILE( ACT_JOBDIR()+metfil, "X" ) = 0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 No file "+metfil+" on "+ACT_JOBDIR());
+  ENDIF;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("File "+ ACT_JOBDIR()+metfil+" exists");
+  ENDIF;
+
+! +++
+! Check that the preparation module (.RES) file exists on active job directory
+! ---
+
+
+  IF TEST_FILE( ACT_JOBDIR()+prepres+".RES", "X" ) = 0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 No file "+prepres+".RES on "+ACT_JOBDIR());
+  ENDIF;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("File "+ ACT_JOBDIR()+prepres+".RES exists and is loaded");
+  LST_LIN(" ");
+  ENDIF;
+
+! Necessary to copy to temporary file !  But why ?????
+
+
+  IF TEST_FILE( ACT_JOBDIR()+prepres+".TMP", "X" ) = 1 THEN
+    IF  DEBUG = 1 THEN  
+    LST_LIN("Delete + "+ACT_JOBDIR()+prepres+".TMP");         
+    ENDIF; 
+    DELETE_FILE(ACT_JOBDIR()+prepres+".TMP");           
+  ENDIF;
+
+  COPY_FILE(ACT_JOBDIR()+prepres+".RES",ACT_JOBDIR()+prepres+".TMP");
+  
+  LOAD_GM(ACT_JOBDIR()+prepres+".TMP");
+
+! +++
+! 2. Retrieve data from the input (preparation) module
+! +++
+
+! +++
+! Check that there is a drawing sheet, a view, a surface and a wing 
+! plane in active module
+! ---
+
+  tmod := 0;
+
+  SET_ROOT_GM(#0);
+   ram_id := GET_NEXT_GM (tmod,16384,"mearami3v0");
+  IF   ram_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no drawing sheet (mearami3v0) defined");
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  wpla_id := GET_NEXT_GM (tmod,16384,"MEAWPLREC");
+  IF  wpla_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no wing plane (MEAWPLREC) defined");
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  plan_id := GET_NEXT_GM (tmod,16384,"meawingpv0");
+  IF  plan_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no wing plane (meawingpv0) defined");
+  ENDIF;
+
+! +++
+! Get colour definition data if defined
+! ---
+
+  SET_ROOT_GM(#0);
+  pen_id := GET_NEXT_GM (tmod,16384,"meagraphv0");
+  IF  pen_id = #0 THEN
+    IF  DEBUG = 1 THEN 
+    LST_LIN("Colours are not defined pen_id= "+RSTR(pen_id));
+    ENDIF;
+    c_tol_s      := "Undefined";     
+    i_pen_s      := "Undefined";     
+    p_pen_s      := "Undefined";     
+    n_pen_s      := "Undefined";     
+    origin_pen_s := "Undefined";
+  ELSE   
+    c_tol        := GETFLT(pen_id,1);
+    i_pen        := GETINT(pen_id,2);
+    p_pen        := GETINT(pen_id,3);
+    n_pen        := GETINT(pen_id,4);
+    origin_pen   := GETVEC(pen_id,5);
+    c_tol_s      := STR(c_tol,5,3);
+    i_pen_s      := STR(i_pen,-1,0);
+    p_pen_s      := STR(p_pen,-1,0);
+    n_pen_s      := STR(n_pen,-1,0);
+    origin_pen_s := "VEC("+STR(origin_pen.x,10,4)+","
+                          +STR(origin_pen.y,10,4)+")";
+
+  ENDIF;
+
+
+  prtname := "figvyv2";
+  PART(#20, meatotav0 ( prtname, view_all_id, n_view, 
+            view_first_id, view_last_id):SAVE=0);
+
+  IF  view_first_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no view (figvyv2) defined");
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  rsur_id := GET_NEXT_GM (tmod,16384,"regsurfv0");
+  IF  rsur_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no surface (regsurfv0) defined");
+  ENDIF;
+
+  prtname := "figytav0";
+  PART(#30, meatotav0 ( prtname, surf_all_id, n_surf, 
+            surf_first_id, surf_last_id):SAVE=0);
+
+  IF  surf_first_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no surface (figytav0) defined");
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  txt_id := GET_NEXT_GM (tmod,16384,"meatxti3v0");
+  IF   txt_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 There is no text (meatxti3v0) defined");
+  ENDIF;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("There is a wing plane. Reference to meawingpv0 is "+RSTR(plan_id));
+  LST_LIN("(There is a wing plane. Reference to MEAWPLREC  is "+RSTR(wpla_id)+")");
+  LST_LIN("There is a view.       Reference to figvyv2    is "+RSTR(view_first_id));
+  LST_LIN("The total number of figvyv2 views is "+STR(n_view,4,0));
+  LST_LIN("There is a surface.    Reference to figytav0   is "+RSTR(surf_first_id));
+  LST_LIN("(There is a surface.   Reference to regsurfv0  is "+RSTR(rsur_id)+")");
+  LST_LIN("There is text.         Reference to meatxti3v0 is "+RSTR( txt_id));
+  IF  pen_id = #0 THEN
+  LST_LIN("Deviation colurs are not defined");
+  ELSE
+  LST_LIN("Deviation colurs def.  Reference to meagraphv0 is "+RSTR( pen_id));
+  ENDIF;
+  ENDIF;
+
+! +++
+! Analysis methods, i.e. diagrams created in the active module
+! ---
+
+  no_analysis := 0; 
+
+  SET_ROOT_GM(#0);
+  diag3_id := GET_NEXT_GM (tmod,16384,"meadia3v2");
+  IF  diag3_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia3v2";
+    d_xlangd    := GETFLT(diag3_id, 4); 
+    skalf_y     := GETFLT(diag3_id, 5); 
+    d_ylangd_3  := GETFLT(diag3_id, 6); 
+    kdesc       := GETSTR(diag3_id, 7); 
+    d_case      := GETINT(diag3_id, 8); 
+
+    s_d_xlangd_3:= STR(d_xlangd , 8,2); 
+    s_skalf_y_3 := STR(skalf_y, 8,2);
+    s_d_ylangd_3:= STR(d_ylangd_3, 8,2);
+    s_kdesc_3   := CHR(34)+"Undef"+CHR(34);
+    s_d_case_3  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_xlangd_3:= "Undefined";
+    s_skalf_y_3 := "Undefined";
+    s_d_ylangd_3:= "Undefined";
+    s_kdesc_3   := "Undefined";
+    s_d_case_3  := "Undefined";
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  diag4_id := GET_NEXT_GM (tmod,16384,"meadia4v2");
+  IF  diag4_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia4v2";
+    d_xlangd    := GETFLT(diag4_id, 5); 
+    skalf_y     := GETFLT(diag4_id, 6); 
+    d_ylangd_4  := GETFLT(diag4_id, 7); 
+    d_case      := GETINT(diag4_id, 8); 
+
+    s_d_xlangd_4:= STR(d_xlangd , 8,2); 
+    s_skalf_y_4 := STR(skalf_y, 8,2);
+    s_d_ylangd_4:= STR(d_ylangd_4 , 8,2);
+    s_d_case_4  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_xlangd_4:= "Undefined";
+    s_skalf_y_4 := "Undefined";
+    s_d_ylangd_4:= "Undefined";
+    s_d_case_4  := "Undefined";
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  diag5_id := GET_NEXT_GM (tmod,16384,"meadia5v3");
+  IF  diag5_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia5v3";
+    d_xlangd    := GETFLT(diag5_id, 5); 
+    skalf_y     := GETFLT(diag5_id, 6); 
+    d_ylangd_5  := GETFLT(diag5_id, 7); 
+  !  twistdata   := GETSTR(diag5_id, 8) + "_AUTO";
+     twistdata   := "Undefined";
+    d_case      := GETINT(diag5_id, 8); 
+
+    s_d_xlangd_5:= STR(d_xlangd , 8,2); 
+    s_skalf_y_5 := STR(skalf_y, 8,2);
+    s_d_ylangd_5:= STR(d_ylangd_5 , 8,2);
+    s_twistdata := CHR(34)+twistdata+CHR(34);
+    s_d_case_5  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_xlangd_5:= "Undefined";
+    s_skalf_y_5 := "Undefined";
+    s_d_ylangd_5:= "Undefined";
+    s_d_case_5  := "Undefined";
+    s_twistdata := "Undefined";
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  diag6_id := GET_NEXT_GM (tmod,16384,"meadia6v2");
+  IF  diag6_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia6v2";
+    d_origo     := GETVEC(diag6_id, 1); 
+    d_xlangd    := GETFLT(diag6_id, 2); 
+    skalf_y     := GETFLT(diag6_id, 3); 
+    d_ylangd_6  := GETFLT(diag6_id, 4); 
+    d_case      := GETINT(diag6_id, 5); 
+
+    s_d_origo_6 := "VEC("+STR(d_origo.x,8,2)+","+STR(d_origo.y,8,2)+")";     
+    s_d_xlangd_6:= STR(d_xlangd , 8,2); 
+    s_skalf_y_6 := STR(skalf_y, 8,2);
+    s_d_ylangd_6:= STR(d_ylangd_6 , 8,2);
+    s_d_case_6  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_origo_6 := "Undefined";
+    s_d_xlangd_6:= "Undefined";
+    s_skalf_y_6 := "Undefined";
+    s_d_ylangd_6:= "Undefined";
+    s_d_case_6  := "Undefined";
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  diag7_id := GET_NEXT_GM (tmod,16384,"meadia7v1");
+  IF  diag7_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia7v1";
+    d_origo     := GETVEC(diag7_id, 2); 
+    d_xlangd    := GETFLT(diag7_id, 3); 
+    skalf_y     := GETFLT(diag7_id, 4); 
+    d_ylangd_7  := GETFLT(diag7_id, 5); 
+    d_case      := GETINT(diag7_id, 6); 
+
+    s_d_origo_7 := "VEC("+STR(d_origo.x,8,2)+","+STR(d_origo.y,8,2)+")";     
+    s_d_xlangd_7:= STR(d_xlangd , 8,2); 
+    s_skalf_y_7 := STR(skalf_y, 8,2);
+    s_d_ylangd_7:= STR(d_ylangd_7 , 8,2);
+    s_d_case_7  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_origo_7 := "Undefined";
+    s_d_xlangd_7:= "Undefined";
+    s_skalf_y_7 := "Undefined";
+    s_d_ylangd_7:= "Undefined";
+    s_d_case_7  := "Undefined";
+  ENDIF;
+
+  SET_ROOT_GM(#0);
+  diag8_id := GET_NEXT_GM (tmod,16384,"meadia8v1");
+  IF  diag8_id <> #0 THEN
+    no_analysis := no_analysis + 1; 
+    all_analysis(no_analysis) := "meadia8v1";
+    d_origo     := GETVEC(diag8_id, 2); 
+    d_xlangd    := GETFLT(diag8_id, 3); 
+    skalf_y     := GETFLT(diag8_id, 4); 
+    d_ylangd_8  := GETFLT(diag8_id, 5); 
+    d_case      := GETINT(diag8_id, 6); 
+
+    s_d_origo_8 := "VEC("+STR(d_origo.x,8,2)+","+STR(d_origo.y,8,2)+")";     
+    s_d_xlangd_8:= STR(d_xlangd , 8,2); 
+    s_skalf_y_8 := STR(skalf_y, 8,2);
+    s_d_ylangd_8:= STR(d_ylangd_8 , 8,2);
+    s_d_case_8  := STR(d_case ,-1,0); 
+  ELSE
+    s_d_origo_8 := "Undefined";
+    s_d_xlangd_8:= "Undefined";
+    s_skalf_y_8 := "Undefined";
+    s_d_ylangd_8:= "Undefined";
+    s_d_case_8  := "Undefined";
+  ENDIF;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Do the following analysis:");
+  FOR  i_analysis:= 1 TO no_analysis DO
+  LST_LIN("Method "+STR(i_analysis,3,0)+ ": "+all_analysis(i_analysis) );
+  ENDFOR;
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag3_id <> #0 THEN 
+  LST_LIN("Diagram 3 data from diag3_id= "+RSTR(diag3_id));
+  LST_LIN("s_d_xlangd_3   " + s_d_xlangd_3   );
+  LST_LIN("s_skalf_y_3    " + s_skalf_y_3    );
+  LST_LIN("s_d_ylangd_3   " + s_d_ylangd_3   );
+  LST_LIN("s_kdesc_3      " + s_kdesc_3      );
+  LST_LIN("s_d_case_3     " + s_d_case_3     );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag4_id <> #0 THEN 
+  LST_LIN("Diagram 4 data from diag4_id= "+RSTR(diag4_id));
+  LST_LIN("s_d_xlangd_4   " + s_d_xlangd_4   );
+  LST_LIN("s_skalf_y_4    " + s_skalf_y_4    );
+  LST_LIN("s_d_ylangd_4   " + s_d_ylangd_4   );
+  LST_LIN("s_d_case_4     " + s_d_case_4     );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag5_id <> #0 THEN 
+  LST_LIN("Diagram 5 data from diag5_id= "+RSTR(diag5_id));
+  LST_LIN("s_d_xlangd_5   " + s_d_xlangd_5   );
+  LST_LIN("s_skalf_y_5    " + s_skalf_y_5    );
+  LST_LIN("s_d_ylangd_5   " + s_d_ylangd_5   );
+  LST_LIN("s_d_case_5     " + s_d_case_5     );
+  LST_LIN("s_twistdata    " + s_twistdata    );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag6_id <> #0 THEN 
+  LST_LIN("Diagram 6 data from diag6_id= "+RSTR(diag6_id));
+  LST_LIN("s_d_origo_6    " + s_d_origo_6    );
+  LST_LIN("s_d_xlangd_6   " + s_d_xlangd_6   );
+  LST_LIN("s_skalf_y_6    " + s_skalf_y_6    );
+  LST_LIN("s_d_ylangd_6   " + s_d_ylangd_6   );
+  LST_LIN("s_d_case_6     " + s_d_case_6     );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag7_id <> #0 THEN 
+  LST_LIN("Diagram 7 data from diag7_id= "+RSTR(diag7_id));
+  LST_LIN("s_d_origo_7    " + s_d_origo_7    );
+  LST_LIN("s_d_xlangd_7   " + s_d_xlangd_7   );
+  LST_LIN("s_skalf_y_7    " + s_skalf_y_7    );
+  LST_LIN("s_d_ylangd_7   " + s_d_ylangd_7   );
+  LST_LIN("s_d_case_7     " + s_d_case_7     );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND diag8_id <> #0 THEN 
+  LST_LIN("Diagram 8 data from diag8_id= "+RSTR(diag8_id));
+  LST_LIN("s_d_origo_8    " + s_d_origo_8    );
+  LST_LIN("s_d_xlangd_8   " + s_d_xlangd_8   );
+  LST_LIN("s_skalf_y_8    " + s_skalf_y_8    );
+  LST_LIN("s_d_ylangd_8   " + s_d_ylangd_8   );
+  LST_LIN("s_d_case_8     " + s_d_case_8     );
+  LST_LIN(" ");
+  ENDIF;
+
+  IF  DEBUG = 1 AND pen_id <> #0 THEN 
+  LST_LIN("Colour definition data from meagraphv0 with pen_id= "+RSTR(pen_id));
+  LST_LIN("c_tol_s        " + c_tol_s        );
+  LST_LIN("i_pen_s        " + i_pen_s        );
+  LST_LIN("p_pen_s        " + p_pen_s        );
+  LST_LIN("n_pen_s        " + n_pen_s        );
+  LST_LIN("origin_pen_s   " + origin_pen_s   );
+  LST_LIN(" ");
+  ENDIF;
+
+
+! +++
+! Sheet (format A3) and text for measure diagram
+! ---
+
+  benamning   := GETSTR(txt_id, 1); 
+  description := GETSTR(txt_id, 2); 
+  projyt      := GETSTR(txt_id, 3); 
+  bladnr      := GETSTR(txt_id, 4); 
+  date_d      := GETSTR(txt_id, 5); 
+  avdsign1    := GETSTR(txt_id, 6); 
+  ref1        := GETSTR(txt_id, 7); 
+  modul       := GETSTR(txt_id, 8); 
+  text_pen    := GETINT(txt_id, 9); 
+  text_niva   := GETINT(txt_id,10); 
+
+  s_origin    := "VEC(450.0,0.0)";
+  benamning   := CHR(34) + benamning   + CHR(34);
+  description := CHR(34) + description + CHR(34);
+  projyt      := CHR(34) + projyt      + CHR(34);
+  bladnr      := CHR(34) + bladnr      + CHR(34);
+  date_d      := CHR(34) +  date_d     + CHR(34);
+  avdsign1    := CHR(34) + avdsign1    + CHR(34);
+  ref1        := CHR(34) + ref1        + CHR(34);
+  modul       := CHR(34) + modul       + CHR(34);
+  s_text_pen  := STR(text_pen ,-1,0);
+  s_text_niva := STR(text_niva,-1,0);
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Drawing sheet data from txt_id= "+RSTR(txt_id));
+  LST_LIN("s_origin    " + s_origin    );
+  LST_LIN("benamning   " + benamning   );
+  LST_LIN("description " + description );
+  LST_LIN("projyt      " + projyt      );
+  LST_LIN("bladnr      " + bladnr      );
+  LST_LIN("date_d      " + date_d      );
+  LST_LIN("avdsign1    " + avdsign1    );
+  LST_LIN("ref1        " + ref1        );
+  LST_LIN("modul       " + modul       );
+  LST_LIN("s_text_pen  " + s_text_pen  );
+  LST_LIN("s_text_niva " + s_text_niva );
+  LST_LIN(" ");
+  ENDIF;
+
+
+!  a_id:= ADD_MBS("PART", "mealposv0", s_origin,  benamning, 
+!         description, projyt, bladnr,date_d, avdsign1, ref1, 
+!         modul, s_text_pen, s_text_niva);
+
+! +++
+! View        
+! ---
+
+  vy      := GETSTR(view_first_id,1);    ! View
+  fplproj := GETSTR(view_first_id,2);    ! Aircraft project
+  datum   := GETSTR(view_first_id,3);    ! Coordinate system
+  coname  := GETSTR(view_first_id,4);    ! Axis text
+  skala   := GETFLT(view_first_id,5);    ! Drawing scale
+  origo   := GETVEC(view_first_id,6);    ! Position for axis origin
+  x0      := GETFLT(view_first_id,7);    ! Origin x coordinate
+  y0      := GETFLT(view_first_id,8);    ! Origin y coordinate
+  z0      := GETFLT(view_first_id,9);    ! Origin z coordinate
+  xlangd  := GETFLT(view_first_id,10);   ! Length of x axis
+  ylangd  := GETFLT(view_first_id,11);   ! Length of y axis
+  zlangd  := GETFLT(view_first_id,12);   ! Length of z axis
+  grafik  := GETINT(view_first_id,13);   ! Graphics          
+  ang     := GETVEC(view_first_id,14);   ! Eulervinklar
+  reserv2 := GETSTR(view_first_id,15);   ! Extra parameter
+  s_vy      := CHR(34) + vy      + CHR(34);
+  s_fplproj := CHR(34) + fplproj + CHR(34); 
+  s_datum   := CHR(34) + datum   + CHR(34);
+  s_coname  := CHR(34) + coname  + CHR(34);
+  s_skala   := STR(skala,  10,4);
+  s_origo   := "VEC("+STR(origo.x,10,4)+","+STR(origo.y,10,4)+")";
+  s_x0      := STR(x0,     10,4);
+  s_y0      := STR(y0,     10,4);
+  s_z0      := STR(z0,     10,4);
+  s_xlangd  := STR(xlangd, 10,4);
+  s_ylangd  := STR(ylangd, 10,4);
+  s_zlangd  := STR(zlangd, 10,4);
+  s_grafik  := STR(grafik, -1,0);
+  s_ang     := "VEC("+STR(ang.x,  10,4)+","+STR(ang.y,  10,4)+")";
+  s_reserv2 := CHR(34) + reserv2 + CHR(34); 
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("View data for figvyv2 from view_first_id: "+RSTR(view_first_id));
+  LST_LIN("s_vy        " + s_vy        );
+  LST_LIN("s_fplproj   " + s_fplproj   );
+  LST_LIN("s_datum     " + s_datum     );
+  LST_LIN("s_coname    " + s_coname    );
+  LST_LIN("s_skala     " + s_skala     );
+  LST_LIN("s_origo     " + s_origo     );
+  LST_LIN("s_x0        " + s_x0        );
+  LST_LIN("s_y0        " + s_y0        );
+  LST_LIN("s_z0        " + s_z0        );
+  LST_LIN("s_xlangd    " + s_xlangd    );
+  LST_LIN("s_ylangd    " + s_ylangd    );
+  LST_LIN("s_zlangd    " + s_zlangd    );
+  LST_LIN("s_grafik    " + s_grafik    );
+  LST_LIN("s_ang       " + s_ang       );
+  LST_LIN("s_reserv2   " + s_reserv2   );
+  LST_LIN(" ");
+  ENDIF;
+
+
+! +++
+! Surface
+! ---
+
+
+  surface := GETSTR(surf_first_id,2);      ! Surface
+  grafik_surf:= GETINT(surf_first_id,3);   ! Graphic
+  ustart:= GETFLT(surf_first_id,4);        ! Ustart
+  udelta:= GETFLT(surf_first_id,5);        ! Udelta
+  uslut := GETFLT(surf_first_id,6);        ! Uslut
+  vstart:= GETFLT(surf_first_id,7);        ! Vstart
+  vdelta:= GETFLT(surf_first_id,8);        ! Vdelta
+  vslut := GETFLT(surf_first_id,9);        ! Vslut
+  case_surf:= GETINT(surf_first_id,10);    ! Case
+  surflib:= GETSTR(surf_first_id,11);      ! Library 
+  uvfil:= GETSTR(surf_first_id,12);        ! UV file 
+  reserv2_surf:= GETSTR(surf_first_id,13); ! Extra parameter 
+
+  s_surface      := CHR(34)+  surface     +CHR(34);    
+  s_grafik_surf  := STR(grafik_surf,-1,0); 
+  s_ustart       := STR(ustart, 8,2); 
+  s_udelta       := STR(udelta, 8,2);
+  s_uslut        := STR(uslut , 8,2); 
+  s_vstart       := STR(vstart, 8,2);
+  s_vdelta       := STR(vdelta, 8,2);
+  s_vslut        := STR(vslut , 8,2); 
+  s_case_surf    := STR(case_surf,-1,0);
+  s_surflib      := CHR(34)+  surflib     +CHR(34);
+  s_uvfil        := CHR(34)+   uvfil      +CHR(34); 
+  s_reserv2_surf := CHR(34)+ reserv2_surf +CHR(34); 
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Surface data for figytav0 from surf_first_id: "+RSTR(surf_first_id));
+  LST_LIN("s_surface       " + s_surface       );
+  LST_LIN("s_grafik_surf   " + s_grafik_surf   );
+  LST_LIN("s_ustart        " + s_ustart        );
+  LST_LIN("s_udelta        " + s_udelta        );
+  LST_LIN("s_uslut         " + s_uslut         );
+  LST_LIN("s_vstart        " + s_vstart        );
+  LST_LIN("s_vdelta        " + s_vdelta        );
+  LST_LIN("s_vslut         " + s_vslut         );
+  LST_LIN("s_case_surf     " + s_case_surf     );
+  LST_LIN("s_surflib       " + s_surflib       );
+  LST_LIN("s_uvfil         " + s_uvfil         );
+  LST_LIN("s_reserv2_surf  " + s_reserv2_surf  );
+  LST_LIN(" ");
+  ENDIF;
+
+! +++
+! Wing plane data
+! ---
+
+  proj_dir   := GETSTR(plan_id,2);  ! Projection direction (only Z implem.)
+  fkstart_uv := GETVEC(plan_id,3);  ! Leading edge UV start point <CR>=demo
+  fkslut_uv  := GETVEC(plan_id,4);  ! Leading edge UV end   point
+  bkstart_uv := GETVEC(plan_id,5);  ! Trailing edge UV start point
+  bkslut_uv  := GETVEC(plan_id,6);  ! Trailing edge UV end   point
+  delta_l    := GETFLT(plan_id,7);  ! Delta for leading edge (normal direction)
+  grafik_plan:= GETINT(plan_id,8);  ! 0: No graphic 1: Show plane
+
+  s_proj_dir     := CHR(34)+  proj_dir    +CHR(34);
+  s_fkstart_uv   := "VEC("+STR(fkstart_uv.x,5,2)+","+
+                           STR(fkstart_uv.y,5,2)+")";
+  s_fkslut_uv    := "VEC("+STR(fkslut_uv.x,5,2)+","+
+                           STR(fkslut_uv.y,5,2)+")";
+  s_bkstart_uv   := "VEC("+STR(bkstart_uv.x,5,2)+","+
+                           STR(bkstart_uv.y,5,2)+")";
+  s_bkslut_uv    := "VEC("+STR(bkslut_uv.x,5,2)+","+
+                           STR(bkslut_uv.y,5,2)+")";
+  s_delta_l      :=  STR(delta_l    , 8,2);
+  s_grafik_plan  :=  STR(grafik_plan,-1,0);
+
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Wing plane data for meawingpv0 from plan_id: "+RSTR(plan_id));
+  LST_LIN("s_proj_dir      " + s_proj_dir      );
+  LST_LIN("s_fkstart_uv    " + s_fkstart_uv    );
+  LST_LIN("s_fkslut_uv     " + s_fkslut_uv     );
+  LST_LIN("s_bkstart_uv    " + s_bkstart_uv    );
+  LST_LIN("s_bkslut_uv     " + s_bkslut_uv     );
+  LST_LIN("s_delta_l       " + s_delta_l       );
+  LST_LIN("s_grafik_plan   " + s_grafik_plan   );
+  LST_LIN(" ");
+  ENDIF;
+
+  POP_PMT();
+
+
+! +++
+! 3. Create geometry
+! ---
+
+! +++
+! Clear GM (delete input preparation part data)
+! ---
+
+  CLEAR_GM();
+  LOAD_GM(ACT_JOBDIR()+ACT_JOBNAM()+".RES");
+
+  PSH_PMT("Create geometry");
+
+! +++
+! Drawing sheet   
+! ---
+
+!  LST_EXI();
+
+ a_id:= ADD_MBS("PART", "mearami3v0", "");
+
+ 
+! EXIT();
+
+! +++
+! Text for drawing sheet 
+! ---
+
+!  a_id:= ADD_MBS("PART", "meatxta3v0", benamning, 
+!         description, projyt, bladnr,date_d, avdsign1, ref1, 
+!         modul, s_text_pen, s_text_niva);
+
+
+
+  a_id:= ADD_MBS("PART", "meatxti3v0", benamning, 
+         description, projyt, bladnr,date_d, avdsign1, ref1, 
+         modul, s_text_pen, s_text_niva);
+
+!  EXIT();
+
+! +++
+! View 
+! ---
+
+  a_id:= ADD_MBS("PART", "figvyv2", s_vy, s_fplproj, s_datum,
+         s_coname, s_skala, s_origo, s_x0, s_y0, s_z0,                 
+         s_xlangd, s_ylangd, s_zlangd, s_grafik, s_ang, s_reserv2);
+
+  prtname := "figvyv2";
+  PART(#21, meatotav0 ( prtname, view_all_id, n_view, 
+            view_first_id, view_last_id):SAVE=0);
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("View on new diagram.   Reference to figvyv2 is "+RSTR(view_last_id));
+  LST_LIN("View on new diagram.   Reference a_id          "+RSTR(a_id));
+  LST_LIN("The number of figvyv2 views is "+STR(n_view,4,0));
+  ENDIF;
+
+! +++
+! Surface
+! ---
+
+
+  a_id:= ADD_MBS("PART", "figytav0", RSTR(view_last_id),
+         s_surface, s_grafik_surf, 
+         s_ustart, s_udelta, s_uslut,
+         s_vstart, s_vdelta, s_vslut,
+         s_case_surf, s_surflib, s_uvfil, 
+         s_reserv2_surf);
+
+! +++
+! Wing plane
+! ---
+
+  a_id:= ADD_MBS("PART", "meawingpv0", RSTR(view_last_id),
+        s_proj_dir,  s_fkstart_uv, s_fkslut_uv,
+                     s_bkstart_uv, s_bkslut_uv,
+         s_delta_l,  s_grafik_plan );
+
+! +++
+! Definition of colours for deviations
+! ---
+
+  IF pen_id <> #0  THEN
+    a_id:= ADD_MBS("PART", "meagraphv0", 
+           c_tol_s, i_pen_s, p_pen_s, n_pen_s,
+           origin_pen_s); 
+  ENDIF;                    
+  
+! +++
+! 3. Read measured points from input Metronor file
+! ---
+
+  a_id:= ADD_MBS("PART", "meametrov3", RSTR(view_last_id),
+         CHR(34)+metfil+CHR(34), STR(offset,6,4), "1", 
+         STR(case, 3,0));
+  tmod := 0;
+  SET_ROOT_GM(#0);
+  metro_id := GET_NEXT_GM (tmod,16384,"meametrov3");
+  IF   metro_id = #0 THEN
+    IF  DEBUG = 1 THEN  
+    LST_EXI();         
+    ENDIF;            
+    EXIT("meatotv1 No measured pts (meametrov3) is created");
+  ENDIF;
+
+  PART(#22, meatotbv0  ( metro_id, n_subsets ):SAVE=0);
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Measured pts from file. Reference to meametrov3 is "+RSTR(metro_id));
+  LST_LIN("The number of point subsets (curves) is "+STR(n_subsets,4,0));
+  ENDIF;
+
+  POP_PMT();
+
+
+! +++
+! 6. Diagram 3
+! ---
+
+  IF diag3_id = #0 THEN
+    GOTO  diag4;
+  ENDIF;
+
+  PSH_PMT("Creation of deviation diagrams");
+
+  n_diagr     := 0;
+  FOR  i_grupp := 1 TO n_subsets DO
+
+    n_diagr   := n_diagr + 1;
+    s_d_origo := "VEC(  0,320+"+STR(n_diagr*d_ylangd_3*3.0,8,2)+")";     
+    s_i_grupp := STR(i_grupp,-1,0);   
+
+    a_id:= ADD_MBS("PART", "meadia3v2", RSTR(metro_id),
+           s_i_grupp, s_d_origo, s_d_xlangd_3, s_skalf_y_3, s_d_ylangd_3,
+           s_kdesc_3,  s_d_case_3 );
+
+  ENDFOR;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("The number of type 3 diagrams is "+STR(n_diagr,4,0));
+  ENDIF;
+
+  POP_PMT();
+
+
+diag4:;
+
+! +++
+! 7. Diagram 4
+! ---
+
+  IF diag4_id = #0 THEN
+    GOTO  diag5;
+  ENDIF;
+
+  PSH_PMT("Creation of thickness deviation diagrams");
+
+
+  IF  DEBUG = 1 AND diag4_id <> #0 THEN 
+  LST_LIN("Diagram 4 data from diag4_id= "+RSTR(diag4_id));
+  LST_LIN("s_d_xlangd_4   " + s_d_xlangd_4   );
+  LST_LIN("s_skalf_y_4    " + s_skalf_y_4    );
+  LST_LIN("s_d_ylangd_4   " + s_d_ylangd_4   );
+  LST_LIN("s_d_case_4     " + s_d_case_4     );
+  LST_LIN(" ");
+  ENDIF;
+
+  n_diagr     := 0;
+  FOR  i_grupp := 1 TO n_subsets STEP 2 DO
+
+    n_diagr   := n_diagr + 1;
+    s_d_origo := "VEC(420,320+"+STR(n_diagr*d_ylangd_4*3.0,8,2)+")";     
+    s_i_grupp := STR(i_grupp,-1,0);   
+    s_i_grupp2:= STR(i_grupp+1,-1,0);   
+
+    IF  DEBUG = 1 AND diag4_id <> #0 THEN 
+    LST_LIN("s_d_origo      " + s_d_origo      );
+    LST_LIN("s_i_grupp      " + s_i_grupp      );
+    LST_LIN("s_i_grupp2     " + s_i_grupp2     );
+    LST_LIN(" ");
+    ENDIF;
+
+    a_id:= ADD_MBS("PART", "meadia4v2", RSTR(metro_id),
+            s_i_grupp, s_i_grupp2, s_d_origo, 
+            s_d_xlangd_4, s_skalf_y_4, s_d_ylangd_4, s_d_case_4 );
+
+  ENDFOR;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("The number of type 4 diagrams is "+STR(n_diagr,4,0));
+  ENDIF;
+
+  POP_PMT();
+
+diag5:;
+
+! +++
+! 8. Diagram 5
+! ---
+
+  IF diag5_id = #0 THEN
+    GOTO  diag6;
+  ENDIF;
+
+  PSH_PMT("Creation of camber line deviation diagrams");
+
+  n_diagr     := 0;
+  FOR  i_grupp := 1 TO n_subsets STEP 2 DO
+
+    n_diagr   := n_diagr + 1;
+    s_d_origo := "VEC( 840,320+"+STR(n_diagr*d_ylangd_5*3.0,8,2)+")";     
+    s_i_grupp := STR(i_grupp,-1,0);   
+    s_i_grupp2:= STR(i_grupp+1,-1,0);   
+
+    IF  DEBUG = 1 AND diag5_id <> #0 THEN 
+    LST_LIN("s_d_origo      " + s_d_origo      );
+    LST_LIN("s_i_grupp      " + s_i_grupp      );
+    LST_LIN("s_i_grupp2     " + s_i_grupp2     );
+    LST_LIN(" ");
+    ENDIF;
+
+    a_id:= ADD_MBS("PART", "meadia5v3", RSTR(metro_id),
+           s_i_grupp, s_i_grupp2, s_d_origo, 
+           s_d_xlangd_5, s_skalf_y_5, s_d_ylangd_5, 
+           s_d_case_5 );
+
+  ENDFOR;
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("The number of type 5 diagrams is "+STR(n_diagr,4,0));
+  LST_LIN("The name of the twist data file is "+ s_twistdata );
+  ENDIF;
+
+  POP_PMT();
+
+diag6:;
+
+! +++
+! 9. Diagram 6
+! ---
+
+  IF diag6_id = #0 THEN
+    GOTO  diag7;
+  ENDIF;
+
+  PSH_PMT("Creation of wing twist deviation diagram");
+
+  a_id:= ADD_MBS("PART", "meadia6v2", 
+         s_d_origo_6, s_d_xlangd_6, s_skalf_y_6, s_d_ylangd_6, 
+         s_d_case_6 );
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Diagram 6 created with data file   "+ twistdata );
+  ENDIF;
+
+  POP_PMT();
+
+
+diag7:;
+
+! +++
+! 10. Diagram 7
+! ---
+
+  IF diag7_id = #0 THEN
+    GOTO  diag8;
+  ENDIF;
+
+
+  a_id:= ADD_MBS("PART", "meadia7v1", s_twistdata, 
+         s_d_origo, s_d_xlangd_7, s_skalf_y, s_d_ylangd_7, 
+         s_d_case );
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Diagram 7 created with data file   "+ twistdata );
+  ENDIF;
+
+diag8:;
+
+! +++
+! 11. Diagram 8
+! ---
+
+  IF diag8_id = #0 THEN
+    GOTO  nomore;
+  ENDIF;
+
+  a_id:= ADD_MBS("PART", "meadia8v1", s_twistdata, 
+         s_d_origo, s_d_xlangd_8, s_skalf_y, s_d_ylangd_8, 
+         s_d_case );
+
+  IF  DEBUG = 1 THEN 
+  LST_LIN("Diagram 8 created with data file   "+ twistdata );
+  ENDIF;
+
+
+! +++
+! 12. Exit
+! ---
+
+nomore:;
+
+! +++
+! Close Debug Window for DEBUG=1
+! ---
+
+  IF  DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+
+
+
+
+ENDMODULE

@@ -1,0 +1,174 @@
+! ***************** s_anestv0  ****************************
+!
+! +++
+! Nest of planar intersects in a surface. Output curve references
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-02-26 Gunnar Liden
+! 1996-03-09 Deletion of intersect csys not allowed G Liden
+!
+!************************************************************
+
+!sdesce Nest of planar intersects in a surface. Output curve references
+!sdescs Knippe av plana X, Y eller Z snitt i en yta. Utdata kurvreferenser
+
+
+GLOBAL GEOMETRY MODULE s_anestv0  (
+
+    REF    s_id;               ! Surface
+    REF    c_id;               ! Coordinate system
+    STRING stat*1;             ! Station X, Y or Z
+    FLOAT  start;              ! Start station value
+    FLOAT  delta;              ! Delta station value
+    FLOAT  end;                ! End   station value
+    INT    graphic;            ! Graphical case
+VAR REF   id_int(100);         ! References to curves
+VAR INT   n_int);
+
+! Internal variables
+
+  REF    cint_id;                ! Start   intersect system
+  REF    ccur_id;                ! Current intersect system 
+
+  INT    i_s;                    ! Loop index intersect
+  INT    i_b;                    ! Loop index intersect branch
+
+  FLOAT  current;                ! Current station value
+
+  INT    no_branch;              ! No branches
+
+  INT    bflag_i;                ! Blank flag for intersects
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+! 0. Initiations and checks      
+!
+!    Graphic flag for intersects
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN          ! 
+    bflag_i := 1;                ! Blank intersects
+  ELIF graphic = 1 THEN          ! 
+    bflag_i := 0;                ! No blank of intersects
+  ELSE                           !
+    EXIT("surinplan graphic not" ! Error
+          +" OK");               !
+  ENDIF;                         !
+
+! +++
+! 1. Intersect start coordinate system
+! ---
+
+  PART ( #4, csysnestv0 ( c_id,  ! Start intersect coord. system
+         stat, cint_id ));       !
+
+! +++
+! 3. Calculate intersects    
+!
+!  Loop for all given station values
+! ---
+
+!  Start loop all stations i_s= 1,2, ......
+!
+!       Calculate current station value
+!       Goto nomore if value is greater than end.
+!
+!       Create current intersect coordinate system
+!
+!       Calculate intersect curve (red colour)
+!       Delete current coordinate system.
+!
+!       Goto nomore if delta station value is zero
+!
+!  End   loop all stations i_s= 1,2, ......
+!
+! Label nomore: End of intersect calculation
+!---
+ 
+  n_int := 0;                    ! Initialization of n_int
+
+  FOR i_s:= 1 TO 100  DO         ! Start loop intersects
+
+    current:= start +            ! Current station value
+     (i_s-1)*delta;              !
+
+    IF current > end THEN        ! Last station
+      GOTO nomore;               !
+    ENDIF;                       !
+    PSH_PMT("Station "+          ! Message to screen
+     STR(current,-15,8));        !
+
+    MODE_LOCAL(cint_id);         ! Activate intersect system
+    CSYS_1P(#8,"CURRENT",        !
+      VEC(0,0,current),0,0,0     !
+       :BLANK=1);                !
+    MODE_GLOBAL();               !
+    ccur_id:=                    ! Current intersect system
+      GLOBAL_REF(REFC(8,i_s));   !
+
+    IF DEBUG = 2 THEN            ! Debug to screen
+     s:= INPMT("current "   +    !
+      STR(current,-12,4),        !
+      "",1);                     !
+    ENDIF;                       !
+
+    no_branch := N_CUR_INT(      ! Number of branches
+               s_id, ccur_id );  !
+    IF no_branch = 0 THEN        !
+        GOTO nointer;            !
+    ENDIF;                       !
+
+    FOR i_b:= 1 TO no_branch DO  ! Start loop branches  
+
+      SET(PEN=2);                !
+      CUR_INT(#1,s_id,ccur_id,   ! Intersect curve
+        i_b:BLANK=bflag_i);      !
+      SET(PEN=1);                !
+      n_int:= n_int + 1;         ! An additional intersect
+      IF  n_int > 100 THEN       !
+        LST_INI("s_anestv0  ERROR ERROR ERROR ");
+        LST_LIN("Maximum number of output curves (100) exceeded");
+        LST_LIN(" ");
+        LST_EXI();
+        GOTO  nomore;            !
+      ENDIF;                     !
+      id_int(n_int):=            ! Identity to output array
+      GLOBAL_REF(REFC(1,n_int)); !
+
+    ENDFOR;                      ! End   loop branches   
+
+nointer:;                        ! Label: No intersect 
+
+    POP_PMT();                   ! Erase message to screen
+
+    IF ABS(delta) < 0.01 THEN    !
+      GOTO nomore;               !
+    ENDIF;                       !
+
+  ENDFOR;                        ! End   loop intersects
+
+  LST_INI("s_anestv0  WARNING WARNING WARNING");
+  LST_LIN("Maximum number of intersects (=100) exceeded");
+  LST_LIN(" ");
+  LST_LIN("Limit can easely be changed in s_anestv0 ");
+  LST_LIN("Change loop:  i_s:= 1 TO 100  DO  to");
+  LST_LIN("              i_s:= 1 TO nnn  DO ");
+  LST_EXI();
+
+nomore:;                         ! Label: No more
+
+ENDMODULE

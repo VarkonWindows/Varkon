@@ -1,0 +1,65 @@
+!********************* meawinggv0 *****************************************
+! +++
+! Graphics for wing plane
+!
+! Revision history
+! ________________
+!
+! 1996-03-06  Gunnar Liden
+!
+! ---
+!***********************************************************************
+
+!sdesce Graphics for wing plane
+!sdescs Grafik för vingplan
+
+GLOBAL DRAWING MODULE meawinggv0 (
+VECTOR fkstart;                  ! Leading edge  start point
+VECTOR fkslut;                   ! Leading edge  end   point
+VECTOR bkstart;                  ! Trailing edge  start point
+VECTOR bkslut;                   ! Trailing edge  end   point
+REF    csys_id;                  ! Coordinate system for points
+FLOAT  skala;                    ! Scale (scale factor= 1/skala)
+FLOAT  x0;                       ! Origin x coordinate
+FLOAT  y0;                       ! Origin y coordinate
+FLOAT  z0;                       ! Origin z coordinate
+INT    grafik);                  ! 0: No graphic 1: Show plane
+
+! Interna variabler
+
+REF    tra_id;                     ! Transformation identity
+
+BEGINMODULE
+
+! +++
+! 0. Initializations
+! ---
+
+
+  IF  grafik = 0 THEN
+    EXIT();
+  ENDIF;
+
+
+! +++
+! 1. Graphical representation   
+! ---
+
+  PART ( #2, tra_2dav0 (                   ! Create transformation
+      csys_id,skala,x0,y0,z0,tra_id));     !
+
+
+  LIN_FREE(#3, fkstart,fkslut);            !
+  TCOPY(#4 ,GLOBAL_REF(#3), tra_id, 1);    ! Scale and translate curve 
+  DEL(GLOBAL_REF(#3));                     !
+  LIN_FREE(#5, fkslut,bkslut);             !
+  TCOPY(#6 ,GLOBAL_REF(#5), tra_id, 1);    ! Scale and translate curve 
+  DEL(GLOBAL_REF(#5));                     !
+  LIN_FREE(#7, bkslut, bkstart);           !
+  TCOPY(#8 ,GLOBAL_REF(#7), tra_id, 1);    ! Scale and translate curve 
+  DEL(GLOBAL_REF(#7));                     !
+  LIN_FREE(#9, bkstart, fkstart);          !
+  TCOPY(#10,GLOBAL_REF(#9), tra_id, 1);    ! Scale and translate curve 
+  DEL(GLOBAL_REF(#9));                     !
+
+ENDMODULE

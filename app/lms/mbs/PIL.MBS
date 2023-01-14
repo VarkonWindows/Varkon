@@ -1,0 +1,109 @@
+!********************* pil *********************************************
+! +++
+! Create an arrow for a coordinate axis
+! ---
+!s+++
+!  Funktionen gör en pil-markering på koordinataxeln vid skapandet
+!  av de olika figurbladsvyerna.
+!s---
+!
+! Revision history:
+!  
+!  1991-12-07  Gunnar Liden
+!  1992-11-24  l bytt mot langd  Ronny Gyllensten
+!  1995-03-13  Documentation     R Gyllensten
+!  1996-02-24  åäö 8 bits ASCII not yet in parameter name Gunnar Liden    
+!  1997-04-24  Documentation in English                   Gunnar Liden
+!
+!************************************************************************
+
+!sdesce Makes an arrow on the coordinate-axis
+!sdescs Skapar en pilmarkering på koordinataxeln
+
+LOCAL GEOMETRY MODULE pil (
+
+VECTOR p0:=vec(0.0,0.0,0.0) > "Direction (indication end) point for arrow";
+VECTOR p1:=vec(100.0,200.0,300.0) > "Start point for arrow");
+
+! Internal variables:
+  FLOAT  ang;          ! Angle  for the arrow
+  FLOAT  langd;        ! Length for the arrow
+
+BEGINMODULE
+
+! +++
+! Angle and length for the arrow
+! ---
+!s+++
+! Vinkel och längd på pil
+!s---
+  ang   := 10.0;
+  langd   := 5.0;
+
+! +++
+! Create a local coordinate system with the line p0-p1 as the X axis
+! ---
+! Origin is p1
+!s+++
+! Skapa lokalt koordinatsystem med linjen som x-axel
+!s---
+!s Origo är p1
+  csys_3p(#3,"c0", p1, p0, p0 + vec(100, 100, 100):BLANK=1);
+
+! +++
+! Create an additional system by a 90 degree rotation of the first system 
+! ---
+!s+++
+! Skapa ytterligare ett system genom att vrida det 
+! första 90 grader kring x axeln
+!s---
+
+  mode_local(#3);
+
+  csys_1p(#4,"c90", vec(0, 0, 0), 90, 0, 0:BLANK=1);
+
+! +++
+! Create arrow lines in the first local coordinate system
+! ---
+!s+++
+! Skapa pil streck i första lokala systemet
+!s---
+
+  lin_ang(#5,vec(0, 0, 0), -ang, langd);
+  lin_ang(#6,vec(0, 0, 0),  ang, langd);
+
+! +++
+! Create arrow lines in the second local coordinate system
+! ---
+!s+++
+! Skapa pil streck i andra lokala systemet
+!s---
+
+  mode_local(#4);
+
+  lin_ang(#7,vec(0, 0, 0), -ang, langd);
+  lin_ang(#8,vec(0, 0, 0),  ang, langd);
+
+! +++
+! Create a local system for the arrow circles
+! ---
+!s+++
+! Skapa lokalt koordinatsystem för cirkel mellan ändpunkter
+!s---
+
+  csys_3p(#10,"cc", on(#5,1), on(#6,1), on(#7,1):BLANK=1);
+
+! +++ 
+! Create circles
+! ---
+!s+++ 
+! Skapa cirklar
+!s---
+
+  mode_local(#10);
+
+  arc_3pos(#11,on(#5,1),on(#7,1),on(#6,1));
+  arc_3pos(#12,on(#6,1),on(#8,1),on(#5,1));
+
+ENDMODULE
+

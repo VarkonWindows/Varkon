@@ -1,0 +1,163 @@
+!********************* meadiagtv0***************************************
+! +++
+! Get calculated and registered data from camber line deviation diagrams
+!
+! ---
+!  Revision history
+!  ________________
+!
+!  1997-04-28  Gunnar Liden
+! 
+!***********************************************************************
+
+!sdescs Hamta registrerad data fran valvings diagram
+!sdesce Get registered data from camber line deviation diagrams
+
+BASIC  GEOMETRY MODULE meadiagtv0  (
+
+VAR INT    np;                     ! Number of retrieved values in x_ut
+VAR VECTOR x_ut(200);              ! Y avarage, twist or translation values
+    INT    case);                  ! 1=twist 2=tranz 3=tranx
+
+! Internal variables:
+
+!                                  ! Attributes for meadiargv0:
+  FLOAT  med_y;                    ! 1 Average value  Y
+  FLOAT  twist_error;              ! 2 Twist error (least square estimation)
+  FLOAT  A;                        ! 3 Slope       (least square estimation)
+  FLOAT  lead_error_z;             ! 4 Leading  edge Z translation error
+  FLOAT  trail_error_z;            ! 5 Trailing edge Z translation error
+  FLOAT  lead_error_x;             ! 6 Leading  edge X translation error
+  FLOAT  trail_error_x;            ! 7 Trailing edge X translation error
+
+  REF    prt_id;                   ! Reference to (# id for) meadiargv0
+
+
+  VECTOR t_x_ut(200);              ! Y values and twists or translations     
+  VECTOR r_x_ut(200);              ! Y values and twists or translations     
+
+
+
+ INT    t_np;                      ! Number of retrieved meadiargv0 parts
+ FLOAT  ctol;                      ! Criterion for equal points  
+
+ INT    DEBUG;                     ! = 0: No   debug
+                                   ! = 1: Full debug
+
+ INT    i_p;                       ! Loop index point
+ INT    ii_p;                      ! Loop index point
+
+ STRING s*1;                       ! For debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations and checks 
+! ---
+
+! Change Debug to 0 or 1
+  DEBUG := 0;                      ! [ndra DEBUG till 0 eller 1
+
+
+! Initialize output and internal arrays
+  FOR  i_p := 1 TO 200 DO
+      x_ut(i_p) := VEC(-0.12345,-0.12345,-0.12345);  
+    t_x_ut(i_p) := VEC(-0.12345,-0.12345,-0.12345);  
+  ENDFOR;
+
+! +++
+! 2. Get data from all parts in GM with the name meadiargv0
+! ---
+
+! Whole GM
+  SET_ROOT_GM(#0);
+
+! Initialization of number of meadiargv0 parts
+  t_np   := 0;
+
+nxtprt: ! Label: Next meadiargv0 part in GM
+
+  prt_id := GET_NEXT_GM(0, 16384, "meadiargv0");
+
+  IF  prt_id = #0 THEN
+    GOTO  nomore;
+  ENDIF;
+
+! An additional part
+  t_np  := t_np + 1;
+! Check maximum number
+  IF t_np > 200  THEN
+     EXIT("meadiagtv0 t_np > 200");
+  ENDIF;
+
+! Get the data
+
+  IF    case = 1 THEN
+    t_x_ut(t_np).x := GETFLT(prt_id,1);
+    t_x_ut(t_np).y := GETFLT(prt_id,2);
+    t_x_ut(t_np).z := GETFLT(prt_id,3);
+  ELIF  case = 2 THEN
+    t_x_ut(t_np).x := GETFLT(prt_id,1);
+    t_x_ut(t_np).y := GETFLT(prt_id,4);
+    t_x_ut(t_np).z := GETFLT(prt_id,5);
+  ELIF  case = 3 THEN
+    t_x_ut(t_np).x := GETFLT(prt_id,1);
+    t_x_ut(t_np).y := GETFLT(prt_id,6);
+    t_x_ut(t_np).z := GETFLT(prt_id,7);
+  ELSE
+    EXIT("meadiagtv0 case not implemented");
+  ENDIF;
+
+! Continue scanning
+  GOTO  nxtprt;
+
+nomore:; ! Label: All meadiargv0 parts found
+
+
+! +++
+! 3. Remove points with same X (y average station) value
+! ---
+
+! Probably not necessary any longer !!!!
+
+! Senaste v{rdena
+  FOR i_p := 1 TO t_np DO
+    r_x_ut(t_np-i_p+1) := t_x_ut(i_p);
+  ENDFOR;
+
+  ctol := 1.0;
+  np := 1;
+  x_ut(np) := r_x_ut(1);
+  FOR i_p := 2 TO t_np DO
+    
+    FOR ii_p := 1 TO np DO
+      IF ABS(x_ut(ii_p).x-r_x_ut(i_p).x) < ctol THEN
+        GOTO  equal;
+      ENDIF;
+    ENDFOR;
+    np := np + 1;
+    x_ut(np) := r_x_ut(i_p);
+
+equal:;
+
+  ENDFOR;
+
+  IF  DEBUG = 3 THEN
+  LST_INI("meadiagtv0 Debug");
+  FOR  i_p:= 1 TO t_np DO
+  LST_LIN("t_x_ut("+STR(i_p,3,0)+")= "+STR(t_x_ut(i_p).x,15,8)+
+                "  "+STR(t_x_ut(i_p).y,15,8)+"  "+STR(t_x_ut(i_p).z,15,8));
+  ENDFOR;
+  FOR  i_p:= 1 TO t_np DO
+  LST_LIN("r_x_ut("+STR(i_p,3,0)+")= "+STR(r_x_ut(i_p).x,15,8)+
+                "  "+STR(r_x_ut(i_p).y,15,8)+"  "+STR(r_x_ut(i_p).z,15,8));
+  ENDFOR;
+  FOR  i_p:= 1 TO   np DO
+  LST_LIN("  x_ut("+STR(i_p,3,0)+")= "+STR(  x_ut(i_p).x,15,8)+
+                "  "+STR(  x_ut(i_p).y,15,8)+"  "+STR(  x_ut(i_p).z,15,8));
+  ENDFOR;
+  LST_EXI();
+  ENDIF;
+
+
+ENDMODULE

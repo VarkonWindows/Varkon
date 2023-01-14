@@ -1,0 +1,227 @@
+!********************* meametrdv0 **************************************
+! +++
+! Reads data from METRONOR output file d format
+! Refer to meametrav0 for a description of data in the file.
+! ---
+!s+++
+! Funktionen läser in en mät data från fil skapad av METRONOR
+! systemet.
+!
+! För tillfället måste det vara en fil som manuell fil som redigerats
+! Mellan punkt mängder ska stå:
+! 1.23456  1.23456  1.23456  
+! 1.23456  1.23456  1.23456  
+! Filen ska avslutas med:
+! -1.23456  -1.23456  -1.23456
+! -1.23456  -1.23456  -1.23456
+!
+!
+! Observera att filen öppas och stängs av anropande rutin
+! Anropande rutin ska också ställa pekaren rätt i filen.
+!s---
+!
+!  Revision history
+!  ________________
+!
+!  1994-04-19  Ronny Gyllensten
+!  1995-05-12  Documentation            Gunnar Liden
+!  1996-03-04  rdmetro1v1->meametrdv0   Gunnar Liden
+!  1997-04-25  Documentation in English Gunnar Liden
+!
+!
+!***********************************************************************
+
+!sdescs Läser data från METRONOR mätprotokoll (en textfil) d format
+!sdesce Reads data from METRONOR output file d format
+
+BASIC  GEOMETRY MODULE meametrdv0 (
+
+VAR FILE   f;                      ! Pointer to measure file (.METRO)
+VAR INT    flag;                   ! Eq. -1: End of file   
+VAR INT    np;                     ! Number of points in subset (curve)
+VAR INT    ptnumber(200);          ! Point number for measured point
+VAR VECTOR pcurve(200);            ! Points         for curve (subset)
+VAR VECTOR tcurve(200);            ! Tangent points for curve (subset)
+VAR FLOAT  devtot(200);            ! Total (perpendic.)  deviation  
+VAR FLOAT  devx(200);              !    X                deviation  
+VAR FLOAT  devy(200);              !    Y                deviation  
+VAR FLOAT  devz(200);              !    Z                deviation  
+FLOAT      offset);                ! Offset 
+
+! Internal variables:
+
+INT    p_nr;                       ! Point number
+FLOAT  x,y,z;                      ! Coordinates for point
+FLOAT  d_tot;                      ! Total  deviation
+FLOAT  d_x;                        !   X    deviation
+FLOAT  d_y;                        !   Y    deviation
+FLOAT  d_z;                        !   Z    deviation 
+FLOAT  tx,ty,tz;                   ! Tangent     for point (=0.0.0)
+
+VECTOR s_n;                        ! Surface normal
+INT    idum;                       ! Dummy INT
+
+STRING t1*1;                       ! First character
+STRING rad*132;                    ! Dummy STRING
+INT    DEBUG;                      ! = 0: No        debug
+                                   ! = 1: Full      debug
+
+STRING s*1;                        ! For debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and checks of input data   
+! ---
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! Start value number of output points
+  np := 0; 
+
+! Start value file flag
+
+  flag := 123456789;
+
+! +++
+! 2. Read subset of point data from the input text file
+! ---
+
+nxtpt: ! Label: Next point
+
+  t1 := INSTR(f,1);                  ! Read # character
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("meametrdv0: "         ! Debug
+      +"t1=   *" + t1 +"*"           !
+                     ,"",1);         !
+    ENDIF;                           !
+  IF  t1 =  "d"   THEN               ! A point record (d format)
+    ;                                ! Continue  
+  ELSE                               !
+    x  :=INFLT(f);                   ! Read 1.23456789 or -1.23456789 from file
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("meametrdv0: "         ! Debug
+      +"x   = "+STR(x,-15,8)         !
+                     ,"",1);         !
+    ENDIF;                           !
+    IF IOSTAT(f) <> 0 THEN           ! Program check
+      EXIT("meametrdv0: Fel 1");     !
+    ENDIF;                           !
+    IF ABS(x+1.234567) < 0.0001 THEN !
+       flag := -1;                   !
+       GOTO slut;                    ! End of file   
+    ENDIF;                           !
+    rad := INLIN(f);                 ! Read 1.23456 1.23456 1.23456
+    rad := INLIN(f);                 ! Read 1.23456 1.23456 1.23456
+    flag := +1;                      !
+    GOTO slut;                       ! Goto Label slut
+  ENDIF;                             !
+
+  p_nr:= ININT(f);                   ! Point number 
+
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"p_nr= "+STR(p_nr,-1,0)         !
+                     ,"",1);         !
+  ENDIF;
+
+  x  :=INFLT(f);                     ! Point 
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"x   = "+STR(x,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check
+    EXIT("meametrdv0: Fel 1");       !
+  ENDIF;                             !
+  y  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"y   = "+STR(y,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 2");       !
+  ENDIF;                             !
+  z  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"z   = "+STR(z,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 3");       !
+  ENDIF;                             !
+                                     !
+
+  d_tot:=INFLT(f);                   ! Total  deviation 
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"d_tot= "+STR(d_tot,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 4");       !
+  ENDIF;                             !
+  d_x :=INFLT(f);                    !    X deviation 
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"d_x  = "+STR(d_x  ,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 5");       !
+  ENDIF;                             !
+  d_y :=INFLT(f);                    !    Y deviation 
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"d_y  = "+STR(d_y,-15,8)        !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 6");       !
+  ENDIF;                             !
+  d_z :=INFLT(f);                    !    Z deviation 
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrdv0: "           ! Debug
+    +"d_z  = "+STR(d_z  ,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programming check     
+    EXIT("meametrdv0: Fel 7");       !
+  ENDIF;                             !
+                                     !
+  rad    :=INLIN(f);                 ! End of line to dummy string    
+
+  np := np + 1;                      ! An additional point on the curve 
+  IF np > 200  THEN                  !
+    EXIT("meametrdv0: np > 200");    !
+  ENDIF;                             !
+
+  ptnumber(np):= p_nr;               ! Point number for measured point
+
+  pcurve(np).x:=  x;                 ! Point   to output array   (X)
+  pcurve(np).y:=  y;                 ! Point   to output array   (Y)
+  pcurve(np).z:=  z;                 ! Point   to output array   (Z)
+
+  tcurve(np).x:= 0.0;                ! Tangent to output array   (X)
+  tcurve(np).y:= 0.0;                ! (Zero vector means that they are
+  tcurve(np).z:= 0.0;                !  undefined)       
+
+  s_n:=VECN(VEC(d_x,d_y,d_z));       ! Surface normal defined by the deviations
+
+  devtot(np)  := d_tot-offset;       ! Total  deviation 
+  devx(np)    := d_x-offset*s_n.x;   !   X    deviation 
+  devy(np)    := d_y-offset*s_n.y;;  !   Y    deviation 
+  devz(np)    := d_z-offset*s_n.z;;  !   Z    deviation 
+  
+  GOTO nxtpt;                        ! Read data for an additional point
+
+slut:;                               ! All data for the subset is retrieved
+
+ENDMODULE

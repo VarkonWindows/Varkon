@@ -1,0 +1,168 @@
+!********************* figcsysv0 *****************************************
+! 
+! +++
+! The function creates a coordinate system for a view on a drawing sheet
+!
+! Remark:
+! The function will not only create the graphics representing the coordinate
+! system. The calculated lengths of the axis are also output from this module.
+! --
+!
+!s+++ 
+!  Funktionen lägger ut och ritar axlarna i ett lokalt
+!  koordinatsystem i en SAAB standard vy.
+!s---
+!
+! Revision history:
+!
+! 1995-06-09  Ronny Gyllensten, Gun-Britt Ekros, Johan Ankarswärd
+! 1996-02-24  åäö 8 bitars ASCII ännu ej i parameternamn G Liden    
+! 1997-04-23  Documentation in English added             G Liden    
+!
+!
+!**********************************************************************
+
+!sdesce Places a coordinate system with axis in a SAAB view
+!sdescs Lägger ut ett lokalt koordinatsystem i SAAB vy
+
+LOCAL GEOMETRY MODULE figcsysv0(
+
+
+    STRING vy*6;               ! View
+    STRING fplproj*44;         ! Aircraft or other project
+    STRING datum*28;           ! Coordinate system (" "= BASIC)
+    FLOAT  skala;              ! Scale (scale factor=1/skala)
+    FLOAT  x0;                 ! Origin x coordinate
+    FLOAT  y0;                 ! Origin y coordinate
+    FLOAT  z0;                 ! Origin z coordinate
+VAR FLOAT  xlangd ;            ! Length of X axis (output)
+VAR FLOAT  ylangd ;            ! Length of Y axis (output)
+VAR FLOAT  zlangd ;            ! Length of Z axis (output)
+    INT    grafik;             ! Graphics
+    VECTOR ang;                ! Euler angles  (ang.X=alfa)";
+    STRING reserv2*80);        ! A not yet used parameter
+
+! Internal variables:
+
+STRING s*1;                        ! For INPMT
+
+
+
+BEGINMODULE
+
+! +++
+! 1. Create (blanked) local coordinate systems for all Saab views
+! ---
+!s+++
+! 1. Skapa lokalt, vridet koordinatsystem
+!s---
+!s   Koordinatsystemet blankas (BLANK=1). Inget att se i figurbladet.
+
+     csys_3p(#1,"XYVY",vec(0,0,0),vec(1,0,0),vec(0,-1,0):BLANK=1);
+     csys_3p(#2,"XZVY",vec(0,0,0),vec(1,0,0),vec(0,0,1):BLANK=1);
+     csys_3p(#3,"YZVY",vec(0,0,0),vec(0,0,1),vec(-1,0,0):BLANK=1);
+     csys_3p(#4,"XYZVY",vec(0,0,0),vec(70.711, 40.825,-57.735),
+                                   vec(70.711,-40.825, 57.735):BLANK=1);
+     csys_3p(#20,"XY2VY",vec(0,0,0),vec(0,-1,0),vec(-1,0,0):BLANK=1);
+
+
+   IF vy = "xy"  OR vy = "w3"  THEN
+     mode_local(#1);
+     GOTO skapa;
+   ENDIF;
+
+   IF vy = "xz"  OR vy = "w2"  THEN
+     mode_local(#2);
+     GOTO skapa;
+   ENDIF;
+
+   IF vy = "yz"  OR vy = "w1"  THEN
+     mode_local(#3);
+     GOTO skapa;
+   ENDIF;
+
+   IF vy = "iso"  OR vy = "w4"  THEN
+     mode_local(#4);
+     csys_1p(#21,"nyiso",vec(0,0,0),ang.X,ang.Y,ang.Z:BLANK=1);
+     mode_local(#21);
+     GOTO skapa;
+   ENDIF;
+
+
+   IF vy = "xy2"  OR vy = "w5"  THEN
+     mode_local(#20);
+     GOTO skapa;
+   ENDIF;
+
+      EXIT("figcsysv0: Not a valid view");
+
+skapa:       csys_1p(#5,"XYZVY",vec(0,0,0):BLANK=1);
+
+
+
+! +++
+! 2. Draw axis in the local coordinate system
+! ---
+!s+++
+! 2. Rita koordinataxlar i det lokala koordinatsystemet
+!s---
+
+!    Activate the local coordinate system
+!s   Aktivera det lokala koordinatsystemet
+     mode_local(#5);
+
+!    Calculate the length of the axis
+!s   Skala längden av axlarna.
+!s   Obs att det inte är programmerat för förstoring >= 5
+!s   Det är inte testat med större förstoring, dvs skala <=0.2.
+
+!    Maximum scale factor is 5 (1/0.2)
+     IF skala >= 0.2  THEN         ! Bara tillåtet med skala >=0.2
+         xlangd:=xlangd/skala;     ! Skala längden av axlarna
+         ylangd:=ylangd/skala;     
+         zlangd:=zlangd/skala;
+     ENDIF;
+
+
+!    Mirror if skala is less than zero
+     IF skala <= -0.2 THEN         ! Spegling om skala <= -0.2
+         xlangd:=-xlangd/skala;
+         ylangd:=-ylangd/skala;
+         zlangd:=-zlangd/skala;
+     ENDIF;
+
+     IF skala > -0.2 AND skala < 0.2 THEN
+         EXIT("figcsysv0: skala is too small (< 0.2)");
+     ENDIF;
+
+     
+
+!    Create axis lines and arrows (pil) in the local system
+!    Axis will only be created if the length exceeds 6 mm
+
+!s   Skapa axlarna som linjer från origo i lokala koordinatsystemet
+!s   till punkter relativt origo. Delta y för y axeln är t.ex ylangd.
+!s   Här läggs också till en axelpil genom anrop av en generell modul
+!s   som bara skapar pilar.
+!s   Axlar skapas bara om de har en längd >= 6.0 mm
+!s   (negativa axlar tillåts här av någon anledning)
+
+
+     IF ABS(xlangd) >= 6.0 THEN
+         lin_free(#6,vec(0, 0, 0), vec(0, 0, 0) + vec(xlangd, 0, 0));
+         PART(#10,pil(vec(0,0,0),vec(0,0,0) + vec(xlangd,0,0) ),#5);
+     ENDIF;
+
+     IF ABS(ylangd) >= 6.0 THEN
+         lin_free(#7,vec(0, 0, 0), vec(0, 0, 0) + vec(0, ylangd, 0));
+         PART(#11,pil(vec(0,0,0),vec(0,0,0) + vec(0,ylangd,0) ),#5);
+     ENDIF;
+
+     IF ABS(zlangd) >= 6.0 THEN
+         lin_free(#8,vec(0, 0, 0), vec(0, 0, 0) + vec(0, 0, zlangd));
+         PART(#12,pil(vec(0,0,0),vec(0,0,0) + vec(0,0,zlangd) ),#5);
+     ENDIF;
+
+
+
+ENDMODULE

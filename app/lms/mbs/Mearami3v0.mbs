@@ -1,0 +1,130 @@
+!******************* mearami3v0 ******************************************
+! +++
+! Creates a drawing sheet for presentation of results (diagrams)
+! from analyzation of measured points from METRONOR or other systems. 
+! The size of the drawing sheet is A3.
+!
+!
+! ---
+! Revision history
+! ________________
+!
+! 1993-09-02 Originally written                              Gun-Britt Ekros
+! 1993-10-29 English version                                 R Gyllensten
+! 1995-03-09 Documentation                                   G Liden
+! 1995-12-05 Lines extrapolated                              R Gyllensten
+! 1996-03-04 rama3met_t->mearama3v0, comments, BASIC->GLOBAL G Liden
+! 1996-03-25 rama3met_t->mearama3v0, comments, BASIC->GLOBAL G Liden
+! 1996-04-14 IPK modification                                G Liden
+! 1996-05-01 mearama3v0 -> mearami3v0  Special IPK           G Liden
+! 1997-04-24 English version for LMS                         G Liden
+!
+!
+!********************************************************************
+
+!sdescs Skapar ram for METRONOR punkter storlek A3 (demo special)
+!sdesce Creates a drawing sheet for METRONOR points (demo special)
+
+GLOBAL DRAWING MODULE mearami3v0( );
+
+!Internal variables
+
+INT    ram_pen3;                   ! Colour (line witth) for line ....      
+INT    ram_pen5;                   ! Colour (line witth) for line .......   
+INT    text_pen;                   ! Colour (line witth) for text           
+INT    ram_niva;                   ! Level for lines
+INT    text_niva;                  ! Level for text  
+INT    blank_niva;                 ! Level for blank
+INT    klipp_niva;                 ! Level for dashed (cutting) line
+
+
+
+BEGINMODULE
+
+! 0. Initializations
+!    -------------
+
+  ram_pen3:=1;
+  ram_pen5 :=100;
+  text_pen :=1;
+
+  blank_niva := 10;
+  klipp_niva := 25;
+
+  ram_niva :=11;
+  text_niva:=11;
+
+  BLANK_LEV(blank_niva);
+  BLANK_LEV(klipp_niva);
+
+! +++
+! 1. Draw the sheet
+! ---
+
+! Level for cutting line
+  SET(LEVEL=klipp_niva);
+! Colour for cutting line 
+  SET(PEN=11);
+! Cutting line shall be dashed
+  SET(LFONT=1,LDASHL=6);
+! Cutting lines (for A3 format)
+  LIN_FREE(#1,vec(-20, -7), vec(-20, 290));
+  LIN_FREE(#2,vec(-20, 290), vec(400, 290));
+  LIN_FREE(#3,vec(400, 290), vec(400, -7));
+  LIN_FREE(#4,vec(400, -7), vec(-20, -7));
+
+! Level for lines
+  SET(LEVEL=ram_niva);
+! Colour
+  SET(PEN=ram_pen5); 
+! Solid lines
+  SET(LFONT=0);
+! Draw (create) lines
+  LIN_FREE(#5,vec(0, 0), vec(390, 0));
+  LIN_FREE(#6,vec(0,270), vec(390,270));
+  LIN_FREE(#7,vec(0,-0.33),vec(0,270.33));
+  LIN_FREE(#8,vec(390,-0.33), vec(390,270.33));
+
+  LIN_FREE(#9,vec(175, 250), vec(175, 270));
+  LIN_FREE(#10,vec(175-0.33, 250), vec(390, 250));
+
+! Change colur for lines
+  SET(PEN=ram_pen3);
+  LIN_FREE(#11,vec(210, 270), vec(210, 250));
+  LIN_FREE(#13,vec(175, 260), vec(390, 260));
+  LIN_FREE(#14,vec(333, 260), vec(333, 270));
+
+  LIN_FREE(#17,vec(210, 0), vec(210, -2));
+  LIN_FREE(#18,vec(105, 0), vec(105, -2));
+
+  SET(LEVEL=klipp_niva);
+  LIN_FREE(#19,vec(210, -0.5), vec(210, -7));
+  LIN_FREE(#20,vec(105, -0.5), vec(105, -7));
+
+! +++
+! 2. Write text in the drawing sheet 
+! ---
+
+! Level for text
+  SET(LEVEL=text_niva);
+! Colour for text
+  SET(PEN=10);
+
+! Size of text
+  SET(TSIZE=4.0);
+! Write text
+  TEXT(#21,vec(280, 272), 0.0, "Measured surface");
+
+! New colour (line width) for text
+  SET(PEN  =text_pen);
+! Text size
+  SET(TSIZE=2.00);
+! Text width
+  SET(TWIDTH=50);
+! Write text
+  TEXT(#22,vec(211, 267), 0.0, "Description"); 
+  TEXT(#23,vec(335, 267), 0.0, "Project-Surface-Number");
+
+
+ENDMODULE
+

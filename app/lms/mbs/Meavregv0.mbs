@@ -1,0 +1,114 @@
+!******************** meavregv0 **********************
+! +++
+! Calculate a straight line approximating a a set of
+! points with the least square method
+! ---
+!s+++
+! Funktionen beräknar en regressionslinje, som i minsta
+! kvadratmetodens mening ansluter så nära som möjligt
+! till en given punktmängd i planet.
+!
+! Indata är en array med punkter (VECTOR med x, y och z
+! komponenter). Minsta kvadrat metoden används på x och
+! y komponenten (y= f(x)). Komponenten z utnyttjas ej!
+! 
+! Arrayen med x och f(x) värden kan t.ex vara de punkter
+! som definierar avvikelserna i tjockleksfunktionen. 
+! Dessa värden är beräknade i någon annan rutin. Komponenten
+! x är ofta relativ korda längd för en vingprofil.
+!
+!
+!s---
+!
+! Revision history
+! ________________
+!
+! 1995-05-15 Ronny Gyllensten
+! 1996-04-23 mearegv1 -> meavregv0  R Gyllensten
+! 1996-04-23 Bara en array med indata punkter Gunnar Liden
+! 1996-04-25 DRAWING->GEOMETRY                R Gyllensten
+! 1997-04-25 Documentation in English         Gunnar Liden
+! 
+!****************************************************
+
+!sdescs Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+!sdesce Regression line for a set of points (least square method)
+
+BASIC GEOMETRY MODULE meavregv0 (
+
+    INT     N;                     ! Number of points  
+VAR VECTOR  u_in(200) ;            ! Point with x and y= f(x) value
+VAR FLOAT   A;                     ! Direction   coefficient
+VAR FLOAT   B);                    ! Translation coefficient
+
+! Internal variables:
+
+    FLOAT       sum_xi;            ! Help  parameters for linear 
+    FLOAT       sum_yi;            ! regression calculation
+    FLOAT       sum_xiyi;          !
+    FLOAT       sum_xixi;          !
+
+    INT         i;                 ! Loop index
+    FLOAT       dum1;              ! Dummy variable
+
+
+BEGINMODULE
+
+! +++
+! 1. Initializations of variables
+! ---
+
+           sum_xi   := 0.0;        ! Sum of u_in(i), i=1, ... ,N
+           sum_yi   := 0.0;        ! Sum of v_in(i), i=1, ... ,N
+           sum_xiyi := 0.0;        ! Sum of u_in(i)*v_in(i), i=1, ... ,N
+           sum_xixi := 0.0;        ! Sum of u_in(i)*u_in(i), i=1, ... ,N
+
+
+! +++
+! 2. Calculate the straight line
+! ---
+
+
+       FOR i := 1 TO  N    DO      ! i=1, ... ,N
+
+         sum_xi   := sum_xi +      !
+                  u_in(i).x;       ! Point X coordinate
+         sum_yi   := sum_yi +      !
+                  u_in(i).y;       ! Function value
+         sum_xiyi := sum_xiyi +    !
+             u_in(i).x*u_in(i).y;  !
+         sum_xixi := sum_xixi +    !
+               u_in(i).x*u_in(i).x;!
+
+       ENDFOR;
+
+
+! +++
+! 3. Slope of the line 
+! ---
+
+         dum1 := N*sum_xixi       ! Check denominator
+                 -sum_xi*sum_xi;  !
+
+       IF ABS(dum1) > 0.000001  THEN
+
+           A := N*sum_xiyi-       !
+                sum_xi*sum_yi;    !
+
+           A := A/dum1;           !
+
+        ELSE
+
+           A := 50000.0;          ! Vertical line
+     
+        ENDIF;
+
+! +++
+! 4. Translation coefficient
+! ---
+
+           B := sum_yi-A*sum_xi;
+
+           B := B/N;
+
+ENDMODULE

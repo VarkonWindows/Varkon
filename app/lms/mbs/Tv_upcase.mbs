@@ -1,0 +1,35 @@
+! +++ ******************************************************************
+
+ basic geometry module tv_upcase(VAR STRING s*132);
+
+!*
+!*      Konverterar text till stora bokst{ver.
+!*
+!*      In : Godtycklig textstr{ng.
+!*
+!*      Ut : Samma str{ng, sm} bokst{ver stora.
+!*
+!*      (C)microform ab 21/4/88 J. Kjellander
+!*
+! --- ******************************************************************
+
+ STRING tmp*132;
+ INT    i,n;
+
+ beginmodule
+
+   tmp:="";
+
+   for i:=1 to length(s) do
+     n:=ascii(substr(s,i,1));
+     if n > 95 then
+       tmp:=tmp+chr(n-32);
+     else
+       tmp:=tmp+chr(n);
+     endif;
+   endfor;
+
+   s:=tmp;
+
+ endmodule
+

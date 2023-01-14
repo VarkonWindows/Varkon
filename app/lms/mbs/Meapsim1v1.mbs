@@ -1,0 +1,420 @@
+!********************** meapsim1v1 ********************************
+! +++ 
+!
+! Read surface from library, make intersects, calculate points, scale 
+! transform and register measured points.
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-22 Gunnar Liden
+! 1996-03-25 Colours          Gunnar Liden
+! 1996-04-18 s_bdeforv0 added Gunnar Liden
+! 1996-05-04 Debug            Gunnar Liden
+! 1997-04-08 Leading edge fin Gunnar Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE meapsim1v1
+(
+STRING fplproj*44 := "SF340"        >"Aircraft (or other) project";
+STRING surname*30 := "FLAP_DEMO"    >"Surface name (number)";
+STRING surflib*1  := "r"            > "@ Surface library r/p (<CR>=reference";
+STRING csyname*10 := "439"          >"Coordinat system";
+FLOAT  skala      := 1.0            >"@ Scale (<CR>=> 1)";
+FLOAT  x0         := 0.0            >"@ Origin for scaling X coordinate";
+FLOAT  y0         := 0.0            >"@ Origin for scaling Y coordinate";
+FLOAT  z0         := 0.0            >"@ Origin for scaling Z coordinate";
+STRING stat*1     := "Y"            > "Station X, Y or Z ";
+FLOAT  start      := -200.0         > "Start station value";
+FLOAT  delta      :=   55.0         > "Delta station value";
+FLOAT  end        :=  100.0         > "End   station value";
+FLOAT  cdelta     :=  100.0         > "Delta (average value) for pts along curve";
+FLOAT  merror     :=    3.0         > "Maximum (random) error ";
+FLOAT  mtwist     :=    2.5         > "Maximum (random) twist ";
+FLOAT  mxtransl   :=   10.0         > "Maximum (random) X translation";
+FLOAT  mytransl   :=   20.0         > "Maximum (random) Y translation";
+FLOAT  mztransl   :=   30.0         > "Maximum (random) Z translation";
+VECTOR v_lead     := VEC(0,0,1)     > "Vector criterion for leading edge";
+INT    grafik     :=    1           > "=0: No graphics =1: Show points";
+REF    csys_id                      > "Local system for the surface"
+);
+
+!sdesce Read surface from library, make intersects, points and scale
+!sdescs L{s yta fr}n bibliotek, g|r sk{rningar, punkter och skala
+
+
+! Internal variables
+
+  INT    graphic_ref;             ! Graphics =0 for rdrefsurv0
+
+  INT    graphic_int;             ! Graphics for intersects
+  REF    id_int(100);             ! References to curves
+  INT    n_int;                   ! Number of intersects
+  INT    i_int;                   ! Loop index intersect
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  REF    s_id;                    ! Original surface identity
+  REF    d_id;                    ! Deformed surface identity
+  REF    i_id;                    ! Intersect    identity
+  REF    p_id;                    ! Point identity
+  REF    tra_id;                  ! Transformation identity
+
+  FLOAT  tot_arc;                 ! Total arclength
+  INT    n_poi;                   ! Number of points on curve
+  INT    i_poi;                   ! Loop index point on curve
+
+  INT    b_val_p;                 ! Blank value for point
+
+  FLOAT  u_c;                     ! Parameter for current arclength
+  FLOAT  u_d;                     ! Delta U for points
+
+
+                                  ! For eval_utouv:
+  REF    sur_id;                  ! Surface identity
+  VECTOR uv_sur;                  ! Surface U,V(,W) point
+
+  VECTOR s_n;                     ! Current surface normal
+
+                                  ! For MEAPOIREC:
+  VECTOR m_p;                     ! Measured point
+  VECTOR r_p;                     ! Reference point (closest pt on surface)
+  FLOAT  d_tot;                   ! Total deviation to surface
+  INT    p_no;                    ! Point number
+  INT    g_no;                    ! Group number (e.g section number)
+  STRING descr*132;               ! Name and description of point
+
+                                  ! For calculation of random error:
+  FLOAT  rand_val;                ! Random value
+  FLOAT  seed;                    ! Seed for random value
+  INT    year;                    ! Year
+  INT    month;                   ! Month 
+  INT    day;                     ! Day
+  INT    hour;                    ! Hour 
+  INT    minute;                  ! Minute
+  INT    second;                  ! Second
+
+  FLOAT  dot_start;               ! Start scalar product s_n*v_lead
+  FLOAT  dot;                     ! Current scalar product s_n*v_lead
+
+  VECTOR r_po;                    ! Reference point original surface
+  VECTOR s_no;                    ! Surface normal original surface
+  VECTOR dvec;                    ! Deviation vector
+  FLOAT  d_toto;                  ! Total deviation
+
+                                  ! From meagraphv0:
+  FLOAT  c_tol;                   ! Criterion for acceptable deviations
+  INT    i_pen;                   ! Pen (colour) for pts within tolerance
+  INT    p_pen;                   ! Pen (colour) for pts outside + tolerance
+  INT    n_pen;                   ! Pen (colour) for pts outside - tolerance
+
+                                  ! For GET_NEXT_GM:
+  INT    tmod;                    ! 0: All entities 1: Parts on same level
+  REF    pen_id;                  ! Reference to colour definition module
+
+  VECTOR v_deform;                ! Deformation direction 
+
+  INT    graphic_twist;           ! Deformation with random twist
+  INT    graphic_xtransl;         ! Deformation with random X translation
+  INT    graphic_ytransl;         ! Deformation with random Y translation
+  INT    graphic_ztransl;         ! Deformation with random Z translation
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 0;                        ! Change to 0, 1 or 2
+
+  IF  DEBUG = 1 THEN                ! Debug
+  LST_INI("Debug printout from "+   !
+          "meapsim1v1");            !
+  ENDIF;                            !
+
+  IF  cdelta < 0.1  THEN            ! Check curve delta
+    IF  DEBUG = 1 THEN              !
+    LST_EXI();                      !
+    ENDIF;                          !
+    EXIT("meapsim1v1 Curve delta "+ !
+         "< 0.1");                  !
+  ENDIF;                            !
+
+  IF  skala < 0 THEN                ! Mirror not yet implemented
+    IF  DEBUG = 1 THEN              !
+    LST_EXI();                      !
+    ENDIF;                          !
+    EXIT("meapsim1v1 Mirror not "+  !
+         "yet implemented");        !
+  ENDIF;                            !
+
+  dot_start := -0.123456789;        !
+  dot       := -0.123456789;        !
+
+! +++
+! Get colours for graphical representation of deviations
+! ---
+
+  tmod := 0;
+  SET_ROOT_GM(#0);
+  pen_id := GET_NEXT_GM (tmod,16384,"meagraphv0");
+  IF   pen_id = #0 THEN
+    c_tol := 0.4;
+    i_pen := 1;
+    p_pen := 1;
+    n_pen := 1;
+  ELSE
+    c_tol := GETFLT(pen_id,1);
+    i_pen := GETINT(pen_id,2);
+    p_pen := GETINT(pen_id,3);
+    n_pen := GETINT(pen_id,4);
+  ENDIF;
+
+
+! +++
+! 2. Create surface 
+! ---
+
+! +++
+! Create surface transformated to coordinate system csyname
+! ---
+
+! +++
+! Create dummy coordinate system with name csyname
+! ---
+
+  CSYS_1P(#2,csyname,VEC(0.0,0.0,0.0),0.0,0.0,0.0:BLANK=1); 
+
+! +++
+! Fetch the surface from the given library (reference or project)  
+! (project library not yet implemented)
+! ---
+
+  graphic_ref := 0;
+
+  IF  surflib = "r" OR surflib = "R" THEN
+    PART (#1, rdrefsurv0 (surname,csyname,graphic_ref),#2);
+    s_id  := GLOBAL_REF(#1#1);
+  ELSE
+    IF  DEBUG = 1 THEN 
+    LST_EXI();  
+    ENDIF;     
+    EXIT("meapsim1v1 surflib "+surflib+" not impl.");
+  ENDIF;
+
+! +++
+! Deformation of surface if twist is defined
+! ---
+
+  IF  ABS(mtwist) > 0.001 THEN 
+    graphic_twist := 0;
+    PART(#15 , s_adeforv0 ( s_id, mtwist, v_lead, graphic_twist));
+    d_id  := GLOBAL_REF(#15#1);
+  ELSE
+    d_id  := s_id;
+  ENDIF;
+
+! +++
+! Deformation of surface if translation in X is defined
+! ---
+
+  IF  ABS(mxtransl) > 0.001 THEN 
+    graphic_xtransl := 0;
+    v_deform := VEC(1.0,0.0,0.0);
+    PART(#16 , s_bdeforv0 ( d_id, mxtransl, v_deform, graphic_xtransl));
+    d_id  := GLOBAL_REF(#16#1);
+  ENDIF;
+
+! +++
+! Deformation of surface if translation in Y is defined
+! ---
+
+  IF  ABS(mytransl) > 0.001 THEN 
+    graphic_ytransl := 0;
+    v_deform := VEC(0.0,1.0,0.0);
+    PART(#17 , s_bdeforv0 ( d_id, mytransl, v_deform, graphic_ytransl));
+    d_id  := GLOBAL_REF(#17#1);
+  ENDIF;
+
+! +++
+! Deformation of surface if translation in Z is defined
+! ---
+
+  IF  ABS(mztransl) > 0.001 THEN 
+    graphic_ztransl := 0;
+    v_deform := VEC(0.0,0.0,1.0);
+    PART(#18 , s_bdeforv0 ( d_id, mztransl, v_deform, graphic_ztransl));
+    d_id  := GLOBAL_REF(#18#1);
+  ENDIF;
+
+
+! +++
+! 3. Create transformation matrix for points
+! ---
+
+  IF ABS(skala) >= 0.1  THEN        ! skala < 1 ==> Bigger surface
+    ;
+  ELIF  skala <= -0.1 THEN          ! Mirror matrix for skala < -0.1
+    ; ! Error, See above
+  ELIF skala <  0.1 AND             ! Not valid value on skala     
+     skala > -0.1      THEN         ! 
+      EXIT("meapsim1v1 "+           ! 
+       "scale less than 0.1");      !
+                                    !
+  ENDIF;                            !
+
+
+  PART ( #3 , tra_2dav0 (           ! Create transformation
+    csys_id,skala,x0,y0,z0,tra_id));!
+
+! +++
+! 4. Make 3D intersects and put curve references in an array 
+! ---
+
+  graphic_int := 0;                 !
+  PART ( #4  , s_anestv0  (         ! Nest of intersects
+     d_id, GLOBAL_REF(#2),          !
+     stat, start, delta, end,       !
+     graphic_int, id_int, n_int )); !
+                  
+! +++
+! 6. Calculate points with random error, scale, transformate and register
+! ---
+
+  IF    grafik = 0  THEN            ! Do not show points
+    b_val_p := 1;                   ! 
+  ELIF  grafik = 1  THEN            ! Show points 
+    b_val_p := 0;                   ! 
+  ELSE                              !
+    IF  DEBUG = 1 THEN              !
+    LST_EXI();                      !
+    ENDIF;                          !
+    EXIT("meapsim1v1 grafik not " + !
+                    "OK");          !
+  ENDIF;                            !
+
+! +++
+! Loop for all intersect curves
+! ---
+
+  g_no := 0;                        ! Initialize group number
+  p_no := 0;                        ! Initialize point number
+  descr:= "Created by meapsim1v1";  ! Name and description of point
+  TIME(year,month,day,hour,         ! Start seed for random value
+       minute,second);              !
+  seed     := second/60.0;          !
+
+  rand_val := RANDOM(seed);         ! Random value
+
+  FOR i_int := 1 TO n_int DO        ! Start loop intersects
+ 
+    g_no := g_no + 1;               ! An additional group number
+
+    i_id := id_int(i_int);          ! Current intersect curve
+
+    tot_arc := ARCL(i_id);          ! Total arclength
+    n_poi := ROUND(tot_arc/cdelta)  !
+              - 1;                  !
+    IF    n_poi > 200  THEN         ! Check number of points
+      IF  DEBUG = 1 THEN            !
+      LST_EXI();                    !
+      ENDIF;                        !
+      EXIT("meapsim1v1 Number of "+ !
+           "points > 200");         !
+    ELIF  n_poi <  10  THEN         !
+      n_poi := 10;                  !
+    ENDIF;                          !
+    u_c:= INV_ARCL(i_id, tot_arc);  ! Parameter for end point of curve 
+    u_d:= u_c/n_poi;                ! Delta parameter for points
+
+    IF  DEBUG = 1 THEN                ! Debug
+      LST_LIN("Curve "+RSTR(i_id)+" End U "+STR(u_c,3,1)+" u_d "+STR(u_d,4,2)); 
+    ENDIF;                            !
+
+    FOR  i_poi:= 1 TO n_poi DO      ! Start loop points on curve
+      rand_val := RANDOM(seed)-0.5; ! Random value
+      seed     := rand_val + 0.5;   !
+      d_tot    := 2.0*rand_val*     ! Total deviation
+                  merror;           !
+      u_c := i_poi*u_d;             !
+      IF  DEBUG = 1 THEN                ! Debug
+        LST_LIN("Curve "+RSTR(i_id)+" u_c   "+STR(u_c,3,1)+" i_poi "+STR(i_poi,3,0)); 
+      ENDIF;                            !
+
+      PART(#8, eval_utouv  ( i_id,  ! Surface parameter point
+            u_c, sur_id, uv_sur)    !
+            :SAVE=0);               !
+      r_p := ON(sur_id,uv_sur);     ! Current reference point
+      s_n := NORM(sur_id,uv_sur);   ! Current surface normal
+      r_po:= ON(s_id,  uv_sur);     ! Current reference point original surface
+      s_no:= NORM(s_id,  uv_sur);   ! Current surface normal  original surface
+      IF i_poi = 1 THEN             ! 
+        dot_start := s_n*v_lead;    ! Start scalar product s_n*v_lead
+      ELSE                          !
+        dot       := s_n*v_lead;    ! Current scalar product s_n*v_lead
+        IF    dot_start > 0 AND     !
+              dot       < 0    THEN !
+          g_no := g_no + 1;         ! An additional group number
+          dot_start := 0.0;         !
+        ELIF  dot_start < 0 AND     !
+              dot       > 0    THEN !
+          g_no := g_no + 1;         ! An additional group number
+          dot_start := 0.0;         !
+        ENDIF;                      !
+      ENDIF;                        !
+      IF  DEBUG = 1 THEN                ! Debug
+        LST_LIN("dot_start "+STR(dot_start,15,8)+" dot "+STR(dot,15,8)+" g_no "+STR(g_no,3,0)); 
+      ENDIF;                            !
+      m_p := r_p + d_tot*s_n;       ! Current measured point
+      d_toto := VECL(r_po-m_p);     !
+      dvec:= m_p-r_po;              !
+      IF   dvec*s_no     < 0 THEN   !
+        d_toto := -d_toto;          !
+      ENDIF;                        !
+      p_no := p_no + 1;             ! An additional point
+!!!  The calculation is not OK. Use closest point to surface !!!!!!
+      PART(#9, MEAPOIREC (          ! Registrate point
+        m_p, r_po, d_toto, p_no,    !
+        g_no, descr ));             !
+
+      POI_FREE(#5, m_p              ! Create point in 3D
+                :BLANK=b_val_p);    ! 
+      p_id := GLOBAL_REF(#5);       ! Global reference to point
+      IF   ABS(d_toto)<= c_tol THEN !
+        SET(PEN=i_pen);             !
+      ELIF     d_toto >  c_tol THEN !
+        SET(PEN=p_pen);             !
+      ELIF     d_toto < -c_tol THEN !
+        SET(PEN=n_pen);             !
+      ENDIF;                        !
+      TCOPY(#6  ,p_id, tra_id, 1);  ! Scale and translate point 
+      DEL(p_id);                    ! Delete 3D point
+    ENDFOR;                         ! End   loop points on curve
+
+    IF ABS(dot_start) > 0.001 THEN  ! Check that there is a leading edge
+      IF  DEBUG = 1 THEN            !
+      LST_EXI();                    !
+      ENDIF;                        !
+      EXIT("meapsim1v1 There is no"+!
+             " leading edge");      !
+    ENDIF;                          !
+
+  ENDFOR;                           ! End   loop intersect curves
+
+  IF  DEBUG = 1 THEN                ! Debug
+  LST_EXI();                        !
+  ENDIF;                            !
+
+ENDMODULE
+

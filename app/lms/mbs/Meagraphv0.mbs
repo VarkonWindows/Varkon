@@ -1,0 +1,43 @@
+!******************** meagraphv0 ********************
+! +++
+! Definition of colours for graphical representation of deviations
+!
+! pen= 1: Black
+! pen= 2: Red
+! pen= 3: Green
+! pen= 4: Blue
+! pen= 5: ....
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-25 Gunnar Liden    
+!
+!****************************************************
+
+!sdescs Definition av färger för grafisk representation av fel
+!sdesce Definition of colours for graphical represent. of deviations
+
+GLOBAL DRAWING MODULE meagraphv0 (
+FLOAT c_tol := 0.7          >"Criterion for acceptable deviations";
+INT   i_pen := 3            >"Pen (colour) for pts within tolerance";
+INT   p_pen := 2            >"Pen (colour) for pts outside + tolerance";
+INT   n_pen := 4            >"Pen (colour) for pts outside - tolerance";
+VECTOR origin := VEC(5,250) >"@ Description coloured points <CR>=upper corner");
+
+
+BEGINMODULE
+
+  IF  c_tol < 0.0 THEN
+    EXIT("meagraphv0 Deviation criterion < 0");
+  ENDIF;
+  IF  c_tol > 10.0 THEN
+    EXIT("meagraphv0 Deviation criterion > 10");
+  ENDIF;
+
+  SET(TSIZE=3.0);
+  TEXT(#3,origin+VEC( 0, 0 ), 0.0, "* Within "+STR(c_tol,4,2)+" mm":PEN=i_pen);
+  TEXT(#5,origin+VEC(58, 0 ), 0.0, "+ Outside"         :PEN=p_pen);
+  TEXT(#6,origin+VEC(88, 0 ), 0.0, "- Outside"         :PEN=n_pen);
+
+ENDMODULE

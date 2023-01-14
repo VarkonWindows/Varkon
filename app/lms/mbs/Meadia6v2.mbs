@@ -1,0 +1,223 @@
+!******************** meadia6v2 ***************************************
+! +++
+! The function creates a diagram which shows the twist error for a wing
+!
+! The input to the function are values calculated for the camber line
+! deviation diagram. The calculated values are registered as parts
+! This function calls function meadiagtv0 which scans the whole active
+! module and gets the calculated values.
+!
+!
+! There is an option to calculate and draw a regression line in this
+! diagram (a line that approximates the twist deviation curve)
+!
+! ---
+! Revision history
+! ________________
+!
+! 1995-06-02 Ronny Gyllensten
+! 1996-03-11 rdmetrov3->meardsumv0    Gunnar Liden
+! 1996-03-25 Comments, prompt strings Gunnar Liden
+! 1996-04-23 mearegv1->meavregv0      R Gyllensten
+! 1997-04-28 meadia6v1->meadia6v2     Gunnar Liden 
+!
+!**********************************************************************
+
+!sdescs Diagram för twistfelet för en vinge
+!sdesce Twist deviation diagram for a wing
+
+GLOBAL DRAWING MODULE meadia6v2 (
+
+VECTOR origo      :=vec(20,100) >"Position for diagram";
+FLOAT xlangd      := 100.0      >"Length X of diagram (<CR>=100.0 mm)";
+FLOAT skalf_y     :=   5.0      >"Scale factor Y values (<CR>=5.0)";
+FLOAT ylangd      :=  15.0      >"Length X of diagram (<CR>=15.0 mm)";
+INT   case        :=   1        >"Text reg.line (case=10:No text case=11:Text)");
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop index: All points
+
+  INT    i_l;                      ! Loop index  % lines
+
+  STRING xaxel*10;                 ! X axis for diagram
+  STRING yaxel*30;                 ! Y axis for diagram
+
+  FLOAT  skalf_x;                  ! Scale factor for X axis values
+
+  FLOAT  A;                        ! Regression line slope  
+  FLOAT  B;                        ! Regression line translation
+
+  INT    n_p;                      ! Number of points       
+  VECTOR x_in(200);                ! Scaled  x,y,z values
+  VECTOR x_ut(200);                ! Scaled  x,y,z values
+  INT    n_x_ut;                   ! Number of values in x_in
+
+  INT    grafik;                   ! Parameter for blank
+  INT    s_case;                   ! Debug for measortv3
+
+  FLOAT  transl_x;
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+! 1. Initializations
+! ---
+
+
+!     Change Deug to 0, 1 or 2
+      DEBUG := 0;  
+
+!     Text for X and Y axis in the diagram
+      xaxel := "Y";
+      yaxel:= "Twist error (degrees)";
+
+      n_p  := 0;
+
+!     Graphic parameter for called functions
+      grafik := 2;  
+
+! +++
+! 2. Retrieve data from camber line deviation diagrams
+! ---
+
+!    Get twist error data from parts, which have registered calculated data
+     PART(#1,meadiagtv0 (n_p,x_in,1));
+
+! +++
+! 3. Draw coordinate axis in the local system           
+! ---
+
+
+!    Create local system
+     CSYS_1P(#5,"XY",origo: BLANK=1); 
+
+!    Activate local system
+     MODE_LOCAL(#5);
+
+
+
+!    Create axis (lines) and arrows (with module pil)
+     LIN_FREE(#6,vec(0, 0), VEC(0,0) + VEC(xlangd+10, 0));
+     PART(#10,pil(VEC(0,0),VEC(0,0) + VEC(xlangd+10,0) ),#5);
+
+     LIN_FREE(#7,VEC(0, -ylangd), VEC(0, 0) + VEC(0, ylangd));
+!    PART(#11,pil(vec(0,0),vec(0,0) + vec(0,ylangd) ),#5);
+
+
+!    Text size
+     SET(TSIZE=3); SET(TWIDTH=50);
+
+!    Write text for the X and Y axis
+     TEXT(#8,ON(#6,1.0)+ VEC(2, -1.5), 0.0, xaxel);
+     TEXT(#9,ON(#7,1.0)+ VEC(3, -2  ), 0.0, yaxel);
+
+!    Short vertical lines along the X axis
+     FOR i_l := 1 TO 11  DO 
+       LIN_FREE(#30, VEC(xlangd/10*(i_l-1), -3), VEC(xlangd/10*(i_l-1), 3));
+     ENDFOR; 
+
+
+!    Lines indicating the size of the error ( -0.5 degrees)
+
+     LIN_FREE(#31,VEC(-7,0.5*skalf_y ), VEC(5, 0.5*skalf_y) );
+     LIN_FREE(#51,VEC(-7,-0.5*skalf_y ), VEC(5,-0.5*skalf_y) );
+
+!    Text -0.5 
+     SET(TSIZE=1.5); 
+     TEXT (#33,ON(#31,0.0)+VEC(-0.5,1), 0.0,STR( 0.5,-10,1));
+     TEXT (#53,ON(#51,0.0)+VEC(-0.5,1), 0.0,STR(-0.5,-10,1));
+
+
+
+! +++
+! 4. Sorting of X values    
+! ---
+
+!    Debug parameter for the programmer
+     IF case = 9 THEN   
+       s_case:= 2;     
+     ELSE             
+       s_case:= 1;   
+     ENDIF;         
+
+!    Sort
+     PART(#43,measortv3(s_case, n_p,x_in,x_ut) :SAVE=0); 
+
+
+! +++
+! 5. Draw curve for the wing twist error
+! ---
+
+!    Start point (translation value)
+     IF x_ut(1).x < 0  THEN
+       transl_x := ABS(x_ut(n_p).x);
+     ELIF x_ut(1).x > 0 THEN
+       transl_x := -ABS(x_ut(1).x);
+     ELSE
+       transl_x := 0.0 ;
+     ENDIF;
+
+!    Scale factor
+     skalf_x  := xlangd/(ABS(x_ut(n_p).x)-ABS(x_ut(1).x));
+
+
+!    Debug
+     IF DEBUG = 1 THEN
+     LST_INI("Skapa räta linjer");
+     ENDIF;
+
+     FOR i_p := 1 TO n_p-1  DO          ! Start loop alla punkter i filen
+
+!      Debug
+       IF DEBUG = 1 THEN
+         LST_LIN("Pkt nr " +STR(i_p,-1,0)+" x_ut.x= "
+             +STR(x_ut(i_p).x,-15,4)+" x_ut.y= " +STR(x_ut(i_p).y,-10,4));
+        ENDIF;
+
+!      Create line between current points
+       LIN_FREE(#21,VEC((x_ut(i_p  ).x+transl_x)*skalf_x,x_ut(i_p  ).y*skalf_y ),
+                    VEC((x_ut(i_p+1).x+transl_x)*skalf_x,x_ut(i_p+1).y*skalf_y ));
+
+     ENDFOR;                          ! Slut  loop alla punkter i filen
+
+   
+    IF DEBUG = 1 THEN
+      LST_EXI();
+    ENDIF;
+
+! +++
+! 6. Calculate and create a regression line for the twist deviation curve
+! ---
+
+   IF case = 10 OR case = 11 THEN 
+
+     PART(#27,meavregv0(n_p,x_ut, A,B):SAVE=0);
+
+!    Create a dashed line
+     SET(LFONT=1);  
+     SET(LDASHL=10); 
+     LIN_FREE(#28,
+        VEC( (x_ut(1  ).x+transl_x)*skalf_x, (A*x_ut(1  ).x+B) *skalf_y), 
+        VEC( (x_ut(n_p).x+transl_x)*skalf_x, (A*x_ut(n_p).x+B) *skalf_y));
+
+!    Create blanked point for text
+     POI_FREE(#29,VEC( (x_ut(n_p).x+transl_x)*skalf_x,(A*x_ut(n_p).x+B)*skalf_y)
+             :BLANK=1);
+
+
+!    Text for the line
+     SET(TSIZE=3);
+     SET(TWIDTH=50);
+     TEXT(#45,ON(REFC(29,1),1.0)+ VEC(10,2),A, 
+           "Slope = " + STR(ARCTAN(A),-8,4)+ " degrees" );
+
+   ENDIF;
+
+ENDMODULE

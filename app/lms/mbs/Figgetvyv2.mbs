@@ -1,0 +1,125 @@
+!************************* figgetvyv2 *********************************
+!                                                                      
+! +++
+! Get information about the input view
+!
+! A part identity (# id) is input to the function. This part
+! must be figvyv2  (checked in the module). All current parameter
+! values for the figvyv2 module are output from this module 
+! (parameters are declared as VAR, i.e. as pointers).
+! ---
+!
+!s+++ 
+! Funktionen hämtar information om aktuell vy.
+!s--- 
+!
+!   Revision history:
+!                                                                     
+!   1995-06-16  Ronny Gyllensten
+!   1995-06-21  Lagt  till REF csys_id, J Ankarswärd
+!   1995-08-18  datum tillagt R Gyllensten
+!   1996-02-24  åäö 8 bitars ASCII ännu ej i parameternamn G Liden    
+!   1997-04-24  Documentation in English                   G Liden    
+!
+!***********************************************************************
+
+!sdesce Get information about current view
+!sdescs Hämtar information om aktuell vy
+
+GLOBAL GEOMETRY MODULE figgetvyv2(
+
+REF         view_id;               ! Input view part
+VAR REF     csys_id;               ! System of co-ordinates
+VAR STRING  vy*6;                  ! View
+VAR STRING  fplproj*44;            ! Aircraft (or other) project
+VAR STRING  datum*28;              ! Coordinate system (name)
+VAR FLOAT   skala;                 ! Drawing scale
+VAR VECTOR  origo;                 ! Position for axis origin
+VAR FLOAT   x0;                    ! Origin x coordinate
+VAR FLOAT   y0;                    ! Origin y coordinate
+VAR FLOAT   z0;                    ! Origin z coordinate
+VAR FLOAT   xlangd;                ! Length of x axis
+VAR FLOAT   ylangd;                ! Length of y axis
+VAR FLOAT   zlangd;                ! Length of z axis
+VAR VECTOR  ang;                   ! Eulervinklar
+VAR STRING  namn*20);              ! Input PART name
+
+! Internal variables
+
+  STRING    csys_id_s*132;         ! String for system of co-ordinate
+  INT       typ;                   ! Type of entity
+  INT       nref;                  ! Number of references 
+  INT       blnk;                  ! Blank flag
+  INT       niv;                   ! Level      for the entity
+  INT       pen;                   ! Pen number for the entity
+  REF       gid(3);                ! Grupp
+
+  INT       mattr;                 ! Modulattribut
+  REF       kid;                   ! Koordinatsystemidentitet
+  INT       np;                    ! Antal parametrar
+  INT       smax;                  ! Antal storheter
+  REF       idm(100);              ! Globala identiteter
+
+BEGINMODULE
+! +++
+! 1. Initializations and checks
+! ---                  
+
+  IF view_id <> #0 THEN            ! Check that input view_id
+!    OK                            ! not is #0
+     ;                             !
+  ELSE                             !
+     EXIT("figgetvyv2:"+           !
+    " Program error (view_id)");   !
+  ENDIF;                           !
+
+  csys_id_s := RSTR(view_id)+"#5#5";    ! Get system of co-ordinate,
+                                        ! and ref to string
+
+  csys_id := RVAL(csys_id_s);      ! String to referens
+
+! +++
+! 2. Get parameter data for the entity
+! ---              
+
+  GETHDR(view_id,typ,nref,blnk,    ! Get header data for input entity
+             niv,pen,gid);         !
+
+
+  IF typ = 16384 THEN              ! Is the entity a PART ?
+      ;                            !
+!     OK, it is a PART             !
+  ELSE                             !
+     EXIT("figgetvyv2:"+           !
+    " Indata referens ej en PART");!
+  ENDIF;                           !
+
+  GETPRT(view_id,namn,typ,         ! Get data for the PART
+         mattr,kid,np,             ! 
+         smax,idm);                !
+  IF     namn = "figvyv2"  THEN    ! Check that the input part is OK
+      ;                            ! 
+!     OK                           !
+  ELSE                             !
+     EXIT("figgetvyv2:"+           !
+    " Indata part ej en vy");      ! 
+  ENDIF;                           !
+
+! +++
+! 3. Parameter data to output variables
+! ---              
+
+  vy      := GETSTR(view_id,1);    ! View
+  fplproj := GETSTR(view_id,2);    ! Aircraft project
+  datum   := GETSTR(view_id,3);    ! Coordinate system
+  skala   := GETFLT(view_id,5);    ! Drawing scale
+  origo   := GETVEC(view_id,6);    ! Position for axis origin
+  x0      := GETFLT(view_id,7);    ! Origin x coordinate
+  y0      := GETFLT(view_id,8);    ! Origin y coordinate
+  z0      := GETFLT(view_id,9);    ! Origin z coordinate
+  xlangd  := GETFLT(view_id,10);   ! Length of x axis
+  ylangd  := GETFLT(view_id,11);   ! Length of y axis
+  zlangd  := GETFLT(view_id,12);   ! Length of z axis
+  ang     := GETVEC(view_id,14);   ! Eulervinklar
+
+ENDMODULE

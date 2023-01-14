@@ -1,0 +1,159 @@
+!******************** meathickv1 ***********************
+! +++
+! Calculates and creates thickness deviation curve for wing profile
+! ---
+!s+++
+! Funktionen beräknar och skapar tjockleksavvikelsekurva
+! för en vingprofil
+!
+!s---
+! Revision history 
+! ________________
+! 
+! 1993-11-05 Gunnar Liden
+! 1995-03-15 Dokumentation och global_ref(..  borttaget R Gyllensten
+! 1995-03-23 Debug                                      Gunnar Liden
+! 1996-04-24 meathickv0->meathickv1                     R Gyllensten
+! 1996-04-24 n_t utdata                                 Gunnar Liden
+! 1996-10-25 Bug No extrapolation (-1) of line          Gunnar Liden
+! 1997-04-25 Documentation in English                   Gunnar Liden
+!
+!****************************************************
+!sdescs Beräknar och skapar tjockleksavvikelsekurva för vingprofil
+!sdesce Calculates and creates thickness deviation curve for wing profile
+
+LOCAL GEOMETRY MODULE meathickv1  (
+     REF    u_id;                     ! Scaled curve with deviations (Upper)   
+     REF    l_id;                     ! Scaled curve with deviations (Lower)
+     INT    n_x_uta;                  ! Number of values in x_uta 
+     INT    grafik;                   ! =1: Show all  =2: Blank all
+VAR  FLOAT  x_uta(200) ;              ! Scaled intersect X values
+VAR  INT    n_t;                      ! Number of pts in p_thick
+VAR  VECTOR p_thick(200));            ! Thickness points
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop index: Output     
+
+  INT    nu_int;                   ! Number of intersect points
+  INT    nl_int;                   ! Number of intersect points
+
+  VECTOR p_u1;                     ! Intersect point
+  VECTOR p_l1;                     ! Intersect point
+
+  INT    blank_flag;               ! For graphical representation 
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For Debug
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Initializations
+! ---
+
+  IF  grafik = 2 THEN              ! For grafik=2:
+    DEBUG := 0;                    ! No Debug
+    blank_flag:= 1;                ! Blank
+  ELSE                             !
+    DEBUG := 1;                    ! Debug On
+    blank_flag:= 0;                ! Show all 
+  ENDIF;                           !
+
+
+    
+! +++
+! 2. Make intersects
+! ---
+
+  n_t:= 0;                         !
+
+  FOR i_p := 1  TO  n_x_uta DO     ! Start loop all X stations
+
+    LIN_FREE(#2,                   !
+     VEC(x_uta(i_p),-50.0,0.0),    !
+     VEC(x_uta(i_p),+50.0,0.0)     !
+     :BLANK=blank_flag);           !
+
+    IF DEBUG = 1 THEN              ! DEBUG
+       s:= INPMT("x_uta("          !
+       +STR(i_p,-1,0)+ ")= "       !
+     +STR(x_uta(i_p),-12,6)+       !
+     " Continue ?"    ,"y",1);     !
+    IF  s <> "y" THEN              !
+      EXIT();                      !
+    ENDIF;                         !
+    ENDIF;                         !
+
+    nu_int:=N_INTERSECT(#2,u_id,-1);  !
+    IF nu_int > 0 THEN             !
+      p_u1:= INTERSECT(#2,u_id,-1); !
+      IF grafik = 1 THEN           !
+        POI_FREE(#3,p_u1);         !
+      ENDIF;                       !
+    ENDIF;                         !
+    nl_int:=N_INTERSECT(#2,l_id,-1);  !
+    IF nl_int > 0 THEN             !
+      p_l1:= INTERSECT(#2,l_id,-1); !
+      IF grafik = 1 THEN           !
+        POI_FREE(#4,p_l1);         !
+      ENDIF;                       !
+    ENDIF;                         !
+
+    IF DEBUG = 1 THEN              ! DEBUG
+       s:= INPMT("nu_int "         !
+       +STR(nu_int,-1,0)+          !
+           " nl_int "              !
+     +STR(nl_int,-1,0)+" n_t "     !
+     +STR(n_t,-1,0)+"  "           !
+          ,"y",1);                 !
+      IF  s <> "y" THEN            !
+        EXIT();                    !
+      ENDIF;                       !
+    ENDIF;                         !
+
+    IF nu_int > 0 AND              ! Calculate thickness point   
+       nl_int > 0       THEN       !
+      n_t:= n_t + 1;               !
+      p_thick(n_t).x:= p_u1.x;     ! X value
+      p_thick(n_t).z:= 0.0;        ! Z value
+
+      p_thick(n_t).y:=             ! Y value
+          p_u1.y + p_l1.y;         !
+
+
+      IF grafik = 1 THEN           !
+        POI_FREE(#5,p_thick(n_t)); !
+      ENDIF;                       !
+
+    ENDIF;                         !
+
+    DEL(#2);                       ! Delete line  
+
+  ENDFOR;                          ! End   loop all X stations
+
+! +++
+! 3. Create straight lines and combine to a curve         
+! ---
+
+  IF   n_t  <  2  THEN
+    LST_INI("Error calculating thickness line in meathickv1");
+    LST_LIN("A thickness line could not be calculated");
+    LST_LIN("No intersect points or less than two intersect points");
+    LST_EXI();
+    EXIT("meathickv1 No thickness line calculated");
+  ENDIF;
+  
+  FOR i_p := 1  TO  n_t-1 DO       ! Start loop lines 
+
+    LIN_FREE(#1,p_thick(i_p),      !
+                p_thick(i_p+1));   !
+
+  ENDFOR;                          ! End   loop lines 
+
+
+ENDMODULE

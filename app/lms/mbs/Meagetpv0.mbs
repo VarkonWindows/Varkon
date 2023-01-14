@@ -1,0 +1,169 @@
+!******************** meagetpv0 **********************
+!
+! Get a group (subset) of points from all points in a part.
+!
+! Input data is the identity to a part (subtree) where 
+! measured points have been registered as MEAPOIREC parts.
+!
+! The measured points may have been created with a simulation 
+! module (ex: meapsim1v1) or data may have been retrieved from
+! a text file from the measurement system (ex: meametrov3 which
+! reads a Metronor file). New point creation modules (text files 
+! from Leica) can easely be added in the function. Measured
+! points need only to be registered with MEAPOIREC in the 
+! new module.
+!
+! Remark 1:
+!
+! This module can only be called by another module since
+! there are VAR (output) parameters.
+!
+! Remark 2:
+!
+! This module is normally called with SAVE= 0, i.e. the
+! call (data) shall not be added in the Geometry Memory (GM)
+!
+!s+++
+! Hämtar en grupp uppmätta punkter och avvikelser (för t.ex
+! ett snitt) från den totala uppmätta punktmängden (t.ex
+! en fil från METRONOR systemet). Funktionen letar igenom
+! en part efter alla MEAPOIREC parts (mätpunkts poster) och
+! plockar ut alla som tillhör den grupp som önskas (indata
+! till funktionen).
+!
+! Detta är en funktion (procedur) som bara ska (kan) anropas 
+! av en annan modul. Normalt sker anropet av den med SAVE=0
+! dvs anropet sparas ej i GM.
+!
+!s---
+! Revision history
+! ________________
+!
+! 1993-11-03 Gunnar Liden
+! 1994-04-20                       Ronny Gyllensten
+! 1995-03-09 Documentation         Gunnar Liden
+! 1995-03-12 G_REFSEL              Gunnar Liden
+! 1996-02-13 meagetpv0             Ronny Gyllensten 
+! 1996-03-09 GET_ .....            Gunnar Liden
+! 1997-04-25 English documentation Gunnar Liden
+! 
+!****************************************************
+
+!sdescs Hämta en grupp uppmätta punkter från totala uppmätta mängden
+!sdesce Get a group of measured points from all points
+
+BASIC GEOMETRY MODULE meagetpv0(
+
+    REF    ppts_id;                ! Part with calls to  MEAPOIREC
+    INT    i_grupp;                ! Requested subset of points (section)
+VAR INT    n_p;                    ! Number of points in the subset 
+VAR VECTOR m_points(200) ;         ! Measured pointsr
+VAR VECTOR r_points(200) ;         ! Reference points
+VAR FLOAT  devtot(200) ;           ! Total (perpend.) deviation    
+VAR INT    ptnumber(200) ;         ! Point number for the measured point
+VAR STRING p_descr(200)*132);      ! Point description
+
+! Internal variables:
+
+  INT    n_poster;        ! Total number of MEAPOIREC parts in GM
+  INT    i_prt;           ! Loop index MEAPOIREC
+  INT    max_prt;         ! Assumed maximum number of MEAPOIREC's
+  REF    p_id;            ! Reference to MEAPOIREC
+
+                          ! For GET_NEXT_GM:
+  INT    tmod;            ! 0: All entities 1: Parts on same level
+
+
+                      
+  VECTOR m_p;             ! Measured  point
+  VECTOR r_p;             ! Reference point
+  FLOAT  d_tot;           ! Total (perpend.) distance to surface
+                          ! (Distance between m_p and r_p)
+  INT    p_no;            ! Point number
+  INT    g_no;            ! Subset number (e.g. wing section number)
+  STRING descr*132;       ! Name and description of point
+
+  INT    DEBUG;           ! For Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Initializations
+! ---
+
+  DEBUG := 0;                  ! Change to 0 or 1
+
+  n_poster := 0;               ! Iniyialize no. of calls to MEAPOIREC
+  n_p      := 0;               ! Initierize no. of points in subset
+  max_prt  := 10000;           ! Maximum number of MEAPOIREC's
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Debug printout from meagetpv0");
+  ENDIF;
+
+! +++
+! 2. Get requested point data from input part (sub-tree)
+! ---
+
+  SET_ROOT_GM(ppts_id);        ! Search only in sub-tree ppts_id
+
+  FOR  i_prt:= 1 TO max_prt DO ! Start loop all MEAPOIREC in sub-tree
+
+    tmod := 0;
+    p_id := GET_NEXT_GM (tmod,16384,"MEAPOIREC");
+
+    IF  p_id = #0 THEN
+      GOTO  allpts;
+    ENDIF;
+
+    n_poster := n_poster + 1;  ! An additional MEAPOIREC
+
+    g_no := GETINT(p_id,5);    ! Group (section) number for point
+
+    IF g_no <> i_grupp THEN    ! Next MEAPOIREC if not the requested
+      GOTO next;               ! sub-set (section) of points
+    ENDIF;                     !
+
+    n_p := n_p + 1;            ! An additional output point 
+
+    IF n_p > 200 THEN          ! Maximum array size is 200
+      EXIT("meagetpv0: Max. "+ !
+      "number of pts is 200"); !
+    ENDIF;                     !
+
+    m_p  := GETVEC(p_id,1);    ! Get measured  point
+    r_p  := GETVEC(p_id,2);    ! Get reference point
+    d_tot:= GETFLT(p_id,3);    ! Get total deviation  
+    p_no := GETINT(p_id,4);    ! Get number for point
+    descr:= GETSTR(p_id,6);    ! Get description 
+
+                               ! Data to output arrays
+    m_points(n_p):= m_p;       ! 
+    r_points(n_p):= r_p;       !
+    devtot(n_p)  := d_tot;     !
+    ptnumber(n_p):= p_no;      !
+    p_descr(n_p) := descr;     !
+
+
+next:;                         ! Label: Not the requested sub-set of pts
+
+  ENDFOR;                      ! End   loop all MEAPOIREC in sub-tree
+
+  EXIT("meagetpv0 More than "+STR(max_prt,-1,0)+" points in "+RSTR(ppts_id));
+
+
+allpts:;                       ! All points found
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("Total number of output points (in requested section) is "
+              +STR(n_p,-1,0)); 
+  LST_LIN("Total number of points in the sub-tree is "
+              +STR(n_poster,-1,0)); 
+  LST_EXI();
+  ENDIF;
+
+
+ENDMODULE

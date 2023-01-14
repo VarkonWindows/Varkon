@@ -1,0 +1,169 @@
+!******************** meamedelv0 **********************
+! +++
+! Calculates and creates a camber line deviation curve for 
+! a wing profile. 
+!
+! The camber line, i.e. the deviations for the camber line, are
+! calculated with the following simplifications:
+! - The upper and lower deviations (errors) are approximated
+!   with straight lines between measured data. 
+! - The camber curve (deviations) is the difference between 
+!   the upper and lower deviation curve for constant X values
+!
+! ---
+!s+++
+! Funktionen beräknar och skapar kurva som visar avvikelser
+! i medelkurvan (camber line) för en vingprofil.
+!
+! Medelkurvan (felet) beräknas förenklat som mittkurvan 
+! mellan över- och undersidan (felkurvorna för dessa).
+!
+! Medelkurvans lutning (regressionsanalys) visar fel i
+! vingprofilens vridning (twist).
+!s---
+! Revision history  
+! ________________
+! 
+! 1995-03-13 Gunnar Liden  
+! 1995-04-07 global_ref(.. erased)   R Gyllensten
+! 1996-10-25 Bug: No extrapolation of intersect line Gunnar Liden
+! 1997-04-28 Documentation in English                Gunnar Liden
+!
+!****************************************************
+!sdescs Beräknar och skapar felkurva för en vingprofils medelkurva
+!sdesce Calculates and creates camber line deviation curve for wing profile
+
+LOCAL GEOMETRY MODULE meamedelv0  (
+     REF    u_id;         ! Upper (or lower) deviation curve
+     REF    l_id;         ! Lower (or upper) deviation curve
+     INT    n_x_uta;      ! Number of values in x_uta
+     INT    grafik;       ! =1: Show all  =2: Blank all
+VAR  FLOAT  x_uta(200));  ! Scaled intersect X values  
+
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop variable:  Output
+
+  INT    nu_int;                   ! Number of intersect points
+  INT    nl_int;                   ! Number of intersect points
+
+  VECTOR p_u1;                     ! Intersect point
+  VECTOR p_l1;                     ! Intersect point
+
+  VECTOR p_medel(200);             ! Points for deviation curve 
+  INT    n_t;                      ! Number of points in p_medel
+
+  INT    blank_flag;               ! For the graphical representation  
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For Debug
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+! 1. Initializations
+! ---
+
+
+! Graphic and Debug variables
+  IF  grafik = 2 THEN 
+    DEBUG := 0;      
+    blank_flag:= 1; 
+  ELSE             
+    DEBUG := 1;   
+    blank_flag:= 0; 
+  ENDIF;
+
+
+! +++
+! 2. Make intersects
+! ---
+
+
+! Initialize number of points in camber deviation line
+  n_t:= 0;   
+
+! Loop for all X station values
+  FOR i_p := 1  TO  n_x_uta DO 
+
+!  Intersection line for curren X station value
+    LIN_FREE(#2, VEC(x_uta(i_p),-50.0,0.0), VEC(x_uta(i_p),+50.0,0.0)
+     :BLANK=blank_flag);     
+
+    IF DEBUG = 1 THEN       
+      s:= INPMT("i_p "+STR(i_p,-1,0)+" x_uta(i_p)" +STR(x_uta(i_p),-12,6)+" ","",1);
+    ENDIF;         
+
+!   Number of intersect points with the upper curve (-1 for extrapolated line)
+    nu_int:=N_INTERSECT(#2,u_id,-1);
+    IF nu_int > 0 THEN  
+!     Calculate intersect point if intersect point exists
+      p_u1:= INTERSECT(#2,u_id,-1);
+!     Show (create) point if requested
+      IF grafik = 1 THEN 
+        POI_FREE(#3,p_u1);
+      ENDIF;             
+    ENDIF;              
+!   Number of intersect points with the lower curve (-1 for extrapolated line)
+    nl_int:=N_INTERSECT(#2,l_id,-1); 
+    IF nl_int > 0 THEN 
+!     Calculate intersect point if intersect point exists
+      p_l1:= INTERSECT(#2,l_id,-1);
+!     Show (create) point if requested
+      IF grafik = 1 THEN  
+        POI_FREE(#4,p_l1);
+      ENDIF;  
+    ENDIF;   
+
+!   Calculate camber line deviation value for current X value
+    IF nu_int > 0 AND nl_int > 0  THEN          ! Points exist
+      n_t:= n_t + 1;                            ! An additional point
+      p_medel(n_t).x:= p_u1.x;                  ! X value
+      p_medel(n_t).z:= 0.0;                     ! Z value
+      p_medel(n_t).y:= (p_u1.y - p_l1.y)/2.0;   ! Y value
+!     Graphical representation if requested
+      IF grafik = 1 THEN   
+        POI_FREE(#5,p_medel(n_t));
+      ENDIF;
+    ENDIF; 
+
+!   Delete current intersecting (X station) line
+    DEL(#2);
+
+!   Debug
+    IF DEBUG = 1 THEN  
+       s:= INPMT("nu_int " +STR(nu_int,-1,0)+ " nl_int " +STR(nl_int,-1,0)+" n_t "
+     +STR(n_t,-1,0)+"  " ,"",1);
+    ENDIF;
+
+! End loop for all X station values
+  ENDFOR;
+
+! +++
+! 3. Create a straight line composite curve
+! ---
+
+! Minimum number of points for a curve (straight line) is two (2)
+  IF   n_t  <  2  THEN
+    LST_INI("Error calculating camber line in meamedelv0");
+    LST_LIN("A camber line could not be calculated");
+    LST_LIN("No intersect points or less than two intersect points");
+    LST_EXI();
+    EXIT("meamedelv0 No camber line calculated");
+  ENDIF;
+  
+! Loop for all points
+  FOR i_p := 1  TO  n_t-1 DO 
+
+!  Create line
+   LIN_FREE(#1,p_medel(i_p), p_medel(i_p+1));
+
+  ENDFOR;
+
+
+ENDMODULE

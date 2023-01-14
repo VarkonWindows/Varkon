@@ -1,0 +1,485 @@
+!****************************************************
+! +++
+! Input of data for the measurement off-line analysis
+!
+! ---
+!  Revision history
+!  ________________
+!
+!  1996-04-25  Gunnar Liden
+!  1996-05-02  ACT_OSTYPE Gunnar Liden
+!  1996-05-09  AIX size   Gunnar Liden
+!  1997-04-07  reduced    Gunnar Liden
+!  1997-06-29  WINDOWS->WIN32 Gunnar Liden
+!
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE meawin1v0  (
+VAR STRING c_flag*3;    ! Eq NO: No calculation
+VAR STRING metfil*132;  ! File with METRONOR data
+VAR STRING prepres*10;  ! Varkon preparation .RES file
+VAR FLOAT  offset;      ! Offset for points <CR>=0
+VAR INT    case;        ! Format d: Case= 1 b: Case= 2: d(red) Case= 3
+VAR INT    plot_f;      ! Eq. 1: Create plots automatically
+VAR INT    notify_f;    ! Eq. 1: Notify by mail
+VAR STRING mailadr*132);! Mail address
+
+!sdesce Input of data for the measurement off-line analysis
+!sdescs Inmatning av data f|r off-line analys av m{tdata
+
+
+!+++
+! Internal variables
+! __________________
+
+   VECTOR main_pos;             ! Main window position
+   FLOAT  main_dx;              ! Main window dimension 
+   FLOAT  main_dy;              !
+   FLOAT  col1_dx;              ! Columne 1 delta x     
+   FLOAT  col_w;                ! Columne width         
+   FLOAT  h_y;                  ! Height                
+!---
+
+
+   STRING f_case*20;            ! Format for measurement file
+   STRING plot_f_s*20;          ! Plot   flag as string
+   STRING notify_f_s*20;        ! Notify flag as string
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Space loop index
+
+   INT    opsys;                ! Operating system
+                                ! Eq. 1: VMS           (VAX)
+                                ! Eq. 2: SCO UNIX      (PC)
+                                ! Eq. 3: SGI UNIX      (X server)
+
+   FILE   idat;                 ! Input data file
+   STRING f_name*132;           ! Full input filename
+   STRING rad*132;              ! Dummy string
+
+
+   INT    n_lin;                ! Number of lines (data) 
+   FLOAT  n_d;                  ! Delta  pixel
+   FLOAT  n_h;                  ! Height pixel
+
+   INT    main_id;              ! Main window identity   
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   STRING header*50;            ! String for main window
+   STRING s_edit1*50;           ! String for edit1 
+   STRING s_edit2*50;           ! String for edit2 
+   STRING s_edit3*50;           ! String for edit3 
+   STRING s_edit4*50;           ! String for edit4 
+   STRING s_edit5*50;           ! String for edit5 
+   STRING s_edit6*50;           ! String for edit6 
+   STRING s_bid1*50;            ! String for bid1  
+   STRING s_bid2*50;            ! String for bid2  
+
+   STRING s_on*3;               ! Strings for flagi, i=1,2,3,4,...
+   STRING s_off*3;              ! 
+   STRING s_yes*3;              !
+   STRING s_no*3;               !
+   INT    flag1;                ! Id's for parameter flags
+
+   STRING ermess1*50;           ! Error message grad_zero
+   STRING ermess2*50;           ! Error message 
+
+   INT    rubr1,rubr2,rubr3;    ! Id's for edit headers
+   INT    rubr4,rubr5,rubr6;    !
+   INT    bid1  ;               ! Id. window OK
+   INT    bid2;                 ! Id. button AVBRYT
+   INT    bid3;                 ! Id. button HJ[LP
+   INT    edit1,edit2,edit3;    ! Id.'s for edit windows
+   INT    edit4,edit5,edit6;    ! 
+
+   INT    bidx;                 ! Identity of event  
+
+   INT    n_opclo;              ! For file checking
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+!  1. Initialize output data and internal variables
+! ---
+
+   metfil     := "FLAP.METRO";  ! File with METRONOR data
+   prepres    := "prepflap";    ! Varkon preparation .RES file
+   offset     :=    0.0;        ! Offset for points
+   case       :=    1;          ! Format d: Case= 1 b: Case= 2: d(red) Case= 3
+   plot_f     :=    0;          ! Eq. 1: Create plots automatically
+   notify_f   :=    0;          ! Eq. 1: Notify by mail
+   mailadr    := "a73320";      ! Mail address
+
+   f_case     := "Metronor d";  ! Format for measurement  file
+   plot_f_s   := "ax135";       ! Plot   flag as string
+   notify_f_s := "no";          ! Notify flag as string
+
+!  Don't use non-initialized variables in if statements !!!
+!  (It will result in strange errors ... )
+
+   main_id := -1;
+
+   rubr1 := -1; rubr2 := -1; 
+   rubr3 := -1; rubr4 := -1; 
+   rubr5 := -1; rubr6 := -1; 
+
+   bid1  := -1;  bid2 := -1; 
+   bid3  := -1;  bidx := -1;
+
+   edit1 := -1; edit2 := -1; 
+   edit3 := -1; edit4 := -1; 
+   edit5 := -1; edit6 := -1; 
+
+   flag1 := -1;
+
+   DEBUG:= 1;
+
+   c_flag:= "YES";                            ! Calculation flag
+
+! +++
+!  2. Create start window with all buttons and edit windows
+!
+!     The distance main_dx defines all other dimensions and positions
+!     of buttons , etc. 
+!     main_dx =  500.0  for PC
+!     main_dx =  800.0  for SGI
+!     main_dx =  750.0  for AIX
+! ---
+
+   
+   main_pos:= VEC(125,10);                    ! Main window position
+
+                                              ! Main window dimension 
+!   PART(#1, getopsys ( opsys ):SAVE=0);       ! Operating system
+
+   IF    ACT_OSTYPE() = "VMS"  THEN           ! VMS (VAX)
+     main_dx := 500;                          ! 
+   ELIF ACT_OSTYPE() = "WIN32"   THEN         ! Windows 95      
+     main_dx := 500;                          ! 
+   ELIF ACT_OSTYPE() = "UNIX"   THEN          ! UNIX AIX
+     main_dx := 750;                          ! 
+   ELIF ACT_OSTYPE() = "UNIX"   THEN          ! UNIX SCO
+     main_dx := 500;                          ! 
+   ELSE                                       !
+     main_dx := 500;                          ! 
+   ENDIF;                                     ! 
+
+   n_d     := 0.060*main_dx;                  ! Delta  pixel
+   n_h     := 0.056*main_dx;                  ! Height pixel
+   n_lin   := 10;                             ! Number of lines
+   main_dy := 0.060*main_dx + (n_lin+3)*n_d;  !
+
+   col1_dx := 0.01*main_dx;                   ! Columne 1 delta x     
+   col_w   := 0.34*main_dx;                   ! Columne width         
+   h_y     := 0.04*main_dx;                   ! Height 
+
+! +++
+!  Headers for main window, all edit fields and buttons 
+! ---
+
+   language := "e";                             ! Language
+
+   IF   language = "s" THEN                     !
+     header:=  "ANALYS AV M[TDATA";             ! String for main window
+     s_edit1:= "Namn p} fil med m{tdata";       ! String for edit1 
+     s_edit2:= "Format p} m{tdata fil";         ! String for edit3 
+     s_edit3:= "Namn p} preparerings jobb";     ! String for edit2 
+     s_edit4:= "Diagram till skrivare:";        ! String for edit4 
+     s_edit5:= "Meddelande till best{llare ?";  ! String for edit5 
+     s_edit6:= "Post adress";                   ! String for edit6 
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "AVBRYT";                        ! String for bid2  
+     s_yes  := "Ja ";                           ! String for s_on and s_off
+     s_no   := "Nej";                           !
+     ermess1 :=" ............. ej definierad";  ! Error grad_zero    
+     ermess2 :=" .............ej definierad";   ! Error grad_zero    
+   ELIF language = "e" THEN                     !
+     header:=  "ANALYSIS OF MEASUREMENT DATA";  ! String for main window
+     s_edit1:= "File with measurement data";    ! String for edit1 
+     s_edit2:= "Format of the file";            ! String for edit3 
+     s_edit3:= "Name of preparation module";    ! String for edit2 
+     s_edit4:= "Diagrams to plotter:";          ! String for edit4 
+     s_edit5:= "Notify customer ?";             ! String for edit5 
+     s_edit6:= "Mail address";                  ! String for edit6 
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "CANCEL";                        ! String for bid2  
+     s_yes  := "Yes";                           ! String for s_on and s_off
+     s_no   := "No ";                           !
+     ermess1 :=" .............e not defined  "; ! Error grad_zero    
+     ermess2 :=" ............. module not def.";! Error grad_zero    
+   ENDIF;                                       !
+
+   s_on  := s_yes;                              !
+   s_off := s_no;                               !
+
+! +++
+!  Create main window
+! ---
+
+   main_id:=CRE_WIN(main_pos,                   ! Create main window
+            main_dx*0.4,main_dy, header );      !
+
+
+   rubr1:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col1_dx, 0.01*main_dx),            ! Position
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit1,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr2:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*1 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit2,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr3:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*3 ),                      !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit3,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr4:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*5 ),                      !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit4,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr5:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*7 ),                      !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit5,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr6:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*9 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit6,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+! +++
+!  Button for OK and CANCEL
+! ---
+
+   bid1:=CRE_BUTTON(main_id,                  ! Knapp OK
+     VEC(10,main_dy-0.10*main_dx ),           ! 
+       0.09*main_dx,                          ! Bredd i pixels
+       0.08*main_dx,                          ! H|jd  i pixels
+       0.01*main_dx,                          ! Ramens tjocklek
+     s_bid1,                                  ! Text f|r status = p}
+     s_bid1,                                  ! Text f|r status = av
+      "",                                     ! Text font    (optionell)
+       6);                                    ! Textens f{rg (optionell)
+
+   bid2:=CRE_BUTTON(main_id,                  ! Knapp AVBRYT
+     VEC(120,main_dy-0.09*main_dx ),          ! \vre v{nstra h|rnets l{ge
+       0.10*main_dx,                          ! Bredd i pixels
+       0.07*main_dx,                          ! H|jd  i pixels
+       0.002*main_dx,                         ! Ramens tjocklek
+     s_bid2,                                  ! Text f|r status = p}
+     s_bid2,                                  ! Text f|r status = av
+      "",                                     ! Text font    (optionell)
+       6);                                    ! Textens f{rg (optionell)
+
+
+! +++
+!  Input of file names, module names and type of optimization fctn
+! ---
+
+
+   edit1:=CRE_EDIT(main_id,                   ! Create edit subwindow 
+        VEC(col1_dx,n_d),                     ! Position
+     col_w ,n_h,4,                            ! Size, thickness
+        metfil,                               ! Text
+          80);                                ! Max. no of characters
+
+   edit2:=CRE_EDIT(main_id,                   ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            ! 
+         f_case,                              !
+          15);                                !
+
+   edit3:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            ! 
+        prepres,                              !
+          80);                                !
+
+   edit4:=CRE_EDIT(main_id,                   ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            !
+        plot_f_s,                             !
+          80);                                ! 
+
+   flag1:=CRE_BUTTON(main_id,                 ! Create flag button 1
+      VEC( 60 ,n_d+n_d*8.1 ),                 !
+      1.5*n_d,                                ! Width  in pixels
+      n_d,                                    ! Height in pixels
+        2,                                    ! Frame thickness in pixels
+     s_on  ,                                  ! Text for status = on 
+     s_off ,                                  ! Text for status = off
+      "",                                     ! Text font    (optional) 
+       6);                                    ! Text colour  (optional) 
+
+   edit6:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx ,n_d+n_d*10),             !
+     col_w ,n_h,4,                            !
+        mailadr,                              !
+          16);                                !
+
+! +++
+!  Show result on the screen. 
+! ---
+
+   SHOW_WIN(main_id);                         ! Show start window 
+
+! +++
+!  3. Input of (modifications of) data in the X window
+! ---
+
+! +++
+loop:     ! Label: Continue input (change) of data 
+! ---
+
+   bidx:=WAIT_WIN(main_id);                   ! Wait for an event
+
+! +++
+!  Knapp AVBRYT: Sluta (med EXIT) utan att ta hand om inmatad data
+! ---
+
+   IF bidx = bid2 THEN                        ! H{ndelse i bid2  
+     c_flag:= "NO";                           ! Flag: No calculation 
+     DEL_WIN(main_id);                        ! Radera huvudf|nster
+     EXIT();                                  ! Exit ("fel")
+
+! +++
+!  Edit-f{lt 
+! ---
+
+
+   ELIF bidx = edit1 THEN                     ! Event in edit 1
+
+     metfil := GET_EDIT(main_id,edit1);       ! Get input data    
+     DEL_WIN(main_id,edit1);                  ! Erase subwindow  
+     edit1:=CRE_EDIT(main_id,                 ! Create edit subwindow 
+        VEC(col1_dx,n_d),                           ! Position
+     col_w ,n_h,4,                            ! Size, thickness
+        metfil,                               ! Text
+          80);                                ! Max. no of characters
+     GOTO loop;                               ! Back to loop
+
+   ELIF bidx = edit2 THEN                     ! Event in edit 2
+
+     f_case  := GET_EDIT(main_id,edit2);      ! 
+     DEL_WIN(main_id,edit2);                  ! 
+     edit2:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            ! 
+         f_case,                              !
+          15);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit3 THEN                     ! Event in edit 3
+
+     prepres:= GET_EDIT(main_id,edit3);       ! 
+     DEL_WIN(main_id,edit3);                  !
+     edit3:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            ! 
+        prepres,                              !
+          80);                                !
+     GOTO loop;                               !
+
+
+   ELIF bidx = edit4 THEN                     !
+
+     plot_f_s := GET_EDIT(main_id,edit4);     ! 
+     DEL_WIN(main_id,edit4);                  ! 
+     edit4:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            !
+        plot_f_s,                             !
+          80);                                !
+     GOTO loop;                               ! 
+
+   ELIF bidx = edit6 THEN                     ! 
+
+     mailadr := GET_EDIT(main_id,edit6);      ! 
+     DEL_WIN(main_id,edit6);                  ! 
+     edit6:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*10),             !
+     col_w ,n_h,4,                            !
+        mailadr ,                             !
+          16);                                !
+     GOTO loop;                               !
+
+! +++
+!  Edit window OK
+! ---
+
+   elif bidx = bid1   THEN                    ! Event in bid1    
+
+     metfil := GET_EDIT(main_id,edit1);       ! Get input data    
+     f_case  := GET_EDIT(main_id,edit2);      ! 
+     prepres:= GET_EDIT(main_id,edit3);       ! 
+     plot_f_s := GET_EDIT(main_id,edit4);     ! 
+     mailadr := GET_EDIT(main_id,edit6);      ! 
+
+     DEL_WIN(main_id);                        ! Erase main window  
+
+     GOTO slut;                               ! End of data input
+
+   ELSE
+     GOTO loop;                               ! Back to loop
+   ENDIF;
+
+! +++
+slut:;                                        ! Label: Input finished
+! ---
+
+
+! Remove spaces in names and check names       
+
+   i_s     := FINDS(metfil  ," ");            ! File name optimization data
+   w_leng  := LENGTH(metfil  );               !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     metfil  := SUBSTR(metfil  ,1,i_s-1);     !
+   ELSE                                       !
+     metfil  := " ";                          !
+   ENDIF;                                     !
+
+   IF  FINDS(f_case, "red") > 0 THEN
+     case := 3;
+   ENDIF;
+
+ENDMODULE

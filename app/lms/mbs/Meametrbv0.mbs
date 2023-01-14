@@ -1,0 +1,191 @@
+!********************* meametrbv0 **************************************
+! +++
+! Reads data from METRONOR output file b format
+! Refer to meametrav0 for a description of data in the file.
+! Refer to meametrdv0 for a description in English of this  
+! module (of a similar module).
+! ---
+!s+++
+! Funktionen läser in en mät data från fil skapad av METRONOR
+! systemet. Data i METRONOR b format
+!
+! För tillfället måste det vara en fil som manuell fil som redigerats
+! Mellan punkt mängder ska stå:
+! 1.23456  1.23456  1.23456  
+! 1.23456  1.23456  1.23456  
+! Filen ska avslutas med:
+! -1.23456  -1.23456  -1.23456
+! -1.23456  -1.23456  -1.23456
+!
+!
+! Observera att filen öppas och stängs av anropande rutin
+! Anropande rutin ska också ställa pekaren rätt i filen.
+!
+!s---
+!  Revision history
+!  ________________
+!
+!  1993-10-12  Gunnar Liden
+!  1995-03-09 Documentation            Gunnar Liden
+!  1996-03-10 rdmetro2v0->meametrbv0   Gunnar Liden
+!  1997-04-25 Documentation in English Gunnar Liden
+!
+!
+!
+!***********************************************************************
+
+!sdescs Läser data från METRONOR mätprotokoll (en textfil) b format
+!sdesce Reads data from METRONOR output file b format
+
+BASIC  GEOMETRY MODULE meametrbv0 (
+
+VAR FILE   f;                      ! Pointer to data file (.METRO)
+VAR INT    flag;                   ! Eq. -1: End of file    
+VAR INT    np;                     ! Number of points in the subset
+VAR INT    ptnumber(200) ;         ! Point number for measured point
+VAR VECTOR pcurve(200) ;           ! Points          for curve (subset)
+VAR VECTOR tcurve(200) ;           ! Tangents        for curve (subset)
+VAR FLOAT  devtot(200) ;           ! Total (perpend.)    deviation  
+VAR FLOAT  devx(200) ;             !    X                deviation 
+VAR FLOAT  devy(200) ;             !    Y                deviation 
+VAR FLOAT  devz(200));             !    Z                deviation 
+
+! Interna variabler:
+
+INT    p_nr;                       ! Punkt nummer
+FLOAT  x,y,z;                      ! Koordinater för punkt
+FLOAT  d_tot;                      ! Totala avvikelsen
+FLOAT  d_x;                        !   X    avvikelsen
+FLOAT  d_y;                        !   Y    avvikelsen
+FLOAT  d_z;                        !   Z    avvikelsen
+FLOAT  tx,ty,tz;                   ! Tangent     för punkt (=0.0.0)
+
+INT    idum;                       ! Slask INT
+
+STRING t1*1;                       ! Första tecknet
+STRING rad*132;                    ! Slask variabel för att läsa hel
+                                   ! rad eller radslut med INLIN
+INT    DEBUG;                      ! = 0: Ingen     debug
+                                   ! = 1: Full      debug
+
+STRING s*1;                    ! För debug
+
+BEGINMODULE
+
+! +++
+! Algoritm
+! ________
+!
+! 1. Initieringar och kontroller av indata
+! ---
+
+
+  DEBUG := 0;                      ! Ändra DEBUG till 0 eller 1
+
+  np := 0;                         ! Startvärde antal utdata punkter
+  flag := 123456789;               ! Startvärde på fil flagga
+
+! +++
+! 2. Läs data för en punktmängd från indata filen
+! ---
+
+nxtpt:                               ! Label: Nästa punkt
+
+  t1 := INSTR(f,1);                  ! Läs # tecken
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("meametrbv0: "         ! Debug-utskrift till skärmen
+      +"t1=   *" + t1 +"*"           !
+                     ,"",1);         !
+    ENDIF;                           !
+  IF  t1 =  "b"   THEN               ! En punkt post
+    ;                                ! Fortsätt
+  ELSE                               !
+    x  :=INFLT(f);                   ! Punkt
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("meametrbv0 "          ! Debug-utskrift till skärmen
+      +"x   = "+STR(x,-15,8)         !
+                     ,"",1);         !
+    ENDIF;                           !
+    IF IOSTAT(f) <> 0 THEN           ! Programmeringskontroll
+      EXIT("meametrbv0: Fel 1");     !
+    ENDIF;                           !
+    IF ABS(x+1.234567) < 0.0001 THEN !
+       flag := -1;                   !
+       GOTO slut;                    ! Slut på filen
+    ENDIF;                           !
+    rad := INLIN(f);                 ! Läs 1.23456 1.23456 1.23456
+    rad := INLIN(f);                 ! Läs 1.23456 1.23456 1.23456
+    flag := +1;                      !
+    GOTO slut;                       ! Hoppa till Label slut
+  ENDIF;                             !
+
+  p_nr:= ININT(f);                   ! Punkt nummer
+
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrbv0: "           ! Debug-utskrift till skärmen
+    +"p_nr= "+STR(p_nr,-1,0)         !
+                     ,"",1);         !
+  ENDIF;
+
+  x  :=INFLT(f);                     ! Punkt
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrbv0: "           ! Debug-utskrift till skärmen
+    +"x   = "+STR(x,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("meametrbv0: Fel 1");       !
+  ENDIF;                             !
+  y  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrbv0: "           ! Debug-utskrift till skärmen
+    +"y   = "+STR(y,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("meametrbv0: Fel 2");       !
+  ENDIF;                             !
+  z  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("meametrbv0 "            ! Debug-utskrift till skärmen
+    +"z   = "+STR(z,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("meametrbv0: Fel 3");       !
+  ENDIF;                             !
+                                     !
+  d_tot:=0.0;                        ! Totala avvikelsen
+  d_x  :=0.0;                        !    X avvikelsen
+  d_y  :=0.0;                        !    Y avvikelsen
+  d_z  :=0.0;                        !    Z avvikelsen
+
+
+  rad    :=INLIN(f);                 ! Läs radslut till slask variabel
+
+
+  np := np + 1;                      ! Ytterligare en punkt på kurvan
+  IF np > 200  THEN                  !
+    EXIT("meametrbv0: np > 200");    !
+  ENDIF;                             !
+
+  ptnumber(np):= p_nr;               ! Punkt nummer för uppmätt punkt
+
+  pcurve(np).x:=  x;                 ! Punkt   till utdata array (X)
+  pcurve(np).y:=  y;                 ! Punkt   till utdata array (Y)
+  pcurve(np).z:=  z;                 ! Punkt   till utdata array (Z)
+
+  tcurve(np).x:= 0.0;                ! Tangent till utdata array (X)
+  tcurve(np).y:= 0.0;                ! (Noll vektor innebär att de
+  tcurve(np).z:= 0.0;                !  odefinierade)
+
+  devtot(np)  := d_tot;              ! Totala avvikelsen
+  devx(np)    := d_x;                !   X    avvikelsen
+  devy(np)    := d_y;                !   Y    avvikelsen
+  devz(np)    := d_z;                !   Z    avvikelsen
+  
+  GOTO nxtpt;                        ! Läs ytterligare en punkt
+
+slut:;                               ! Färdigläst 
+
+ENDMODULE

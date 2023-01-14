@@ -1,0 +1,97 @@
+!********************  csysfilev0 **********************
+!
+! +++
+! Get full file name for file with coordinate system data
+!
+! Revision history
+! ________________
+!
+! 1996-02-13  Gunnar Liden
+!
+! ---
+!*******************************************************
+
+BASIC  GEOMETRY MODULE  csysfilev0 (
+    STRING csyname*10;       ! Coordinate system
+VAR STRING csy_basic*25;     ! Basic system for project
+VAR STRING f_name*132);      ! Full file name   
+
+!sdesce Get full file name for file with coordinate system data
+!sdescs H{mta fullst{ndigt namn f|r datafil med koordinatsystem
+
+! Internal variables:
+
+  STRING csys(20)*25;        ! Basic system for the project
+  STRING path(20)*50;        ! Output directories
+  INT    n_path;             ! Number of directories
+
+  INT    i_d;                ! Loop index directory
+
+  FILE   tmp;                ! File 
+
+  STRING s*1;                ! For INPMT
+  INT    DEBUG;              ! Eq. 0: No Debug  
+                             ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  csy_basic := "Undefined";
+  f_name    := "Undefined";
+
+! +++
+!  Algorithm
+!  _________
+!
+!  1. Get names to all directories with coordinate system data
+! ---
+  
+   PART ( #1, csyspathv0   (       ! Get all directories
+    path, csys, n_path):SAVE=0);   
+
+
+! +++
+!  Loop for all subdirectories with surface data
+!  Try to open csyname.DAT_csys or csyname.dat_csys
+! ---
+
+  FOR i_d:= 1 to n_path DO         ! Start loop n_path
+
+   f_name := path(i_d)+csyname +   ! Try first name
+         ".DAT_"+csys(i_d);         !
+   OPEN(tmp,"r",f_name );          ! Try to open file
+   IF (IOSTAT(tmp)<>0 ) THEN       ! 
+      ;                            ! Next directory
+   ELSE                            !
+     CLOSE(tmp);                   ! Close file
+     csy_basic := csys(i_d);       ! 
+     GOTO   found;                 !
+   ENDIF;                          !
+   f_name := path(i_d)+csyname +   ! Try second name
+         ".dat_"+csys(i_d);        !
+   OPEN(tmp,"r",f_name );          ! Try to open file
+   IF (IOSTAT(tmp)<>0 ) THEN       ! 
+      ;                            ! Next directory
+   ELSE                            !
+     CLOSE(tmp);                   ! Close file
+     csy_basic := csys(i_d);       ! 
+     GOTO   found;                 !
+   ENDIF;                          !
+
+  ENDFOR;                          ! End   loop n_path
+
+  LST_INI("csysfilev0 ERROR ERROR ERROR ERROR ERROR");
+  LST_LIN("There is no file "+csyname+ ".DAT_Basic on directories:");
+  FOR  i_d := 1 TO n_path DO
+  LST_LIN(path(i_d)+" Basic system "+csys(i_d));
+  ENDFOR;
+  LST_EXI();
+
+  EXIT("csysfile No file "+csyname+".DAT_Basic");
+
+found:;                            ! File is found
+
+ENDMODULE

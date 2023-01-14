@@ -1,0 +1,111 @@
+!********************* figytav0 *****************************************
+! +++
+! Retrieve a surface from the surface library, scale the surface and
+! draw the surface in the given view.
+!
+! Saab (and other aircraft and automotive companies) normally have a 
+! a library ("database") with all surfaces and coordinate systems for
+! a project. The creation of a CAD model normally starts with a 
+! retrieval of data from this library. There is a parameter surflib
+! which defines the library. Value r (reference) means that the 
+! libraries (search path) defined in surpathv0 will be used.
+!
+! In the LMS demonstration version of the VARKON MEASURE application
+! is only one wing type surface (flap) and two coordinate systems made
+! available. There are however in the lms 3D application possible to
+! create new surfaces and store on the GEO directory .
+!
+!
+! There are many options for the graphical representation of the 
+! surface:
+!
+! 1.    All        All patch boundaries will be drawn
+! 2.    Catia      Surface boundary + dashed mid lines (as in Catia)
+! 3.    Contour    Surface boundary only
+!
+! Selected U and/or V lines can be drawn:   
+! 4/14. Delta 
+! 5.    File
+! 6/16. Udelta
+! 7/17. Vdelta 
+! The parameters ustart, vstart, ... must be defined for these options
+! ---
+!
+!
+! Revision history:    
+!
+! 1995-06-22  Ronny Gyllensten
+! 1995-08-18  datum added in  figgetvyv2 R Gyllensten
+! 1996-02-29  }{| 8 bitars ASCII {nnu ej i parameternamn 
+!             NMGtype-> surflib NMGproj->fplproj         
+!             figsurfv0 -> rdsurscav0 Default values     G Liden 
+! 1996-04-15  Default values                             G Liden
+! 1997-04-25  Documentation in English                   G Liden
+!    
+!***********************************************************************
+
+!sdesce Reads a scaled surface to diagram
+!sdescs Laser in en skalad yta till figurbladet.
+
+GLOBAL DRAWING MODULE figytav0(
+REF    view_id                     > "@t16384 Select view";
+STRING surface*28:= "FLAP_DEMO"    > " Surface ";
+INT    grafik    := 3         
+> "@ 1.All 2.CATIA 3.Contour 4/14.Delta 5.File 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart    := 0.0            > "@ Ustart <CR>= Not defined";
+FLOAT  udelta    := 0.0            > "@ Udelta";
+FLOAT  uslut     := 0.0            > "@ Uslut";
+FLOAT  vstart    := 0.0            > "@ Vstart";
+FLOAT  vdelta    := 0.0            > "@ Vdelta";
+FLOAT  vslut     := 0.0            > "@ Vslut";
+INT    case      := 1              > "@ Case";
+STRING surflib*1 := "r"            > "@ Surface library r/p (<CR>=reference)";
+STRING uvfil*80                    > "@ File with UV data";
+STRING reserv2*80                  > "@ Extra, not yet used parameter");
+
+! Internal variables
+
+  REF csys_id;                       ! Coordinate system 
+  STRING vy*6;                       ! View 
+  STRING fplproj*44;                 ! Aircraft (or other) project
+  STRING datum*28;                   ! Name of coordinate system  
+  FLOAT  skala;                      ! Scale (scale factor= 1/skala)
+  VECTOR origo;                      ! Position of the view     
+  FLOAT  x0;                         ! Origin x coordinate
+  FLOAT  y0;                         ! Origin y coordinate
+  FLOAT  z0;                         ! Origin z coordinate
+  FLOAT  xlangd;                     ! Length of X axis 
+  FLOAT  ylangd;                     ! Length of Y axis 
+  FLOAT  zlangd;                     ! Length of Z axis 
+  VECTOR ang;                        ! Euler angles
+  STRING namn*20;                    ! Input PART name
+
+BEGINMODULE
+
+!    Message to screen
+     PSH_PMT("Processing: figytav0");
+
+! +++
+! 1. Get data for the view
+! ---
+
+     PART(#2,figgetvyv2(view_id, csys_id, vy, fplproj, datum,
+                        skala, origo,
+                        x0, y0, z0, xlangd,
+                        ylangd, zlangd, ang, namn));
+  
+! +++
+! 2. Draw (create) the scaled surface in the given view
+! ---
+
+     PART(#1,rdsurscav0(fplproj, surface, datum,
+                        skala, x0, y0, z0,
+                        grafik,ustart,udelta,uslut,
+                        vstart,vdelta,vslut,
+                        case,surflib,uvfil,
+                        csys_id));
+
+!  Erase message
+   POP_PMT();
+
+ENDMODULE

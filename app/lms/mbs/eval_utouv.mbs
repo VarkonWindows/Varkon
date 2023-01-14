@@ -1,0 +1,221 @@
+!***************** eval_utouv  ******************************
+! +++
+! Curve evaluation routine for a surface curve:
+! From surface curve parameter U to surface UV point
+!
+! ---
+! Revision history
+! _________________
+!
+! 1995-10-05 Gunnar Liden (Modified copy of evalutouv from optics)
+! 1996-05-04 Parameter value for curve end pt not OK  Gunnar Liden
+!
+!************************************************************
+
+!sdesce From U surface curve parameter to UV surface point  
+!sdescs Från U parameter för kurva på yta till UV ytpunkt
+
+BASIC  GEOMETRY MODULE eval_utouv   (
+
+    REF    cur_id;     ! Surface curve          
+    FLOAT  u_cur;      ! Global curve parameter U
+VAR REF    sur_id;     ! Surface identity
+VAR VECTOR uv_sur );   ! Surface U,V(,W) point
+                       ! No surface segment: uv_sur= (-1,-1,-1) 
+
+
+! Internal variables
+
+  FLOAT  u_l;                    ! Local (segment) parameter value
+  FLOAT  c0x,c1x,c2x,c3x;        ! X coefficients
+  FLOAT  c0y,c1y,c2y,c3y;        ! Y coefficients
+  FLOAT  c0 ,c1 ,c2 ,c3 ;        ! w coefficients
+
+  FLOAT  denom;                  ! Denominator
+
+                                 ! For GETCURH:
+  INT    font;                   ! Font
+  INT    length;                 ! Length for dashed curve
+  INT    ns_geo;                 ! No geometry  segments
+  INT    ns_gra;                 ! No graphical segments
+
+                                 ! For GETSEG:
+  INT    i_seg;                  ! Curve segment
+  INT    reptype;                ! Requested type (curve):
+                                 ! Eq. 0: Geometry
+                                 ! Eq. 1: Graphic
+  FLOAT  segdata(4,4);           ! Segment coefficients
+  FLOAT  c_offset;               ! Curve offset
+  INT    type;                   ! Curve segment type
+                                 ! Eq. 1: A  R*3 (free)    segment
+                                 ! Eq. 2: An U,V (surface) segment
+  INT    subtype;                ! Curve segment subtype
+                                 ! Eq. 0:
+                                 ! Eq. 1:
+                                 ! Eq. 2:
+  REF    sur1_id;                ! Reference to surface 1
+  REF    sur2_id;                ! Reference to surface 2
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! 1. Initializations and checks      
+! --- 
+
+  DEBUG := 0;                    ! Debug printout
+
+                                 ! Initialize output data
+  uv_sur.x:= -1.0;               ! 
+  uv_sur.y:= -1.0;               ! 
+  uv_sur.z:= -1.0;               ! 
+  sur_id := #0;                  !
+
+! +++
+! 2. Retrieve curve data
+! ---
+ 
+  GETCURH(cur_id,font,length,   ! Curve header data
+    ns_geo , ns_gra);           !
+
+! +++
+! 3. Determine segment and local parameter
+!  ---  
+ 
+  i_seg:= TRUNC(u_cur)+1;       ! Curve segment number
+  u_l  := u_cur - TRUNC(u_cur); ! Local parameter
+
+  IF DEBUG = 1 AND u_cur > ns_geo - 1 THEN             ! Debug to screen
+   s:= INPMT("eval_utouv " +     !
+   " ns_geo "+STR(ns_geo,-1,0)+ !
+   " u_cur "+STR(u_cur,-10,6)+  !
+   " u_l "+STR(u_l,-10,6)+      !
+   " i_seg "+STR(i_seg,-1,0),   !
+    "",1);                      !
+  ENDIF;                        !
+  IF   i_seg > ns_geo+1 THEN    !
+    EXIT("eval_utouv: "+         !
+     "i_seg > ns_geo+1 ");      ! 
+  ELIF i_seg <= 0       THEN    !
+   s:= INPMT("eval_utouv " +     !
+   " ns_geo "+STR(ns_geo,-1,0)+ !
+   " u_cur "+STR(u_cur,-10,6)+  !
+   " u_l "+STR(u_l,-10,6)+      !
+   " i_seg "+STR(i_seg,-1,0),   !
+    "",1);                      !
+    EXIT("eval_utouv: "+         !
+     "i_seg <= 0       ");      ! 
+  ELIF i_seg = ns_geo+1 THEN    !
+   IF ABS(u_l) < 0.0001 THEN    !
+     i_seg:= i_seg-1;           !
+!1996-05-04     u_l  := u_l - 1.0;         !
+     u_l  := u_l + 1.0;         !
+   ELSE                         !
+  IF DEBUG = 1 THEN             ! Debug to screen
+   s:= INPMT("eval_utouv " +     !
+   " ns_geo "+STR(ns_geo,-1,0)+ !
+   " u_cur "+STR(u_cur,-10,6)+  !
+   " u_l "+STR(u_l,-10,6)+      !
+   " i_seg "+STR(i_seg,-1,0),   !
+    "",1);                      !
+  ENDIF;                        !
+    EXIT("eval_utouv: "+         !
+     "u_l not 0 for ns_geo+1"); ! 
+   ENDIF;                       !
+  ENDIF;
+
+! +++
+! 4. Retrieve curve segment coefficients  
+! ---
+ 
+  reptype:= 0;                   ! Get coefficients
+  GETSEG(cur_id, i_seg, reptype, ! 
+      segdata,c_offset,type,     !
+      subtype,sur1_id,sur2_id);  !
+
+  IF type <> 2 THEN              ! Exit with uv_sur= (-1,-1,-1)
+    EXIT();                      ! and sur_id= #0 if not a surface segment
+  ENDIF;                         !
+
+  sur_id := sur1_id;             ! Output surface reference
+
+  c0x:=  segdata(1,1);           ! X coefficients
+  c1x:=  segdata(2,1);           !
+  c2x:=  segdata(3,1);           !
+  c3x:=  segdata(4,1);           !
+
+  c0y:=  segdata(1,2);           ! Y coefficients
+  c1y:=  segdata(2,2);           !
+  c2y:=  segdata(3,2);           !
+  c3y:=  segdata(4,2);           !
+
+  c0 :=  segdata(1,4);           ! w coefficients
+  c1 :=  segdata(2,4);           !
+  c2 :=  segdata(3,4);           !
+  c3 :=  segdata(4,4);           !
+
+  IF DEBUG = 3 THEN             ! Debug to screen
+   s:= INPMT("eval_utouv " +     !
+   " c0x "+STR(c0x,-15,8)+      !
+   " c1x "+STR(c1x,-15,8)+      !
+   " c2x "+STR(c2x,-15,8)+      !
+   " c3x "+STR(c3x,-15,8),      !
+    "",1);                      !
+   s:= INPMT("eval_utouv " +     !
+   " c0y "+STR(c0y,-15,8)+      !
+   " c1y "+STR(c1y,-15,8)+      !
+   " c2y "+STR(c2y,-15,8)+      !
+   " c3y "+STR(c3y,-15,8),      !
+    "",1);                      !
+   s:= INPMT("eval_utouv " +     !
+   " c0  "+STR(c0 ,-15,8)+      !
+   " c1  "+STR(c1 ,-15,8)+      !
+   " c2  "+STR(c2 ,-15,8)+      !
+   " c3  "+STR(c3 ,-15,8),      !
+    "",1);                      !
+  ENDIF;                        !
+
+! +++
+! 5. Calculate output U,V point           
+! --- 
+ 
+   denom  := c0 +c1 *u_l+       ! w value
+   c2 *u_l*u_l+c3 *u_l*u_l*u_l; !
+   IF ABS(denom) < 0.00001 THEN ! Check denominator
+    EXIT("eval_utouv: "+        !
+     "Denominator w= 0 ");      ! 
+   ENDIF;                       !
+
+  uv_sur.x:= c0x+c1x*u_l+       ! U value
+   c2x*u_l*u_l+c3x*u_l*u_l*u_l; !
+  uv_sur.x:= uv_sur.x/denom;    !
+
+  uv_sur.y:= c0y+c1y*u_l+       ! V value
+   c2y*u_l*u_l+c3y*u_l*u_l*u_l; !
+  uv_sur.y:= uv_sur.y/denom;    !
+
+  uv_sur.z:= 0.0;               ! W value
+
+  uv_sur.x:= uv_sur.x - 1.0;    ! Internal global to external
+  uv_sur.y:= uv_sur.y - 1.0;    ! global parameter            
+
+  IF DEBUG = 1  AND u_cur > ns_geo - 1 THEN             ! Debug to screen
+   s:= INPMT("eval_utouv " +    !
+   " ns_geo "+STR(ns_geo,-1,0)+ !
+   " u_cur "+STR(u_cur,-10,6)+  !
+   " u_l "+STR(u_l,-10,6)+      !
+   " i_seg "+STR(i_seg,-1,0),   !
+    "",1);                      !
+  ENDIF;                        !
+  IF DEBUG = 3 THEN             ! Debug to screen
+   s:= INPMT("eval_utouv " +    !
+   " U "+STR(uv_sur.x,-15,8)+   !
+   " V "+STR(uv_sur.y,-15,8)+   !
+   " u_cur "+STR(u_cur,-15,8),  !
+    "",1);                      !
+  ENDIF;                        !
+
+ENDMODULE

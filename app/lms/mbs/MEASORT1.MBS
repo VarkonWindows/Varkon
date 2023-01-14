@@ -1,0 +1,150 @@
+!******************** measort1 **********************
+! +++
+! Sorting of X values (from intersect calculation)
+! 
+! Warning: Input values are changed !!!!!
+! ---
+!s+++
+! Funktionen sorterar X (skärnings) värden
+! 
+! OBS!!! Indata ändras för närvarande  !!  VARNING !!!
+!s---
+!
+! Revision history
+! ________________
+!
+! 1993-11-05 Gunnar Liden
+! 1995-03-09 Dokumentation Gunnar Liden
+! 1997-04-25 Documentation in English Gunnar Liden
+!
+!****************************************************
+
+!sdescs Funktionen sorterar X (skärnings) värden
+!sdesce Sorting of X values (from intersect calculation)
+
+BASIC GEOMETRY MODULE measort1  (
+     INT    case;                     ! =1: No Debug  =2: Full Debug
+     INT    n_p1;                     ! No. of pts in   x_ut1
+VAR  FLOAT  x_ut1(200);               ! Scaled X values
+     INT    n_p2;                     ! No. of pts in   x_ut2
+VAR  FLOAT  x_ut2(200);               ! Scaled X values
+VAR  INT    n_x_uta;                  ! No. of values in x_uta (output)
+VAR  FLOAT  x_uta(200));              ! Scaled intersect X values
+
+
+! Interna variabler:
+
+  INT    i_p;                      ! Loop index:     Output
+  INT    i_p1;                     ! Loop index:    x_ut1
+  INT    i_p2;                     ! Loop index:    x_ut2
+
+  FLOAT  x_min1;                   ! Minim. x_ut1 i loop i_p
+  INT    i_x_min1;                 ! Ptr in   x_ut1
+  FLOAT  x_min2;                   ! Minim. x_ut2 i loop i_p
+  INT    i_x_min2;                 ! Ptr in   x_ut2
+
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For Debug
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Sort
+! ---
+
+  IF case = 1 THEN                 !
+    DEBUG := 0;                    ! No Debug
+  ELSE                             !
+    DEBUG := 1;                    ! Debug On
+  ENDIF;                           !
+
+  IF DEBUG = 1 THEN                ! DEBUG
+  LST_INI("Input to    measort1"); !
+
+  FOR  i_p1:=1 TO n_p1 DO          !
+    LST_LIN("Pkt nummer "          !
+       +STR(i_p1,-1,0)+ " x_ut1= " !
+       +STR(x_ut1(i_p1),-12,6));   !
+  ENDFOR;                          !
+  FOR  i_p2:=1 TO n_p2 DO          !
+    LST_LIN("Pkt nummer "          !
+       +STR(i_p2,-1,0)+ " x_ut2= " !
+       +STR(x_ut2(i_p2),-12,6));   !
+  ENDFOR;                          !
+  LST_EXI();                       !
+  ENDIF;                           !
+
+  n_x_uta:= 0;                     !
+
+  FOR i_p := 1  TO  200 DO         ! Start outer loop
+
+    x_min1:= 50000.0;              ! Initializations
+    x_min2:= 50000.0;              !
+ 
+    FOR i_p1 := 1  TO  n_p1 DO     ! Start loop x_ut1
+      IF x_ut1(i_p1) < x_min1 THEN !
+        x_min1 := x_ut1(i_p1);     !
+        i_x_min1 := i_p1;          !
+      ENDIF;                       !
+    ENDFOR;                        ! End   loop x_ut1
+    FOR i_p2 := 1  TO  n_p2 DO     ! Start loop x_ut2
+      IF x_ut2(i_p2) < x_min2 THEN !
+        x_min2 := x_ut2(i_p2);     !
+        i_x_min2 := i_p2;          !
+      ENDIF;                       !
+    ENDFOR;                        ! End   loop x_ut2
+
+    IF DEBUG = 2 THEN              ! DEBUG
+       s:= INPMT("Pt number "      !
+       +STR(i_p,-1,0)+  " x_min1 " !
+     +STR(x_min1,-12,6)+" x_min2 " !
+     +STR(x_min2,-12,6)+" "        !
+          ,"",1);                  !
+    ENDIF;                         !
+
+    IF ABS(x_min1-50000.0)< 0.1 AND!
+       ABS(x_min2-50000.0)< 0.1    !
+                            THEN   !
+        GOTO  slut;                ! No more sorting ?
+    ENDIF;                         !
+
+
+    IF ABS(x_min1-x_min2) < 0.1    ! Data to x_uta
+                           THEN    !
+       n_x_uta:= n_x_uta+1;        !
+       x_uta(n_x_uta):= x_min1;    !
+       x_ut1(i_x_min1):= 100000.0; !
+       x_ut2(i_x_min2):= 100000.0; !
+    ELIF  x_min1 <  x_min2  THEN   !
+       n_x_uta:= n_x_uta+1;        !
+       x_uta(n_x_uta):= x_min1;    !
+       x_ut1(i_x_min1):= 100000.0; !
+    ELSE                           !
+       n_x_uta:= n_x_uta+1;        !
+       x_uta(n_x_uta):= x_min2;    !
+       x_ut2(i_x_min2):= 100000.0; !
+    ENDIF;                         !
+
+  ENDFOR;                          ! End   outer  loop
+
+
+slut:;                             ! Label: All X data sorted
+
+
+  IF DEBUG = 1 THEN                ! DEBUG
+  LST_INI("Output from measort1"); !
+
+  FOR  i_p :=1 TO n_x_uta DO       !
+    LST_LIN("Pt number "           !
+       +STR(i_p,-1,0)+ " x_uta= "  !
+       +STR(x_uta(i_p ),-12,6));   !
+  ENDFOR;                          !
+  LST_EXI();                       !
+  ENDIF;                           !
+
+ENDMODULE

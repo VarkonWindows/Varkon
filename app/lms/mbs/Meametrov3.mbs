@@ -1,0 +1,309 @@
+!********************* meametrov3 ***************************************
+! +++
+! Read point data and optionally deviations from a METRONOR file and 
+! draw points in a 2D view (Saab view XY, XZ, YZ or ISO).
+!
+! Format of the Metronor file: d , b or d (reduced)
+!
+! There is a parameter which optionally offset the points with
+! respect to the surface normals of the measured surface points.
+! The outside of an aicraft wing is defined mathematically (as
+! the reference surface) but measurements may for instance be done
+! on the inside tool surface for a wing panel. In this case can
+! the offset parameter be used (offset= wing panel thickness).
+!
+! ---
+! Revision history
+! ________________
+!
+!  1994-04-19  Ronny Gyllensten
+!  1995-03-12  Documentation                      Gunnar Liden
+!  1995-04-12  Documentation                      R Gyllensten
+!  1996-03-04  meametrov2->meametrov3, meametrav0 Gunnar Liden
+!  1997-04-25  Documentation in English           Gunnar Liden
+! 
+!************************************************************************
+
+!sdescs Läsa uppmätt data från METRONOR fil. Format: d, b och d(reducerat)
+!sdesce Read measured data from METRONOR file. Format: d, b and d(reduced)
+
+GLOBAL DRAWING MODULE meametrov3 (
+REF     view_id                   > "@t16384 Select view"   ;
+STRING metfil*132 := "xxxx.METRO" > "File with METRONOR data";
+FLOAT  offset     :=  0.0         > "Offset for points";
+INT    grafik     :=  2           > "@ 1. Points 2. Solid crv  3. Dashed";
+INT     case      :=  1           > "Format d: Case= 1 b: Case= 2: d(red) Case= 3");
+
+! +++
+! The module reads data from a Metronor file with measured points.
+!
+! Each point is registered as a part with the name MEAPOIREC. The
+! attributes (parameters) to this module (object) hold all data
+! about the point. Attributes are:
+! VECTOR       m_p;                ! Measured point
+! VECTOR       r_p;                ! Reference point 
+! FLOAT        d_tot;              ! Total (perpend.) deviation to surface
+!                                  ! (distance beween m_p and r_p)
+! INT          p_no;               ! Point number
+! INT          g_no;               ! Subset number
+! STRING       descr*132           ! Name and description of the point  
+
+!
+! The module is of type DRAWING (2D), since the module is used
+! (called) in the VARKON MEASURE application which is a 2D
+! application. Diagrams and drawings are output (but many 
+! calculations are of cource in 3D, i.e. called modules are
+! of type GEOMETRY).
+! 
+! Input to this module is a view, i.e. a part which defines
+! the transformation and scaling of the points for the 
+! drawings. There is a module (object) figvyv2 which creates
+! one of four standard Saab drawing views (with the Z axis
+! pointing downwards).
+!
+! The Metronor file cannot be used directly. Some manual 
+! editing is needed (a new module is planned ...)
+!
+! Comment lines must be erased and between each subset of points
+! must two lines be added:
+!     1.234567  1.234567  1.234567
+!    1.234567  1.234567  1.234567
+!
+! The file must end with the following two lines:
+!    -1.234567  -1.234567  -1.234567
+!    -1.234567  -1.234567  -1.234567
+!
+! Free comments may be written after these two lines.
+!
+!
+! It is for the wing profile analysis assumed that a subset
+! of points are points from the upper or lower part of the 
+! wing.
+!
+! An edited Metronor file can be created by the simulation
+! module meapsim1v1
+!
+! This part is input to the modules which creates measurement
+! analysis diagrams. The graphical representation of the points
+! (as points or curves interpolating the subsets of points) makes
+! it possible for the user to select this part interactively .
+!
+!
+! ---
+
+!s+++
+! Modulen läser mätdata från en METRONOR fil, som innehåller
+! uppmätta punkter. För varje punkt som läses in skapas en
+! part (post) med all data om den uppmätta punkten.
+! 
+! Denna funktion används i samband med att uppmätnings-
+! diagram ska skapas (ritningar), dvs modulen är av typ
+! DRAWING (2D). Inlästa punkter ritas ut som punkter
+! eller som kurvor i den valda vyn. Man måste alltså
+! först ha skapat en figurbladsvy (iso, xy, yz eller xz).
+! 
+! Uppmätt data ska finnas på en fil, som först måste föras
+! över från Metronorsystemet och sedan (manuellt) redigeras.
+!
+!
+! Överföring av fil från Metronor till VAX:
+! ----------------------------------------
+!
+! Se separat instruktion .........
+! 
+! 
+! Manuell redigering av mätdata fil
+! ---------------------------------
+! 
+! Metronorfilen måste för närvarande manuellt redigeras enligt
+! följande:
+! 
+! Mellan varje grupp av punkter måste det finnas två rader:
+!     1.234567  1.234567  1.234567
+!    1.234567  1.234567  1.234567
+!
+! Filen (alla grupper punkter) ska avslutas med:
+!    -1.234567  -1.234567  -1.234567
+!    -1.234567  -1.234567  -1.234567
+!
+!
+! När man ska göra vingprofil analys (t.ex göra diagram med
+! meadia3v1 och meadia4v1) förutsätts att en grupp punkter
+! är ett snitt uppdelat i undersida och översida. (Mät-
+! operatörerna lägger normalt in denna information i filen)
+!
+! I filen från Metronorsystemet kommer först information om
+! mätningen (artikelnummer, filnamn, flygplan individ, etc).
+! Vid redigeringen av filen bör denna information inte raderas
+! utan läggas sist i filen (efter -1.234567 markeringen)
+!
+! Den manuella redigeringen av filen kommer i framtiden inte
+! att vara nödvändig. En ny version av denna modul, som direkt
+! läser Metronor filen är planerad.
+
+! Exempel på data i en Metronor fil finns nedan.
+
+
+! Registrering av punkter
+! -----------------------
+
+! Varje uppmätt punkt (mätpost) som läses in "registreras". Detta
+! innebär att en part (meapoirec) bildas för varje punkt. Denna
+! part har följande parametrar:
+
+! VECTOR       m_p;                ! Uppmätt  punkt
+! VECTOR       r_p;                ! Referens punkt
+! FLOAT        d_tot;              ! Total (vinkelrät) avvikelse till yta
+                                 ! (Avstånd mellan m_p och r_p)
+! INT          p_no;               ! Punkt nummer
+! INT          g_no;               ! Grupp nummer (t.ex snitt nummer)
+! STRING       descr*132           ! Namn och beskrivning av punkt(mängd)
+
+! För analys av mätdata finns sedan en modul som "letar reda" på alla
+! registrerade punkter ingående i en viss grupp g_no och en annan
+! modul som hämtar värdena på parametrarna för en viss punkt.
+! Hur dessa moduler används kan man t.ex se i modulen meadia3v1
+! som skapar ett mätdata diagram.
+
+! Grafisk representation
+! ----------------------
+
+! Modulens huvuduppgift är att läsa in mätdata från Metronor filen
+! och "registrera" mätdatan med anrop till meapoirec.
+
+! Men modulen skapar också punkter (POI_FREE) eller skapar
+! kurvor genom delpunktmängderna.
+
+! Obs att denna grafiska representation är önskvärd (nödvändig)
+! för att "ha något att peka på" om man vill referera punktmängden.
+
+! +++
+! Exemple of data in a Metronor file (d format):
+! ----------------------------------------------
+!
+! d 0 2022.90   -4729.52  71.53     11.90     0.89      -0.21     11.87
+! d 1 1952.20   -4728.44  76.20     12.01     0.58      -0.21     11.99
+! d 2 1844.74   -4734.54  78.08     11.97     0.00      -0.22     11.96
+! d 3 1742.43   -4739.25  77.49     11.52     -0.06     -0.22     11.51
+! d 4 1647.95   -4733.63  75.72     11.07     -0.32     -0.23     11.06
+! d 5 1610.94   -4730.99  74.00     10.43     -0.34     -0.23     10.42
+! d 6 1580.40   -4730.26  72.50     9.95      -0.35     -0.21     9.94
+! d 7 1553.34   -4730.19  70.95     9.43      -0.38     -0.21     9.41
+!  1.234567  1.234567 1.234567
+!  1.234567  1.234567 1.234567
+! d 17 1336.60   -4805.57  -42.90    -10.58    8.90      1.55      5.51
+! d 18 1346.83   -4805.00  -48.96    -12.77    5.84      1.15      11.30
+! d 19 1372.72   -4807.17  -54.28    -13.24    0.69      0.38      13.22
+! d 20 1393.18   -4804.28  -54.57    -12.57    -0.59     0.18      12.56
+!             .
+!             .
+! d 33 1822.60   -4822.32  -52.41    -12.03    0.00      0.23      12.03
+! d 34 1910.12   -4819.85  -51.94    -12.11    -0.29     0.23      12.11
+! d 35 1998.52   -4810.69  -48.18    -11.73    -0.82     0.21      11.70
+!  1.234567  1.234567 1.234567
+!  1.234567  1.234567 1.234567
+! d 36 2030.86   -4193.70  78.65     10.23     0.80      -0.18     10.19
+! d 37 1928.93   -4175.83  85.56     10.41     0.42      -0.18     10.39
+!              .
+!              .
+! d 208 1298.96   -1135.38  -128.02   -1.94     0.05      0.04      1.93
+! d 209 1331.35   -1133.26  -129.54   -1.75     0.07      0.03      1.75
+! d 210 1366.93   -1131.94  -130.89   -1.57     0.04      0.04      1.57
+! d 211 1479.07   -1113.24  -133.21   -1.45     0.01      0.03      1.45
+! d 212 1620.61   -1119.30  -133.89   -1.05     0.00      0.02      1.05
+!  -1.234567  -1.234567 -1.234567
+!  -1.234567  -1.234567 -1.234567
+! Points have been transformed with matrix:    
+! 0.999391  -0.009033 0.033710  -24658.86
+! 0.999391  0.965926  0.258819  748.12
+! -0.034899 -0.258661 0.965337  3724.59
+! Input  file: DISK$KCF:Ä240015.VARKON.Å<MEASURE.JOB>STABBE002H.METRO
+! Output file: DISK$KCF:Ä240015.VARKON.Å<MEASURE.JOB>STABBE002H_T.METRO
+! ---
+
+! Internal variables 
+
+STRING metfil_full*132;            ! Full name of METRONOR file
+
+                                   ! For figgetvyv2:
+REF    csys_id;                    ! Coordinate system for points
+STRING vy*6;                       ! View xy, xz, yz or iso
+STRING fplproj*44;                 ! Aircraft (or other) project
+STRING datum*28;                   ! Coordinate system (name)
+FLOAT  skala;                      ! Scale (scale factor= 1/skala)
+VECTOR origo;                      ! Position on drawing for the view
+FLOAT  x0;                         ! Origin x coordinate
+FLOAT  y0;                         ! Origin y coordinate
+FLOAT  z0;                         ! Origin z coordinate
+FLOAT  xlangd;                     ! Length of X axis
+FLOAT  ylangd;                     ! Length of Y axis
+FLOAT  zlangd;                     ! Length of Z axis
+VECTOR ang;                        ! Euler angles 
+STRING namn*20;                    ! Input PART name
+
+
+INT       DEBUG;                   ! Eq. 0: No   Debug
+                                   ! Eq. 1: Full Debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations
+! ---
+
+   DEBUG := 0;                      ! Change debug to 0 or 1
+                                    !
+! +++
+! 2. Get data about the SAAB view
+! ---
+
+  PART(#1,figgetvyv2(view_id, 
+       csys_id, vy, fplproj, 
+       datum, skala, origo, 
+       x0, y0, z0, xlangd,
+       ylangd, zlangd, ang, namn ));
+  
+  IF ABS(skala) < 0.2 THEN          ! Check of scale
+      EXIT("meametrov3: Scale "+    !
+      "less than 0.2");             !
+  ENDIF;                            !
+
+! +++
+! 3. Measured points from METRONOR file to 2D view
+! ---
+
+   
+   metfil_full:= "Undefined";       ! Initialize metfil_full
+
+   IF   SUBSTR(metfil,1,5)="DISK$"  ! Already full file name DISK$.. ?
+                           THEN     !
+     metfil_full:= metfil;          !
+   ELIF SUBSTR(metfil,1,5)="V3$"    ! Already full file name V3$...  ?
+                           THEN     !
+     metfil_full:= metfil;          !
+   ELSE                             !
+     metfil_full:=ACT_JOBDIR() +    ! Add ACT_JOBDIR() to name
+                  metfil;           !
+   ENDIF;                           !
+
+   PART(#6,meametrav0 (metfil_full, ! Read and scale curves
+   skala, x0, y0, z0,offset,        !
+   grafik,case, csys_id));          !
+
+  IF DEBUG = 1 THEN
+  LST_INI("Debug printout from meametrov3");
+  LST_LIN("Name of the part which created the view namn (PART)=" +namn);
+  LST_LIN("Scale skala=" + STR(skala,-12,6));
+  LST_LIN("Origin (2D) on drawing for the SAAB view " + 
+           STR(origo.x,-12,6)+" " +STR(origo.y,-12,6));
+  LST_LIN("Origin (3D) for the scaling x0 " + STR(x0,-12,6)+
+                                     " y0 " + STR(y0,-12,6)+ 
+                                     " z0 " + STR(z0,-12,6));
+  LST_LIN("offset= " + STR(offset,-12,6));
+  LST_LIN("grafik= " + STR(grafik,  3,0));
+  LST_LIN("case=   " + STR(case,    3,0));
+  LST_EXI();
+  ENDIF;
+
+
+ENDMODULE

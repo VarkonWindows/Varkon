@@ -1,0 +1,406 @@
+!******************** meadia7v2 ***************************************
+! +++
+! Diagram for deviations in z translation for a wing
+!
+! The input to the function are values calculated for the camber line
+! deviation diagram. The calculated values are registered as parts
+! This function calls function meadiagtv0 which scans the whole active
+! module and gets the calculated values.
+!
+!
+! There is an option to calculate and draw a regression line in this
+! diagram (a line that approximates the translation deviation curve)
+!
+! ---
+! Revision history 
+! ________________
+!
+! 1995-05-30 Ronny Gyllensten
+! 1996-03-10 rdmetrov3->meardsumv0  Gunnar Liden
+! 1996-04-23 mearegv1->meavregv0    R Gyllensten 
+! 1996-04-24 Tagit bort parameter från meavregv0  Gunnar Liden
+! 1997-04-28 meadia7v1->meadia7v2                 Gunnar Liden
+!
+!**********************************************************************
+
+!sdescs Diagram för translationsfelet i z för en vinge
+!sdesce Diagram for deviations in z translation for a wing
+
+GLOBAL DRAWING MODULE meadia7v2  (
+
+VECTOR origo      :=vec(20,100) >"Position for diagram";
+FLOAT xlangd      := 100.0      >"Length X of diagram (<CR>=100.0 mm)";
+FLOAT skalf_y     :=   5.0      >"Scale factor Y values (<CR>=5.0)";
+FLOAT ylangd      :=  15.0      >"Length X of diagram (<CR>=15.0 mm)";
+INT   case        :=   1        >"Text reg.line (case=10:No text case=11:Text)");
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop variabel: Alla punkter i snittet
+
+  INT    i_l;                      ! Loop variable % linjer
+
+  STRING xaxel*10;                 ! X axel för diagram
+  STRING yaxel*132;                ! Y axel för diagram
+
+  FLOAT  skalf_x;                  ! Skalfaktor  för X axel värdena
+
+  FLOAT  A;                        ! Regressionslinjens lutning
+  FLOAT  B;                        ! Regressionslinjens förflyttning
+
+  INT    n_p;                      ! Antal punkter i filen
+  VECTOR  x_in(200);               ! Skalade x,y,z värden
+  VECTOR  x_ut(200);               ! Skalade x,y,z värden
+  VECTOR  medel(200);              ! Skalade  medelvärden
+  INT    n_x_ut;                   ! Antal värden i x_in
+
+  INT    grafik;                   ! Parameter för blankning
+  INT    s_case;                   ! Debug för measortv3
+
+  FLOAT  transl_x;
+
+  STRING      s*1;                 ! String for DEBUG (INPMT)
+  INT         DEBUG;               ! For Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Initializations
+! ---
+
+
+      DEBUG := 2;         
+      xaxel := "Y";
+      yaxel:= "Translation Z error for camber line (mm)";
+                           
+      n_p  := 0;
+      grafik := 2;          
+
+
+! +++
+! 2. Retrieve data from camber line deviation diagrams
+! ---
+
+!    Get twist error data from parts, which have registered calculated data
+     PART(#1,meadiagtv0 (n_p,x_in,2));
+
+! +++
+! 3. Draw coordinate axis in the local system           
+! ---
+
+
+!    Create local system
+     CSYS_1P(#5,"XY",origo: BLANK=1);
+
+!    Activate local system
+     MODE_LOCAL(#5);
+
+
+!    Create axis (lines) and arrows (with module pil)
+     LIN_FREE(#6,vec(0, 0), VEC(0,0) + VEC(xlangd+10, 0));
+     PART(#10,pil(VEC(0,0),VEC(0,0) + VEC(xlangd+10,0) ),#5);
+
+     LIN_FREE(#7,VEC(0, -ylangd), VEC(0, 0) + VEC(0, ylangd));
+!    part(#11,pil(vec(0,0),vec(0,0) + vec(0,ylangd) ),#5);
+
+
+
+!    Text for the X and Z axis
+     SET(TSIZE=3); 
+     SET(TWIDTH=50); 
+     TEXT(#8,ON(#6,1.0)+ VEC(2,-1.5), 0.0, xaxel); 
+     TEXT(#9,ON(#7,1.0)+ VEC(3,-2  ), 0.0, yaxel);
+  
+
+!    Short vertical lines along the X axis
+     FOR i_l := 1 TO 11  DO 
+       LIN_FREE(#30,       
+       VEC(xlangd/10*(i_l-1), -3),
+       VEC(xlangd/10*(i_l-1),  3));
+     ENDFOR;                     
+
+
+
+!    Lines indicating size of error
+     LIN_FREE(#31,VEC(-7,0.5*skalf_y ), VEC(5, 0.5*skalf_y) );
+     LIN_FREE(#51,VEC(-7,-0.5*skalf_y ), VEC(5,-0.5*skalf_y) );
+
+!    Text (0.5 and -0.5) to lines
+     SET(TSIZE=1.5);
+     TEXT (#33,ON(#31,0.0)+VEC(-0.5,1), 0.0,STR(0.5,-10,1));
+     TEXT (#53,ON(#51,0.0)+VEC(-0.5,1), 0.0,STR(-0.5,-10,1));
+
+
+
+! +++
+! 4. Sort
+! ---
+
+     IF case = 9 THEN 
+       s_case:= 2;   
+     ELSE           
+       s_case:= 1; 
+     ENDIF;       
+   
+     PART(#43,measortv3(s_case, n_p,x_in,x_ut) :SAVE=0);     
+
+
+
+! +++
+! 7. Draw curve for Z translation error       
+! ---
+
+
+   IF x_ut(1).x < 0  THEN
+   transl_x := ABS(x_ut(n_p).x);
+   ELIF x_ut(1).x > 0 THEN
+   transl_x := -ABS(x_ut(1).x);
+   ELSE
+   transl_x := 0.0 ;
+   ENDIF;
+
+   skalf_x  := xlangd/(ABS(x_ut(n_p).x)-ABS(x_ut(1).x));
+
+
+  IF DEBUG = 1 THEN
+  LST_INI("Create straight lines");
+  ENDIF;
+
+  FOR i_p := 1 TO n_p-1  DO          ! Start loop alla punkter i filen
+
+  medel(i_p).x := x_ut(i_p).x;
+  medel(i_p+1).x := x_ut(i_p+1).x;
+
+  medel(i_p).y := (x_ut(i_p).y + x_ut(i_p).z)/2.0;
+  medel(i_p+1).y := (x_ut(i_p+1).y + x_ut(i_p+1).z)/2.0;
+
+
+  IF DEBUG = 1 THEN
+   LST_LIN("Pt no. "
+       +STR(i_p,-1,0)+" x_ut.x= "
+       +STR(medel(i_p).x,-15,4)+" medel.y= "
+       +STR(medel(i_p).y,-10,6));
+  ENDIF;
+
+        SET(LFONT=0);               ! Heldragen linje
+
+    LIN_FREE(#22, VEC(             ! Skapa linje
+      (medel(i_p).x+transl_x)*skalf_x, ! Från X koordinat
+      medel(i_p).y*skalf_y ),       ! Från Y koordinat
+   VEC((medel(i_p+1).x+transl_x)*skalf_x, ! Till X koordinat
+      medel(i_p+1).y*skalf_y )      ! Till Y koordinat
+      :BLANK=0 );                  !
+
+  ENDFOR;                          ! Slut  loop alla punkter i filen
+  IF DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+
+! +++
+! 8. Regression line
+! ---
+
+   IF case = 10 OR case = 11 THEN   ! Reg.linje-alternativet
+
+
+
+     PART(#37,meavregv0(n_p,medel,!
+                  A,B):SAVE=0);   !
+
+        SET(LFONT=1);               ! Streckad linje
+        SET(LDASHL=10);             ! Streckens langd
+
+        LIN_FREE(#38,VEC(              !
+                     (medel(1).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(1).x+B)   !
+                     *skalf_y),        !
+                     VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B) !
+                     *skalf_y));       !
+
+        POI_FREE(#39,VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B)  !
+                     *skalf_y):BLANK=1);!
+
+
+        SET(TSIZE=3);
+        SET(TWIDTH=50);
+
+
+        TEXT(#55,ON(REFC(39,1),1.0)+
+                 VEC(10,2),A,
+                 "MK Lutning = " + STR(ARCTAN(A),-8,4)+
+                 " grader" );
+
+   ENDIF;
+
+! +++
+! 9. Leading edge
+! ---
+
+  IF DEBUG = 1 THEN
+  LST_INI("Skapa räta linjer");
+  ENDIF;
+
+  FOR i_p := 1 TO n_p-1  DO          ! Start loop alla punkter i filen
+
+  medel(i_p).x := x_ut(i_p).x;
+  medel(i_p+1).x := x_ut(i_p+1).x;
+
+  medel(i_p).y := x_ut(i_p).y;
+  medel(i_p+1).y := x_ut(i_p+1).y ;
+
+  IF DEBUG = 1 THEN
+   LST_LIN("Pkt nr "
+       +STR(i_p,-1,0)+" x_ut.x= "
+       +STR(medel(i_p).x,-15,4)+" x_ut.y= "
+       +STR(medel(i_p).y,-10,6));
+  ENDIF;
+
+        SET(LFONT=0);               ! Heldragen linje
+
+    LIN_FREE(#32, VEC(             ! Skapa linje
+      (medel(i_p).x+transl_x)*skalf_x, ! Från X koordinat
+      medel(i_p).y*skalf_y ),       ! Från Y koordinat
+   VEC((medel(i_p+1).x+transl_x)*skalf_x, ! Till X koordinat
+      medel(i_p+1).y*skalf_y )      ! Till Y koordinat
+      :BLANK=0 );                  !
+
+  ENDFOR;                          ! Slut  loop alla punkter i filen
+  IF DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+
+! +++
+! 10. Regression line leading edge
+! ---
+
+   IF case = 10 OR case = 11 THEN   ! Reg.linje-alternativet
+
+
+
+     PART(#47,meavregv0(n_p,medel,!
+                  A,B):SAVE=0);   !
+
+        SET(LFONT=1);               ! Streckad linje
+        SET(LDASHL=10);             ! Streckens langd
+
+        LIN_FREE(#48,VEC(              !
+                     (medel(1).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(1).x+B)   !
+                     *skalf_y),        !
+                     VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B) !
+                     *skalf_y));       !
+
+        POI_FREE(#49,VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B)  !
+                     *skalf_y):BLANK=1);!
+
+
+        SET(TSIZE=3);
+        SET(TWIDTH=50);
+
+
+        TEXT(#65,ON(REFC(49,1),1.0)+
+                 VEC(10,2),A,
+                 "LE Slope = " + STR(ARCTAN(A),-8,4)+
+                 " degrees" );
+
+   ENDIF;
+
+! +++
+! 11. Trailing edge
+! ---
+
+  IF DEBUG = 1 THEN
+  LST_INI("Create straight lines");
+  ENDIF;
+
+  FOR i_p := 1 TO n_p-1  DO          ! Start loop alla punkter i filen
+
+  medel(i_p).x := x_ut(i_p).x;
+  medel(i_p+1).x := x_ut(i_p+1).x;
+
+  medel(i_p).y := x_ut(i_p).z;
+  medel(i_p+1).y := x_ut(i_p+1).z ;
+
+
+  IF DEBUG = 1 THEN
+   LST_LIN("Pt no "
+       +STR(i_p,-1,0)+" x_ut.x= "
+       +STR(medel(i_p).x,-15,4)+" x_ut.y= "
+       +STR(medel(i_p).y,-10,6));
+  ENDIF;
+
+        SET(LFONT=0);               ! Heldragen linje
+
+    LIN_FREE(#52, VEC(             ! Skapa linje
+      (medel(i_p).x+transl_x)*skalf_x, ! Från X koordinat
+      medel(i_p).y*skalf_y ),       ! Från Y koordinat
+   VEC((medel(i_p+1).x+transl_x)*skalf_x, ! Till X koordinat
+      medel(i_p+1).y*skalf_y )      ! Till Y koordinat
+      :BLANK=0 );                  !
+
+  ENDFOR;                          ! Slut  loop alla punkter i filen
+  IF DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+
+! +++
+! 12. Regression line trailing edge
+! ---
+
+   IF case = 10 OR case = 11 THEN   ! Reg.linje-alternativet
+
+
+
+     PART(#57,meavregv0(n_p,medel,!
+                  A,B):SAVE=0);   !
+
+        SET(LFONT=1);               ! Streckad linje
+        SET(LDASHL=10);             ! Streckens langd
+
+        LIN_FREE(#58,VEC(              !
+                     (medel(1).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(1).x+B)   !
+                     *skalf_y),        !
+                     VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B) !
+                     *skalf_y));       !
+
+        POI_FREE(#59,VEC(              !
+                     (medel(n_p).x+transl_x)
+                     *skalf_x,         !
+                     (A*medel(n_p).x+B)  !
+                     *skalf_y):BLANK=1);!
+
+
+        SET(TSIZE=3);
+        SET(TWIDTH=50);
+
+
+        TEXT(#75,ON(REFC(59,1),1.0)+
+                 VEC(10,2),A,
+                 "TE Slope = " + STR(ARCTAN(A),-8,4)+
+                 " degrees" );
+
+   ENDIF;
+
+ENDMODULE

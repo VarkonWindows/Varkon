@@ -1,0 +1,206 @@
+!********************* meawingpv0 *****************************************
+! +++
+! Create a wing plane and registrate the wing plane with MEAWPLREC
+! 
+! Note that all measured points must be within the wing plane
+! the projected leading (and trailing) edge must. A delta distance
+! distance for the leading edge is therefore input to the function.
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-11  Gunnar Liden
+! 1996-03-25  Default values Gunnar Liden
+! 1996-05-04 Default values Gunnar Liden
+! 1996-09-25 Automatic calculation of wing plane Gunnar Liden
+! 1997-04-08 Y axis projection direction         Gunnar Liden 
+!
+! 
+!***********************************************************************
+
+!sdesce Create a wing plane and registrate the wing plane with MEAWPLREC
+!sdescs Skapa vingplan och registrera vingplanet med MEAWPLREC
+
+GLOBAL DRAWING MODULE meawingpv0 (
+REF    view_id                 > "@t16384 Select coordinate system (view)";
+STRING proj_dir*1:= "Z"        > "Projection direction (only Z implem.)";
+VECTOR fkstart_uv:= VEC(-1,-1) > "@ Leading edge UV start pt <CR>= (-1,-1)= automatic";
+VECTOR fkslut_uv := VEC(-1,-1) > "@ Leading edge UV end   pt";
+VECTOR bkstart_uv:= VEC(-1,-1) > "@ Trailing edge UV start pt";
+VECTOR bkslut_uv := VEC(-1,-1) > "@ Trailing edge UV end   pt";
+FLOAT  delta_l   :=  20.0      > "@ Delta for leading edge (normal direction)";
+INT    grafik    := 1          > "0: No graphic 1: Show plane ");
+
+! Interna variabler
+
+                                   ! For figgetvyv2:
+REF    csys_id;                    ! Coordinate system for points
+STRING vy*6;                       ! View xy, xz, yz or iso
+STRING fplproj_v*44;               ! Aircraft (or other) project
+STRING datum*28;                   ! Coordinate system (name)
+FLOAT  skala;                      ! Scale (scale factor= 1/skala)
+VECTOR origo;                      ! Position on drawing for the view
+FLOAT  x0;                         ! Origin x coordinate
+FLOAT  y0;                         ! Origin y coordinate
+FLOAT  z0;                         ! Origin z coordinate
+FLOAT  xlangd;                     ! Length of X axis
+FLOAT  ylangd;                     ! Length of Y axis
+FLOAT  zlangd;                     ! Length of Z axis
+VECTOR ang;                        ! Euler angles 
+STRING namn*20;                    ! Input PART name
+
+                                   ! For GET_NEXT_GM:
+INT    tmod;                       ! 0: All entities 1: Parts on same level
+REF    psur_id;                    ! Reference to regsurfv0
+
+                                   ! For retrieval of data from regsurfv0;
+REF    sur_id;                     ! Global reference (# identity) to surface
+STRING fplproj*44;                 ! Aircraft (or other) project
+STRING surname*30;                 ! Name of surface 
+STRING csyname*10;                 ! Coordinate system 
+STRING surflib*1;                  ! Surface library r/p 
+STRING desc_s*132;                 ! Description
+
+FLOAT  const_pl;                   ! Average value constant plane
+FLOAT  const_pl_i;                 ! As integer ...
+
+                                   ! For MEAWPLREC
+VECTOR fkstart;                    ! Leading  edge start point
+VECTOR fkslut;                     ! Leading  edge end   point
+VECTOR bkstart;                    ! Trailing edge start point
+VECTOR bkslut;                     ! Trailing edge end   point
+STRING descr*132;                  ! Description of wing plane
+
+VECTOR v_sil;                      ! Vector defining forward edge silhouette 
+
+REF    tra_id;                     ! Transformation identity
+
+INT    DEBUG;                      ! Debug
+
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;
+
+! +++
+! 1. Retrieve view data
+! ---
+
+     PART(#2,figgetvyv2(view_id, 
+       csys_id, vy, fplproj_v, datum,
+       skala, origo, x0, y0, z0, xlangd,
+       ylangd, zlangd, ang, namn));
+  
+! +++
+! 2. Get reference to surface 
+! ---
+
+    SET_ROOT_GM(#0);
+
+    tmod := 0;
+    psur_id := GET_NEXT_GM (tmod,16384,"regsurfv0");
+
+    IF  psur_id = #0 THEN
+      EXIT("meawingpv0 There is no wing surface in GM");
+    ENDIF;
+
+! +++
+! 3. Calculate wing plane      
+! ---
+
+    sur_id  := GETREF(psur_id, 1); 
+    fplproj := GETSTR(psur_id, 2); 
+    surname := GETSTR(psur_id, 3); 
+    csyname := GETSTR(psur_id, 4); 
+    surflib := GETSTR(psur_id, 5); 
+    desc_s  := GETSTR(psur_id, 6); 
+
+    IF  datum = csyname  THEN
+      ; ! No transformation is necessary
+    ELSE
+      EXIT("meawingpv0 A surface in another system not yet implemented");
+    ENDIF;
+
+    IF    proj_dir = "z" OR proj_dir = "Z" THEN
+      v_sil.x := 0.0; 
+      v_sil.y := 0.0; 
+      v_sil.z := 1.0; 
+    ELIF  proj_dir = "y" OR proj_dir = "Y" THEN
+      v_sil.x := 0.0; 
+      v_sil.y := 1.0; 
+      v_sil.z := 0.0; 
+    ELSE
+      EXIT("meawingpv0 Projection in "+proj_dir+" not yet implemented");
+    ENDIF;
+
+    IF   fkstart_uv.x  <  0.0 THEN
+      PART(#4 , meawprov0 ( sur_id, v_sil, 
+           fkstart_uv, fkslut_uv, bkstart_uv, bkslut_uv));
+    ENDIF;
+
+
+    fkstart := ON(sur_id,fkstart_uv) +   ! Leading  edge start point
+     delta_l*NORM(sur_id,fkstart_uv);    !
+    fkslut  := ON(sur_id, fkslut_uv) +   ! Leading  edge end   point
+     delta_l*NORM(sur_id, fkslut_uv);    !
+    bkstart := ON(sur_id,bkstart_uv);    ! Trailing edge start point
+    bkslut  := ON(sur_id, bkslut_uv);    ! Trailing edge end   point
+
+    IF    proj_dir = "z" OR proj_dir = "Z" THEN
+      const_pl   := (fkstart.z+fkslut.z+bkstart.z+bkslut.z)/4.0;
+      const_pl_i := ROUND(const_pl);
+      const_pl   := const_pl_i;
+      fkstart.z  := const_pl;
+      fkslut.z   := const_pl;
+      bkstart.z  := const_pl;
+      bkslut.z   := const_pl;
+    ELIF  proj_dir = "y" OR proj_dir = "Y" THEN
+      const_pl   := (fkstart.y+fkslut.y+bkstart.y+bkslut.y)/4.0;
+      const_pl_i := ROUND(const_pl);
+      const_pl   := const_pl_i;
+      fkstart.y  := const_pl;
+      fkslut.y   := const_pl;
+      bkstart.y  := const_pl;
+      bkslut.y   := const_pl;
+    ENDIF;
+
+! +++
+! 4. Registrate wing plane      
+! ---
+
+    descr := "Wing plane registered in meawingpv0";
+    PART ( #1, MEAWPLREC (
+     fplproj, csyname, 
+     fkstart, fkslut, 
+     bkstart, bkslut, 
+     surname, descr));
+
+! +++
+! 5. Graphical representation   
+! ---
+
+  PART ( #3, meawinggv0 (
+    fkstart, fkslut, bkstart, bkslut,
+    csys_id, skala, x0, y0, z0, grafik));
+
+
+  IF  DEBUG = 1 THEN
+  LST_INI("meawingpv0 Debug printout");
+  LST_LIN("fkstart "+STR(fkstart.x,10,2)+" "+ 
+                     STR(fkstart.y,10,2)+" "+ 
+                     STR(fkstart.z,10,2)); 
+  LST_LIN("fkslut  "+STR(fkslut.x,10,2)+" "+ 
+                     STR(fkslut.y,10,2)+" "+ 
+                     STR(fkslut.z,10,2)); 
+  LST_LIN("bkstart "+STR(bkstart.x,10,2)+" "+ 
+                     STR(bkstart.y,10,2)+" "+ 
+                     STR(bkstart.z,10,2)); 
+  LST_LIN("bkslut  "+STR(bkslut.x,10,2)+" "+ 
+                     STR(bkslut.y,10,2)+" "+ 
+                     STR(bkslut.z,10,2)); 
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

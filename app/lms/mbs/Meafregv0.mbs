@@ -1,0 +1,78 @@
+!******************** meafregv0 **********************
+! +++
+! Calculate the regression line for X coordinates of
+! array of input points and an array of function values
+! ---
+!s+++
+! Funktionen beräknar en regressionslinje, som i minsta
+! kvadratmetodens mening ansluter så nära som möjligt
+! till en given punktmängd i planet.
+! 
+! Indata är en array av 3D punkter, som normalt är uppmätta
+! punkter från en vingyta, och en array med funktionsvärden.
+! Funktionsvärdena är normalt avvikelser från ytan. Minsta
+! kvadratmetoden görs på X värdena från 3D punkter. Korda-
+! riktningen är oftast X för en vingsektion. Funktionsvärden
+! är avvikelserna, dvs felen.
+!
+! En ny version av denna rutin bör, för att vara mer generell,
+! ha en parameter som definerar om X, Y eller Z ska utnyttjas
+! som x vi skapandet av linjen x= f(x)
+! 
+!s---
+! Revision history
+! ________________
+!
+! 1993-11-10 Ronny Gyllensten
+! 1995-03-09 Documentation             G Liden
+! 1995-03-28 MEAREGV0 till mearegv0    R Gyllensten
+! 1996-04-23 mearegv0 -> meafregv0     R Gyllensten
+! 1996-04-24 Kommentarer               G Liden
+! 1996-04-25 DRAWING->GEOMETRY,v_reg   R Gyllensten
+! 1997-04-25 Documentation in English  G Liden        
+!
+!****************************************************
+
+!sdescs Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+!sdesce Regression line for a set of points (least square method)
+
+BASIC GEOMETRY MODULE meafregv0 (
+
+    INT     N;                     ! Number of points 
+VAR VECTOR  u_in(200) ;            ! Point with x- y- and z-coordinates
+VAR FLOAT   f(200) ;               ! Function values 
+VAR FLOAT   A;                     ! Direction coefficient
+VAR FLOAT   B);                    ! Translation coefficient
+
+! Internal variables:
+
+    INT         i;                 ! Loop index    
+    VECTOR      v_reg(200);        ! Curve pts for regression calculation
+
+BEGINMODULE
+
+
+
+! +++
+! 1. Calculate the straight line
+! ---
+
+
+!    Points to array for meavregv0
+       FOR i := 1 TO  N    DO      ! i=1, ... ,N
+
+         v_reg(i).x := u_in(i).x ;
+
+         v_reg(i).y := f(i) ;
+
+         v_reg(i).z := 0 ;
+
+       ENDFOR;
+
+
+!     Least square calculation
+      PART(#1,meavregv0(N,v_reg,A,B):SAVE=0);
+
+
+
+ENDMODULE

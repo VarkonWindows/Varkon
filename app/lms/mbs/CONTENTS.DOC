@@ -1,0 +1,60 @@
+Files with extension .MBS on directory /home/ultra4/a73320/varkon/app/lms/code/ Date: 1997-04-28
+
+csysfilev0.MBS   Get full file name for file with coordinate system data
+csysnestv0.MBS   Intersect coordinate system for nest of planar intersects
+csyspathv0.MBS   Definition of (search) path for coordinate system libraries      
+csysreadv0.MBS   Reads coordinate system data from text file .
+eval_utouv.MBS   From U surface curve parameter to UV surface point  
+figcsysv0.MBS    Places a coordinate system with axis in a SAAB view
+figgetvyv2.MBS   Get information about current view
+figvyv2.MBS      Reads scaled coordinate system axis to a surface diagram
+figytav0.MBS     Reads a scaled surface to diagram
+meacompv1.MBS    Creates a composite (straight lines) deviation curve
+meacordv0.MBS    Calculate chord length for a given section in a wing
+meadia3v2.MBS    Diagram: X= Chord Y= Deviation Regression line as an option
+meadia4v2.MBS    Diagram for deviations in thickness function for a wing profile
+meadia5v3.MBS    Diagram for deviations in camber line for a wing profile
+meadia6v2.MBS    Twist deviation diagram for a wing
+meadia7v2.MBS    Diagram for deviations in z translation for a wing
+meadiagtv0.MBS   Get registered data from camber line deviation diagrams
+meadiargv0.MBS   The function registers camber line diagram data
+meafilev0.MBS    Create a Metronor file with point data from a simulation
+meafregv0.MBS    Regression line for a set of points (least square method)
+meagetpv0.MBS    Get a group of measured points from all points
+meagraphv0.MBS   Definition of colours for graphical represent. of deviations
+meamedelv0.MBS   Calculates and creates camber line deviation curve for wing profile
+meametrav0.MBS   Read and register measured data from METRONOR file (3D)
+meametrbv0.MBS   Reads data from METRONOR output file b format
+meametrcv0.MBS   Reads data from METRONOR output file  d (reduced) format
+meametrdv0.MBS   Reads data from METRONOR output file d format
+meametrov3.MBS   Read measured data from METRONOR file. Format: d, b and d(reduced)
+meapanal1.MBS    Analyses measured points w.r.t mean, maximum and minimum deviations
+MEAPOIREC.MBS    Registration of measured point, deviations, point number, ...
+meapsim1v1.MBS   Read surface from library, make intersects, points and scale
+meapsim2v1.MBS   Create deviation curves
+meapsimv1.MBS    Simulate measuring of wing profiles
+mearami3v0.MBS   Creates a drawing sheet for METRONOR points (demo special)
+measort1.MBS     Sorting of X values (from intersect calculation)
+measortv3.MBS    Sorting of points on first variable
+meathickv1.MBS   Calculates and creates thickness deviation curve for wing profile
+meatxti3v0.MBS   Text (surface, description, .. ) for measurement drawing sheet 
+meavregv0.MBS    Regression line for a set of points (least square method)
+meawinggv0.MBS   Graphics for wing plane
+meawingpv0.MBS   Create a wing plane and registrate the wing plane with MEAWPLREC
+MEAWPLREC.MBS    Registration of a wing plane
+meawprov0.MBS    Calculate wing plane as approx. silhouettes, output are UV points
+MINMAXREG.MBS    Registration of minimum and maximum values for a surface
+modtsize.MBS     Calculates new TSIZE in text
+pil.MBS          Makes an arrow on the coordinate-axis
+rdrefsurv0.MBS   Import a reference (NMG) surface from the surface library 
+rdsurscav0.MBS   Read surface from library, scale surface, create isoparametrics 
+regsurfv0.MBS    Registrate a reference surface 
+s_adeforv0.MBS   Deformation of a wing surface with a random twist function
+s_anestv0.MBS    Nest of planar intersects in a surface. Output curve references
+s_bdeforv0.MBS   Translation deformation of a surface with a random function
+s_minmaxv0.MBS   Finds maximum and minimum coordinates for a surface
+surffilev0.MBS   Get full file name for file with surface data
+surfpathv0.MBS   Definition of (search) path for surface libraries      
+surnunv.MBS      Retrieve number of patches and surfcae type
+tra_2dav0.MBS    Create transformation with scaling and translation for 2D drawing
+tv_locase.MBS    Converts text to lower case (small) letters

@@ -1,0 +1,117 @@
+!******************** csysreadv0 ***************************************
+! +++
+! Reads coordinate system data from text file .
+!
+! Revision history
+! ________________
+!
+! 1996-02-13 (Source reg_csys) Gunnar Liden
+! 
+! ---
+!***********************************************************************
+!sdesce Reads coordinate system data from text file .
+!sdescs L{ser koordinatsystem data fr}n fil            
+
+BASIC GEOMETRY MODULE csysreadv0 (
+    STRING c_name*132;           ! Full file name
+VAR FLOAT  c_data(4,4);          ! Coordinate system data
+VAR VECTOR origin);              ! Origin for system
+
+! Internal variables:
+
+  STRING      csys_part*28;    ! Koordinatsystemsnamn l{st
+                               ! fr}n part-data med GETSTR
+
+  FILE        f;               ! File with data  (F07-file)
+
+  STRING      rad*132;         ! Dummy variable for read
+
+  FLOAT       a11;             ! Matrisdata
+  FLOAT       a12;             !
+  FLOAT       a13;             !
+  FLOAT       a21;             !
+  FLOAT       a22;             !
+  FLOAT       a23;             !
+  FLOAT       a31;             !
+  FLOAT       a32;             !
+  FLOAT       a33;             !
+  FLOAT       b1;              !
+  FLOAT       b2;              !
+  FLOAT       b3;              !
+
+  STRING      s*1;             ! Str{ng f|r DEBUG (INPMT)
+  INT         DEBUG;           ! F|r kontroll utskrifter
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ----
+
+! Initializations
+
+
+  DEBUG := 0;                  ! Change to 0 or 1
+
+! +++
+! Open file
+! ---
+
+   OPEN(f, "r", c_name );       ! Open
+
+   IF IOSTAT(f) <> 0 THEN       ! Error for no file
+     EXIT("csysreadv0 No file " !
+      + c_name );               !
+   ENDIF;
+
+   rad:= INLIN(f);              ! L{ser f|rbi f|rsta raden (namnet {r k{nnt)
+
+   b1:= INFLT(f);               !
+   b2:= INFLT(f);               !
+   b3:= INFLT(f);               !
+   rad:= INLIN(f);              ! L{ser till ny rad
+
+   a11:= INFLT(f);              !
+   a21:= INFLT(f);              !
+   a31:= INFLT(f);              !
+   rad:= INLIN(f);              ! L{ser till ny rad
+
+   a12:= INFLT(f);              !
+   a22:= INFLT(f);              !
+   a32:= INFLT(f);              !
+   rad:= INLIN(f);              ! L{ser till ny rad
+
+   a13:= INFLT(f);              !
+   a23:= INFLT(f);              !
+   a33:= INFLT(f);              !
+                                
+! +++
+! Close file
+! ---
+
+   CLOSE(f);                    ! Close
+
+   origin.x    :=  b1;
+   origin.y    :=  b2;
+   origin.z    :=  b3;
+
+   c_data(1,1) := a11;
+   c_data(1,2) := a21;
+   c_data(1,3) := a31;
+   c_data(1,4) :=  -a11*b1 - a21*b2 - a31*b3;
+   c_data(2,1) := a12;
+   c_data(2,2) := a22;
+   c_data(2,3) := a32;
+   c_data(2,4) :=  -a12*b1 - a22*b2 - a32*b3;
+   c_data(3,1) := a13;
+   c_data(3,2) := a23;
+   c_data(3,3) := a33;
+   c_data(3,4) :=  -a13*b1 - a23*b2 - a33*b3;
+   c_data(4,1) := 0.0;
+   c_data(4,2) := 0.0;
+   c_data(4,3) := 0.0;
+   c_data(4,4) := 1.0;
+
+ENDMODULE
+

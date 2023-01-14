@@ -1,0 +1,36 @@
+!********************* MEAPOIREC  ***********************
+! +++
+! Registration of measured point, deviations, point number,
+! group number and a description of the point 
+!
+! Revision history
+! ________________
+!
+! 1993-08-31  Gunnar Liden
+! 1995-03-09 Documentation Gunnar Liden
+! 1996-03-04 Documentation Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs Registrering av uppmätt pkt, avvikelser, punktnummer, ..
+!sdesce Registration of measured point, deviations, point number, ...
+
+GLOBAL GEOMETRY MODULE MEAPOIREC  (
+
+VECTOR       m_p;                ! Measured point
+VECTOR       r_p;                ! Reference point (closest pt on surface)
+FLOAT        d_tot;              ! Total deviation to surface
+                                 ! (Deviation between m_p and r_p)
+INT          p_no;               ! Point number
+INT          g_no;               ! Group number (e.g section number)
+STRING       descr*132);         ! Name and description of point
+
+
+BEGINMODULE
+
+
+! No calculations 
+
+;
+
+ENDMODULE

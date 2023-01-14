@@ -1,0 +1,143 @@
+!********************* meawprov0  *****************************************
+! +++
+! Calculate wing plane as approx. silhouettes, define as UV points
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-25  Gunnar Liden
+! 
+!***********************************************************************
+
+!sdesce Calculate wing plane as approx. silhouettes, output are UV points
+!sdescs Beräkna vingplan som silhuetter, utdata är UV punkter 
+
+GLOBAL GEOMETRY MODULE meawprov0  (
+    REF    sur_id;                ! Reference to surface
+    VECTOR v_sil;                 ! Vector defining forward edge silhouette 
+VAR VECTOR fkstart_uv;            ! Leading edge UV start point
+VAR VECTOR fkslut_uv ;            ! Leading edge UV end   point
+VAR VECTOR bkstart_uv;            ! Trailing edge UV start point
+VAR VECTOR bkslut_uv);            ! Trailing edge UV end   point
+
+! Internal variables
+
+  VECTOR uv_pt;                   ! Current UV point in surface
+  INT    npatu;                   ! Number of U patches in the surface
+  INT    npatv;                   ! Number of V patches in the surface
+  INT    i_u;                     ! Loop index point in U direction
+  INT    i_v;                     ! Loop index point in V direction
+
+  VECTOR s_n_start;               ! Start surface normal
+  VECTOR s_n_end;                 ! End   surface normal
+  FLOAT  dot_start;               ! Start scalar product 
+
+  VECTOR s_n;                     ! Current surface normal
+  FLOAT  dot;                     ! Current scalar product
+
+  FLOAT  sum_lead;                ! Sum of all leading edge V or U values
+
+  STRING sect_case*20;            ! Wing case
+                                  ! U_profiles or V_profiles
+
+  INT    DEBUG;                   ! Debug
+
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;
+
+  fkstart_uv := VEC(-9.87654321,-9.87654321);
+  fkslut_uv  := VEC(-9.87654321,-9.87654321);
+  bkstart_uv := VEC(-9.87654321,-9.87654321);
+  bkslut_uv  := VEC(-9.87654321,-9.87654321);
+
+! +++
+! 1. Retrieve number of patches
+! ---
+
+  GETSURH(sur_id,"NPATU",npatu);
+  GETSURH(sur_id,"NPATV",npatv);
+
+! +++
+! 2. Determine if sections are U or V lines
+! ---
+
+  sect_case := "Undefined";
+
+  FOR  i_u:= 0 TO npatu DO
+    uv_pt     := VEC(i_u,0);
+    s_n_start := NORM(sur_id, uv_pt);
+    uv_pt     := VEC(i_u,npatv);
+    s_n_end   := NORM(sur_id, uv_pt);
+    IF    s_n_start*s_n_end < 0.0 AND sect_case = "Undefined" THEN
+      sect_case := "U_profiles";
+    ELIF  s_n_start*s_n_end < 0.0 AND sect_case = "U_profiles" THEN
+      ; ! Also this section indicates U profiles
+    ELIF  s_n_start*s_n_end > 0.0 AND sect_case = "U_profiles" THEN
+      sect_case := "Undefined"; ! Not U_profiles
+    ENDIF;
+  ENDFOR;
+
+  IF  sect_case = "Undefined" THEN
+    EXIT("meawprov0 V curves as profiles not yet implemented");
+  ENDIF;
+
+! +++
+! 3. Find the leading edge V isoparameter      
+! ---
+
+  uv_pt     := VEC( 0 ,0);
+  s_n_start := NORM(sur_id, uv_pt);
+  dot_start := s_n_start*v_sil;
+
+  sum_lead := 0.0;
+
+  FOR  i_u:= 0 TO npatu DO
+    FOR  i_v:= 0 TO  npatv DO
+      uv_pt := VEC(i_u,i_v);
+      s_n   := NORM(sur_id, uv_pt);
+      dot   := s_n*v_sil;
+      IF    dot_start < 0.0 AND dot >= 0.0 THEN
+        sum_lead := sum_lead + i_v;
+        GOTO  nextprof;
+      ELIF  dot_start > 0.0 AND dot <= 0.0 THEN
+        sum_lead := sum_lead + i_v;
+        GOTO  nextprof;
+      ENDIF;
+    ENDFOR;
+    EXIT("meawprov0 Program error U lead");
+nextprof:; ! Next U profile
+  ENDFOR;
+
+  fkstart_uv.x := 0.0;
+  fkstart_uv.y := sum_lead/(npatu+1);
+  fkstart_uv.z := 0.0;
+  fkslut_uv.x  := npatu;
+  fkslut_uv.y  := sum_lead/(npatu+1);
+  fkslut_uv.z  := 0.0;
+  
+  bkstart_uv.x := 0.0;
+  bkstart_uv.y := 0.0;
+  bkstart_uv.z := 0.0;
+  bkslut_uv.x  := npatu;
+  bkslut_uv.y  := npatv;
+  bkslut_uv.z  := 0.0;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("meawprov0  Debug printout");
+  LST_LIN("sect_case "+sect_case);
+  LST_LIN("fkstart_uv "+STR(fkstart_uv.x,10,2)+" "+ 
+                        STR(fkstart_uv.y,10,2)); 
+  LST_LIN("fkslut_uv  "+STR(fkslut_uv.x,10,2)+" "+ 
+                        STR(fkslut_uv.y,10,2)); 
+  LST_LIN("bkstart_uv "+STR(bkstart_uv.x,10,2)+" "+ 
+                        STR(bkstart_uv.y,10,2)); 
+  LST_LIN("bkslut_uv  "+STR(bkslut_uv.x,10,2)+" "+ 
+                        STR(bkslut_uv.y,10,2)); 
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

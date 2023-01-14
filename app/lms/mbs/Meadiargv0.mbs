@@ -1,0 +1,29 @@
+
+!******************** meadiargv0 **************************************
+! +++
+! The function registers camber line diagram data
+! ---
+! Revision history
+! ________________
+!
+! 1997-04-28 Gunnar Liden    
+!
+!***********************************************************************
+
+!sdesce The function registers camber line diagram data
+!sdescs Registrering av data for valvningsdiagram
+
+BASIC GEOMETRY MODULE meadiargv0 (
+    FLOAT  med_y;                ! Average value  Y
+    FLOAT  twist_error;          ! Twist error (least square estimation)
+    FLOAT  A;                    ! Slope       (least square estimation)
+    FLOAT  lead_error_z;         ! Leading  edge Z translation error
+    FLOAT  trail_error_z;        ! Trailing edge Z translation error
+    FLOAT  lead_error_x;         ! Leading  edge X translation error
+    FLOAT  trail_error_x);       ! Trailing edge X translation error
+
+BEGINMODULE
+
+; ! No calculalations, just registration
+
+ENDMODULE

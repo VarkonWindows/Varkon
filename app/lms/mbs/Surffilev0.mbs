@@ -1,0 +1,116 @@
+!********************  surffilev0 **********************
+!
+! +++
+! Get full file name for file with surface data
+!
+! Revision history
+! ________________
+!
+! 1996-02-13  Gunnar Liden
+! 1996-02-22  Small and capital letters Gunnar Liden
+!
+! ---
+!*******************************************************
+
+BASIC  GEOMETRY MODULE  surffilev0 (
+    STRING surname*30;       ! Name of surface 
+    STRING csyname*10;       ! Coordinate system
+VAR STRING f_name*132);      ! Full file name   
+
+!sdesce Get full file name for file with surface data
+!sdescs H{mta fullst{ndigt namn f|r ytdatafil p} ett generellt ytbibliotek
+
+! Internal variables:
+
+  STRING path(20)*50;        ! Output directories
+  INT    n_path;             ! Number of directories
+
+  INT    i_d;                ! Loop index directory
+
+  FILE   tmp;                ! File fname.MBS
+
+  STRING extension1*20;      ! Extension file alternative 1
+!  STRING extension2*20;      ! Extension file alternative 2
+
+  STRING c_name*132;         ! File name with capital letters
+  STRING s_name*132;         ! File name with small   letters
+
+  STRING s*1;                ! For INPMT
+  INT    DEBUG;              ! Eq. 0: No Debug  
+                             ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+! +++
+!  Algorithm
+!  _________
+!
+!  1. Get names to all directories with surface data
+! ---
+  
+   PART ( #1, surfpathv0   (       ! Get all directories
+         path, n_path):SAVE=0);   
+
+
+! +++
+!  Loop for all subdirectories with surface data
+!  Try to open surname.DAT_csysname or surname.dat_csysname
+! ---
+
+  IF   csyname = "F07" OR          !
+       csyname = "f07"    THEN     !
+    extension1:= ".F07";           !
+!    extension2:= ".f07";           !
+  ELIF csyname = ""    OR          !
+       csyname = " "      THEN     !
+    extension1:= ".DAT";           !
+!    extension2:= ".dat";           !
+  ELSE                             !
+    extension1:= ".DAT_"+csyname;  !
+!    extension2:= ".dat_"+csyname;  !
+  ENDIF;                           !
+
+  c_name := surname+extension1;    !
+  s_name := surname+extension1;    !
+  PART ( #2, tv_upcase ( c_name )  ! Convert to capital letters
+             :SAVE=0);             !
+  PART ( #3, tv_locase ( s_name )  ! Convert to small   letters
+             :SAVE=0);             !
+
+  FOR i_d:= 1 TO n_path DO         ! Start loop n_path
+
+   f_name := path(i_d) + c_name;   ! Try first name with capital letters
+   OPEN(tmp,"r",f_name );          ! Try to open file
+   IF (IOSTAT(tmp)<>0 ) THEN       ! 
+      ;                            ! Next directory
+   ELSE                            !
+     CLOSE(tmp);                   ! Close file
+     GOTO   found;                 !
+   ENDIF;                          !
+   f_name := path(i_d) + s_name;   ! Try second name with small   letters
+   OPEN(tmp,"r",f_name );          ! Try to open file
+   IF (IOSTAT(tmp)<>0 ) THEN       ! 
+      ;                            ! Next directory
+   ELSE                            !
+     CLOSE(tmp);                   ! Close file
+     GOTO   found;                 !
+   ENDIF;                          !
+
+  ENDFOR;                          ! End   loop n_path
+
+  LST_INI("surffilev0 ERROR ERROR ERROR ERROR ERROR");
+  LST_LIN("There is no file "+c_name+" on directories:");
+  FOR  i_d := 1 TO n_path DO
+  LST_LIN(path(i_d));
+  ENDFOR;
+  LST_EXI();
+
+  EXIT("surffile No file "+s_name);
+
+found:;                            ! File is found
+
+ENDMODULE

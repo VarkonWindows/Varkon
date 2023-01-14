@@ -1,0 +1,205 @@
+!******************** meafilev0 *****************************************
+! +++
+! Create a Metronor file with point data from a simulation
+! 
+! Description of the data in the file
+! -----------------------------------
+!
+! There is one line with data for each measured point:
+!
+! d pno X  Y  Z devtot devx devy devz
+!
+! where 
+! d      Code defining the data that is listed 
+! pno    Point number
+! X      Measured point X coordinate
+! Y      Measured point Y coordinate
+! Z      Measured point Z coordinate
+! devtot Total deviation to reference surface
+! devx   Deviation in X
+! devy   Deviation in Y
+! devz   Deviation in Z
+!
+! There is a code for end of curve (group of points), 
+! i.e. two lines:
+!
+!     1.234567  1.234567 1.234567
+!     1.234567  1.234567 1.234567
+!
+! There is a code for end of file, i.e. two lines:
+!
+!    -1.234567  -1.234567 -1.234567
+!    -1.234567  -1.234567 -1.234567
+!
+! After these lines is free text allowed
+!
+! ---
+! 
+! Revision history
+! ________________
+!
+! 1996-03-19 Gunnar Liden
+! 1996-03-25 Default values Gunnar Liden
+! 1996-09-12 Debug = 2      Gunnar Liden
+! 1996-12-12 Description of data for Helen V. Gunnar Liden
+! 
+!************************************************************************
+
+!sdescs Skapa Metronorfil med punkter som skapats genom simulering
+!sdesce Create a Metronor file with point data from a simulation
+
+GLOBAL DRAWING MODULE meafilev0  (
+REF    ppts_id                    > "@t16384 Select set of points";
+STRING ut_fil*80 := "FLAP.METRO"  > "Name of output text file ";
+INT    case      := 1             > "Case= 1: d format  Case= 2: b format");
+
+! Internal variables:
+
+  FILE    u_f;                     ! Output file with simulated data
+
+                                   ! For get funktion meagetpv0:
+  INT    n_p;                      ! Number of pts in section i_snitt
+  VECTOR m_points(200);            ! Measured  points 
+  VECTOR r_points(200);            ! Reference points 
+  FLOAT  devtot(200);              ! Total (perpendicular) deviation 
+  INT    ptnumber(200);            ! Point number for measured point
+  STRING p_descr(200)*132;         ! Point description 
+
+  INT    i_grupp;                  ! Loop index subset (section) of points
+  INT    i_p;                      ! Loop index all points in the section 
+
+  FLOAT  devx;                     ! Deviation in X
+  FLOAT  devy;                     ! Deviation in Y
+  FLOAT  devz;                     ! Deviation in Z
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations 
+! ---
+
+  DEBUG := 0;                      ! Change to  0 or 1 or 2
+  
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Debug printout from meafilev0");
+  LST_LIN("Set of points reference ppts_id "+RSTR(ppts_id));
+  ENDIF;
+
+! +++
+! 2. Open file for output point data
+! ---
+
+  OPEN(u_f,"r",ACT_JOBDIR()     ! Check if file already exists
+  +ut_fil);                     !
+  IF (IOSTAT(u_f) <> 0 ) THEN   !
+!     OK, file does not exist   !
+      ;                         !
+  ELSE                          !
+  CLOSE(u_f);                   !
+back:                           ! Label for a not valid answer
+   s:=INPMT(ut_fil +            !
+     " exists "+                !
+   "Delete old file (y/n) ?",   !
+   "n",1);                      !
+   IF    s="y" OR s="Y" THEN    !
+     ;                          !
+   ELIF  s="n" OR s="N" THEN    !
+     GOTO nofil;                !
+   ELSE                         !
+     GOTO back;                 !
+   ENDIF;                       !
+  ENDIF;                        !
+
+  OPEN(u_f,"w",ACT_JOBDIR()+ut_fil); 
+  IF ( IOSTAT(u_f) <> 0 ) THEN  
+    EXIT("Creation of "+ut_fil+" failed");
+  ENDIF;
+
+
+! +++
+! 3. Get points for for all subsets of points and write data to a file
+! ---
+
+  FOR  i_grupp:= 1 TO 50 DO        ! Start loop subsets
+    PART(#1,meagetpv0( ppts_id,  
+      i_grupp,n_p,           
+      m_points,r_points,    
+      devtot,ptnumber,p_descr)
+      :SAVE=0);  ! (not saved in GM)
+
+    IF     n_p = 0 THEN
+      GOTO  nomore;
+    ENDIF;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("Number of points is n_p "+STR(n_p,12,0)+" in sub-set "+STR(i_grupp,3,0));
+  ENDIF;
+
+    IF  i_grupp > 1 THEN
+      OUTSTR(u_f," 1.234567  1.234567 1.234567  ");
+      OUTLIN(u_f);
+      OUTSTR(u_f," 1.234567  1.234567 1.234567  ");
+      OUTLIN(u_f);
+    ENDIF;
+
+    FOR  i_p:= 1 TO n_p DO         ! Start loop points in a subset
+        IF case = 1 THEN
+        OUTSTR(u_f,"d "+STR(ptnumber(i_p),-1,0)+" ");
+        ELIF case = 2 THEN           
+        OUTSTR(u_f,"b "+STR(ptnumber(i_p),-1,0)+" ");
+        ENDIF;
+        OUTFLT(u_f,m_points(i_p).x, 12,4);
+        OUTFLT(u_f,m_points(i_p).y, 12,4);
+        OUTFLT(u_f,m_points(i_p).z, 12,4);
+        IF case = 1 THEN
+        devx := m_points(i_p).x - r_points(i_p).x;
+        devy := m_points(i_p).y - r_points(i_p).y;
+        devz := m_points(i_p).z - r_points(i_p).z;
+        OUTFLT(u_f,devtot(i_p), 10,4);
+        OUTFLT(u_f,devx,  8,4);
+        OUTFLT(u_f,devy,  8,4);
+        OUTFLT(u_f,devz,  8,4);
+        ENDIF;
+        OUTLIN(u_f);
+        IF  DEBUG = 2 THEN
+          s:= INPMT("meafilev0 i_p= "+STR(i_p,-1,0)+" Continue y/n","y",1);
+          IF  s <> "y" THEN
+            GOTO  slut;
+          ENDIF;
+        ENDIF;
+    ENDFOR;                        ! End   loop points in a subset
+
+  ENDFOR;                          ! End   loop subsets
+
+! +++
+! 4. Exit (close output file)
+! ---
+
+nomore:;                           ! Label: There are nomore subsets
+
+  OUTSTR(u_f," -1.234567  -1.234567 -1.234567  ");
+  OUTLIN(u_f);
+  OUTSTR(u_f," -1.234567  -1.234567 -1.234567  ");
+  OUTLIN(u_f);
+  OUTSTR(u_f,"This file was created by point set "+ RSTR(ppts_id));
+  OUTLIN(u_f);
+  OUTSTR(u_f,"Output file: "+ACT_JOBDIR()+ut_fil);
+  OUTLIN(u_f);
+  OUTSTR(u_f,"              (This file)");
+  OUTLIN(u_f);
+
+slut:;
+
+  CLOSE(u_f);                      ! Close output file
+
+nofil:;                            ! Label: File exists and shall not be overwritten
+
+  IF  DEBUG = 1 THEN
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

@@ -1,0 +1,180 @@
+!********************* figvyv2 *****************************************
+! +++
+! The function creates a scaled coordinate system for a drawing view
+! ---
+!s+++
+! Funktionen läser in skalade koordinataxlar till figurbladet.
+!s---
+! Ändringshistorik:
+!
+! 1995-06-21  Ronny Gyllensten, Gun-Britt Ekros, Johan Ankarswärd
+! 1996-02-29  åäö 8 bitars ASCII Prompt strings Gunnar Liden    
+! 1997-04-23  Documentation also in English     Gunnar Liden    
+! 
+!***********************************************************************
+
+!sdesce Reads scaled coordinate system axis to a surface diagram
+!sdescs Läser in skalade koordinataxlar till figurbladet
+
+GLOBAL DRAWING MODULE figvyv2(
+
+STRING vy*6       := "iso"      > " View xy, xz, yz or iso";
+STRING fplproj*44 := "SF340"    > " Aircraft (or other) project";
+STRING datum*28   := "439"      > " Coordinate system (for transf. of surf.)";
+STRING coname*6   := "439"      > " Text for coordinate axis  ? ";
+FLOAT  skala      := 50.0       > " Scale (scale factor= 1/skala)";
+VECTOR origo      :=vec(20,100) > " Position for the view";
+FLOAT  x0         := 1500.0     > " Origin x coordinat";
+FLOAT  y0         :=    0.0     > " Origin y coordinat";
+FLOAT  z0         :=    0.0     > " Origin z coordinat";
+FLOAT  xlangd     := 2500.0     > " Length of x axis";
+FLOAT  ylangd     := 1500.0     > " Length of y axis";
+FLOAT  zlangd     := 1000.0     > " Length of z axis";
+INT    grafik     := 1          > " Graphic";
+VECTOR ang        := vec(0,0)       
+> "@ Euler angles <CR>==> (0,0) or (ang.x=alfa, ang.y=beta) ";
+STRING reserv2*80               > "@ Extra (not yet used) parameter");
+
+
+BEGINMODULE
+
+! Message to screen
+
+     PSH_PMT("Processing: figvyv2");
+
+! +++
+! 1. Create a local system for the positioning of the view
+! ---
+!s+++
+! 1. Skapa lokalt system för placering av vyn
+!s---
+     csys_1p(#1,"xyzvy",origo,0.0,0.0,0.0:BLANK=1);
+
+
+! +++
+! 2. Create the view
+! ---
+
+!s+++
+! 2. Läs in rätt vy till figurbladet
+!s---
+!s   Ytan (modulen) placeras med koordinatsystem #1.
+!s   Anrop av modul figcsysv0.
+
+     part(#5,figcsysv0(vy,fplproj, datum, skala,
+                     x0, y0, z0, xlangd, ylangd, zlangd, grafik,
+                     ang,reserv2), #1);
+! +++
+! 3. Text for the coordinate axis
+! ---
+!s+++
+! 3. Text till koordinataxlarna
+!s---
+
+  set(TSIZE=3);
+  set(TWIDTH=50);
+
+   IF coname = "" OR coname = " " THEN
+
+      GOTO slut;
+   ENDIF;
+
+   IF vy = "xy"  OR vy = "w3"  THEN
+
+      IF (ABS(xlangd) < 6.0)  AND  (ABS(ylangd) < 6.0)  THEN
+          GOTO slut;
+      ENDIF;
+
+      IF ABS(xlangd) >= 6.0  THEN
+         TEXT(#6,on(#5#6, 1.0) + vec(+2, -1.5), 0.0, "X"+coname);
+      ENDIF;
+
+      IF ABS(ylangd) >= 6.0  THEN
+         TEXT(#7,on(#5#7, 1.0) +vec(-0.5*TEXTL("Y"+coname),-5),
+                                               0.0,"Y"+coname);
+         GOTO slut;
+      ENDIF;
+   ENDIF;
+
+   IF vy = "xz"  OR vy = "w2"  THEN
+
+      IF  (ABS(xlangd) < 6.0)  AND  (ABS(zlangd) < 6.0)  THEN
+           GOTO slut;
+      ENDIF;
+
+      IF ABS(xlangd) >= 6.0  THEN
+         TEXT(#8,on(#5#6, 1.0) + vec(+2, -1.5), 0.0, "X"+coname);
+      ENDIF;
+
+      IF ABS(zlangd) >= 6.0  THEN
+         TEXT(#9,on(#5#8,1.0)+vec(-0.5*TEXTL("Z"+coname),-5),
+                                             0.0,"Z"+coname);
+           GOTO slut;
+      ENDIF;
+
+   ENDIF;
+
+   IF vy = "yz"  OR vy = "w1"  THEN
+
+      IF  (ABS(ylangd) < 6.0)  AND  (ABS(zlangd) < 6.0)  THEN
+           GOTO slut;
+      ENDIF;
+
+      IF ABS(ylangd) >= 6.0  THEN
+         TEXT(#10,on(#5#7,1.0)+vec(-TEXTL("Y"+coname)-2,-1.5),
+                                             0.0,"Y"+coname);
+      ENDIF;
+
+      IF ABS(zlangd) >= 6.0  THEN
+         TEXT(#11,on(#5#8, 1.0) +vec(-5,-5),0.0,"Z"+coname);
+         GOTO slut;
+      ENDIF;
+
+   ENDIF;
+
+   IF vy = "iso"  OR vy = "w4"  THEN
+
+      IF  (ABS(xlangd) < 6.0)  AND  (ABS(ylangd) < 6.0)
+                             AND  (ABS(zlangd) < 6.0)  THEN
+           GOTO slut;
+      ENDIF;
+
+      IF ABS(xlangd) >= 6.0  THEN
+         TEXT(#12,on(#5#6, 1.0) + vec(+2, -1.5), 0.0, "X"+coname);
+      ENDIF;
+
+      IF ABS(ylangd) >= 6.0  THEN
+         TEXT(#13,on(#5#7,1.0) +vec(-0.5*TEXTL("Y"+coname),
+                                      -5),0.0,"Y"+coname);
+      ENDIF;
+
+      IF ABS(zlangd) >= 6.0  THEN
+         TEXT(#14,on(#5#8, 1.0) +vec(-5,-5),0.0,"Z"+coname);
+         GOTO slut;
+      ENDIF;
+   ENDIF;
+   IF vy = "xy2"  OR vy = "w5"  THEN
+
+      IF  (ABS(ylangd) < 6.0)  AND  (ABS(xlangd) < 6.0)  THEN
+           GOTO slut;
+      ENDIF;
+
+      IF ABS(ylangd) >= 6.0  THEN
+         TEXT(#20,on(#5#7,1.0)+vec(-TEXTL("Y"+coname)-2,-1.5),
+                                             0.0,"Y"+coname);
+      ENDIF;
+
+      IF ABS(xlangd) >= 6.0  THEN
+         TEXT(#21,on(#5#6, 1.0) +vec(-5,-5),0.0,"X"+coname);
+         GOTO slut;
+      ENDIF;
+
+   ENDIF;
+
+
+slut:
+    ;
+    POP_PMT();
+
+ENDMODULE
+

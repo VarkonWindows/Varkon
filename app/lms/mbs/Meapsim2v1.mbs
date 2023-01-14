@@ -1,0 +1,177 @@
+!********************** meapsim2v1 ********************************
+! +++ 
+!
+! Create deviation curves
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-21 Gunnar Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE meapsim2v1 (
+    REF    s_id;                    ! Surface reference
+    FLOAT  mtwist;                  ! Maximum (random) twist
+    FLOAT  mxtransl;                ! Maximum (random) X translation
+    FLOAT  mytransl;                ! Maximum (random) Y translation
+    FLOAT  mztransl;                ! Maximum (random) Z translation
+    VECTOR v_lead;                  ! Vector criterion for leading edge
+VAR REF    twistu_id;               ! Reference to twist curve U
+VAR REF    twistv_id;               ! Reference to twist curve V
+VAR REF    xtransu_id;              ! Reference to twist curve U
+VAR REF    xtransv_id;              ! Reference to twist curve V
+VAR REF    ytransu_id;              ! Reference to twist curve U
+VAR REF    ytransv_id;              ! Reference to twist curve V
+VAR REF    ztransu_id;              ! Reference to twist curve U
+VAR REF    ztransv_id);             ! Reference to twist curve V
+
+!sdesce Create deviation curves
+!sdescs Skapa avvikelse kurvor
+
+
+! Internal variables
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  VECTOR s_n;                     ! Current surface normal
+
+                                  ! For calculation of random error:
+  FLOAT  rand_val;                ! Random value
+  FLOAT  seed;                    ! Seed for random value
+  INT    year;                    ! Year
+  INT    month;                   ! Month 
+  INT    day;                     ! Day
+  INT    hour;                    ! Hour 
+  INT    minute;                  ! Minute
+  INT    second;                  ! Second
+
+  FLOAT  dot_start;               ! Start scalar product s_n*v_lead
+  FLOAT  dot;                     ! Current scalar product s_n*v_lead
+  VECTOR uv_sur;                  ! Parameter point on the surface
+  INT    l_v;                     ! Leading edge V value
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  INT    i_v;                     ! Loop index V line
+
+  VECTOR poi(200);                ! Points for U or V curve
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 1;                        ! Change to 0, 1 or 2
+
+  IF  DEBUG = 1 THEN                ! Debug
+  LST_INI("Debug printout from "+   !
+          "meapsim2v1");            !
+  ENDIF;                            !
+
+  dot_start := -0.123456789;        !
+  dot       := -0.123456789;        !
+
+  twistu_id  := #0;                 ! Reference to twist curve U
+  twistv_id  := #0;                 ! Reference to twist curve V
+  xtransu_id := #0;                 ! Reference to twist curve U
+  xtransv_id := #0;                 ! Reference to twist curve V
+  ytransu_id := #0;                 ! Reference to twist curve U
+  ytransv_id := #0;                 ! Reference to twist curve V
+  ztransu_id := #0;                 ! Reference to twist curve U
+  ztransv_id := #0;                 ! Reference to twist curve V
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);      ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);      ! Retrieve number of V patches
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! Start random value
+! ---
+
+  TIME(year,month,day,hour,         ! Start seed for random value
+       minute,second);              !
+  seed     := second/60.0;          !
+  rand_val := RANDOM(seed);         ! Random value
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Start random value rand_val "+STR(rand_val,4,3)); 
+  ENDIF;             
+
+
+! +++
+! 2. Twist curves        
+! ---
+
+! +++
+! Find leading edge
+! ---
+
+  l_v := -12345;                    ! Leading edge V value
+
+  FOR i_v:= 0 TO npatv DO           ! Start loop V lines
+
+    uv_sur := VEC(npatu/2.0,i_v);   !
+    s_n := NORM(s_id,uv_sur);       ! Current surface normal
+    IF i_v   = 0 THEN               ! 
+      dot_start := s_n*v_lead;      ! Start scalar product s_n*v_lead
+    ELSE                            !
+      dot       := s_n*v_lead;      ! Current scalar product s_n*v_lead
+      IF    dot_start > 0 AND       !
+            dot       < 0    THEN   !
+        l_v  := i_v;                ! Leading edge
+        dot_start := 0.0;           !
+      ELIF  dot_start > 0 AND       !
+            dot       < 0    THEN   !
+        l_v  := i_v;                ! Leading edge
+        dot_start := 0.0;           !
+      ENDIF;                        !
+    ENDIF;                          !
+
+  ENDFOR;                           ! End  loop V lines
+
+  IF  l_v <= 0 THEN                 ! 
+    EXIT("meapsim2v1 Leading edge");!
+  ENDIF;                            !
+
+  FOR i_v:= 0 TO  l_v  DO           ! Start loop V lines to   leading edge
+    poi(i_v+1) := VEC(i_v,          ! Linear change
+       mtwist*i_v/l_v,0.0);         ! Linear change
+  ENDFOR;                           ! End   loop V lines to   leading edge
+  FOR i_v:= l_v+1 TO  npatv  DO     ! Start loop V lines from leading edge
+    poi(i_v+1) := VEC(i_v,          ! Linear change
+    mtwist*(npatv-i_v)/(npatv-l_v), !
+     0);                            !
+  ENDFOR;                           ! End   loop V lines from leading edge
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Leading edge l_v "+STR(l_v,3,0)); 
+  ENDIF;             
+
+  CUR_SPLARR(#1,"FREE",npatv+1,poi);! Create twist curve U
+
+  IF  DEBUG = 1 THEN                ! Debug
+  LST_EXI();                        !
+  ENDIF;                            !
+
+ENDMODULE
+

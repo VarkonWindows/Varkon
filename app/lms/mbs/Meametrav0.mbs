@@ -1,0 +1,466 @@
+!********************* meametrav0 ****************************************
+!  
+! +++
+! Read point data and optionally deviations from a METRONOR file and 
+! transformate/scale points.
+!
+! Format of the Metronor file: d , b or d (reduced)
+!
+! There is a parameter which optionally offset the points with
+! respect to the surface normals of the measured surface points.
+! The outside of an aicraft wing is defined mathematically (as
+! the reference surface) but measurements may for instance be done
+! on the inside tool surface for a wing panel. In this case can
+! the offset parameter be used (offset= wing panel thickness).
+!
+! ---
+!s+++
+!  Modulen läser mätdata från en METRONOR "log-fil" och skapar
+!  MEAPOINT's (punkt poster) samt en MEARECORD (mät post) för varje
+!  grupp av punkter.
+!
+!*** Placering av punkterna 
+!    Punkterna måste placeras (i en SAAB standard vy)
+!    med hjälp av ett lokalt koordinatsystem, dvs denna modul
+!    är av typen LOCAL. Vid en (METRONOR) mätning på en yta
+!    har ytan först förts över från Catia och då har man samtidigt
+!    ofta transformerat ytan till ett lokalt system. Ofta är det
+!    ytans definitionssystem.
+!
+!*** Skalning av punkterna
+!    Punkterna som ritas (den grafiska representationen) skalas 
+!    normalt vid inläsningen med origo x0,y0,z0
+!    som skalningscentrum. 
+!
+!*** Funktion i första hand för measure (figurblads-) applikationen
+!
+!*** Indata fil med mät data
+!    Filen med mät data (.METRO filen) skapas i METRONOR systemet
+!
+!s---
+!
+!  Revision history
+!  ________________
+!
+!  1994-04-19   Ronny Gyllensten
+!  1996-03-04 rdmetrov1->meametrav0 LOCAL->GLOBAL Gunnar Liden
+!  1996-03-25 Colours Gunnar Liden
+!  1997-04-25 Documentation in English Gunnar Liden
+!
+!
+!**********************************************************************
+
+GLOBAL GEOMETRY MODULE  meametrav0 (
+
+STRING meafil*132 := "Data.METRO"
+                          > "Text file with measured data";
+FLOAT  skala     := 1.0   > "Scale (scale factor=1/skala)";
+FLOAT  x0        := 0.0   > "Origin x coordinate";
+FLOAT  y0        := 0.0   > "Origin y coordinate";
+FLOAT  z0        := 0.0   > "Origin z coordinate";
+FLOAT  offset    := 0.0   > "Offset";
+INT    grafik    := 1     > "1. Points 2. Solid curve 3. Dashed curve";
+INT    case      := 1     > "Format d: Case= 1 b: Case= 2: d(red) Case=3";
+REF    csys_id            > "Local system for the points (view)");
+
+!sdescs Läser och registrerar data från METRONOR fil (3D)
+!sdesce Read and register measured data from METRONOR file (3D)
+
+! +++
+! The module reads data from a Metronor file with measured points.
+!
+! Each point is registered as a part with the name MEAPOIREC. The
+! attributes (parameters) to this module (object) hold all data
+! about the point. Attributes are:
+! VECTOR       m_p;                ! Measured point
+! VECTOR       r_p;                ! Reference point 
+! FLOAT        d_tot;              ! Total (perpend.) deviation to surface
+!                                  ! (distance beween m_p and r_p)
+! INT          p_no;               ! Point number
+! INT          g_no;               ! Subset number
+! STRING       descr*132           ! Name and description of the point  
+
+!
+! The module is of type GEOMETRY (3D). The module is in the 
+! VARKON MEASURE application called by a DRAWING (2D) module
+! since this a 2D application.
+! 
+! The Metronor file cannot be used directly. Some manual 
+! editing is needed (a new module is planned ...)
+!
+! Comment lines must be erased and between each subset of points
+! must two lines be added:
+!     1.234567  1.234567  1.234567
+!    1.234567  1.234567  1.234567
+!
+! The file must end with the following two lines:
+!    -1.234567  -1.234567  -1.234567
+!    -1.234567  -1.234567  -1.234567
+!
+! Free comments may be written after these two lines.
+!
+!
+! It is for the wing profile analysis assumed that a subset
+! of points are points from the upper or lower part of the 
+! wing.
+!
+! An edited Metronor file can be created by the simulation
+! module meapsim1v1
+!
+! The graphical representation of the points (as points or 
+! curves interpolating the subsets of points) makes
+! it possible for the user to select this part interactively .
+!
+!
+! ---
+
+!s+++
+! Modulen läser mätdata från en METRONOR fil, som innehåller
+! uppmätta punkter. För varje punkt som läses in skapas en
+! +++
+! Exemple of data in a Metronor file (d format):
+! ----------------------------------------------
+!
+! d 0 2022.90   -4729.52  71.53     11.90     0.89      -0.21     11.87
+! d 1 1952.20   -4728.44  76.20     12.01     0.58      -0.21     11.99
+! d 2 1844.74   -4734.54  78.08     11.97     0.00      -0.22     11.96
+! d 3 1742.43   -4739.25  77.49     11.52     -0.06     -0.22     11.51
+! d 4 1647.95   -4733.63  75.72     11.07     -0.32     -0.23     11.06
+! d 5 1610.94   -4730.99  74.00     10.43     -0.34     -0.23     10.42
+! d 6 1580.40   -4730.26  72.50     9.95      -0.35     -0.21     9.94
+! d 7 1553.34   -4730.19  70.95     9.43      -0.38     -0.21     9.41
+!  1.234567  1.234567 1.234567
+!  1.234567  1.234567 1.234567
+! d 17 1336.60   -4805.57  -42.90    -10.58    8.90      1.55      5.51
+! d 18 1346.83   -4805.00  -48.96    -12.77    5.84      1.15      11.30
+! d 19 1372.72   -4807.17  -54.28    -13.24    0.69      0.38      13.22
+! d 20 1393.18   -4804.28  -54.57    -12.57    -0.59     0.18      12.56
+!             .
+!             .
+! d 33 1822.60   -4822.32  -52.41    -12.03    0.00      0.23      12.03
+! d 34 1910.12   -4819.85  -51.94    -12.11    -0.29     0.23      12.11
+! d 35 1998.52   -4810.69  -48.18    -11.73    -0.82     0.21      11.70
+!  1.234567  1.234567 1.234567
+!  1.234567  1.234567 1.234567
+! d 36 2030.86   -4193.70  78.65     10.23     0.80      -0.18     10.19
+! d 37 1928.93   -4175.83  85.56     10.41     0.42      -0.18     10.39
+!              .
+!              .
+! d 208 1298.96   -1135.38  -128.02   -1.94     0.05      0.04      1.93
+! d 209 1331.35   -1133.26  -129.54   -1.75     0.07      0.03      1.75
+! d 210 1366.93   -1131.94  -130.89   -1.57     0.04      0.04      1.57
+! d 211 1479.07   -1113.24  -133.21   -1.45     0.01      0.03      1.45
+! d 212 1620.61   -1119.30  -133.89   -1.05     0.00      0.02      1.05
+!  -1.234567  -1.234567 -1.234567
+!  -1.234567  -1.234567 -1.234567
+! Points have been transformed with matrix:    
+! 0.999391  -0.009033 0.033710  -24658.86
+! 0.999391  0.965926  0.258819  748.12
+! -0.034899 -0.258661 0.965337  3724.59
+! Input  file: DISK$KCF:Ä240015.VARKON.Å<MEASURE.JOB>STABBE002H.METRO
+! Output file: DISK$KCF:Ä240015.VARKON.Å<MEASURE.JOB>STABBE002H_T.METRO
+! ---
+! Internal variables
+
+  INT     DEBUG;                   ! Debug variable
+                                   ! Eq. 0: No   debug
+                                   ! Eq. 1: Full debug
+
+  REF     tra_id;                  ! Transformation identity
+  VECTOR  p_sca;                   ! Scaled point
+  VECTOR  p_pre;                   ! Previous scaled point
+  FLOAT   dist;                    ! Distance between p_sca and p_pre
+  FLOAT   rmtol;                   ! Tolerance to remove pts for scaled crv
+
+  FILE    f;                       ! Input file with data
+
+  INT     i_u;                     ! Loop index set of points (curve)
+  INT     i_p;                     ! Loop index point
+
+  INT     flag;                    ! Eq. -1: End Of File
+
+  INT     np;                      ! Number of points in set 
+  VECTOR  pcurve(200);             ! Points          for curve 
+  INT     np_s;                    ! Number of scaled points for curve
+  VECTOR  pcurve_s(200);           ! Points scaled   for curve 
+  INT     pen_s(200);              ! Pen (colour) for scaled points
+
+  VECTOR  tcurve(200);             ! Tangent points for curve 
+  INT     ptnumber(200);           ! Point number for measured point
+  FLOAT   devtot(200);             ! Total deviation  
+  FLOAT   devx(200);               !    X  deviation  
+  FLOAT   devy(200);               !    Y  deviation  
+  FLOAT   devz(200);               !    Z  deviation  
+    
+                                   ! From meagraphv0:
+  FLOAT   c_tol;                   ! Criterion for acceptable deviations
+  INT     i_pen;                   ! Pen (colour) for pts within tolerance
+  INT     p_pen;                   ! Pen (colour) for pts outside + tolerance
+  INT     n_pen;                   ! Pen (colour) for pts outside - tolerance
+  INT     c_pen;                   ! Current pen
+
+                                   ! For GET_NEXT_GM:
+  INT     tmod;                    ! 0: All entities 1: Parts on same level
+  REF     pen_id;                  ! Reference to colour definition module
+
+  STRING  s*1;                     ! For INPMT
+
+BEGINMODULE
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  rmtol := 0.05;                   ! Tolerance to remove pts for scaled crv
+
+  IF case = 1 OR case = 2          ! Check case 
+              OR case = 3 THEN     ! 
+    ;                              !
+  ELSE                             !
+   EXIT("Metronor format case "+   !
+    STR(case,-1,0)+" not impl.");  !
+  ENDIF;                           !
+
+
+! +++
+! Open debug printout file for DEBUG= 1
+! ---
+
+  IF  DEBUG=1    THEN  
+  LST_INI("Read data from a METRONOR file (Debug from meametrav0)");
+  LST_LIN("Data is on file:    "+meafil); 
+  LST_LIN("Scale skala=" + STR(skala,-12,6));
+  LST_LIN("Origin (3D) for the scaling x0 " + STR(x0,-12,6)+
+                                     " y0 " + STR(y0,-12,6)+ 
+                                     " z0 " + STR(z0,-12,6));
+  LST_LIN("offset= " + STR(offset,-12,6));
+  LST_LIN("grafik= " + STR(grafik,  3,0));
+  LST_LIN("case=   " + STR(case,    3,0));
+  LST_LIN("csys_id " + RSTR(csys_id));
+  ENDIF;    
+
+! +++
+! Get colours for graphical representation of deviations
+! ---
+
+  tmod := 0;
+  SET_ROOT_GM(#0);
+  pen_id := GET_NEXT_GM (tmod,16384,"meagraphv0");
+  IF   pen_id = #0 THEN
+    c_tol := 0.4;
+    i_pen := 1;
+    p_pen := 1;
+    n_pen := 1;
+  ELSE
+    c_tol := GETFLT(pen_id,1);
+    i_pen := GETINT(pen_id,2);
+    p_pen := GETINT(pen_id,3);
+    n_pen := GETINT(pen_id,4);
+  ENDIF;
+
+! +++
+! 2. Create transformation matrix for the points
+! ---
+
+  IF ABS(skala) >= 0.1  THEN        ! Check scale
+    ;
+  ELIF  skala <= -0.1 THEN          ! Mirror matrix for skala < -0.1
+      EXIT("meametrav0 "+           ! 
+       "mirror not yet implem.");   !
+  ELIF skala <  0.1 AND             ! Not valid value on skala     
+     skala > -0.1      THEN         ! 
+      EXIT("meametrav0 "+           ! 
+       "scale less than 0.1");      !
+                                    !
+  ENDIF;                            !
+
+
+  PART ( #6 , tra_2dav0 (           ! Create transformation
+    csys_id,skala,x0,y0,z0,tra_id));!
+
+
+
+! +++
+! 2. Create all sets of points (curves)
+! ---
+
+
+! +++
+! Open METRONOR file
+! ---
+
+  OPEN(f,"r",meafil);
+  IF ( IOSTAT(f) <> 0 ) THEN    
+    EXIT("File "+meafil+" missing!");
+  ENDIF;
+
+! +++
+! Start loop all sets of points in the file: i_u= 1, 2, 3, .....
+! ---
+
+  FOR i_u:=1 TO 100      DO        ! Start loop sets of points
+
+!   Message to screen
+    PSH_PMT("Point set (curve) number " +STR(i_u,-1,0));
+
+! +++
+!   Read one set of points: 
+!   Format d:           Call meametrdv0
+!   Format b:           Call meametrbv0
+!   Format d (reduced): Call meametrcv0
+! ---
+
+    IF case = 1 THEN
+      PART(#3,meametrdv0(f,flag,
+       np,ptnumber,pcurve,tcurve
+       ,devtot,devx,devy,devz,offset)
+        :SAVE=0);              
+    ELIF case = 2 THEN        
+      PART(#5,meametrbv0(f,flag, 
+       np,ptnumber,pcurve,tcurve 
+       ,devtot,devx,devy,devz)  
+        :SAVE=0);              
+    ELIF case = 3 THEN        
+      PART(#7,meametrcv0(f,flag, 
+       np,ptnumber,pcurve,tcurve
+       ,devtot,devx,devy,devz) 
+        :SAVE=0);             
+    ENDIF;
+
+! +++
+!   Registrate all points in the set. Calls of MEAPOIREC.
+! ---
+
+    FOR i_p:=1 TO np DO 
+                       
+      PART(#1,MEAPOIREC(         !
+      pcurve(i_p),               ! Measured point
+      pcurve(i_p)-               ! Reference point 
+      VEC(devx(i_p),             !
+        devy(i_p),               !
+          devz(i_p)),            !
+      devtot(i_p),               ! Total deviation
+      ptnumber(i_p),             ! Point number
+      i_u,                       ! Group number
+      meafil));                  ! Description
+                                 !
+    ENDFOR;                      !
+
+! +++
+!   Printout of points to list window for Debug On
+! ---
+
+    IF  DEBUG=1    THEN 
+    LST_LIN("Points from METRONOR file. Point set (curve) number "+STR(i_u,4,0));
+    FOR i_p:=1 TO np DO
+       LST_LIN("Nr "+ STR(i_p,-1,0)+ " P "+ 
+              STR(pcurve(i_p).x,-12,6) + " "+ 
+              STR(pcurve(i_p).y,-12,6) + " "+ 
+              STR(pcurve(i_p).z,-12,6)    );     
+    ENDFOR;                     
+    ENDIF;  
+
+! +++
+!   Scale points for graphics. Remove points if distance < rmtol 
+! ---
+
+    np_s := 0;                              ! Initialize number of scaled pts
+    FOR i_p:=1 TO np DO                     ! Scale and translate points
+     POI_FREE(#9, pcurve(i_p):BLANK=1);     !
+     IF   ABS(devtot(i_p)) <= c_tol THEN    !
+       c_pen:= i_pen;                       !
+     ELIF     devtot(i_p)  >  c_tol THEN    !
+       c_pen:= p_pen;                       !
+     ELIF     devtot(i_p)  < -c_tol THEN    !
+       c_pen:= n_pen;                       !
+     ENDIF;                                 !
+     TCOPY(#8,GLOBAL_REF(#9),tra_id,1);     !
+     p_sca:= ON(GLOBAL_REF(#8));            ! Current scaled point
+     IF   i_p = 1 THEN                      ! First point in the set
+       np_s := np_s + 1;                    ! 
+       pcurve_s(np_s):= p_sca;              !
+       p_pre         := p_sca;              !
+       pen_s(np_s)   := c_pen;              !
+     ELSE                                   !
+       dist:= VECL(p_sca-p_pre);            ! Distance to previous point
+       IF  dist > rmtol  THEN               ! Keep point if distance<rmtol
+         np_s := np_s + 1;                  ! 
+         pcurve_s(np_s):= p_sca;            !
+         p_pre         := p_sca;            !
+         pen_s(np_s)   := c_pen;            !
+       ENDIF;                               !
+     ENDIF;                                 !
+     DEL(GLOBAL_REF(#8));                   ! Delete temporarely used point
+     DEL(GLOBAL_REF(#9));                   ! Delete temporarely used point
+    ENDFOR;
+
+! +++
+!   Printout of scaled points to list window for Debug On
+! ---
+
+     IF  DEBUG=1    THEN 
+     LST_LIN("Scaled points");
+     FOR i_p:=1 TO np_s DO 
+     LST_LIN("Nr "+ STR(i_p,-1,0)+  " P "+ STR(pcurve_s(i_p).x,-12,6) + 
+      " "+STR(pcurve_s(i_p).y,-12,6)+" "+STR(pcurve_s(i_p).z,-12,6) ); 
+     ENDFOR;   
+     ENDIF;   
+
+! +++
+!   Draw (create) scaled points for grafik= 1 
+! ---
+
+     IF grafik = 1 THEN 
+       FOR i_p:=1 TO np_s    DO 
+         POI_FREE(#30, pcurve_s(i_p):PEN=pen_s(i_p));
+       ENDFOR;
+     ENDIF;
+
+! +++
+!   Set dash length for grafik= 3
+! ---
+
+    IF grafik = 3 THEN  
+      SET(CDASHL=1,CFONT=1,PEN=3);
+    ENDIF;
+
+! +++
+!   Draw (create) curves for grafik= 2 and grafik= 3
+! ---
+
+    IF grafik = 2 OR grafik = 3 AND np_s >= 2 THEN  
+      CUR_SPLARR(#2,"FREE",np_s, pcurve_s);
+    ENDIF;
+
+
+    POP_PMT();                     ! Erase message to screen
+
+! +++
+!   Goto slut if all points are retrieved from the file 
+! ---
+
+    IF flag = -1 THEN              ! End Of File ?
+       GOTO slut;                 
+    ENDIF;                   
+
+  ENDFOR;                          ! End loop sets of points
+
+! +++
+! Label slut: End Of File
+! ---
+slut:                              ! All point sets retrieved 
+
+! +++
+! Close file with METRONOR data and debug printout window for DEBUG= 1
+! ---
+
+  CLOSE(f); 
+
+  IF  DEBUG=1    THEN   
+  LST_EXI();           
+  ENDIF;              
+
+
+ENDMODULE

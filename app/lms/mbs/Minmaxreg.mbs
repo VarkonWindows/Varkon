@@ -1,0 +1,51 @@
+!******************** MINMAXREG ***********************************
+! +++
+! Registration of minimum and maximum values for a surface
+! ---
+!
+!s+++
+! Registrerar maximala och minimala varden for en punktmangd (yta)
+! samt antal U och V linjer.
+!s---
+!
+! Revision history:
+!
+! 1992-11-10 Gunnar Liden
+! 1997-04-23 Documentation in English Gunnar Liden
+!
+! 
+!******************************************************************
+
+!sdesce Registration of minimum and maximum values for a surface
+!sdescs Registrering av minimum och maximum varden for en yta
+
+GLOBAL GEOMETRY MODULE MINMAXREG (
+
+FLOAT  minx;                  ! Minimum X value
+FLOAT  maxx;                  ! Maximum X value
+FLOAT  miny;                  ! Minimum Y value
+FLOAT  maxy;                  ! Maximum Y value
+FLOAT  minz;                  ! Minimum Z value
+FLOAT  maxz;                  ! Maximum Z value
+INT    nu;                    ! Number of U lines in the surface
+INT    nv);                   ! Number of V lines in the surface
+
+
+! Internal variables:
+
+INT    b_flag;                ! Flag for blanking
+
+BEGINMODULE
+
+  b_flag := 1;
+
+  POI_FREE(#1,VEC(minx,miny,minz):BLANK=b_flag);
+  POI_FREE(#2,VEC(maxx,miny,minz):BLANK=b_flag);
+  POI_FREE(#3,VEC(minx,maxy,minz):BLANK=b_flag);
+  POI_FREE(#4,VEC(maxx,maxy,minz):BLANK=b_flag);
+  POI_FREE(#5,VEC(minx,miny,maxz):BLANK=b_flag);
+  POI_FREE(#6,VEC(maxx,miny,maxz):BLANK=b_flag);
+  POI_FREE(#7,VEC(minx,maxy,maxz):BLANK=b_flag);
+  POI_FREE(#8,VEC(maxx,maxy,maxz):BLANK=b_flag);
+
+ENDMODULE

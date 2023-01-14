@@ -1,0 +1,94 @@
+!********************* meapsimv1*****************************************
+! +++
+! Simulate measuring of wing profiles
+!
+! Saab (and other aircraft and automotive companies) normally have a 
+! a library ("database") with all surfaces and coordinate systems for
+! a project. The creation of a CAD model normally starts with a 
+! retrieval of data from this library. There is a parameter surflib
+! which defines the library. Value r (reference) means that the 
+! libraries (search path) defined in surpathv0 will be used.
+!
+! ---
+! Revision history 
+! ________________
+!
+! 1996-03-22  Gunnar Liden
+! 1996-03-25  Default values   Gunnar Liden
+! 1996-04-18  Comments         Gunnar Liden
+! 1997-04-25  Comments         Gunnar Liden
+!
+!***********************************************************************
+
+!sdesce Simulate measuring of wing profiles
+!sdescs Simulera mätning av profiler på en vinge
+
+GLOBAL DRAWING MODULE meapsimv1 (
+REF    view_id                  > "@t16384 Select view";
+STRING surface*28:= "FLAP_DEMO" > "Surface";
+STRING surflib*1 := "r"         > "@ Surface library r/p (<CR>=reference)";
+STRING stat*1    := "Y"         > "Station X, Y or Z ";
+FLOAT  start     := 1000.0      > "Start station value";
+FLOAT  delta     := 1242.0      > "Delta station value";
+FLOAT  end       := 6500.0      > "End   station value";
+FLOAT  cdelta    :=   50.0      > "Delta (average value) for pts along curve";
+FLOAT  merror    :=    0.9      > "Maximum (random) error in mm";
+FLOAT  mtwist    :=    1.5      > "Maximum (random) twist in degrees";
+FLOAT  mxtransl  :=    1.9      > "Maximum (random) X translation in mm";
+FLOAT  mytransl  :=    0.0      > "Maximum (random) Y translation in mm";
+FLOAT  mztransl  :=   12.8      > "Maximum (random) Z translation in mm";
+STRING v_crit*1  :=   "Z"       > "@ Leading edge criterion <CR>= Z axis";
+INT    grafik    :=    1        > "=0: No graphics =1: Show points");
+
+! Internal variables
+
+REF csys_id;                       ! Coordinate system
+STRING vy*6;                       ! View
+STRING fplproj*44;                 ! Aircraft (or other) project
+STRING datum*28;                   ! Coordinate system (name)
+FLOAT  skala;                      ! Scale (scale factor=1/skala)
+VECTOR origo;                      ! Position for the view
+FLOAT  x0;                         ! Origin x coordinate
+FLOAT  y0;                         ! Origin y coordinate
+FLOAT  z0;                         ! Origin z coordinate
+FLOAT  xlangd;                     ! Length of x axis 
+FLOAT  ylangd;                     ! Length of y axis 
+FLOAT  zlangd;                     ! Length of z axis 
+VECTOR ang;                        ! Euler angles
+STRING namn*20;                    ! Input PART name
+
+VECTOR v_lead;                     ! Vector criterion for leading edge
+
+BEGINMODULE
+
+     PSH_PMT("Processing: meapsimv1");
+
+! +++
+! 1. Get coordinate system for the view
+! ---
+
+     PART(#2,figgetvyv2(view_id, csys_id, vy, fplproj, datum, 
+                        skala, origo, 
+                        x0, y0, z0, xlangd,
+                        ylangd, zlangd, ang, namn));
+  
+! +++
+! 2. Calculate intersects, points on curves, scale and transform (in a 3D module)
+! ---
+
+     IF  v_crit = "z"  OR  v_crit = "Z" THEN
+       v_lead.x :=  0.0;
+       v_lead.y :=  0.0;
+       v_lead.z :=  1.0;
+     ELSE
+       EXIT("meapsimv1 Only leading edge criterion X implemented");
+     ENDIF;
+
+     PART(#1,meapsim1v1(fplproj, surface, surflib, datum,
+                        skala, x0, y0, z0,
+                        stat, start, delta, end, cdelta, 
+                        merror, mtwist, mxtransl, mytransl, mztransl,
+                        v_lead, grafik, csys_id));
+   POP_PMT();
+
+ENDMODULE

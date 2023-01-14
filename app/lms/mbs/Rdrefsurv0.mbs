@@ -1,0 +1,230 @@
+!********************  rdrefsurv0 **********************
+!
+! +++
+! Import a reference (NMG) surface from the surface library 
+!
+! Revision history
+! ________________
+!
+! 1996-01-19  Gunnar Liden
+! 1996-01-26  siddelay added Gunnar Liden
+! 1996-02-14  surffile, check csys added Gunnar Liden
+! 1996-02-23  graphics                   Gunnar Liden
+! 1996-02-24  Comments                   Gunnar Liden
+!
+! ---
+!*******************************************************
+
+LOCAL  GEOMETRY MODULE  rdrefsurv0 (
+STRING surname*30 := "39-812-01"   >"Name of surface (file name without .DAT_..)";
+STRING csyname*10 := "417"         >"Coordinate system (also F07 accepted)";
+INT       graphic:=1               >"Graphics =0: Show nothing =1: Show surface ");
+
+!sdesce Import a reference (NMG) surface from the surface library 
+!sdescs Importera en referens NMG yta fr}n det generella ytbiblioteket
+
+! Internal variables:
+
+  REF    csys_id;                   ! Active coordinate system   
+  STRING csys_name*10;              ! Name of coordinate system
+  FLOAT  csys_data(4,4);            ! Transformation matrix
+
+  STRING s_name*132;                ! Full file name surface
+
+  STRING csy_basic*25;              ! Basic system for project
+  STRING c_name*132;                ! Full file name coord. system
+
+  FLOAT l_data(4,4);                ! Coordinate system data
+  VECTOR origin;                    ! Origin coord. system
+  VECTOR origin_inv;                ! Origin inversed coord. system
+
+  STRING str2*80;                   ! Type of input file
+  STRING str3*80;                   ! Type of surface  
+
+  INT    mcase;                     ! =1 Maxmin =2 No maxmin
+  STRING stype*1;                   ! =c Consurf section =b Bicubic
+                                    ! =n Consurf coefficients
+  FLOAT  minx;                      ! Minimum X value for surface
+  FLOAT  maxx;                      ! Maximum X value for surface
+  FLOAT  miny;                      ! Minimum Y value for surface
+  FLOAT  maxy;                      ! Maximum Y value for surface
+  FLOAT  minz;                      ! Minimum Z value for surface
+  FLOAT  maxz;                      ! Maximum Z value for surface
+
+  INT    n_ulines;                  ! No U lines in surface       
+  INT    n_vlines;                  ! No V lines in surface       
+
+  INT    i_r;                       ! Loop index for system
+
+  INT    b_value;                   ! BLANK value for surface
+
+  STRING s*1;                       ! For INPMT
+  INT    DEBUG;                     ! Eq. 0: No Debug  
+                                    ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! +++
+!  Algorithm
+!  _________
+!---
+
+! +++
+! 1. Initializations
+! ---
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  IF   graphic = 0 THEN            ! Graphic
+    b_value:= 1;                   !
+  ELIF graphic = 1 THEN            ! Graphic
+    b_value:= 0;                   !
+  ELSE                             !
+    EXIT("rdrefsurv0 graphic not"+ !
+         " 0 or 1");               ! 
+  ENDIF;                           !
+
+! +++
+! Get identity to coordinate system   
+! ---
+
+  csys_id:= ACT_CSY();              ! Reference to the active system
+
+!  s:= INPMT("csys_id "+RSTR(csys_id)," ",1);
+
+! +++
+! Get all data for the coordinate system
+! ---
+
+  IF csys_id = #0 THEN              ! No system has been activated
+    EXIT("rdrefsurv0 csys_id= #0"); ! (impossible since LOCAL..)
+  ELSE                              !
+    GETCSY(csys_id,csys_name,       !
+           csys_data);              !
+  ENDIF;                            !
+
+! +++
+! Check that selected coordinate system is same as csyname
+! ---
+
+  IF   csyname <> csys_name THEN
+    EXIT("rdrefsurv0 Selected system is not "+csyname);
+  ENDIF;
+
+! +++
+! 2. Create local system for surface which is defined in Basic
+! ---
+
+! +++
+! Get full name for coordinate system data file     
+! ---
+
+
+  PART(#4, csysfilev0 (             ! Get full file name
+    csyname,csy_basic,c_name)       !
+    :SAVE=0);                       !
+
+  IF DEBUG = 1 THEN
+    s:=INPMT("rdrefsurv0 c_name "+c_name,"y",1);
+    IF  s <> "y" THEN
+     EXIT("rdrefsurv0 User interruption");
+    ENDIF;
+  ENDIF;
+
+! +++
+! Read coordinate system matrix
+! ---
+
+  PART(#5, csysreadv0 (             ! Get matrix         
+   c_name, l_data,origin):SAVE=0);  !
+
+  IF  DEBUG = 1 THEN
+  LST_INI("rdrefsurv0");
+  FOR  i_r := 1 TO 4 DO
+        LST_LIN(" c"+STR(i_r,-1,0)+"1 "+STR(csys_data(i_r,1),12,8) +
+                " c"+STR(i_r,-1,0)+"2 "+STR(csys_data(i_r,2),12,8) +
+                " c"+STR(i_r,-1,0)+"3 "+STR(csys_data(i_r,3),12,8) +
+                " c"+STR(i_r,-1,0)+"4 "+STR(csys_data(i_r,4),12,8) );
+  ENDFOR;
+  FOR  i_r := 1 TO 4 DO
+        LST_LIN(" l"+STR(i_r,-1,0)+"1 "+STR(   l_data(i_r,1),12,8) +
+                " l"+STR(i_r,-1,0)+"2 "+STR(   l_data(i_r,2),12,8) +
+                " l"+STR(i_r,-1,0)+"3 "+STR(   l_data(i_r,3),12,8) +
+                " l"+STR(i_r,-1,0)+"4 "+STR(   l_data(i_r,4),12,8) );
+  ENDFOR;
+  LST_EXI();
+  ENDIF;
+
+
+! +++
+! Create coordinate system
+! ---
+
+  origin_inv.x := l_data(1,4);
+  origin_inv.y := l_data(2,4);
+  origin_inv.z := l_data(3,4);
+
+  CSYS_3P(#6, "Basic_project", origin_inv, 
+  origin_inv+VEC(l_data(1,1),l_data(2,1),l_data(3,1)),
+  origin_inv+VEC(l_data(1,2),l_data(2,2),l_data(3,2)):BLANK=1);
+
+! +++
+!  3. Retrieve surface data                    
+!
+!  Retrieve number of patches and surface type. Call of surnunv
+! ---
+  
+   PART(#3, surffilev0 (
+    surname, csy_basic, s_name):SAVE=0);  
+!QQ    surname, csyname, s_name):SAVE=0);  
+
+  IF DEBUG = 1 THEN
+    s:=INPMT("rdrefsurv0 s_name "+s_name,"y",1);
+    IF  s <> "y" THEN
+     EXIT("rdrefsurv0 User interruption");
+    ENDIF;
+  ENDIF;
+
+
+  mcase := 2;                      !
+  PART(#2,surnunv  (s_name,        ! Call of surnunv  
+  mcase, stype,                    !
+  minx,maxx,miny,maxy,minz,maxz,   ! 
+  n_ulines,n_vlines)               !
+  :SAVE=0);                        ! (not saved in GM)
+
+  IF DEBUG = 1 THEN
+    s:=INPMT("rdrefsurv0 Surface type stype "+stype,"y",1);
+    IF  s <> "y" THEN
+     EXIT("rdrefsurv0 User interruption");
+    ENDIF;
+  ENDIF;
+
+    
+  str2 :="NMG_F07";                ! Type of file
+  IF    stype = "b" THEN           !
+    str3 :="CUB_SUR";              ! Requested type Bicubic  
+  ELIF  stype = "c" THEN           !
+    str3 :="LFT_SUR";              ! Requested type Consurf sections
+  ELIF  stype = "n" THEN           !
+    str3 :="CON_SUR";              ! Requested type Consurf coefficients
+  ELSE                             !
+    EXIT("rdrefsurv0 Not bicubic"+ !
+         " or Consurf");           ! 
+  ENDIF;                           !
+
+! +++
+!  2. Create surface        
+!
+!  Create surface from data in text file. Call of SUR_EXDEF
+! ---
+
+  MODE_LOCAL(GLOBAL_REF(#6));       ! Activate projet basic system
+
+  SUR_EXDEF(#1,s_name, str2, str3   ! Import whole surface
+               :BLANK= b_value);    !
+ 
+  MODE_GLOBAL();
+
+
+ENDMODULE

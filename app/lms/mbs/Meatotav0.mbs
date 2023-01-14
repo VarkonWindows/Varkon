@@ -1,0 +1,98 @@
+!********************* meatotav0 ********************************
+! +++
+! Get all views (figvyv2 for example)
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-21 Gunnar Liden
+!
+!************************************************************
+
+!sdesce Get all views (figvyv2 for example)
+!sdescs Hämta alla vyer (figvyv2 till exampel)
+
+BASIC DRAWING MODULE meatotav0 (
+    STRING prtname*10;         ! Name of part (figvyv2 for example)
+VAR REF view_all_id(20) ;      ! All views
+VAR INT n_view;                ! Number of views
+VAR REF view_first_id;         ! First created view
+VAR REF view_last_id );        ! Last  created view
+
+! Internal variables:
+
+
+                                    ! For GET_NEXT_GM:
+  INT    tmod;                      ! 0: All entities 1: Parts on same level
+  REF    view_id;                   ! Reference to view   
+
+  INT    i_view;                    ! Loop index view 
+
+  INT    DEBUG;                     ! Eq. 0: No    Debug
+                                    ! Eq. 1: Full  Debug
+
+  STRING s*1;                       ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations
+! +++
+
+  DEBUG := 0;                 ! Change to 0 or 1 
+
+
+  FOR  i_view := 1 TO 20 DO   
+    view_all_id(i_view) := #0;
+  ENDFOR;
+
+  n_view := 0; 
+  view_first_id := #0;
+  view_last_id  := #0;
+
+! +++
+! 2. Get references to all views
+! ---
+
+  tmod := 0;
+  SET_ROOT_GM(#0);
+
+nxtview:;  ! Label next view
+
+  view_id := GET_NEXT_GM (tmod,16384,prtname);
+
+  IF  view_id = #0 THEN
+    IF n_view >= 1 THEN
+      view_last_id := view_all_id(n_view);
+    ENDIF;
+    GOTO allview;
+  ENDIF;
+
+  n_view := n_view + 1;
+
+  IF  n_view > 20 THEN
+    EXIT("meatotav0 Number of "+prtname+" > 20"); 
+  ENDIF;
+
+  view_all_id(n_view) := view_id;
+
+  IF n_view = 1 THEN
+    view_first_id := view_id;
+  ENDIF;
+
+  GOTO  nxtview;
+
+! +++
+! 3. Exit
+! ---
+
+allview:;
+
+
+ENDMODULE

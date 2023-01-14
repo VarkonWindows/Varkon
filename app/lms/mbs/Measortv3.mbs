@@ -1,0 +1,132 @@
+!******************** measortv3 **********************
+! +++
+! Sorting on points on first variable
+! ---
+!
+!s+++
+! Funktionen sorterar punkter map första variabeln
+!s---
+!
+! Ändringshistorik
+! ________________
+!
+! 1995-05-24 R Gyllensten
+! 1997-04-28 Documentation in English Gunnar Liden
+!
+!****************************************************
+
+!sdescs Funktionen sorterar punkter map första variabeln
+!sdesce Sorting of points on first variable
+
+BASIC GEOMETRY MODULE measortv3  (
+     INT    case;                     ! =1: No Debug  =2: Full Debug
+     INT    n_p;                      ! Number of points in x_in
+VAR  VECTOR  x_in(200) ;              ! Scaled x,y,z values In
+VAR  VECTOR  x_ut(200));              ! Sorted scaled x,y,z values Out
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop index output     
+  INT    i_p1;                     ! Loop index    x_in
+  INT    n_x_ut;                   ! Number of values in x_ut
+
+  VECTOR  x_min;                   ! Minimum x_in in loop i_p
+  INT    i_x_min;                  ! Pointer in x_in
+
+  VECTOR x_cp(200);                ! Copy of  x_in
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For Debug
+
+
+BEGINMODULE
+
+! Copy input data to x_cp
+  FOR i_p1 := 1  TO n_p  DO
+
+      x_cp(i_p1) := x_in(i_p1); 
+                               
+  ENDFOR;
+
+
+! +++
+! Algorithm
+! ________
+!
+! 1. Sorting
+! ---
+
+  IF case = 1 THEN                 !
+    DEBUG := 0;                    ! No Debug
+  ELSE                             !
+    DEBUG := 1;                    ! Debug On
+  ENDIF;                           !
+
+  IF DEBUG = 1 THEN                ! DEBUG
+  LST_INI("Indata till measortv3"); !
+
+  FOR  i_p1:=1 TO n_p DO          !
+    LST_LIN("Pkt nummer "          !
+       +STR(i_p1,-1,0)+ " x_in= " !
+       +STR(x_cp(i_p1).x,-12,6));   !
+  ENDFOR;                          !
+  LST_EXI();                       !
+  ENDIF;                           !
+
+   n_x_ut   := 0;
+
+
+! Start outer loop
+  FOR i_p := 1  TO  n_p DO 
+
+!   Initialize minimum value
+    x_min.x:= 50000.0;    
+ 
+!   Start inner loop
+    FOR i_p1 := 1  TO  n_p DO 
+      IF x_cp(i_p1).x < x_min.x THEN 
+        x_min.x := x_cp(i_p1).x; 
+        x_min.y := x_cp(i_p1).y;
+        x_min.z := x_cp(i_p1).z;
+        i_x_min := i_p1;       
+      ENDIF;                  
+!   End   inner loop
+    ENDFOR;  
+
+    IF DEBUG = 2 THEN         
+       s:= INPMT("Pkt nummer "  
+       +STR(i_p,-1,0)+  " x_min " 
+     +STR(x_min.x,-12,6)+" "     
+          ,"",1);               
+    ENDIF;                     
+
+!   End of sorting ?
+    IF ABS(x_min.x-50000.0)< 0.1  
+                            THEN 
+        GOTO  slut;             
+    ENDIF;                     
+
+
+       n_x_ut:= n_x_ut+1; 
+       x_ut(n_x_ut):= x_min;  
+       x_cp(i_x_min).x:= 100000.0;
+
+! End   outer loop
+  ENDFOR; 
+
+
+slut:; ! Label: All X data sorted
+
+
+  IF DEBUG = 1 THEN   
+  LST_INI("Utdata från measortv3");
+
+  FOR  i_p :=1 TO n_x_ut DO      
+    LST_LIN("Pkt nummer "       
+       +STR(i_p,-1,0)+ " x_ut= " 
+       +STR(x_ut(i_p ).x,-12,6));
+  ENDFOR;                       
+  LST_EXI();                   
+  ENDIF;                      
+
+ENDMODULE

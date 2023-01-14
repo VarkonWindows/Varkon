@@ -1,0 +1,516 @@
+!******************** meadia3v2 *****************************************
+! +++
+! The function creates a diagram with chord length along the X axis
+! and deviation along the Y axis.
+!
+! There are two text and two regression line options:
+! case=  0: No text and no regression line
+! case= 10: No text and    regression line
+! case=  1: Text    and no regression line
+! case= 11: Text    and    regression line
+!
+! ---
+! 
+! Revision history
+! ________________
+!
+! 1993-10-27 Ronny Gyllensten
+! 1993-11-10 Regressionsline added (case=10 or 11)      R Gyllensten
+! 1995-03-09 Documentation                              G Liden
+! 1995-04-07 Bug: Not the right X axis                  R Gyllensten
+! 1996-03-11 meadia3v1->meadia3v2 (MEAWPLREC added)     G Liden
+! 1996-04-23 mearegv0 -> meafregv0                      R Gyllensten 
+! 1996-10-08 Warning, twist text                        Gunnar Liden
+! 1996-10-25 Section text                               Gunnar Liden
+! 
+!************************************************************************
+
+!sdescs Diagram med korda som X och avvikelser som Y med regressionslinje
+!sdesce Diagram: X= Chord Y= Deviation Regression line as an option
+
+GLOBAL DRAWING MODULE meadia3v2  (
+
+REF    pts_id                > "@t16384 Select set of points (use button p)";
+INT    i_grupp :=   1        > "Which subset (section) of points 1, 2, 3, ..";
+VECTOR origo   :=vec(20,100) > "Position for the diagram";
+FLOAT  xlangd  := 300        > "Length of X axis for the diagram";
+FLOAT  skalf_y :=   5        > "Scale factor for Y (deviation) values";
+FLOAT  ylangd  :=  15        > "Length of Y axis for the diagram";
+STRING kdesc*28:= "Upper"    > "Text for the curve (Upper/Lower)";
+INT    case    :=   1        > "0:Nothing 10: Line 1: Text 11: Text & line");
+
+! Interna variabler:
+
+  VECTOR fkstart;                  ! Leading edge start point         
+  VECTOR fkslut;                   ! Leading edge end   point         
+  VECTOR bkstart;                  ! Trailing edge start point         
+  VECTOR bkslut;                   ! Trailing edge end   point         
+
+  FLOAT  max_d;                    ! Maximum deviation
+  FLOAT  max_x;                    ! Maximum value  X
+  FLOAT  min_x;                    ! Minimum value  X
+  FLOAT  med_x;                    ! Average value  X
+  FLOAT  max_y;                    ! Maximum value  Y
+  FLOAT  min_y;                    ! Minimum value  Y
+  FLOAT  med_y;                    ! Average value  Y
+  FLOAT  max_z;                    ! Maximum value  Z
+  FLOAT  min_z;                    ! Minimum value  Z
+  FLOAT  med_z;                    ! Average value  Z
+  FLOAT  max_d_pos;                ! Maximum  positive deviation
+  FLOAT  max_d_neg;                ! Maximum  negative deviation
+
+  FLOAT  fkx;                      ! Calculated X value for leading  edge
+  FLOAT  bkx;                      ! Calculated X value for trailing edge
+  FLOAT  kordalangd;               ! Chord length
+
+  INT    i_p;                      ! Loop index all points in the section 
+
+  INT    i_l;                      ! Loop index % lines 
+
+  FLOAT  dy;                       ! Delta y for % lines 
+
+  FLOAT  d_c;                      ! Delta for point numbers
+
+
+  STRING xaxel*10;                 ! X axis for the diagram
+  STRING yaxel*10;                 ! Y axis for the diagram
+
+  FLOAT  transl_x;                 ! Translation  for X axis values 
+  FLOAT  skalf_x;                  ! Scale factor for X axis values 
+  FLOAT  A;                        ! Regression line slope   
+  FLOAT  B;                        ! Regression line translation 
+                                   !
+                                   ! For GET_NEXT_GM:
+  INT    tmod;                     ! 0: All entities 1: Parts on same level
+
+                                   ! Attribute data from MEAWPLREC:
+  REF    wpla_id;                  ! Reference to wing plane
+  STRING fplproj*44;               ! Aircraft (or other) project
+  STRING datum*28;                 ! Coordinate system (name)
+  VECTOR fkstart_3d;               ! Leading  edge start point in 3D
+  VECTOR fkslut_3d;                ! Leading  edge end   point in 3D
+  VECTOR bkstart_3d;               ! Trailing edge start point in 3D
+  VECTOR bkslut_3d;                ! Trailing edge end   point in 3D
+  STRING surface*28;               ! Surface (wing) name 
+  STRING descr_wpla*132;           ! Description of wing plane
+
+
+                                   ! For get funktion meagetpv0:
+  INT    n_p;                      ! Number of pts in section i_snitt
+  VECTOR m_points(200);            ! Measured  points 
+  VECTOR r_points(200);            ! Reference points 
+  FLOAT  devtot(200);              ! Total (perpendicular) deviation 
+  INT    ptnumber(200);            ! Point number for measured point
+  STRING p_descr(200)*132;         ! Point description 
+
+  REF    csys;                     ! Local coordinate system for analysis
+  STRING plane*1;                  ! Plane proposal (minimum deviation)
+  STRING xaxis*1;                  ! X axis proposal (maximum deviation)
+
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! For debug
+
+BEGINMODULE
+
+! +++
+! 1. Initializations 
+! ---
+
+  DEBUG := 0;                      ! Change to  0 or 1
+  dy    := 3.0;
+  d_c   := 1.0;
+  csys  := #0;
+  yaxel:= "New text";                 ! Y axis text
+
+! Initialize local variables to Undefined
+
+  xaxel:= "Undefined";        
+  transl_x := -0.123456789;  
+  skalf_x := -0.123456789;  
+  A := -0.123456789;       
+  B := -0.123456789;      
+  
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Debug printout from meadia3v2");
+  LST_LIN("Set of points reference pts_id "+RSTR(pts_id));
+  LST_LIN("Subset of points (section) i_grupp "+STR(i_grupp,12,0));
+  LST_LIN("Position (2D) for diagram origo  "+STR(origo .x,12,6)
+                                        + " "+STR(origo .y,12,6));
+  LST_LIN("Length of X axis xlangd "+STR(xlangd,12,6));
+  LST_LIN("Scale factor Y "+STR(skalf_y,12,6));
+  LST_LIN("Length of Y axis ylangd "+STR(ylangd,12,6));
+  LST_LIN("Text for the curve kdesc " + kdesc);
+  LST_LIN("Diagram case "+STR(case ,12,0));
+  ENDIF;
+
+! +++
+! 2. Get points for requested subset of points
+! ---
+
+  PART(#1,meagetpv0( pts_id,  
+      i_grupp,n_p,           
+      m_points,r_points,    
+      devtot,ptnumber,p_descr)
+      :SAVE=0);  ! (not saved in GM)
+
+  IF n_p = 0 THEN                  ! Check that the section exists
+    IF  DEBUG = 1 THEN             !
+    LST_LIN("There is no "+        !
+     STR(i_grupp,3,0)+" section"); !
+    LST_EXI();                     !
+    ENDIF;                         !
+    EXIT("meadia3v2: There is no "+!
+         STR(i_grupp,-1,0)+        !
+         " section");              !
+  ENDIF;                           !
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("Number of points is n_p "+STR(n_p,12,0)+
+  " in sub-set "+STR(i_grupp,3,0));
+  ENDIF;
+
+! +++
+! 3. Calculate maximum, minimum, average values, plane and X axis
+! ---
+
+                                   !
+    PART(#3,meapanal1(csys,        ! Analyze points
+        n_p,                       !
+        m_points, r_points,        !
+        devtot,  ptnumber,         !
+        max_x,min_x,med_x,         !
+        max_y,min_y,med_y,         !
+        max_z,min_z,med_z,         !
+        plane, xaxis,              !
+        max_d_pos,max_d_neg)       !
+        :SAVE=0);                  ! (not saved in GM)
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("Maximum max_d_pos "+STR(n_p,10,0)+" max_d_neg "+STR(max_d_neg,10,2));
+  ENDIF;
+
+    IF xaxis <> "X" THEN       
+      IF   DEBUG = 1 THEN
+        LST_LIN("Warning X axis= " + xaxis + " changed to X");
+      ELSE
+        LST_INI("Warning from meadia3v2");
+        LST_LIN("Analysis thinks X axis= " + xaxis + " but X is kept");
+        LST_EXI();
+      ENDIF;
+         xaxis := "X";            
+    ENDIF;                       
+
+! +++
+! 4. Get wing plane and calculate the current chord length
+! ---
+
+    SET_ROOT_GM(#0);
+
+    tmod := 0;
+    wpla_id := GET_NEXT_GM (tmod,16384,"MEAWPLREC");
+
+    IF  wpla_id = #0 THEN
+      IF  DEBUG = 1 THEN  
+      LST_EXI();         
+      ENDIF;            
+      EXIT("meadia3v2 There is no wing plane (MEAWPLREC)");
+    ENDIF;
+
+    fplproj   := GETSTR(wpla_id,1);  ! Aircraft (or other) project
+    datum     := GETSTR(wpla_id,2);  ! Coordinate system (name)
+    fkstart_3d:= GETVEC(wpla_id,3);  ! Leading  edge start point in 3D
+    fkslut_3d := GETVEC(wpla_id,4);  ! Leading  edge end   point in 3D
+    bkstart_3d:= GETVEC(wpla_id,5);  ! Trailing edge start point in 3D
+    bkslut_3d := GETVEC(wpla_id,6);  ! Trailing edge end   point in 3D
+    surface   := GETSTR(wpla_id,7);  ! Surface (wing) name 
+    descr_wpla:= GETSTR(wpla_id,8);  ! Description of wing plane
+
+    fkstart   := fkstart_3d;         ! Wing plane is a 3D object
+    fkslut    := fkslut_3d;          ! This is not yet used in this
+    bkstart   := bkstart_3d;         ! analyse function, which assumes
+    bkslut    := bkslut_3d;          ! a X/Y wing plane.
+
+    PART(#4,meacordv0(fkstart.x,     ! Calculate current chord length
+            fkstart.y,fkslut.x,      !
+            fkslut.y,bkstart.x,      !
+            bkstart.y,bkslut.x,      !
+            bkslut.y,med_y,          !
+            fkx,bkx,kordalangd));    !
+
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("fkstart.x "+STR(fkstart.x,12,6)+" fkslut.x   "+STR(fkslut.x  ,12,6));
+  LST_LIN("bkstart.x "+STR(bkstart.x,12,6)+" bkslut.x   "+STR(bkslut.x  ,12,6));
+  LST_LIN("med_y     "+STR(med_y    ,12,6)+" fkx        "+STR(fkx       ,12,6));
+  LST_LIN("bkx       "+STR(bkx      ,12,6)+" kordalangd "+STR(kordalangd,12,6));
+  ENDIF;  
+
+! +++
+! 5. Determine chord direction and scale factors
+! ---
+
+
+! These "Feature recognition" program lines should be replaced
+! by an analyze of the defined wing plane MEAWPLRECR. It is the
+! wing plane that defines the axes !!!!!!
+
+  IF   ABS(max_x-min_x) >            !   
+       ABS(max_y-min_y)   AND        !
+       ABS(max_x-min_x) >            !
+       ABS(max_z-min_z)   THEN       !
+
+       xaxel:= "X";                  ! X axel för diagram är X
+       transl_x:= min_x;             ! Translation för X axel värdena
+       skalf_x := xlangd/kordalangd; ! Skalfaktor  för X axel värdena
+
+       IF DEBUG = 1 THEN 
+       LST_LIN("X axis xaxel= "+xaxel+
+         " Min "+STR(min_x,12,6)+  
+         " Max "+STR(max_x,12,6)+
+         " Skalf "+STR(skalf_x,12,6));         
+       ENDIF;   
+
+  ELIF ABS(max_y-min_y) >            !
+       ABS(max_x-min_x)   AND        !
+       ABS(max_y-min_y) >            !
+       ABS(max_z-min_z)   THEN       !
+
+
+       xaxel:= "Y";                  ! X axel för diagram är Y
+       transl_x:= min_y;             ! Translation för X axel värdena
+       skalf_x := xlangd/kordalangd; ! Skalfaktor  för X axel värdena
+
+       IF DEBUG = 1 THEN 
+       LST_LIN("X axis xaxel= "+xaxel+
+         " Min "+STR(min_y,12,6)+  
+         " Max "+STR(max_y,12,6)+
+         " Skalf "+STR(skalf_x,12,6));         
+       ENDIF;   
+
+  ELIF ABS(max_z-min_z) >            !
+       ABS(max_y-min_y)   AND        !
+       ABS(max_z-min_z) >            !
+       ABS(max_x-min_x)   THEN       !
+
+       xaxel:= "Z";                  ! X axel för diagram är Z
+       transl_x:= min_z;             ! Translation för X axel värdena
+       skalf_x := xlangd/kordalangd; ! Skalfaktor  för X axel värdena
+
+       IF DEBUG = 1 THEN 
+       LST_LIN("X axis xaxel= "+xaxel+
+         " Min "+STR(min_z,12,6)+  
+         " Max "+STR(max_z,12,6)+
+         " Skalf "+STR(skalf_x,12,6));         
+       ENDIF;   
+
+
+  ELSE                               !
+         ;
+  ENDIF;                             !
+
+
+
+! +++
+! 6. Draw coordinate axes in a 2D local coordinate system 
+! ---
+
+  CSYS_1P(#5,"XY",origo:           ! Create local system 
+      BLANK=1);                    !
+
+  MODE_LOCAL(#5);                  ! Activate the local system
+
+! Create axis as lines from origin in the local coordinate system
+! Create an arrow with module pil
+
+!s   Skapa axlarna som linjer från origo i lokala koordinatsystemet
+!s   till punkter relativt origo. Delta y för y axeln är t.ex ylängd.
+!s   Här läggs också till en axelpil genom anrop av en generell modul
+!s   som bara skapar pilar.
+
+     LIN_FREE(#6,VEC(0, 0), VEC(0,0) + VEC(xlangd+10, 0));
+     PART(#10,pil(VEC(0,0),VEC(0,0) + VEC(xlangd+10,0) ),#5);
+
+   LIN_FREE(#7,VEC(0, -ylangd), VEC(0, 0) + VEC(0, ylangd));
+!   PART(#11,pil(vec(0,0),vec(0,0) + vec(0,ylangd) ),#5);
+
+
+
+!  Texts for the coordinate axis
+   SET(TSIZE=3); 
+   SET(TWIDTH=50);
+   TEXT(#8,ON(#6,1.0)+ VEC(+2, -1.5), 0.0, xaxel);
+
+  IF case = 1 OR case = 11 THEN     ! Text: Average value and chord length ?
+                                   
+   TEXT(#19,ON(#6,1.0)+             !
+        VEC(7,5),0.0,               !
+        "Y meanvalue = "+           ! Y meanvalue =
+         STR(med_y,12,2));          !
+
+   TEXT(#49,ON(#6,1.0)+             !
+        VEC(7,-9),0.0,              !
+        "Chordlength = "+           ! Chordlength =
+        STR(kordalangd,12,2));      !
+   TEXT(#50,ON(#6,1.0)+             !
+        VEC(7,-16),0.0,             !
+        "Section no. = "+           ! Section =
+        STR(i_grupp,10,0));         !
+ ENDIF;
+
+!   TEXT(#9,ON(#7,1.0)+             ! Y axis
+!   VEC(-20, 2), 0.0, yaxel);       !
+
+!   TEXT(#19,ON(#7,1.0)+            ! Scale factor  
+!   VEC(xlangd/10, 2),              !
+!   0.0, "Skalfaktor för fel är "+  !
+!    STR(skalf_y,10,2));            !
+
+
+!  Delta vertical lines each 1/10 of axis length
+   FOR i_l := 1 TO 11  DO 
+     LIN_FREE(#30,       
+     VEC(xlangd/10*(i_l-1), -dy), 
+     VEC(xlangd/10*(i_l-1), +dy));
+   ENDFOR;
+
+
+   IF ABS(max_d_pos) < ABS(max_d_neg) THEN
+       max_d := max_d_neg;
+   ELSE
+       max_d := max_d_pos;
+   ENDIF;
+
+   IF DEBUG = 1 THEN  
+   LST_LIN("max_d= "+STR(max_d,12,6));
+   ENDIF; 
+
+! A 12 mm horizontal line for max. deviation 
+  LIN_FREE(#31,VEC(  
+           -7,max_d*skalf_y ),   
+           VEC(5,max_d*skalf_y) );
+
+! Text for maximum deviation
+  SET(TSIZE=1.5); 
+
+  TEXT (#33,ON(#31,0.0)+ 
+            VEC(-0.5,1),0.0, 
+            STR(max_d,-10,2)); 
+
+
+! +++
+! 7. Draw diagram
+! ---
+
+
+   SET(TSIZE=2.0);                 ! Text to points    
+
+  FOR i_p := 1 TO n_p-1 DO         ! Start loop all points in the section
+                                   ! except the last one
+
+    LIN_FREE(#20, VEC(             ! Create line between points   
+    (m_points(i_p).x-fkx)          ! X coordinate start
+            *skalf_x,              !
+     devtot(i_p)*skalf_y ), VEC(   ! Y coordinate start
+    (m_points(i_p+1).x-fkx)        ! X coordinate end 
+            *skalf_x,              !
+     devtot(i_p+1)*skalf_y ));     ! Y coordinate end 
+
+
+    POI_FREE(#21, VEC(             ! Create point for the text 
+    (m_points(i_p).x-fkx)          ! X coordinate
+            *skalf_x,              !
+     devtot(i_p)*skalf_y ):BLANK=1); ! Y coordinate
+
+
+   IF i_p = 1 THEN                 !
+     TEXT(#25,on(REFC(21,i_p),1.0)+  ! Curve description  
+     VEC(0, d_c), 0.0,             !
+     kdesc);                       !
+   ENDIF;                          !
+
+   IF i_p = 2 THEN                 !
+    TEXT(#35,ON(REFC(21,i_p),1.0)+ ! Point number 
+    VEC(0, d_c), 0.0,              !
+    STR(ptnumber(i_p),-1,0));      !
+   ENDIF;                          !
+
+   IF i_p > 2 AND i_p = n_p-1 THEN !
+    TEXT(#36,ON(REFC(21,i_p),1.0)+ ! Point number 
+    VEC(0, d_c), 0.0,              !
+    STR(ptnumber(i_p),-1,0));      !
+   ENDIF;                          !
+
+
+  ENDFOR;                          ! End loop all points in the curve  
+
+    POI_FREE(#22, VEC(             ! Create point for last point in subset
+    (m_points(n_p).x-fkx)          ! X coordinate
+            *skalf_x,              !
+     devtot(n_p)*skalf_y ):BLANK=1); ! Y coordinate
+
+
+   TEXT(#26,ON(REFC(22,1),1.0)+    ! Curve description 
+   VEC(0, d_c ), 0.0,              !
+   kdesc);                         !
+
+! +++
+! 8. Draw a regression line
+! ---
+
+        SET(LFONT=1);               ! Dashed line    
+        SET(LDASHL=10);             ! Length of dashes
+
+     IF case = 10 OR case = 11 THEN   ! Regression line alternative
+
+!      Calculate regression line 
+       PART(#27,meafregv0(n_p,m_points,
+              devtot,A,B):SAVE=0);
+
+        m_points(1).y :=              !
+                    A*m_points(1).x+  !
+                    B;                !
+
+        m_points(n_p).y :=            !
+                    A*m_points(n_p).x+!
+                    B;                !
+
+        LIN_FREE(#28,VEC((            !
+                     m_points(1).x-   !
+                     fkx)*skalf_x,    !
+                     m_points(1).y*   !
+                     skalf_y),        !
+                     VEC((            !
+                     m_points(n_p).x- !
+                     fkx)*skalf_x,    !
+                     m_points(n_p).y* !
+                     skalf_y));       !
+
+        POI_FREE(#29,VEC((            !
+                     m_points(n_p).x- !
+                     fkx)*skalf_x,    !
+                     m_points(n_p).y* !
+                     skalf_y):BLANK=1);!
+
+
+
+        SET(TSIZE=3);
+        SET(TWIDTH=50);
+
+
+        TEXT(#34,ON(#6,1.0)+
+                 VEC(7,-2),0.0,                 
+                 "Twist       =  " + STR(ARCTAN(A),-4,2)+
+                 " degrees" );
+
+     ENDIF;
+
+  IF  DEBUG = 1 THEN
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE
+
+
+
+
