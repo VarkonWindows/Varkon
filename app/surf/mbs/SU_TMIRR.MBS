@@ -1,0 +1,193 @@
+!**************** su_tmirr   ***************************
+!s+++
+! TFORM_MIRR
+! __________
+!
+! Funktionen skapar en speglings transformation.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: TFORM_MIRR (identitet,pos1,pos2,pos3 :attribut)
+!
+! Obligatoriska parametrar:
+!
+! pos1    (VECTOR) - Punkt 1 som definierar plan 
+! pos2    (VECTOR) - Punkt 2 som definierar plan 
+! pos3    (VECTOR) - Punkt 3 som definierar plan 
+!
+! Attribut: PEN, LEVEL och BLANK
+!
+! Exempel:
+! 
+! TFORM_MIRR ( #10, VEC(0,0,10), VEC(100,100,-10),VEC(200,-30,0));
+! 
+! Skapar en transformationsmatris (#10) som speglar en
+! storhet i planet definierat av de tre punkterna:
+! (0,0,10), (100,100,-10) och (200,-30,0).
+!s---
+!e+++
+! TFORM_MIRR
+! __________
+!
+! The function creates a mirror matrix.
+! 
+! Module type: GEOMETRY
+!
+! MBS syntax: TFORM_MIRR (identity,pos1,pos2,pos3 :attribute)
+!
+! Parameters:
+!
+! pos1    (VECTOR) - Point 1 defining a plane    
+! pos2    (VECTOR) - Point 2 defining a plane    
+! pos3    (VECTOR) - Point 3 defining a plane    
+!
+! Attribute: PEN, LEVEL och BLANK
+!
+! Example:
+! 
+! TFORM_MIRR ( #10, VEC(0,0,10),VEC(100,10,-100),VEC(200,-30,0));
+! 
+! Creates a transformations matrix (#10) which mirrors an
+! entity in the plane defined by the three points:
+! (0,0,10), (100,100,-10) och (200,-30,0).
+!e---
+
+!sdesce Add TFORM_MIRR statement to active module (create mirror matrix)
+!sdescs Addera TFORM_MIRR sats till aktiva modulen (skapa speglingsmatris)    
+
+! Revision history
+! ________________
+!
+! 1995-01-18 Gunnar Liden
+! 1995-05-16 short description added G Liden
+! 1996-03-23 ma_tmirr->su_tmirr Gunnar Liden
+
+MACRO MODULE su_tmirr   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING p_sx*80;                ! Start X value prompt string
+  STRING p_sy*80;                ! Start Y value prompt string
+  STRING p_sz*80;                ! Start Z value prompt string
+  STRING p_ex*80;                ! End   X value prompt string
+  STRING p_ey*80;                ! End   Y value prompt string
+  STRING p_ez*80;                ! End   Z value prompt string
+  STRING p_mx*80;                ! Mid   X value prompt string
+  STRING p_my*80;                ! Mid   Y value prompt string
+  STRING p_mz*80;                ! Mid   Z value prompt string
+
+  STRING s_sx*25;                ! Start X value as string
+  STRING s_sy*25;                ! Start Y value as string
+  STRING s_sz*25;                ! Start Z value as string
+  STRING s_ex*25;                ! End   X value as string
+  STRING s_ey*25;                ! End   Y value as string
+  STRING s_ez*25;                ! End   Z value as string
+  STRING s_mx*25;                ! Mid   X value as string
+  STRING s_my*25;                ! Mid   Y value as string
+  STRING s_mz*25;                ! Mid   Z value as string
+
+  STRING s_spt*80;               ! Start point as string
+  STRING s_ept*80;               ! End   point as string
+  STRING s_mpt*80;               ! Mid   point as string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  p_sx:="Plane point 1 X value"; !
+  p_sy:="Plane point 1 Y value"; !
+  p_sz:="Plane point 1 Z value"; !
+  p_ex:="Plane point 2 X value"; !
+  p_ey:="Plane point 2 Y value"; !
+  p_ez:="Plane point 2 Z value"; !
+  p_mx:="Plane point 3 X value"; !
+  p_my:="Plane point 3 Y value"; !
+  p_mz:="Plane point 3 Z value"; !
+ELIF language = 2 THEN           ! Swedish strings
+  p_sx:="Plan punkt 1  X value"; !
+  p_sy:="Plan punkt 1  Y value"; !
+  p_sz:="Plan punkt 1  Z value"; !
+  p_ex:="Plan punkt 2  X value"; !
+  p_ey:="Plan punkt 2  Y value"; !
+  p_ez:="Plan punkt 2  Z value"; !
+  p_mx:="Plan punkt 3  X value"; !
+  p_my:="Plan punkt 3  Y value"; !
+  p_mz:="Plan punkt 3  Z value"; !
+ELSE                             !
+  EXIT("su_tmirr  : " +          !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Translation data 
+! ___________________
+
+s_sx := INPMT(p_sx,              ! Interactive input of start X
+    "0.0",25);                   !
+IF s_sx    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_sy := INPMT(p_sy,              ! Interactive input of start Y
+    "0.0",25);                   !
+IF s_sy    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_sz := INPMT(p_sz,              ! Interactive input of start Z
+    "0.0",25);                   !
+IF s_sz    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ex := INPMT(p_ex,              ! Interactive input of end   X
+    "100.0",25);                 !
+IF s_ex    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ey := INPMT(p_ey,              ! Interactive input of end   Y
+    "100.0",25);                 !
+IF s_ey    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ez := INPMT(p_ez,              ! Interactive input of end   Z
+    "100.0",25);                 !
+IF s_ez    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_mx := INPMT(p_mx,              ! Interactive input of mid   X
+    " 50.0",25);                 !
+IF s_mx    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_my := INPMT(p_my,              ! Interactive input of mid   Y
+    "-100.0",25);                !
+IF s_my    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_mz := INPMT(p_mz,              ! Interactive input of mid   Z
+    "70.0",25);                  !
+IF s_mz    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+! 3. Create MBS statement
+! _______________________
+
+s_spt:="VEC("+s_sx+","           ! Start point       
+             +s_sy+","           !
+             +s_sz+")";          !
+s_ept:="VEC("+s_ex+","           ! End   point       
+             +s_ey+","           !
+             +s_ez+")";          !
+s_mpt:="VEC("+s_mx+","           ! Mid   point       
+             +s_my+","           !
+             +s_mz+")";          !
+
+a_id:= ADD_MBS("TFORM_MIRR",     ! Create MBS statement 
+       s_spt, s_ept, s_mpt);     !
+
+ENDMODULE 
+

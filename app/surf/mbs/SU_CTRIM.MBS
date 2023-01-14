@@ -1,0 +1,177 @@
+!**************** su_ctrim   ***************************
+!s+++
+! CUR_TRIM
+! ________
+!
+! Funktionen trimmar en kurva dvs den skapar en kurva som {r en
+! del av en tidigare skapad kurva.                  
+! 
+! Delkurvan definieras av tv} kurvparameter v{rden.
+!
+! Om start parameterv{rdet {r st|rre {n slutparameterv{rdet
+! kommer kurvan att v{ndas.
+!
+! Om startparameterv{rdet {r mindre {n noll och/eller
+! slutparameterv{rdet {r st|rre {n slutet p} kurvan
+! (antalet segment) kommer kurvan att extrapoleras.
+!
+! Den skapade delkurvan {r ingen approximation. Den kommer att
+! vara exakt lika ursprungskurvan f|rutom att det blir lite 
+! numeriskt "brus" efter en del ber{kningar. 
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: CUR_TRIM(identitet,kurva,ustart,uslut :attribut)
+!
+! Obligatoriska parametrar:
+!
+! kurva   (REF)    - Tidigare skapad kurva
+!
+! ustart  (FLOAT)  - Start v{rde 
+! uslut   (FLOAT)  - Slut  v{rde
+!                    uend   > ns_geo ==> Extrapolering av kurvan
+!                    ustart <   0    ==> Extrapolering av kurvan
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+! 
+! CUR_TRIM( #10, #5, 2.3, 4.1 );
+! 
+! Skapar en ny kurva (#10) som har exakt samma form som en tidigare 
+! skapad kurva #5 men avgr{nsad av parameterv{rdena 2.3 > U > 4.1 
+!s---
+!e+++
+! CUR_TRIM
+! ________
+!
+! The function trims a curve, i.e it creates a curve          
+! which is a part of a previously defined curve. 
+!
+! The curve part is defined by two parameter values.
+!
+! The curve may be extrapolated and curve direction may
+! also be changed.
+!
+! The created curve part is not an approximation. The     
+! curve will be equal to the input curve except for   
+! some numerical noise caused by mathematical operations.  
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: CUR_TRIM(identity,curve,ustart,uend:attribut)
+!
+! Parameters:
+!
+! curve   (REF)    - Previously defined curve  
+! ustart  (FLOAT)  - Start value
+! uend    (FLOAT)  - End   value
+!                    ustart > uend    ==============> 
+!                    Curve     direction is changed
+!                    ustart < 0.0     ==============> 
+!                    Extrapolation of curve in -U direction
+!                    uend   > ns_geo  ==============> 
+!                    Extrapolation of curve in +U direction
+!
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Exemple:
+! 
+! CUR_TRIM(#10,#5,2.3, 4.1 );
+! 
+! Creates a new curve (#10) which has the same shape as previously   
+! created curve #5 but the new curve is limited to the part between    
+! parameter values 2.3 => U => 4.1 
+!e---
+
+!sdesce Add CUR_TRIM statement to active module (trim a curve)
+!sdescs Addera CUR_TRIM sats till aktiva modulen (trimma en kurva)    
+
+! Revision history
+! ________________
+!
+! 1995-01-18 Originally written      Gunnar Liden
+! 1995-05-16 short description added Gunnar Liden
+! 1996-03-23 ma_curtrim->su_ctrim    Gunnar Liden
+
+MACRO MODULE su_ctrim   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    c_id;                   ! Surface identity
+  STRING c_ids*132;              ! Surface identity as string
+
+  STRING select*30;              ! Select prompt string
+
+  STRING p_su*80;                ! Start U value prompt string
+  STRING p_eu*80;                ! End   U value prompt string
+  STRING s_su*25;                ! Start U value as string
+  STRING s_eu*25;                ! End   U value as string
+
+  INT    ns_geo;                 ! No geometrical  segments
+  INT    ns_gra;                 ! No graphical    segments
+  INT    fnt;                    ! Font type
+  FLOAT  sl;                     ! Dash length
+
+  STRING str_in*132;             ! Input string to CUR_GL
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select curve";       !
+  p_su:="Start U value";         !
+  p_eu:="End   U value";         !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} kurva";      !
+  p_su:="Start U v{rde ";        !
+  p_eu:="Slut  U v{rde ";        !
+ELSE                             !
+  EXIT("su_ctrim  : " +          !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select curve  
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+c_id:= IDENT(2+4+8);             ! Interactive curve selection
+POP_PMT();                       ! Erase message to screen
+
+c_ids:= RSTR(c_id);              ! Surface identity as string
+IF c_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+GETCURH(c_id  ,                  ! Retrieve number of segments
+   fnt,sl,ns_geo,ns_gra);        !
+
+! 3. Trimming data
+! ________________
+
+s_su := INPMT(p_su,              ! Interactive input of start U
+    "0.0",25);                   !
+IF s_su    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_eu := INPMT(p_eu,              ! Interactive input of end   U
+    STR(ns_geo,-6,1),25);        !
+IF s_eu    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+! 4. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("CUR_TRIM",       ! Create MBS statement 
+       c_ids, s_su, s_eu);       !
+
+ENDMODULE 
+

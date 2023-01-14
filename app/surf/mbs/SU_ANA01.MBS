@@ -1,0 +1,400 @@
+! ***************** su_ana01   ****************************
+!
+!s+++
+! Lista kurva
+! ___________
+!
+! Lista koordinater och tangenter f|r en kurva i aktiva koordinat- 
+! systemet eller i valt koordinatsystem.
+!s---
+!e+++
+! List of curve
+! _____________
+!
+! List coordinates and tangents for a curve in the active 
+! coordinate system or in a selected coordinate system.
+!e---
+!************************************************************
+
+! Revision history
+! ________________
+!
+! 1996-05-18 Gunnar Liden
+! 1996-05-27 blank->v_blank Gunnar Liden
+
+
+!sdesce List coordinates and tangents for a curve
+!sdescs Lista koordinater och tangenter f|r en kurva
+
+
+GLOBAL GEOMETRY MODULE su_ana01   (
+
+REF    cur_id       > "@t14 Peka p} kurva, cirkel eller linje";
+REF    csy_id := #0 > "@ @t8192 Peka p} koordinat system <CR>= #0= aktivt system");
+
+!e REF    cur_id       > "@t14 Select curve, arc or line";
+!e REF    csy_id := #0 > "@ @t8192 Select coordinate system <CR>= #0= active system");
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  STRING header1*80;             ! Header for list window 
+  STRING header2*80;             ! Header for table       
+  STRING s_csy1*80;              ! Coordinate system name 
+  STRING s_csy2*80;              ! Coordinate system reference
+  STRING s_kink*80;              ! Kink   string
+  STRING s_deg*80;               ! Degree string
+  STRING s_none*80;              ! No coordinate reference string
+  STRING s_arc*80;               ! Arc  string
+  STRING s_line*80;              ! Line string
+
+
+
+                                 ! For function GETHDR:
+  INT    typ;                    ! Type of entity
+  INT    nref;                   ! ...
+  INT    v_blank;                ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niva;                   ! The layer for the entity
+  INT    penna;                  ! Pen number (colour)
+  REF    grupp_id(3);            ! Global identities for groups
+
+                                 ! For GETCSY:
+  STRING csys_name*10;           ! Name of coordinate system
+  FLOAT  csys_data(4,4);         ! Transformation matrix
+
+  FLOAT  a11,a12,a13,b1;         ! Matrix csys_data components
+  FLOAT  a21,a22,a23,b2;         !
+  FLOAT  a31,a32,a33,b3;         !
+
+                                 ! For GETCURH:
+  INT    font;                   ! Font
+  INT    length;                 ! Length for dashed curve
+  INT    ns_geo;                 ! No geometry  segments
+  INT    ns_gra;                 ! No graphical segments
+
+  INT    n_seg;                  ! Number of curve segments
+  INT    i_seg;                  ! Loop index curve segments
+
+  FLOAT  param;                  ! Parameter value for curve
+  FLOAT  eps_p;                  ! Epsilon parameter value for right segment
+  VECTOR p_s;                    ! Curve segment start point 
+  VECTOR p_s_t;                  ! Curve segment start point transformed
+
+  VECTOR t_s;                    ! Starttangent i varje segment
+  VECTOR t_s_t;                  ! Transformerad starttangent i varje segment
+
+  VECTOR p_e;                    ! Curve segment end   point 
+  VECTOR p_e_t;                  ! Curve segment end   point transformed
+
+  VECTOR t_e;                    ! Sluttangent p} kurvan
+  VECTOR t_e_t;                  ! Transformerad sluttangent p} kurvan
+
+  VECTOR t_s_p;                  ! Slut-tangent i f|reg}ende segment
+  VECTOR t_s_p_t;                ! Transformerad slut-tangent i f|reg segment
+
+  FLOAT  dot;                    ! Scalar product for angle calculation
+  FLOAT  angle;                  ! Angle between segments
+  FLOAT  c_kink;                 ! Criterion for a kink between segments
+
+  INT    n_i_p;                  ! Format for the printout of point   data
+  INT    n_d_p;                  ! 
+  INT    n_i_t;                  ! Format for the printout of tangent data
+  INT    n_d_t;                  ! 
+  INT    n_i_a;                  ! Format for the printout of kink angle  
+  INT    n_d_a;                  ! 
+
+                                 ! For su_star:
+  FLOAT l_s;                     ! Size of star
+  INT   s_case;                  !  =1: Repaint screen (y/n)
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! 1. Initializations of internal variables and checks of input data
+!e---
+!s+++
+! 1. Initieringar av interna variabler och kontroll av indata
+!s---
+
+!e+++
+! Criterion for kink between segments, format for printout and star size
+!e---
+!s+++
+! Kriterium f|r kn{ck mellan segment, format f|r utskrift och stj{rnstorlek
+!s---
+
+  c_kink :=  0.1;
+  n_i_p  := 11;  
+  n_d_p  :=  4; 
+  n_i_t  := 12;
+  n_d_t  :=  8;
+  n_i_a  := 10;
+  n_d_a  :=  3;
+
+  l_s    := 2.0;
+  s_case := 2;
+
+!e+++
+! Definition of error strings in English or Swedish
+!e---
+!s+++
+! Definition av felmeddelanden p} engelska eller svenska
+!s---
+
+IF   language = 1 THEN   ! English strings
+  header1 := "Analysis of definition points in curve " + RSTR(cur_id)+"  (su_ana01)";
+  header2 := "Parameter  X         Y         Z          TX          TY          TZ";
+  s_csy1  := "COORDINATE SYSTEM :  ";
+  s_csy2  := "         Reference :  ";
+  s_kink  := "                            Kink   ";
+  s_deg   := " degrees";
+  s_none  := "   -    ";
+  s_arc   := "Selected entity is an arc";
+  s_line  := "Selected entity is a straight line";
+
+ELIF language = 2 THEN   ! Swedish error messages
+  header1 := "Analys av definitionspunkter i kurva " + RSTR(cur_id)+"  (su_ana01)";
+  header2 := "Parameter  X         Y         Z          TX          TY          TZ";
+  s_csy1  := "KOORDINAT SYSTEM :   ";
+  s_csy2  := "         Referens :  ";
+  s_kink  := "                            Kn{ck  ";
+  s_deg   := " grader ";
+  s_none  := "   -    ";
+  s_arc   := "Den valda storheten {r en cirkel";
+  s_line  := "Den valda storheten {r en r{t linje";
+
+ELSE                        
+  EXIT("su_ana01: Language error");
+ENDIF;     
+
+! Epsilon parameter value
+  eps_p :=  0.00000001;
+
+!e+++
+! Get name and matrix for input coordinate system
+!e---
+!s+++
+! H{mta namn och matris f|r indata koordinatsystemet
+!s---
+
+! Get reference to active coordinate system if input system is #0
+! Note that the input reference will be replaced. If the global
+! system is active will csy_id bi #0.
+  IF  csy_id = #0  THEN
+    csy_id:= ACT_CSY();  
+  ENDIF;
+
+  IF  csy_id = #0  THEN
+    csys_name:= "GLOBAL";    
+    a11:= 1.0;
+    a12:= 0.0;
+    a13:= 0.0;
+    b1 := 0.0;
+    a21:= 0.0;
+    a22:= 1.0;
+    a23:= 0.0;
+    b2 := 0.0;
+    a31:= 0.0;
+    a32:= 0.0;
+    a33:= 1.0;
+    b3 := 0.0;
+  ELSE
+    GETCSY(csy_id, csys_name, csys_data);     
+    a11:= csys_data(1,1);
+    a12:= csys_data(1,2);
+    a13:= csys_data(1,3);
+    b1 := csys_data(1,4);
+    a21:= csys_data(2,1);
+    a22:= csys_data(2,2);
+    a23:= csys_data(2,3);
+    b2 := csys_data(2,4);
+    a31:= csys_data(3,1);
+    a32:= csys_data(3,2);
+    a33:= csys_data(3,3);
+    b3 := csys_data(3,4);
+  ENDIF;
+
+!e+++
+! Get number of segments for input curve
+!e---
+!s+++
+! H{mta antal segment f|r indata kurvan
+!s---
+
+  GETHDR( cur_id,typ,nref, v_blank,niva,penna,grupp_id); 
+  IF    typ = 8   THEN
+    GETCURH(cur_id ,font,length, ns_geo , ns_gra); 
+    n_seg := ns_geo;       
+  ELIF  typ  =  2   OR  typ  = 4 THEN
+    n_seg := 1;
+  ELSE
+    EXIT("su_ana01: Type error");
+  ENDIF;
+
+!e+++
+! 2. Header for table
+!e---
+!s+++
+! 2. Huvud f|r tabell
+!s---
+
+  LST_INI(header1);
+
+  LST_LIN("  "); 
+  IF  csy_id  =  #0  THEN
+    LST_LIN(s_csy1+csys_name+s_csy2+s_none); 
+  ELSE
+    LST_LIN(s_csy1+csys_name+s_csy2+RSTR(csy_id)); 
+  ENDIF;
+
+  LST_LIN("  "); LST_LIN("  ");
+  LST_LIN(header2 ); 
+  LST_LIN("  "); 
+
+!e+++
+! 3. Write data for all curve points
+!e---
+!s+++
+! 3. Skriv data om alla kurvpunkter
+!s---
+
+
+
+
+!  Start loop all segments in the curve
+   FOR i_seg := 1 TO n_seg DO
+
+!    Current curve parameter value
+     param := i_seg-1.0;
+
+!    Start point in the segment
+     p_s :=   ON(cur_id,param); 
+!    Start tangent in the segment
+     t_s := TANG(cur_id ,param+eps_p);
+                                 
+!    Start point in the segment transformed
+     p_s_t.x := a11*p_s.x+a12*p_s.y+a13*p_s.z+b1;
+     p_s_t.y := a21*p_s.x+a22*p_s.y+a23*p_s.z+b2;
+     p_s_t.z := a31*p_s.x+a32*p_s.y+a33*p_s.z+b3;
+                 
+!    Start tangent in the segment transformed
+     t_s_t.x := a11*t_s.x+a12*t_s.y+a13*t_s.z;
+     t_s_t.y := a21*t_s.x+a22*t_s.y+a23*t_s.z;
+     t_s_t.z := a31*t_s.x+a32*t_s.y+a33*t_s.z;
+
+!    Tangent from end of previous curve segment and angle
+     IF i_seg > 1 THEN 
+       t_s_p     := TANG(cur_id,  param-eps_p);
+       dot       := VECN(t_s)*VECN(t_s_p);
+       IF  ABS(dot) >  1.0 THEN
+         dot     :=  1.0;
+       ENDIF;
+       IF  ABS(dot) < -1.0 THEN
+         dot     := -1.0;
+       ENDIF;
+       angle     := ARCCOS(dot);  
+       t_s_p_t.x := a11*t_s_p.x+a12*t_s_p.y+a13*t_s_p.z;
+       t_s_p_t.y := a21*t_s_p.x+a22*t_s_p.y+a23*t_s_p.z;
+       t_s_p_t.z := a31*t_s_p.x+a32*t_s_p.y+a33*t_s_p.z;
+     ELSE                
+       t_s_p     := VEC(0,0,0);
+       t_s_p_t   := VEC(0,0,0);
+       angle     := 0.0;       
+     ENDIF;            
+
+!    Write point and tangent for a kink in the curve
+     IF  ABS(angle) > c_kink THEN 
+     LST_LIN("   " + STR(param, 3,1)  +
+     STR(p_s_t.x,n_i_p,n_d_p) + STR(p_s_t.y,n_i_p,n_d_p) + STR(p_s_t.z,n_i_p,n_d_p) +
+     STR(t_s_p_t.x,n_i_t,n_d_t)+STR(t_s_p_t.y,n_i_t,n_d_t)+STR(t_s_p_t.z,n_i_t,n_d_t));
+     LST_LIN( s_kink + STR(angle,n_i_a,n_d_a) + s_deg );           
+     ENDIF;
+
+!    Draw indication star
+     PART(#1,su_star (p_s,l_s,s_case) :SAVE=0);  
+
+!    Write point and tangent
+     LST_LIN("   " + STR(param, 3,1)  +
+     STR(p_s_t.x,n_i_p,n_d_p)+STR(p_s_t.y,n_i_p,n_d_p)+STR(p_s_t.z,n_i_p,n_d_p) +
+     STR(t_s_t.x,n_i_t,n_d_t)+STR(t_s_t.y,n_i_t,n_d_t)+STR(t_s_t.z,n_i_t,n_d_t));
+
+!    Write point and tangent for the end point of the curve
+     IF i_seg = n_seg THEN    ! Start end point of curve
+
+!      Parameter value for end point of curve
+       param   := i_seg;
+
+!      End point in the curve  
+       p_e     :=   ON(cur_id,param); 
+!      End tangent in the curve  
+       t_e     := TANG(cur_id,param);
+
+!      End point in the curve transformed
+       p_e_t.x := a11*p_e.x+a12*p_e.y+a13*p_e.z+b1;
+       p_e_t.y := a21*p_e.x+a22*p_e.y+a23*p_e.z+b2;
+       p_e_t.z := a31*p_e.x+a32*p_e.y+a33*p_e.z+b3;
+
+!      End tangent in the curve transformed
+       t_e_t.x := a11*t_e.x+a12*t_e.y+a13*t_e.z;
+       t_e_t.y := a21*t_e.x+a22*t_e.y+a23*t_e.z;
+       t_e_t.z := a31*t_e.x+a32*t_e.y+a33*t_e.z;
+                                  
+!      Write point and tangent for the end point of the curve
+       LST_LIN("   " + STR(param, 3,1)  +
+       STR(p_e_t.x,n_i_p,n_d_p)+STR(p_e_t.y,n_i_p,n_d_p)+STR(p_e_t.z,n_i_p,n_d_p) +
+       STR(t_e_t.x,n_i_t,n_d_t)+STR(t_e_t.y,n_i_t,n_d_t)+STR(t_e_t.z,n_i_t,n_d_t));
+
+!      Empty lines
+       LST_LIN("  "); LST_LIN("  "); LST_LIN("  ");
+
+!      Draw indication star
+       PART(#2,su_star (p_e,l_s,s_case) :SAVE=0);  
+
+     ENDIF;    ! End   end point of curve
+
+
+!  End   loop all segments in the curve
+   ENDFOR;
+
+
+
+!e+++
+! 4. Write additional information about the curve
+!e---
+!s+++
+! 4. Skriv ytterligare data om kurvan
+!s---
+
+  IF   typ = 2  THEN
+!   Empty line
+    LST_LIN("  "); 
+!   Entity type 
+    LST_LIN(s_line); 
+!   Empty line
+    LST_LIN("  "); 
+  ENDIF;
+
+  IF   typ = 4  THEN
+!   Empty line
+    LST_LIN("  "); 
+!   Entity type 
+    LST_LIN(s_arc); 
+!   Empty line
+    LST_LIN("  "); 
+  ENDIF;
+
+
+
+  LST_EXI();
+
+ENDMODULE

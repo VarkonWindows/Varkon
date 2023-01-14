@@ -1,0 +1,497 @@
+! ***************** su_ana02   ****************************
+!
+!s+++
+! Lista kurva f|r givna stationsv{rden
+! ___________
+!
+! Lista koordinater och tangenter f|r en kurva i aktiva koordinat- 
+! systemet eller i valt koordinatsystem.
+!s---
+!e+++
+! List curve data for given stations
+! __________________________________
+!
+! List coordinates and tangents for a curve in the active 
+! coordinate system or in a selected coordinate system.
+!e---
+!************************************************************
+
+! Revision history
+! ________________
+!
+! 1996-05-18 Gunnar Liden
+! 1996-05-27 blank->v_blank Gunnar Liden
+
+
+!sdesce List coordinates and derivatives for nest of planar intersects
+!sdescs Lista koordinater och tangenter f|r sk{rningspunkter kurva/plan
+
+
+GLOBAL GEOMETRY MODULE su_ana02   (
+
+REF    cur_id          > "@t14 Peka p} kurva, cirkel eller linje";
+REF    csy_id := #0    > "@ @t8192 Peka p} koordinat system <CR>= #0= global system";
+STRING stat*1 := "Y"   > "Station X, Y eller Z ";
+FLOAT  start  :=-200.0 > "Start station v{rde";
+FLOAT  delta  :=  50.0 > "Delta station v{rde (0.0 = bara ett plan)";
+FLOAT  end    := 100.0 > "Slut  station v{rde");
+
+!e REF    cur_id       > "@t14 Select curve, arc or line";
+!e REF    csy_id := #0 > "@ @t8192 Select coordinate system <CR>= #0= active system");
+!e FLOAT  start  :=-200.0 > "Start station value";
+!e FLOAT  delta  :=  50.0 > "Delta station value (0.0 = only one plane)";
+!e FLOAT  end    := 100.0 > "End   station value");
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  INT    n_plane;                ! Number of  intersect planes
+  INT    i_plane;                ! Loop index intersect plane
+  INT    no_points;              ! No of intersect points
+  INT    i_p;                    ! Loop index intersect points
+
+  VECTOR i_norm;                 ! Intersect plane normal
+  VECTOR p1_s;                   ! Point 1 for start   B-plane
+  VECTOR p2_s;                   ! Point 2 for start   B-plane
+  VECTOR p3_s;                   ! Point 3 for start   B-plane
+  VECTOR p4_s;                   ! Point 4 for start   B-plane
+
+  STRING ermess2*60;             ! Error Number of intersect planes
+  STRING ermess3*60;             ! Error Station case
+  STRING ermess6*60;             ! Error Change sign on delta
+  STRING header1*80;             ! Header for list window 
+  STRING header2*80;             ! Header for table       
+  STRING s_csy1*80;              ! Coordinate system name 
+  STRING s_csy2*80;              ! Coordinate system reference
+  STRING s_kink*80;              ! Kink   string
+  STRING s_deg*80;               ! Degree string
+  STRING s_none*80;              ! No coordinate reference string
+  STRING s_arc*80;               ! Arc  string
+  STRING s_line*80;              ! Line string
+  STRING s_start*80;             ! Nest start 
+  STRING s_delta*80;             ! Nest delta 
+  STRING s_end*80;               ! Nest end   
+  STRING s_invon*80;             ! INV_ON error
+
+  FLOAT  dist;                   ! Check distance 
+  VECTOR p_che;                  ! Check point
+
+
+                                 ! For function GETHDR:
+  INT    typ;                    ! Type of entity
+  INT    nref;                   ! ...
+  INT    v_blank;                ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niva;                   ! The layer for the entity
+  INT    penna;                  ! Pen number (colour)
+  REF    grupp_id(3);            ! Global identities for groups
+
+                                 ! For GETCSY:
+  STRING csys_name*10;           ! Name of coordinate system
+  FLOAT  csys_data(4,4);         ! Transformation matrix
+
+  FLOAT  a11,a12,a13,b1;         ! Matrix csys_data components
+  FLOAT  a21,a22,a23,b2;         !
+  FLOAT  a31,a32,a33,b3;         !
+
+  FLOAT  param;                  ! Parameter value for curve
+  VECTOR p_s;                    ! Curve segment start point 
+  VECTOR p_s_t;                  ! Curve segment start point transformed
+
+  VECTOR t_s;                    ! Starttangent i varje segment
+  VECTOR t_s_t;                  ! Transformerad starttangent i varje segment
+
+  INT    n_i_p;                  ! Format for the printout of point   data
+  INT    n_d_p;                  ! 
+  INT    n_i_t;                  ! Format for the printout of tangent data
+  INT    n_d_t;                  ! 
+  INT    n_i_a;                  ! Format for the printout of kink angle  
+  INT    n_d_a;                  ! 
+
+                                 ! For su_star:
+  FLOAT l_s;                     ! Size of star
+  INT   s_case;                  !  =1: Repaint screen (y/n)
+
+  STRING s*1;
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! 1. Initializations of internal variables and checks of input data
+!e---
+!s+++
+! 1. Initieringar av interna variabler och kontroll av indata
+!s---
+
+!e+++
+! Format for printout and star size
+!e---
+!s+++
+! Format f|r utskrift och stj{rnstorlek
+!s---
+
+  n_i_p  := 11;  
+  n_d_p  :=  4; 
+  n_i_t  := 12;
+  n_d_t  :=  8;
+  n_i_a  := 10;
+  n_d_a  :=  3;
+
+  l_s    := 2.0;
+  s_case := 2;
+
+!e+++
+! Definition of error strings in English or Swedish
+!e---
+!s+++
+! Definition av felmeddelanden p} engelska eller svenska
+!s---
+
+IF   language = 1 THEN   ! English strings
+  header1 := "Analysis of definition points in curve " + RSTR(cur_id)+"  (su_ana02)";
+  header2 := "Parameter      X         Y          Z          TX          TY          TZ";
+  s_csy1  := "COORDINATE SYSTEM :  ";
+  s_csy2  := "         Reference :  ";
+  s_kink  := "                            Kink   ";
+  s_deg   := " degrees";
+  s_none  := "   -    ";
+  s_arc   := "Selected entity is an arc";
+  s_line  := "Selected entity is a straight line";
+  ermess2 := "Number of intersect planes > 100 (su_ana02)";
+  ermess3 := "Intersect case (station) "+stat+" not X, Y or Z (su_ana02)";   
+  ermess6 := "Change sign on delta for intersects (su_ana02)";   
+  s_start := "Start ";   
+  s_delta := "   Delta ";   
+  s_end   := "   End ";   
+  s_invon := " Function INV_ON found another solution";   
+
+ELIF language = 2 THEN   ! Swedish error messages
+  header1 := "Analys av definitionspunkter i kurva " + RSTR(cur_id)+"  (su_ana02)";
+  header2 := "Parameter      X         Y          Z          TX          TY          TZ";
+  s_csy1  := "KOORDINAT SYSTEM :   ";
+  s_csy2  := "         Referens :  ";
+  s_kink  := "                            Kn{ck  ";
+  s_deg   := " grader ";
+  s_none  := "   -    ";
+  s_arc   := "Den valda storheten {r en cirkel";
+  s_line  := "Den valda storheten {r en r{t linje";
+  ermess2 := "Antalet sk{rningsplan > 100 (su_ana02)"; 
+  ermess3 := "Sk{rningsfall (station) "+stat+" ej X, Y eller Z (su_ana02)";   
+  ermess6 := "Byt tecken p} delta f|r sk{rningarna (su_ana02)";   
+  s_start := "Start ";   
+  s_delta := "   Delta ";   
+  s_end   := "   Slut ";   
+  s_invon := " Fktn INV_ON fann annan l|sning"; 
+
+ELSE                        
+  EXIT("su_ana02: Language error");
+ENDIF;     
+
+!e+++
+! Get name and matrix for input coordinate system
+!e---
+!s+++
+! H{mta namn och matris f|r indata koordinatsystemet
+!s---
+
+! Get reference to active coordinate system if input system is #0
+! Note that the input reference will be replaced. If the global
+! system is active will csy_id bi #0.
+
+! Johan, 
+! Fungerar inte n{r modulen anropas med r i menyn
+! ACT_CSY() ger v{rdet #0 {ven om lokalt system {r aktivt !!!!????
+
+!???  s:= INPMT("Before csy_id "+RSTR(csy_id),"",1);
+
+!???  IF  csy_id = #0  THEN
+!???    csy_id:= ACT_CSY();  
+!???    s:= INPMT("ACT_CSY csy_id "+RSTR(csy_id),"",1);
+!???  ENDIF;
+
+  IF  csy_id = #0  THEN
+    csys_name:= "GLOBAL";    
+    a11:= 1.0;
+    a12:= 0.0;
+    a13:= 0.0;
+    b1 := 0.0;
+    a21:= 0.0;
+    a22:= 1.0;
+    a23:= 0.0;
+    b2 := 0.0;
+    a31:= 0.0;
+    a32:= 0.0;
+    a33:= 1.0;
+    b3 := 0.0;
+  ELSE
+    GETCSY(csy_id, csys_name, csys_data);     
+    a11:= csys_data(1,1);
+    a12:= csys_data(1,2);
+    a13:= csys_data(1,3);
+    b1 := csys_data(1,4);
+    a21:= csys_data(2,1);
+    a22:= csys_data(2,2);
+    a23:= csys_data(2,3);
+    b2 := csys_data(2,4);
+    a31:= csys_data(3,1);
+    a32:= csys_data(3,2);
+    a33:= csys_data(3,3);
+    b3 := csys_data(3,4);
+  ENDIF;
+
+!e+++
+! Calculate number of intersect planes
+!e---
+!s+++
+! Ber{kning av antal sk{rningsplan
+!s---
+
+  IF       ABS(delta) <   0.00001 THEN
+    n_plane := 1;
+  ELIF         delta  >=  0.00001 AND end < start  THEN
+    EXIT(ermess6);
+  ELIF         delta  <= -0.00001 AND end > start  THEN
+    EXIT(ermess6);
+  ELSE
+    n_plane := TRUNC((ABS(start-end)+0.01)/ABS(delta)) + 1;
+  ENDIF;
+
+  IF  n_plane > 100 THEN         ! Check no of planes
+    EXIT(ermess2); 
+  ENDIF;
+
+
+!e+++
+! Input parameter stat must be x, X, y, Y, z or Z
+! Definition of the intersect plane normal for the given case
+! and four points for the start intersect B-plane
+!e---
+!s+++
+! Indata parametern stat m}ste vara x, X, y, Y, z or Z
+! Definition av sk{rningsplanets normal f|r det givna fallet
+! och fyra punkter f|r startsk{rnings B-planet.
+!s---
+
+  IF    stat = "x"  OR stat = "X"  THEN
+    stat   := "X";
+    i_norm := VEC( 1.0,    0.0,   0.0);
+    p1_s   := VEC(start,   0.0,   0.0 );
+    p2_s   := VEC(start,1000.0,1000.0 );
+    p3_s   := VEC(start,1000.0,1000.0 );
+    p4_s   := VEC(start,2000.0,   0.0 );
+  ELIF  stat = "y"  OR stat = "Y"  THEN
+    stat   := "Y";
+    i_norm := VEC(   0.0,  1.0,    0.0);
+    p1_s   := VEC(   0.0, start,   0.0 );
+    p2_s   := VEC(1000.0, start,1000.0 );
+    p3_s   := VEC(1000.0, start,1000.0 );
+    p4_s   := VEC(2000.0, start,   0.0 );
+  ELIF  stat = "z"  OR stat = "Z"  THEN
+    stat   := "Z";
+    i_norm := VEC(   0.0,    0.0,  1.0);
+    p1_s   := VEC(   0.0,    0.0, start);
+    p2_s   := VEC(1000.0, 1000.0, start);
+    p3_s   := VEC(1000.0, 1000.0, start);
+    p4_s   := VEC(2000.0,    0.0, start);
+  ELSE
+    EXIT(ermess3); 
+  ENDIF;
+
+!e+++
+! 2. Header for table
+!e---
+!s+++
+! 2. Huvud f|r tabell
+!s---
+
+  LST_INI(header1);
+
+  LST_LIN("  "); 
+  IF  csy_id  =  #0  THEN
+    LST_LIN(s_csy1+csys_name+s_csy2+s_none); 
+  ELSE
+    LST_LIN(s_csy1+csys_name+s_csy2+RSTR(csy_id)); 
+  ENDIF;
+
+  LST_LIN("  "); LST_LIN("  ");
+  LST_LIN(header2 ); 
+  LST_LIN("  "); 
+
+!e+++
+! 3. Write data for all curve points
+!e---
+!s+++
+! 3. Skriv data om alla kurvpunkter
+!s---
+
+
+!e+++
+! Start of loop all station values: i_plane= 1, 2, 3, .... , n_plane
+!e---
+!s+++
+! Start av loop alla stations v{rden: i_plane= 1, 2, 3, .... , n_plane
+!s---
+
+  FOR i_plane := 1 TO n_plane  DO  
+
+!e+++
+!   Create current intersect B-plane
+!e---
+!s+++
+!   Skapa aktuella sk{rnings B-planet 
+!s---
+
+    IF    csy_id  <>  #0  THEN
+      MODE_LOCAL(csy_id);
+    ENDIF;
+    B_PLANE( #3, p1_s + (i_plane-1)*delta*i_norm,  
+                 p2_s + (i_plane-1)*delta*i_norm,  
+                 p3_s + (i_plane-1)*delta*i_norm,  
+                 p4_s + (i_plane-1)*delta*i_norm  :BLANK=1);
+    MODE_GLOBAL();
+
+!e+++
+!   Calculate number of intersect points for the current plane    
+!   Goto label nointer if there is no intersect.
+!e---
+!s+++
+!   Ber{kna antal sk{rningspunkter f|r aktuella planet
+!   Hoppa till label nointer om ingen sk{rning finns
+!s---
+
+    no_points := N_INTERSECT ( cur_id, GLOBAL_REF(#3) ); 
+
+    IF no_points = 0 THEN 
+        DEL(GLOBAL_REF(#3));         
+        GOTO nointer;   
+    ENDIF;             
+
+!Q    IF  no_points >  1  THEN
+!Q      LST_LIN("no_points= "+STR(no_points,-1,0));
+!Q    ENDIF;
+
+!e+++
+!   Calculate all intersect points for the current plane
+!e---
+!s+++
+!   Ber{kna alla sk{rningspunkter f|r det aktuella planet
+!s---
+
+    FOR i_p:= 1 TO no_points DO  ! Start loop points
+
+!     Current intersect point
+      p_s := INTERSECT ( cur_id, GLOBAL_REF(#3) , i_p ); 
+
+      param := INV_ON( cur_id, p_s, 1 ); 
+
+      p_che := ON(cur_id, param);
+      dist  := VECL(p_che-p_s);
+
+!     Current intersect tangent
+      t_s := TANG(cur_id ,param);
+
+!     Current intersect point transformed
+      p_s_t.x := a11*p_s.x+a12*p_s.y+a13*p_s.z+b1;
+      p_s_t.y := a21*p_s.x+a22*p_s.y+a23*p_s.z+b2;
+      p_s_t.z := a31*p_s.x+a32*p_s.y+a33*p_s.z+b3;
+                 
+!     Current intersect tangent transformed
+      t_s_t.x := a11*t_s.x+a12*t_s.y+a13*t_s.z;
+      t_s_t.y := a21*t_s.x+a22*t_s.y+a23*t_s.z;
+      t_s_t.z := a31*t_s.x+a32*t_s.y+a33*t_s.z;
+
+!     Write intersect point and tangent
+      IF  dist < 0.01 THEN
+      LST_LIN("   " + STR(param, 9,7)  +
+      STR(p_s_t.x,n_i_p,n_d_p)+STR(p_s_t.y,n_i_p,n_d_p)+STR(p_s_t.z,n_i_p,n_d_p) +
+      STR(t_s_t.x,n_i_t,n_d_t)+STR(t_s_t.y,n_i_t,n_d_t)+STR(t_s_t.z,n_i_t,n_d_t));
+      ELSE
+      LST_LIN("   " + STR(param, 9,7)  +
+      STR(p_s_t.x,n_i_p,n_d_p)+STR(p_s_t.y,n_i_p,n_d_p)+STR(p_s_t.z,n_i_p,n_d_p) +
+       s_invon);
+      ENDIF;
+
+!     Draw indication star
+      PART(#1,su_star (p_s,l_s,s_case) :SAVE=0);  
+
+      IF i_p = no_points THEN 
+        DEL(GLOBAL_REF(#3));   
+      ENDIF;      
+
+    ENDFOR;                      ! End   loop points     
+
+nointer:;                        ! Label: No intersect 
+
+  ENDFOR;                        ! End   loop intersects
+
+!e+++
+! End   of loop all station values: i_plane= 1, 2, 3, .... , n_plane
+!
+!e---
+!s+++
+! Slut p} loop alla stations v{rden: i_plane= 1, 2, 3, .... , n_plane
+!
+!s---
+
+
+
+
+
+
+!  Empty lines
+   LST_LIN("  "); LST_LIN("  "); LST_LIN("  ");
+
+!e+++
+! 4. Write additional information about the curve
+!e---
+!s+++
+! 4. Skriv ytterligare data om kurvan
+!s---
+
+! Empty line
+  LST_LIN("  "); 
+! Input intersect data 
+  LST_LIN(s_start+stat+csys_name+STR(start,n_i_p,n_d_p)
+          +s_delta+STR(delta,n_i_p,n_d_p)
+          +s_end  +STR(end  ,n_i_p,n_d_p));
+
+!e+++
+! Get type of curve
+!e---
+!s+++
+! H{mta typ av indata kurvan
+!s---
+
+  GETHDR( cur_id,typ,nref, v_blank,niva,penna,grupp_id); 
+  IF   typ = 2  THEN
+!   Empty line
+    LST_LIN("  "); 
+!   Entity type 
+    LST_LIN(s_line); 
+!   Empty line
+    LST_LIN("  "); 
+  ENDIF;
+
+  IF   typ = 4  THEN
+!   Empty line
+    LST_LIN("  "); 
+!   Entity type 
+    LST_LIN(s_arc); 
+!   Empty line
+    LST_LIN("  "); 
+  ENDIF;
+
+
+
+  LST_EXI();
+
+ENDMODULE

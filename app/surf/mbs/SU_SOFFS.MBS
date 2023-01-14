@@ -1,0 +1,139 @@
+!**************** su_soffs   ***************************
+!s+++
+! SUR_OFFS
+! ________
+!
+! Funktionen skapar en yta p} ett konstant avst}nd till en
+! tidigare skapad yta (en s} kallad offset yta). 
+! 
+! Den skapade ytan {r ingen approximation utan avst}ndet
+! {r exakt eftersom offset ytan {r matematiskt definierad.
+! Varje punkt p} offset ytan {r definierad som (med MBS 
+! spr}kets syntax):  p_offset:= p_yta + avst}nd*n_yta.    
+! p_yta {r en punkt p} ursprungsytan och n_yta {r ytnormalen
+! i samma punkt.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_OFFS(identitet, yta , avst}nd : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+! avst}nd (FLOAT)  - Avst}nd (str{cka) med tecken 
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_OFFS(#10,#5,-1.7);
+! 
+! Skapar en ny yta (#10) som ligger p} ett konstant avst}nd (-1.7)
+! till en tidigare definierad yta (#5).
+!s---
+!e+++
+! SUR_OFFS
+! ________
+!
+! The function creates an offset surface, which is a surface at 
+! a constant distance to a previously defined surface. 
+!
+! The created surface is not an approximation. The distance
+! is exact since the offset surface is analytically defined.
+! Each point on the offset surface is mathematically defined
+! (with MBS syntax) as: p_offset:= p_sur + offset*n_sur.    
+! p_sur is a point on the original surface and n_sur is the 
+! surface normal in point p_sur.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_OFFS(identity, surface , offset  : attribute)
+!
+! Parameters:
+!
+! surface  (REF)    - Previously defined surface
+! offset   (FLOAT)  - Distance with sign w.r.t the surface normal
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Exemple:
+! 
+! SUR_OFFS(#10,#5,-1.7);
+! 
+! Creates a new surface (#10) at constant distance (-1.7) to the
+! previously defined surface (#5).
+!e---
+
+!sdesce Add SUR_OFFS  statement to active module (create offset surface)
+!sdescs Addera SUR_OFFS  sats till aktiva modulen (skapa offset yta)    
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1995-05-16 short description added             Gunnar Liden
+! 1996-02-27 ma_suroffs->su_soffs och GLOBAL_REF Gunnar Liden
+
+MACRO MODULE su_soffs   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  FLOAT  offset;                 ! Offset value
+  STRING soffset*25;             ! Offset value as string
+
+  STRING select*30;              ! Select prompt string
+
+  STRING p_offs*30;              ! Offset prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select surface";     !
+  p_offs:= "Offset for surface"; !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} yta";        !
+  p_offs:= "Offset f|r yta";     !
+ELSE                             !
+  EXIT("ed_sur: Language error");!
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:="GLOBAL_REF("+s_ids+")";  !
+
+! 3. Offset 
+! _________
+
+soffset:= INPMT(p_offs,          ! Interactive input of offset
+"",25);                          !
+IF soffset = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 4. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("SUR_OFFS",       ! Create MBS statement 
+       s_ids, soffset);          !
+
+ENDMODULE 
+

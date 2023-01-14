@@ -1,0 +1,388 @@
+!s+++
+! su_cubic 
+! _________
+!
+! Funktionen skapar en yta av typ CUB_SUR med funktionen SUR_SPLARR.
+!
+! Indata {r ett antal kurvor (2-25 stycken) som best{mmer antalet
+! V kurvor i ytan. \nskat antal kurvor i den andra riktningen (U
+! kurvor) {r indata till funktionen.
+!
+! Funktionen ber{knar punkter och U tangenter f|r de givna kurvorna
+! och relativa b}gl{ngdsv{rdet. Funktionen SUR_SPLARR ber{knar
+! V tangenterna och skapar den bikubiska ytan.
+! 
+! Anm{rkning:
+! Indata kurvorna approximeras. Det {r bara punkterna och tangenterna
+! (definierade med delta b}gl{ngdsv{rdet) som kommer att ligga
+! exakt i ytan.
+!
+! Exempel: Antal indata kurvor {r tre, dvs ytan f}r tre V linjer
+!          \nskat antal U kurvor {r nio.
+!          Punkter och tangenter i uriktning ska f} komma
+!          f|ljande ordning i indata "arrayerna" till SUR_SPLARR.
+!
+!     V
+!   !
+!   !
+!   !
+!   ! (1,3) (2,3) (3,3) (4,3) (5,3) (6,3) (7,3) (8,3) (9,3) -->- Kurva 3
+!   !
+!   ! (1,2) (2,2) (3,2) (4,2) (5,2) (6,2) (7,2) (8,2) (9,2) -->- Kurva 2
+!   !
+!   ! (1,1) (2,1) (3,1) (4,1) (5,1) (6,1) (7,1) (8,1) (9,1) -->- Kurva 1
+!   !
+!    ------------------------------------------------------------------> U
+!
+!s---
+!e+++
+! The function creates a surface of type CUB_SUR with MBS the   
+! MBS function SUR_SPLARR.
+!
+! Input data to SUR_SPLARR are points and normalised tangents in
+! U and V direction. In this case will the V tangents be calculated
+! by SUR_SPLARR. Input data to this function is (2 - 25) (V) curves
+! and requested number of U curves. 
+!
+! The function calculates points and normalised U tangents for the
+! given curves and a relative arclength value defined by the requested
+! number of U curves.
+!
+! Remark:
+! The input curves will be approximated. 
+!
+!
+! Example: The number of input curves is three, i.e the number of patches
+!          in V direction will be two.
+!          Requested number of U curves is nine and the number of patches
+!          in U direction will be eight.
+!          The order of points and tangents shall be in accordance with
+!          the figure below.
+!
+!     V
+!   !
+!   !
+!   !
+!   ! (1,3) (2,3) (3,3) (4,3) (5,3) (6,3) (7,3) (8,3) (9,3)
+!   !
+!   ! (1,2) (2,2) (3,2) (4,2) (5,2) (6,2) (7,2) (8,2) (9,2)
+!   !
+!   ! (1,1) (2,1) (3,1) (4,1) (5,1) (6,1) (7,1) (8,1) (9,1)
+!   !
+!    ------------------------------------------------------------> U
+!e---
+!
+! Author: Gunnar Liden
+!
+! Revisions
+! ---------
+!
+! 1995-09-24 Originally written (SUR_SPLARR order of points changed)
+! 1996-03-23 acubsurv1->su_cubic Gunnar Liden
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE  su_cubic   (
+INT    no_ulines := 10         >"\nskat antal U kurvor";
+REF    cur1_id                 >"@t10 Kurva  1";
+REF    cur2_id                 >"@t10 Kurva  2";
+REF    cur3_id := #0.1         >"@ @t10 Kurva  3 (Eq. #0.1: Ej definierad)";
+REF    cur4_id := #0.1         >"@ @t10 Kurva  4 (Eq. #0.1: Ej definierad)";
+REF    cur5_id := #0.1         >"@ @t10 Kurva  5 (Eq. #0.1: Ej definierad)";
+REF    cur6_id := #0.1         >"@ @t10 Kurva  6 (Eq. #0.1: Ej definierad)";
+REF    cur7_id := #0.1         >"@ @t10 Kurva  7 (Eq. #0.1: Ej definierad)";
+REF    cur8_id := #0.1         >"@ @t10 Kurva  8 (Eq. #0.1: Ej definierad)";
+REF    cur9_id := #0.1         >"@ @t10 Kurva  9 (Eq. #0.1: Ej definierad)";
+REF   cur10_id := #0.1         >"@ @t10 Kurva 10 (Eq. #0.1: Ej definierad)";
+REF   cur11_id := #0.1         >"@ @t10 Kurva 11 (Eq. #0.1: Ej definierad)";
+REF   cur12_id := #0.1         >"@ @t10 Kurva 12 (Eq. #0.1: Ej definierad)";
+REF   cur13_id := #0.1         >"@ @t10 Kurva 13 (Eq. #0.1: Ej definierad)";
+REF   cur14_id := #0.1         >"@ @t10 Kurva 14 (Eq. #0.1: Ej definierad)";
+REF   cur15_id := #0.1         >"@ @t10 Kurva 15 (Eq. #0.1: Ej definierad)";
+REF   cur16_id := #0.1         >"@ @t10 Kurva 16 (Eq. #0.1: Ej definierad)";
+REF   cur17_id := #0.1         >"@ @t10 Kurva 17 (Eq. #0.1: Ej definierad)";
+REF   cur18_id := #0.1         >"@ @t10 Kurva 18 (Eq. #0.1: Ej definierad)";
+REF   cur19_id := #0.1         >"@ @t10 Kurva 19 (Eq. #0.1: Ej definierad)";
+REF   cur20_id := #0.1         >"@ @t10 Kurva 20 (Eq. #0.1: Ej definierad)";
+REF   cur21_id := #0.1         >"@ @t10 Kurva 21 (Eq. #0.1: Ej definierad)";
+REF   cur22_id := #0.1         >"@ @t10 Kurva 22 (Eq. #0.1: Ej definierad)";
+REF   cur23_id := #0.1         >"@ @t10 Kurva 23 (Eq. #0.1: Ej definierad)";
+REF   cur24_id := #0.1         >"@ @t10 Kurva 24 (Eq. #0.1: Ej definierad)";
+REF   cur25_id := #0.1         >"@ @t10 Kurva 25 (Eq. #0.1: Ej definierad)";
+INT    graphic    := 2         
+>"@ =0: Blanka allt =1: Visa yta men blanka in-kurvor =2: Visa yta och in-kurvor" );
+
+!sdesce Create CUB_SUR from a set of V curves and relative arclength
+!sdescs Skapa CUB_SUR med ett antal V kurvor och relativ b}gl{ngd    
+
+
+! Internal variables:
+
+  STRING metod*15;              ! Method for tangent length calculation 
+                                ! ZEROTWIST_1 or ADINI_1
+  INT    no_vlines;             ! Number of V lines
+  REF    id_all(25);            ! Id's to all V lines
+  VECTOR pts(50,50);            ! Points
+  VECTOR tgs(50,50);            ! Tangents
+  VECTOR cross(50);             ! Approx. cross-slopes
+  INT    ip_u;                  ! Loop index U points
+  INT    ip_v;                  ! Loop index V points
+  INT    i_v;                   ! Loop index V lines 
+
+  FLOAT  s_delta;               ! Delta arclength
+  FLOAT  s_total;               ! Total arclength
+  REF    cur_id;                ! Current curve identity
+  FLOAT  cur_u;                 ! Current curve parameter value
+  VECTOR cur_p;                 ! Point 
+  VECTOR cur_t;                 ! Tangent (normalised)
+
+  CONSTANT INT language= 2;     ! 1: English Eq. 2: Swedish
+
+  STRING   ermess1*40;          ! Error message
+  STRING   ermess2*40;          ! Error message
+  STRING   ermess3*40;          ! Error message
+  STRING   ermess4*40;          ! Error message
+  STRING   ermess5*50;          ! Error message
+
+  INT      DEBUG;               !
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+!s+++
+! Algoritm
+!s---
+
+!e+++
+! Algorithm
+!e---
+
+!e+++
+! 1. Initializations and check of input data
+!e---
+
+!s+++
+! 1. Initieringar och kontroll av indata
+!s---
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+IF   language = 1 THEN           ! English strings
+  ermess1:="Not valid graphic "; !
+  ermess2:="Number of U lines "+ !
+   "not between 2 and 50";       !
+  ermess3:="Number of V lines "+ !
+   "not between 2 and 25";       !
+  ermess4:="Not a"+              !
+      " LFT_SUR surface";        !
+  ermess5:="Temporary maximum "+ !
+      "limit for number of pts"+ !
+      " is 500";                 !
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:="Ej till}ten grafik ";!
+  ermess2:="Antalet U kurvor "+  !
+   "ej mellan 2 and 50";         !
+  ermess3:="Antalet V kurvor "+  !
+   "ej mellan 2 and 25";         !
+  ermess4:="Ej en"+              !
+      " LFT_SUR yta";            !
+  ermess5:="Tillf{llig begr{ns"+ !
+      "ning p} 500 punkter";     !
+ELSE                             !
+  EXIT("ma_surexdf: " +          !
+       "Language error");        !
+ENDIF;                           !
+
+FOR ip_v:= 1 TO   50      DO     ! Start loop V points
+  FOR ip_u:= 1 TO   50      DO   ! Start loop U points
+    pts(ip_u,ip_v):=             ! Point on surface
+    VEC(ip_u,ip_v,0.123456789);  !
+    tgs(ip_u,ip_v):=             ! Tangent on surface
+    VEC(ip_u,ip_v,0.123456789);  !
+  ENDFOR;                        !
+ENDFOR;                          !
+
+!e+++
+! Check graphic case
+!e---
+!s+++
+! Kontrollera grafik fall (parameter graphic)
+!s---
+
+  IF    graphic = 0 THEN        !
+    ;                           !
+  ELIF  graphic = 1 THEN        !
+    ;                           !
+  ELIF  graphic = 2 THEN        !
+    ;                           !
+  ELIF  graphic = 3 THEN        !
+    ;                           !
+  ELSE                          !
+     EXIT("su_cubic  "+         !
+     ermess1+STR(graphic,-1,0));!
+  ENDIF;                        !
+
+!e+++
+! Check requested number of U lines
+!e---
+!s+++
+! Kontrollera |nskat antal U kurvor
+!s---
+
+  IF no_ulines >  1 AND         !
+     no_ulines <= 50     THEN   !
+    ;                           !
+  ELSE                          !
+     EXIT("su_cubic  "+         !
+     ermess2);                  !
+  ENDIF;                        !
+
+!e+++
+! 2. Determine number of V lines       
+!e---
+!s+++
+! 2. Best{m antalet inmatade V kurvor
+!s---
+
+  id_all( 1):=    cur1_id;
+  id_all( 2):=    cur2_id;
+  id_all( 3):=    cur3_id;
+  id_all( 4):=    cur4_id;
+  id_all( 5):=    cur5_id;
+  id_all( 6):=    cur6_id;
+  id_all( 7):=    cur7_id;
+  id_all( 8):=    cur8_id;
+  id_all( 9):=    cur9_id;
+  id_all(10):=   cur10_id;
+  id_all(11):=   cur11_id;
+  id_all(12):=   cur12_id;
+  id_all(13):=   cur13_id;
+  id_all(14):=   cur14_id;
+  id_all(15):=   cur15_id;
+  id_all(16):=   cur16_id;
+  id_all(17):=   cur17_id;
+  id_all(18):=   cur18_id;
+  id_all(19):=   cur19_id;
+  id_all(20):=   cur20_id;
+  id_all(21):=   cur21_id;
+  id_all(22):=   cur22_id;
+  id_all(23):=   cur23_id;
+  id_all(24):=   cur24_id;
+  id_all(25):=   cur25_id;
+
+  no_vlines := 0;
+  FOR i_v:= 1 TO 25 DO
+     IF id_all(i_v) = #0.1 THEN
+       GOTO allv;
+     ELSE
+       no_vlines := no_vlines + 1;
+     ENDIF;
+  ENDFOR;
+allv:;
+
+  IF no_vlines >  1 AND         ! Check number of V lines
+     no_vlines <= 25     THEN   ! (programming check)
+    ;                           !
+  ELSE                          !
+     EXIT("su_cubic  "+         !
+     ermess3);                  !
+  ENDIF;                        !
+
+!e+++
+! 3. Calculate points and U tangents
+!e---
+!s+++
+! 3. Ber{kna punkter och U tangenter
+!s---
+
+
+  IF DEBUG = 1 THEN                  ! List window for debug
+  LST_INI("su_cubic  Input point array poi to function SUR_SPLARR(#1,"+
+           STR(no_ulines,3,0)+","+STR(no_vlines,3,0)+", method, poi);");
+  LST_LIN("The order of the points and tangents to SUR_SPLARR shall be:");
+  ENDIF;                             !
+
+  FOR ip_v:= 1 TO no_vlines DO       ! Start loop V points
+    IF DEBUG = 1 THEN                ! List window for debug
+    LST_LIN("Points which define V isoparameter curve "+STR(ip_v,3,0));
+    ENDIF;                           !
+    cur_id:= id_all(ip_v);           ! Current curve
+    s_total:= ARCL(cur_id);          ! Total arclength
+    s_delta:= s_total/(no_ulines-1); ! Delta arclength
+    FOR ip_u:= 1 TO no_ulines DO     ! Start loop V points
+      cur_u := INV_ARCL(cur_id,      ! Current parameter value
+         s_delta*(ip_u-1));          !
+      cur_p :=   ON(cur_id,cur_u);   !
+      cur_t := TANG(cur_id,cur_u);   !
+      pts(ip_u,ip_v):= cur_p;        ! Point on surface
+      tgs(ip_u,ip_v):= cur_t;        ! Tangent on surface
+      IF graphic = 3 THEN            ! Debug graphics
+        LIN_FREE(#10,cur_p,          !
+          cur_p+5*cur_t:PEN=2);      !
+      ENDIF;                         !
+      IF DEBUG = 1 THEN              ! List window for debug
+      LST_LIN("poi(iu,iv)= poi("+STR(ip_u, 3,0) + " , "+STR(ip_v, 3,0)+")"
+         +" "+STR(pts(ip_u,ip_v).x,15,8)
+         +" "+STR(pts(ip_u,ip_v).y,15,8)
+         +" "+STR(pts(ip_u,ip_v).z,15,8));
+      LST_LIN("        Tangent vector    "
+         +" "+STR(tgs(ip_u,ip_v).x,15,8)
+         +" "+STR(tgs(ip_u,ip_v).y,15,8)
+         +" "+STR(tgs(ip_u,ip_v).z,15,8));
+      ENDIF;                         !
+    ENDFOR;                          ! End  loop V points
+  ENDFOR;                            ! End  loop U points
+
+  IF DEBUG = 1 THEN                  ! List window for debug
+    LST_LIN(" ");
+    LST_LIN("The order of the points and cross slopes to function sur294 shall be:");
+    FOR ip_u:= 1 TO no_ulines DO     
+      LST_LIN("Points which define U isoparameter curve "+STR(ip_u,3,0));
+        FOR ip_v:= 1 TO no_vlines DO  
+          LST_LIN("poi(iu,iv)= poi("+STR(ip_u, 3,0) + " , "+STR(ip_v, 3,0)+")"
+           +" "+STR(pts(ip_u,ip_v).x,15,8)
+           +" "+STR(pts(ip_u,ip_v).y,15,8)
+           +" "+STR(pts(ip_u,ip_v).z,15,8));
+          LST_LIN("Cross slope   vtan    "
+             +" "+STR(tgs(ip_u,ip_v).x,15,8)
+             +" "+STR(tgs(ip_u,ip_v).y,15,8)
+             +" "+STR(tgs(ip_u,ip_v).z,15,8));
+        ENDFOR;
+      ENDFOR;
+    LST_EXI();
+  ENDIF;                             !
+
+!e+++
+! 4. Create surface. Call of SUR_SPLARR
+!e---
+!s+++
+! 4. Skapa yta. Anrop av SUR_SPLARR
+!s---
+
+  metod := "ZEROTWIST_1";            !
+  SUR_SPLARR(#1,metod,               ! Create surface
+             no_ulines,no_vlines,    ! 
+             pts,tgs                 !
+      :SDASHL=s_total/50.0);         ! Arclength last input curve
+
+!e+++
+! 5. Graphical representation of surface and curves (blanking)
+!e---
+!s+++
+! 5. Grafisk representation av ytan och kurvor (eventuell blankning)
+!s---
+
+
+  IF    graphic = 0 THEN        !
+    BLANK(GLOBAL_REF(#1));      ! Blank surface
+    FOR i_v:= 1 TO no_vlines DO ! Blank curves
+      BLANK(id_all(i_v));       !
+    ENDFOR;                     !
+  ELIF  graphic = 1 THEN        !
+    FOR i_v:= 1 TO no_vlines DO ! Blank curves
+      BLANK(id_all(i_v));       !
+    ENDFOR;                     !
+  ENDIF;                        !
+
+
+ENDMODULE

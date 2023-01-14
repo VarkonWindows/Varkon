@@ -1,0 +1,399 @@
+! ***************** su_bdy1   ****************************
+!
+!s+++
+! Skapa sluten begr{nsningskurva
+! ______________________________
+!
+! Skapa en sluten begr{nsningskurva med en som indata. 
+! Funktionen letar igenom hela GM efter kurvor som till-
+! sammans bildar en sluten kurva. Kurvorna beh|rver inte
+! vara r{ttv{nda.
+!s---
+!e+++
+! Create a closed boundary curve
+! ______________________________
+!
+! Create a closed boundary curve. Input is one curve. The whole
+! GM will be scanned for curves and the curves will be reversed
+! if necessary.
+!e---
+!************************************************************
+
+! Revision history
+! ________________
+!
+! 1996-05-27 Gunnar Liden
+! 1996-06-09 Debug  Gunnar Liden
+
+
+!sdesce Create automatically a closed boundary curve 
+!sdescs Skapa automatiskt en sluten begr{nsningskurva
+
+
+GLOBAL GEOMETRY MODULE su_bdy1   (
+
+REF    cur1_id                 >"@t14 Start kurva, cirkel eller linje";
+INT    graphic    := 2         
+>"=0: Blanka allt =1: Visa begr{nsn. kurva men blanka in-kurvor =2: Visa allt" );
+
+!e REF    cur1_id                 >"@t14 Start kurva, cirkel eller linje";
+!e INT    graphic    := 2         
+!e >"=0: Blank all =1: Show boundary - blank input curves =2: Show all" );
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  VECTOR bdy_start_pt;           ! Start point boundary curve
+  VECTOR bdy_end_pt;             ! End   point boundary curve
+  VECTOR start_pt;               ! Current start point
+  VECTOR end_pt;                 ! Current end   point
+  VECTOR bdy_mid_pt;             ! Mid   point on previous curve
+  VECTOR mid_pt;                 ! Mid   point on current  curve
+
+  FLOAT  idpoint;                ! Criterion for a identical points
+
+  INT    n_ref;                  ! Number of curves in all_ref
+  REF    all_ref(30);            ! All curves in the boundary curve
+  INT    n_blank;                ! Number of curves in blank_ref
+  REF    blank_ref(30);          ! Input curves that shall be blanked 
+
+  REF    c_id;                   ! Current curve from GM
+  REF    c_pre_id;               ! Previous curve in composite curve
+  REF    c_pre_t_id;             ! Previous trimmed curve in composite curve
+
+  FLOAT  u_end;                  ! Parameter value for end of curve
+  INT    n_trim;                 ! Number of trimmed (reversed) curves
+
+  INT    b_val_c;                ! Blank value for output entity #1
+  INT    b_val_a;                ! Blank value all other entities than #1
+
+  STRING error1*80;              ! Error 1
+  STRING error2*80;              ! Error 2
+  STRING error3*80;              ! Error 3
+  STRING message*80;             ! Message to screen
+
+                                 ! For GET_NEXT_GM:
+  INT    tmod;                   ! 0: All entities 1: Only parts
+
+                                 ! For function GETHDR:
+  INT    typ;                    ! Type of entity
+  INT    nref;                   ! ...
+  INT    v_blank;                ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niva;                   ! The layer for the entity
+  INT    penna;                  ! Pen number (colour)
+  REF    grupp_id(3);            ! Global identities for groups
+
+  FLOAT l_s;                     ! Size of star
+  INT   s_case;                  !  =1: Repaint screen (y/n)
+
+  INT    DEBUG;                  ! Debug
+  INT    i_ref;                  ! Loop index reference
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! 1. Initializations of internal variables and checks of input data
+!e---
+!s+++
+! 1. Initieringar av interna variabler och kontroll av indata
+!s---
+
+!e+++
+! Definition of error strings in English or Swedish
+!e---
+!s+++
+! Definition av felmeddelanden p} engelska eller svenska
+!s---
+
+  IF   language = 1 THEN   ! English strings
+    error1  := "Curve cannot be closed";
+    error2  := "Graphics not 0, 1 or 2";
+    error3  := "su_bdy1 Not yet implemented - curve ";
+    message := "Automatic creation of composite boundary curve (su_bdy1)";
+
+  ELIF language = 2 THEN   ! Swedish error messages
+    error1  := "Kurvan kan inte slutas";
+    error2  := "Grafik inte 0, 1 or 2";
+    error3  := "su_bdy1 [nnu ej implementerat - kurva ";
+    message := "Automatiskt skapande av sammansatt begr{nsningskurva (su_bdy1)";
+
+  ELSE                        
+    EXIT("su_bdy1: Language error");
+  ENDIF;     
+
+  PSH_PMT(message);
+
+  DEBUG := 0;
+
+ IF  DEBUG = 1 THEN
+ LST_INI("Debug output su_bdy1");
+ ENDIF;
+
+!e+++
+! Criterion for equal points idpoint= 0.01 
+!e---
+!s+++
+! Kriterium f|r lika punkter idpoint= 0.01 
+!s---
+
+  idpoint  := 0.01;
+
+  n_trim   := 0;
+  u_end    := -0.123456789;
+
+  tmod     := 0;                                  
+
+
+!e+++
+! Indication star size
+!e---
+!s+++
+! Stj{rnstorlek
+!s---
+
+  l_s    := 2.0;
+  s_case := 2;
+
+  IF    graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+  ELIF  graphic = 1 THEN
+    b_val_a   := 1;
+    b_val_c   := 0;
+  ELIF  graphic = 2 THEN
+    b_val_a   := 0;
+    b_val_c   := 0;
+  ELSE
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    POP_PMT();
+    EXIT(error2);
+  ENDIF;
+
+!e+++
+! 2. Find boundary curves - loop for all curve, arc and line entities in GM
+!e---
+!s+++
+! 2. Hitta begr{nsningskurvorna - loop f|r alla kurvor, cirklar och linjer i GM 
+!s---
+
+  n_ref      := 0;
+  n_blank    := 0;
+
+  bdy_start_pt := ON(cur1_id, 0.0);
+  bdy_end_pt   := ON(cur1_id, INV_ARCL(cur1_id,ARCL(cur1_id)));
+  bdy_mid_pt   := ON(cur1_id, INV_ARCL(cur1_id,0.5*ARCL(cur1_id)));
+
+   IF  DEBUG = 1 THEN
+   LST_LIN("Start bdy_start_pt "+ STR(bdy_start_pt.x,10,2)+" "+ 
+                                  STR(bdy_start_pt.y,10,2)+" "+ 
+                                  STR(bdy_start_pt.z,10,2));
+   LST_LIN("Start   bdy_end_pt "+ STR(bdy_end_pt.x,10,2)+" "+ 
+                                  STR(bdy_end_pt.y,10,2)+" "+ 
+                                  STR(bdy_end_pt.z,10,2));
+   ENDIF;
+
+  n_ref              := n_ref   + 1;
+  all_ref(n_ref)     := cur1_id;
+  n_blank            := n_blank + 1;
+  blank_ref(n_blank) := cur1_id;
+
+  IF  VECL(bdy_start_pt-bdy_end_pt) <= idpoint THEN
+    GOTO crebdy;
+  ENDIF;
+
+  c_pre_id       := cur1_id;   ! Previous curve in composite curve
+  c_pre_t_id     := #0;    
+
+restart:; ! Label: Restart when adjacent curve has been found
+
+ SET_ROOT_GM(#0);    
+
+nxtcur:; ! Label: Next curve
+
+ c_id := GET_NEXT_GM (tmod,14);
+
+ IF  c_id = #0 THEN
+   IF  DEBUG = 1 THEN
+   LST_EXI();
+   ENDIF;
+   POP_PMT();
+   EXIT(error1);
+ ENDIF;
+
+ GETHDR(  c_id,typ,nref,        
+      v_blank,niva,penna,grupp_id); 
+
+ IF  DEBUG = 1 THEN
+ LST_LIN("Current curve "+RSTR(c_id)+" v_blank "+STR(v_blank,3,0));
+ ENDIF;
+
+ IF  v_blank = 1 THEN
+   GOTO nxtcur;
+ ENDIF;
+
+ mid_pt   := ON(c_id, INV_ARCL(c_id,0.5*ARCL(c_id)));
+
+! Draw indication star
+  PART(#3,su_star (mid_pt,l_s,s_case) :SAVE=0,PEN=2);  
+
+ IF  DEBUG = 1 THEN
+ LST_LIN("Current curve "+RSTR(c_id)+" c_pre_id "+RSTR(c_pre_id) +
+          " c_pre_t_id "+RSTR(c_pre_t_id) );
+ ENDIF;
+
+ IF  c_id = c_pre_id OR c_id = c_pre_t_id THEN
+   GOTO nxtcur;
+ ENDIF;
+
+ start_pt := ON(c_id, 0.0);
+ end_pt   := ON(c_id, INV_ARCL(c_id,ARCL(c_id)));
+
+  IF  VECL(bdy_mid_pt-mid_pt) <= 10.0*idpoint THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("bdy_mid_pt=mid_pt ("+ STR(VECL(bdy_mid_pt-mid_pt),-15,10)
+             +" Equal crvs!)");
+    ENDIF;
+    GOTO nxtcur;
+  ENDIF;
+
+ IF      VECL(bdy_end_pt-start_pt) <= idpoint THEN
+   IF  DEBUG = 1 THEN
+   LST_LIN("bdy_end_pt=start_pt ("+ STR(VECL(bdy_end_pt-start_pt),-15,10)+")");
+   ENDIF;
+   n_ref          := n_ref + 1;
+   IF  n_ref > 30 THEN
+     GOTO  crebdy;
+   ENDIF;
+   all_ref(n_ref)     := c_id;
+   n_blank            := n_blank + 1;
+   blank_ref(n_blank) := cur1_id;
+   c_pre_id           := c_id; 
+   bdy_end_pt         := end_pt;
+   c_pre_t_id         := #0;    
+   bdy_mid_pt         := mid_pt;
+   IF  DEBUG = 1 THEN
+   LST_LIN("New bdy_end_pt "+ STR(bdy_end_pt.x,10,2)+" "+ 
+                              STR(bdy_end_pt.y,10,2)+" "+ 
+                              STR(bdy_end_pt.z,10,2));
+   ENDIF;
+ ELIF    VECL(bdy_end_pt-  end_pt) <= idpoint THEN
+   IF  DEBUG = 1 THEN
+   LST_LIN("bdy_end_pt=  end_pt ("+ STR(VECL(bdy_end_pt-  end_pt),-15,10)+")");
+   ENDIF;
+   c_pre_id       := c_id; 
+   u_end          := INV_ARCL(c_id,ARCL(c_id));
+   CUR_TRIM(#2, c_id, u_end, 0.0:BLANK=b_val_a,PEN=3);
+   n_trim         := n_trim + 1;
+   c_id           := GLOBAL_REF(REFC(2,n_trim));
+   n_ref          := n_ref + 1;
+   IF  n_ref > 30 THEN
+     GOTO  crebdy;
+   ENDIF;
+   all_ref(n_ref)     := c_id;
+   n_blank            := n_blank + 1;
+   blank_ref(n_blank) := cur1_id;
+   c_pre_t_id         := c_id; 
+   bdy_end_pt         := start_pt;
+   bdy_mid_pt         := mid_pt;
+   IF  DEBUG = 1 THEN
+   LST_LIN("New bdy_end_pt "+ STR(bdy_end_pt.x,10,2)+" "+ 
+                              STR(bdy_end_pt.y,10,2)+" "+ 
+                              STR(bdy_end_pt.z,10,2)+" Trimmed crv");
+   ENDIF;
+ ELSE
+    IF  DEBUG = 1 THEN
+    LST_LIN("Next curve in GM");
+    ENDIF;
+   GOTO  nxtcur;
+ ENDIF;
+
+ IF  VECL(bdy_start_pt-bdy_end_pt) <= idpoint THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("bdy_end_pt= bdy_start_pt ("+ STR(VECL(bdy_end_pt-bdy_start_pt),-15,10)+")");
+    ENDIF;
+    GOTO crebdy;
+ ELSE
+    IF  DEBUG = 1 THEN
+    LST_LIN("bdy_end_pt <> bdy_start_pt ("+ STR(VECL(bdy_end_pt-bdy_start_pt),-15,10)+")");
+    LST_LIN("Restart search in whole GM");
+    ENDIF;
+   GOTO  restart;
+ ENDIF;
+
+
+crebdy:; ! Label: Create the composite boundary curve
+
+!e+++
+! 3. Create the boundary curve as CUR_COMP
+!e---
+!s+++
+! 3. Skapa begr{nsningskurvan som CUR_COMP
+!s---
+
+ IF  DEBUG = 1 THEN
+ FOR  i_ref := 1 TO n_ref DO
+ LST_LIN("Boundary curve "+STR(i_ref,3,0)+" Reference "+RSTR(all_ref(i_ref)));
+ ENDFOR;
+ FOR  i_ref := 1 TO n_blank DO
+ LST_LIN("Blanked  curve "+STR(i_ref,3,0)+" Reference "+RSTR(blank_ref(i_ref)));
+ ENDFOR;
+ ENDIF;
+
+  IF        n_ref = 1  THEN
+    CUR_COMP(#11, all_ref( 1)
+             :BLANK=b_val_a,PEN=3);
+  ELIF      n_ref = 2  THEN
+    CUR_COMP(#12, all_ref( 1),
+                  all_ref( 2)
+             :BLANK=b_val_a,PEN=3);
+  ELIF      n_ref = 3  THEN
+    CUR_COMP(#13, all_ref( 1),
+                  all_ref( 2),
+                  all_ref( 3)
+             :BLANK=b_val_a,PEN=3);
+  ELIF      n_ref = 4  THEN
+    CUR_COMP(#14, all_ref( 1),
+                  all_ref( 2),
+                  all_ref( 3),
+                  all_ref( 4)
+             :BLANK=b_val_a,PEN=3);
+  ELIF      n_ref = 5  THEN
+    CUR_COMP(#15, all_ref( 1),
+                  all_ref( 2),
+                  all_ref( 3),
+                  all_ref( 4),
+                  all_ref( 5)
+             :BLANK=b_val_a,PEN=3);
+  ELSE
+    POP_PMT();
+    EXIT(error3+STR(n_ref,-1,0));
+  ENDIF;
+    
+  IF   graphic = 1  OR  graphic = 1 THEN
+    FOR  i_ref := 1 TO n_blank DO
+      BLANK(blank_ref(i_ref));
+    ENDFOR;
+  ENDIF;
+
+  CUR_COMP(#1, GLOBAL_REF(REFC(10+n_ref,1)):BLANK=b_val_c);
+
+
+ IF  DEBUG = 1 THEN
+ LST_EXI();
+ ENDIF;
+
+ POP_PMT();
+
+ENDMODULE

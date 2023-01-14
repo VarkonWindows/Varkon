@@ -1,0 +1,134 @@
+! ***************** su_pisop   ****************************
+!
+!e+++
+! Show patch boundary curves with direction arrows
+!e---
+!s+++
+! Visa "patch" gr{nskurvor med pilar som visar riktning
+!s---
+!
+! Revision history
+! ________________
+!
+! 1994-11-03 Gunnar Liden
+! 1996-03-23 s_isopatch->su_pisop Gunnar Liden
+!
+!************************************************************
+
+!sdesce Show patch boundary curves with direction arrows
+!sdescs Visa "patch" gr{nskurvor med pilar som visar riktning
+
+GLOBAL GEOMETRY MODULE su_pisop   (
+
+REF    s_id                  > "@t16 Peka p} en yta";
+FLOAT  eps      := 0.01      > "Epsilon fr}n kanten av patchen");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING iso_c*1;                ! Isoparameter U or V
+  FLOAT  start_p;                ! Parameter for start point
+  FLOAT  end_p;                  ! Parameter for end   point
+
+  INT    i_u;                    ! Loop index U parameters
+  INT    i_v;                    ! Loop index V parameters
+
+  INT    no_cur;                 ! Number of curves
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! Retrieve number of patches. Calls of GETSURH.
+!e---
+!s+++
+! Ta reda p} antal "patches". Anrop av GETSURH.
+!s---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+!e+++
+! Loop for all patches in the surface. Calls of CUR_ISO.
+!e---
+!s+++
+! Loop for all patches in the surface. 
+!s---
+
+  no_cur := 0;                   ! Initial value
+
+  FOR i_u:= 0 TO npatu-1 DO      ! Start loop U curves
+    FOR i_v:= 0 TO npatv-1 DO    ! Start loop V curves
+
+    no_cur := no_cur + 1;        ! An additional curve
+
+!e+++
+!   Start patch U= 0.0 + epsilon. Call of CUR_ISO and su_arrow.
+!e---
+!s+++
+!   Start "patch" U= 0.0 + epsilon. Anrop av CUR_ISO och su_arrow.
+!s---
+    iso_c  := "U";               ! Type of isoparameter
+    start_p:= i_v+eps;           ! Start value 
+    end_p  := i_v+1.0-eps;       ! End   value
+    CUR_ISO(#1,s_id,iso_c,       ! Isoparameter
+               i_u+eps,          !
+        start_p,end_p:PEN=4);    !
+    PART(#5,su_arrow( 5, 10,     !
+     ON(REFC(1,  no_cur ),0.5),  !
+     ON(REFC(1,  no_cur ),0.9)));!
+!e+++
+!   End   patch U= 1.0 - epsilon. Call of CUR_ISO and su_arrow.
+!e---
+!s+++
+!   Slut  "patch" U= 1.0 - epsilon. Anrop av CUR_ISO och su_arrow.
+!s---
+    CUR_ISO(#2,s_id,iso_c,       ! Isoparameter
+               i_u+1.0-eps,      !
+        start_p,end_p:PEN=4);    !
+    PART(#6,su_arrow( 5, 10,     !
+     ON(REFC(2,  no_cur ),0.5),  !
+     ON(REFC(2,  no_cur ),0.9)));!
+!e+++
+!   Start patch V= 0.0 + epsilon. Call of CUR_ISO and su_arrow.
+!e---
+!s+++
+!   Start "patch" V= 0.0 + epsilon. Anrop av CUR_ISO och su_arrow.
+!s---
+    iso_c  := "V";               ! Type of isoparameter
+    start_p:= i_u+eps;           ! Start value 
+    end_p  := i_u+1.0-eps;       ! End   value
+    CUR_ISO(#3,s_id,iso_c,       ! Isoparameter
+               i_v+eps,          !
+        start_p,end_p:PEN=4);    !
+    PART(#7,su_arrow( 5, 10,     !
+     ON(REFC(3,  no_cur ),0.5),  !
+     ON(REFC(3,  no_cur ),0.9)));!
+!e+++
+!   End   patch V= 1.0 - epsilon. Call of CUR_ISO and su_arrow.
+!e---
+!s+++
+!   Slut  "patch" V= 1.0 - epsilon. Anrop av CUR_ISO och su_arrow.
+!s---
+    CUR_ISO(#4,s_id,iso_c,       ! Isoparameter
+               i_v+1.0-eps,      ! 
+        start_p,end_p:PEN=4);    !
+    PART(#8,su_arrow( 5, 10,     !
+     ON(REFC(4,  no_cur ),0.5),  !
+     ON(REFC(4,  no_cur ),0.9)));!
+    ENDFOR;                      ! End   loop V curves    
+  ENDFOR;                        ! End   loop U curves    
+
+ENDMODULE

@@ -1,0 +1,238 @@
+!********************* su_pla3m ** ***********************
+!
+!e+++
+! MACRO which creates a tangent B_PLANE at a given point on a surface.
+!
+! Input is surface, a U,V parameter point on the surface and an
+! offset distance.
+!
+! An MBS statement creating the plane will be added in the active module.
+!
+! Note that for a non-zero input distance will the plane be a 
+! tangent plane to the offset surface.
+!e---
+!s+++
+! MACRO som skapar ett tangent B_PLANE i en punkt p} en yta.
+!
+! Indata {r en yta, en parameter punkt (U,V) och ett avst}nd.
+!
+! Utdata {r en MBS sats som skapar tangentplanet. MBS satsen 
+! l{ggs till i den aktiva modulen.
+! 
+! Notera att med ett avst}nd skilt fr}n noll blir utdata planet 
+! ett tangentplan till offset ytan.
+!s---
+!
+! Revision history
+! ________________
+!
+! 1995-05-17  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Creates a tangent B_PLANE at a given point on a surface MACRO
+!sdescs Skapar ett tangent B_PLANE i en punkt p} en yta MACRO
+
+
+MACRO GEOMETRY MODULE su_pla3m   ();
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  STRING select*30;              ! Select prompt string
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING p_su*80;                ! U value  prompt string
+  STRING p_sv*80;                ! V value  prompt string
+  STRING p_dist*80;              ! Distance prompt string
+
+  STRING s_su*25;                ! Start U value as string
+  STRING s_sv*25;                ! Start V value as string
+  STRING s_dist*25;              ! Distance      as string
+
+  STRING s_origin*132;           ! Origin    as string
+  STRING s_normal*132;           ! Normal    as string
+  STRING s_utan*132;             ! U tangent as string
+  STRING s_vtan*132;             ! V tangent as string
+  STRING s_p1*132;               ! P1        as string
+  STRING s_p2*132;               ! P2        as string
+  STRING s_p3*132;               ! P3        as string
+  STRING s_p4*132;               ! P4        as string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+  INT    DEBUG;                  ! For Debug printout
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algorithm
+! _________
+!s---
+
+!e+++
+! Initializations of internal variables
+!e---
+!s+++
+! Initiera interna variabler 
+!s---
+
+
+  DEBUG := 0;                    ! Debug printout
+
+!e+++
+! Definition of prompt string for selection of surface
+!e---
+!s+++
+! Definiera prompt str{ng f|r val av yta p} svenska eller engelska
+!s---
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface";     !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta";        !
+ELSE                             !
+  EXIT("su_pla3m: " +            !
+  "Language error");             !
+ENDIF;                           !
+
+!e+++
+! Interactive input of surface reference (identity)
+!e---
+!s+++
+! Interaktiv inmatning av referens till (identitet f|r) yta
+!s---
+
+PSH_PMT(select);                 ! Select prompt string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message from screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+! Borde vara men str{ngar f|r l}nga !s_ids:="GLOBAL_REF("+s_ids+")";  ! Add GLOBAL_REF
+
+
+!e+++
+! Get number of patches for the surface
+!e---
+!s+++
+! H{mta antal "patches" f|r ytan
+!s---
+
+GETSURH(s_id,"NPATU",npatu);     ! Retrieve number of U patches
+GETSURH(s_id,"NPATV",npatv);     ! Retrieve number of V patches
+
+!e+++
+! Definition of prompt strings for UV point and distance
+!e---
+!s+++
+! Definiera prompt str{ngar f|r UV punkt och avst}nd 
+!s---
+
+IF   language = 1 THEN           ! English strings
+  p_su:="U value (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_sv:="V value (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+  p_dist:="Distance along " +    !
+   "surface normal";             ! 
+ELIF language = 2 THEN           ! Swedish strings
+  p_su:="U v{rde (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_sv:="V v{rde (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+  p_dist:="Avst}nd l{ngs "+      !
+   "ytnormalen";                 ! 
+ENDIF;                           !
+
+!e+++
+! Interactive input of UV point
+!e---
+!s+++
+! Interaktiv inmatning av UV punkt
+!s---
+
+s_su := INPMT(p_su,              ! U value
+    "0.0",25);                   !
+IF s_su    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+s_sv := INPMT(p_sv,              ! V value
+    "0.0",25);                   !
+IF s_sv    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+!e+++
+! Interactive input of distance
+!e---
+!s+++
+! Interaktiv inmatning av avst}nd 
+!s---
+
+s_dist := INPMT(p_dist,       
+    "0.0",25); 
+IF s_dist    = "" THEN    
+      EXIT();          
+ENDIF;                
+
+
+!e+++
+! Strings which define points for output tangent plane
+!e---
+!s+++
+! Str{ngar som definierar punkter f|r utdata planet       
+!s---
+
+s_origin :=   "ON("+s_ids+",VEC("+s_su+","+s_sv+"))";
+s_normal := "NORM("+s_ids+",VEC("+s_su+","+s_sv+"))";
+s_utan   := "EVAL("+s_ids+","+CHR(34)+"DRDU"+CHR(34)+",VEC("+s_su+","+s_sv+"))";
+s_vtan   := "EVAL("+s_ids+","+CHR(34)+"DRDV"+CHR(34)+",VEC("+s_su+","+s_sv+"))";
+
+s_p1 := s_origin+"+"+s_dist+"*"+s_normal+"+"+s_utan;
+s_p2 := s_origin+"+"+s_dist+"*"+s_normal;
+s_p3 := s_origin+"+"+s_dist+"*"+s_normal;
+s_p4 := s_origin+"+"+s_dist+"*"+s_normal+"+"+s_vtan;
+
+IF  DEBUG = 1 THEN
+LST_INI("Debug from su_pla3m");
+LST_LIN("s_origin "+s_origin);
+LST_LIN("s_normal "+s_normal);
+LST_LIN("s_utan   "+s_utan  );
+LST_LIN("s_vtan   "+s_vtan  );
+LST_LIN("s_p1     "+s_p1    );
+LST_LIN("s_p2     "+s_p2    );
+LST_LIN("s_p3     "+s_p3    );
+LST_LIN("s_p4     "+s_p4    );
+LST_EXI();
+ENDIF;
+
+!e+++
+! Add MBS statement B_PLANE to active module
+!e---
+!s+++
+! L{gg till MBS sats B_PLANE i aktiva modulen
+!s---
+
+IF  DEBUG = 1 THEN
+a_id:= ADD_MBS("POI_FREE",s_origin);
+a_id:= ADD_MBS("POI_FREE",s_p1);
+
+ENDIF;
+
+a_id:= ADD_MBS("B_PLANE",
+       s_p1, s_p2, s_p3, s_p4);
+
+ENDMODULE

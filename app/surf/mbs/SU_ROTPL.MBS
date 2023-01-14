@@ -1,0 +1,562 @@
+! ***************** su_rotpl   ****************************
+!
+!s+++
+! Sk{rning med rotationsplanknippe i den valda ytan, i alla ytor i 
+! den valda parten eller i alla (icke-blankade) ytor i hela GM.
+!
+! Kurvorna "registreras" genom att en grupp per kurvsk{rningsgren
+! skapas. Namnet p} gruppen (GROUP) {r vinkelv{rdet f|r planet.
+!
+! Maximalt antal sk{rningsplan {r 100 och maximalt antal ytor 100
+!s---
+!e+++
+! Make planar intersects in one surface, all surfaces in 
+! the input part or all (non-blanked) surfaces in GM
+!
+! The planes are defined as rotation planes.
+!
+! The curves will be "registered" as GROUP's with names which
+! are the rotation angle value
+!
+! Maximum number of planes is 100 and maximum number of surfaces.
+!e---
+!************************************************************
+
+! Revision history
+! ________________
+!
+! 1996-04-23 Gunnar Liden
+! 1996-05-27 blank->v_blank Gunnar Liden
+
+
+!sdesce Rotational planar intersects in one surface, in one part or all   
+!sdescs Sk{rning rotationsplan och en yta, alla i en part eller alla
+
+
+GLOBAL GEOMETRY MODULE su_rotpl   (
+
+REF    c_id   := #0    > "@ @t8192 Select rotation coord. system <CR>= #0= global";
+REF    in_id  := #0    > "@ @t16400 Surface (use y), in part (use P) or <CR>= #0= all";
+FLOAT  start  :=   5.0 > "Start angle value";
+FLOAT  delta  :=  30.0 > "Delta angle value (0.0 = only one plane)";
+FLOAT  end    := 270.0 > "End   angle value";
+STRING sele*1 := "P"   > "P= Select Y positive branches N= Negative B= Both";
+REF    cg_id  := #0    > "@ @t8192 Select graphic coord. system <CR>= #0= global";
+FLOAT  dist   := 100.0 > "Distance between curves)";
+INT    graphic:=   1   > "Graphics 1: Show curves 0: Blank curves");
+
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  STRING ermess1*60;             ! Error Graphic not OK
+  STRING ermess2*60;             ! Error Number of intersect planes
+  STRING ermess3*60;             ! Error Select case
+  STRING ermess4*60;             ! Error Entity type 
+  STRING ermess5*60;             ! Error Maximum number of iterations
+  STRING ermess6*60;             ! Error Change sign on delta
+  STRING ermess7*60;             ! Error Input surface is blanked
+  STRING ermess8*60;             ! Error No surface in input part
+  STRING ermess9*60;             ! Error No surface in GM
+  STRING ermess10*60;            ! Error No intersect curves created
+
+  INT    n_plane;                ! Number of  intersect planes
+  INT    i_plane;                ! Loop index intersect plane
+  INT    n_inter;                ! Total number of intersect curves 
+
+  STRING cur_name*20;            ! Curve (GROUP) name
+
+                                 ! For function GETHDR:
+  INT    typ;                    ! Type of entity
+  INT    nref;                   ! ...
+  INT    v_blank;                ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niva;                   ! The layer for the entity
+  INT    penna;                  ! Pen number (colour)
+  REF    grupp_id(3);            ! Global identities for groups
+
+  STRING s_case*1;               ! Surface scanning case
+
+  REF    s_id;                   ! Current surface
+
+                                 ! For GET_NEXT_GM:
+  INT    tmod;                   ! 0: All entities 1: Only parts
+
+                                 ! For GETCSY:
+  STRING csys_name*10;           ! Name of coordinate system
+  FLOAT  csys_data(4,4);         ! Transformation matrix
+
+  INT    i_b;                    ! Loop index intersect branch
+
+  VECTOR p_che;                  ! Check point for sele
+  REF    cur_id;                 ! Current curve identity
+  REF    cint_id;                ! Current coordinate system identity
+  REF    apr_id;                 ! Current approximate curve identity
+  REF    tra_id;                 ! Current transformation identity
+  REF    gra_id;                 ! Current transformed curve identity
+
+  INT    no_branch;              ! No of branches
+
+  INT    no_surf;                ! Number of surfaces
+
+  INT    n_copy;                 ! Number of curves to be copied
+  INT    i_copy;                 ! Loop index curve to be copied 
+  REF    cur_all(100);           ! All curves, which shall be copied
+  REF    csy_all(100);           ! All coordinate systems used for copying
+  STRING name_all(100)*20;       ! All curve (GROUP) names
+
+  INT    bflag_i;                ! Blank flag for intersects
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! 1. Initializations of internal variables and checks of input data
+!e---
+!s+++
+! 1. Initieringar av interna variabler och kontroll av indata
+!s---
+
+  DEBUG := 0;                            ! Debug 0 or 1    
+
+  IF  DEBUG = 1 THEN                     ! Open Debug window
+  LST_INI("su_rotpl Intersection between rotation planes and surfaces");
+  LST_LIN("Input in_id " + RSTR(in_id)+" Rotation system c_id "+RSTR(c_id)); 
+  LST_LIN("Selection case sele " + sele +" graphic "+STR(graphic,-1,0)); 
+  LST_LIN("start " + STR(start, 11,3)+
+         " delta " + STR(delta, 11,3) +
+         " end "   + STR(end  , 11,3)   ); 
+  LST_LIN("Graphic system cg_id "+RSTR(cg_id)+" dist "+STR(dist,15,8)); 
+  ENDIF;
+
+  p_che := VEC(0,0,0);
+
+  n_copy := 0;
+
+!e+++
+! Definition of error strings in English or Swedish
+!e---
+!s+++
+! Definition av felmeddelanden p} engelska eller svenska
+!s---
+
+IF   language = 1 THEN   ! English error messages
+  ermess1 := "Graphic intersect parameter not 0 or 1 (su_rotpl)";     
+  ermess2 := "Number of intersect planes > 100 (su_rotpl)";
+  ermess3 := "Selection case "+sele+" not P, N or B (su_rotpl)";   
+  ermess4 := "Entity type for intersect not part or surface (su_rotpl)";   
+  ermess5 := "Maximum number of interersect surfaces 100 exceed (su_rotpl)";   
+  ermess6 := "Change sign on delta for intersects (su_rotpl)";   
+  ermess7 := "Input intersect surface is blanked (su_rotpl)";   
+  ermess8 := "There is no intersect surface in the given part (su_rotpl)";   
+  ermess9 := "There is no (intersect) surface in GM (su_rotpl)";   
+  ermess10:= "No intersect curves are created (su_rotpl)";   
+
+ELIF language = 2 THEN   ! Swedish error messages
+  ermess1 := "Grafikparameter f|r sk{rning ej 0 eller 1 (su_rotpl)";     
+  ermess2 := "Antalet sk{rningsplan > 100 (su_rotpl)"; 
+  ermess3 := "Urvalsfall "+sele+" ej P, N eller B (su_rotpl)";   
+  ermess4 := "Typ av storhet f|r sk{rning ej part eller yta (su_rotpl)";   
+  ermess5 := "Maximalt antal ytor 100 f|r sk{rning |verskridet (su_rotpl)";   
+  ermess6 := "Byt tecken p} delta f|r sk{rningarna (su_rotpl)";   
+  ermess7 := "Indata ytan f|r sk{rningsber{kning {r blankad (su_rotpl)";   
+  ermess8 := "Det finns ingen sk{rningsyta i givna parten (su_rotpl)";   
+  ermess9 := "Det finns ingen (sk{rnings-) yta i GM (su_rotpl)";   
+  ermess10:= "Inga sk{rningskurvor har skapats (su_rotpl)";   
+
+ELSE                        
+  IF  DEBUG = 1 THEN  
+    LST_EXI();
+  ENDIF;
+  EXIT("su_rotpl: Language error");
+ENDIF;     
+
+!e+++
+! Input parameter graphic must be 0 or 1
+!e---
+!s+++
+! Indata parametern graphic m}ste vara 0 eller 1
+!s---
+
+  IF   graphic = 0 THEN          ! 
+    bflag_i := 1;                ! Blank intersects
+  ELIF graphic = 1 THEN          ! 
+    bflag_i := 0;                ! No blank of intersects
+  ELSE                           !
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess1);               ! Error
+  ENDIF;                         !
+
+  IF DEBUG = 1 THEN              
+    LST_LIN("Input in_id " + RSTR(in_id)); 
+  ENDIF;
+
+!e+++
+! Calculate number of intersect planes
+!e---
+!s+++
+! Ber{kning av antal sk{rningsplan
+!s---
+
+  IF       ABS(delta) <   0.00001 THEN
+    n_plane := 1;
+  ELIF         delta  >=  0.00001 AND end < start  THEN
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess6);
+  ELIF         delta  <= -0.00001 AND end > start  THEN
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess6);
+  ELSE
+    n_plane := TRUNC((ABS(start-end)+0.0000001)/ABS(delta));
+  ENDIF;
+
+  IF  n_plane > 100 THEN         ! Check no of planes
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess2); 
+  ENDIF;
+
+!e+++
+! Input parameter sele must be p, P, n, N, b or B
+!e---
+!s+++
+! Indata parametern sele m}ste vara p, P, n, N, b or B
+!s---
+
+  IF    sele = "p"  OR sele = "P"  THEN
+    sele   := "P";
+  ELIF  sele = "n"  OR sele = "N"  THEN
+    sele   := "N";
+  ELIF  sele = "b"  OR sele = "B"  THEN
+    sele   := "B";
+  ELSE
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess3); 
+  ENDIF;
+
+!e+++
+! Get name of input coordinate system
+!e---
+!s+++
+! H{mta namn p} indata koordinatsystemet
+!s---
+
+  IF  c_id = #0  THEN
+    csys_name:= "GLOBAL";    
+  ELSE
+    GETCSY(c_id, csys_name, csys_data);     
+  ENDIF;
+
+  IF  DEBUG = 1 THEN   
+  LST_LIN("Name of coordinate system csys_name " + csys_name ); 
+  LST_LIN("Number of intersect planes n_plane "+STR(n_plane, 5,0)); 
+  ENDIF;
+
+!e+++
+! 2. Determine surface case and initialize GM scanning parameters
+!e---
+!s+++
+! 2. Best{m fall f|r s|kandet av ytor och initiera s|k parametrar
+!s---
+
+  IF     in_id = #0  THEN                     ! All surfaces in GM
+    SET_ROOT_GM(in_id);
+    s_case := "a";
+  ELSE
+    GETHDR( in_id,typ,nref,        
+      v_blank,niva,penna,grupp_id); 
+      IF    typ = 16384 THEN                  ! All surfaces in part
+        SET_ROOT_GM(in_id);
+        s_case := "p";
+      ELIF  typ = 16    THEN                  ! One surface
+        s_case := "s";
+      ELSE
+        IF  DEBUG = 1 THEN  
+          LST_EXI();
+        ENDIF;
+        EXIT(ermess4);
+      ENDIF;
+  ENDIF;
+
+  tmod := 0;                                  
+
+  IF  DEBUG = 1 THEN   
+  LST_LIN("s_case "+s_case); 
+  ENDIF;
+
+!e+++
+! 3. Calculate intersects    
+!e---
+!s+++
+! 3. Ber{kna sk{rningar      
+!s---
+
+  no_surf := 0;
+  n_inter := 0;
+
+!e+++
+! Label nxtsur: Next surface in GM or in part
+!e---
+!s+++
+! Label nxtsur: N{sta yta i GM eller i parten
+!s---
+
+nxtsur:;
+
+  no_surf := no_surf + 1;
+  IF  no_surf > 100 THEN    
+    IF  DEBUG = 1 THEN  
+      LST_EXI();
+    ENDIF;
+    EXIT(ermess5);
+  ENDIF;
+
+!e+++
+! Get next reference to current surface. Goto nxtsur if surface is blanked.
+!e---
+!s+++
+! H{mta referens till n{sta yta. Hoppa till nxtsur om ytan {r blankad.
+!s---
+
+  IF   s_case = "s"  THEN
+    s_id := in_id;
+  ELSE
+    s_id := GET_NEXT_GM (tmod,16);
+    IF s_id =  #0 THEN
+      POP_PMT(); 
+      IF    no_surf = 1 AND s_case = "p" THEN
+        IF  DEBUG = 1 THEN  
+          LST_EXI();
+        ENDIF;
+        EXIT(ermess8);
+      ELIF  no_surf = 1 AND s_case = "a" THEN
+        IF  DEBUG = 1 THEN  
+          LST_EXI();
+        ENDIF;
+        EXIT(ermess9);
+      ENDIF;
+      GOTO  nomore;
+    ENDIF;
+  ENDIF;
+
+  GETHDR( s_id,typ,nref, v_blank,niva,penna,grupp_id); 
+  IF  v_blank = 1 THEN  
+    IF   s_case = "s" THEN
+      IF  DEBUG = 1 THEN  
+        LST_EXI();
+      ENDIF;
+      EXIT(ermess7);
+    ENDIF;
+    GOTO nxtsur;
+  ENDIF;
+
+
+!e+++
+! Start of loop all angle values: i_plane= 1, 2, 3, .... , n_plane
+!e---
+!s+++
+! Start av loop alla vinkel v{rden: i_plane= 1, 2, 3, .... , n_plane
+!s---
+
+  FOR i_plane := 1 TO n_plane  DO  
+
+!e+++
+!   Create current intersect coordinate system and name for curve GROUP
+!e---
+!s+++
+!   Skapa aktuella sk{rningssystemet och namnet p} kurv gruppen (GROUP)
+!s---
+
+    cur_name := "XROT"+csys_name+"= "+STR(start+(i_plane-1)*delta,-10,2);
+!   Message to screen 
+    PSH_PMT("XROT"+ csys_name + "= " +  
+     STR(start+(i_plane-1)*delta,-15,8)+
+     "    Surface "+RSTR(s_id)); 
+
+    IF    c_id  <>  #0  THEN
+      MODE_LOCAL(c_id);
+    ENDIF;
+    CSYS_1P(#3, "Rot_plane",VEC(0,0,0), 
+            start+(i_plane-1)*delta, 0.0, 0.0
+            :BLANK=1);
+    MODE_GLOBAL();
+
+    cint_id := GLOBAL_REF(REFC(3,i_plane));
+
+!e+++
+!   Calculate number of intersect branches in the current surface
+!   Goto label nointer if there is no intersect.
+!e---
+!s+++
+!   Ber{kna antal sk{rningsgrenar i aktuella ytan.
+!   Hoppa till label nointer om ingen sk{rning finns
+!s---
+
+    no_branch := N_CUR_INT( s_id, cint_id ); 
+
+    IF  DEBUG = 1 THEN   
+    LST_LIN("Angle "+STR(start+(i_plane-1)*delta,11,3)+" Surface "+RSTR(s_id)); 
+    LST_LIN("Number of intersect branches no_branch "+STR(no_branch, 4,0)); 
+    ENDIF;
+
+    IF no_branch = 0 THEN 
+        GOTO nointer;   
+    ENDIF;             
+
+!e+++
+!   Create all intersect curve branches. Blank not wanted branches
+!e---
+!s+++
+!   Skapa alla sk{rningsgrenar. Blanka ej |nskade grenar
+!s---
+
+    FOR i_b:= 1 TO no_branch DO  ! Start loop branches  
+
+      n_inter := n_inter + 1;    ! An additional curve
+      CUR_INT(#1,s_id,  cint_id      , i_b :BLANK= 1 );
+      cur_id :=  GLOBAL_REF(REFC(1,n_inter));
+
+      GROUP( #2, cur_name, cur_id );
+      IF     sele = "P" OR  
+             sele = "N"     THEN
+        MODE_LOCAL(cint_id);
+        p_che := ON(cur_id, 0.0);
+        MODE_GLOBAL();
+      ENDIF;
+      IF     sele = "P"   THEN
+        IF  p_che.y >  0.0 AND bflag_i = 0 THEN
+         UNBLANK(cur_id);
+        ENDIF;
+        IF  p_che.y >  0.0 THEN
+          n_copy := n_copy + 1;
+          cur_all(n_copy) := cur_id;
+          csy_all(n_copy) := cint_id;
+          name_all(n_copy):= cur_name;
+        ENDIF;
+      ELIF   sele = "N"   AND bflag_i = 0 THEN
+        IF  p_che.y <  0.0 THEN
+         UNBLANK(cur_id);
+        ENDIF;
+        IF  p_che.y <  0.0 THEN
+          n_copy := n_copy + 1;
+          cur_all(n_copy) := cur_id;
+          csy_all(n_copy) := cint_id;
+          name_all(n_copy):= cur_name;
+        ENDIF;
+      ENDIF;
+
+    ENDFOR;                      ! End   loop branches   
+
+nointer:;                        ! Label: No intersect 
+
+    POP_PMT();                   ! Erase message to screen
+
+  ENDFOR;                        ! End   loop intersects
+
+!e+++
+! End   of loop all angle   values: i_plane= 1, 2, 3, .... , n_plane
+!
+!e---
+!s+++
+! Slut p} loop alla vinkel   v{rden: i_plane= 1, 2, 3, .... , n_plane
+!
+!s---
+
+!e+++
+! Goto nomore if case is only one surface. Goto nxtsur for other cases
+!e---
+!s+++
+! Hoppa till nomore f|r fallet bara en yta. Hoppa till nxtsur annars
+!s---
+
+  IF   s_case = "s"  THEN
+    GOTO  nomore;
+  ELSE
+    GOTO  nxtsur;
+  ENDIF;
+
+!e+++
+! Label nomore: End of intersect calculation 
+!e---
+!s+++
+! Label nomore: Slut p} sk{rningsber{kningen 
+!s---
+
+nomore:;                                 ! Label: End of calculation
+
+  IF  DEBUG = 1 THEN                     ! Close Debug window
+    FOR  i_copy := 1 TO n_copy DO
+      LST_LIN(STR(i_copy, 3,0)+" cur_id "+RSTR(cur_all(i_copy))+
+                               " csy_id "+RSTR(csy_all(i_copy))); 
+    ENDFOR;
+  ENDIF;
+
+!e+++
+! Create translated and rotated curves to graphic system
+!e---
+!s+++
+! Skapa translaterade och roterade kurvor
+!s---
+
+  FOR  i_copy := 1 TO n_copy DO
+    CUR_APPROX(#8, cur_all(i_copy), "CUBIC", 1, 4, 1:PEN=2,BLANK=1);
+    apr_id := GLOBAL_REF(REFC(8,i_copy));
+    MODE_LOCAL(csy_all(i_copy));
+      POI_FREE( #9, VEC(  0,  0,0):BLANK=1);
+      POI_FREE(#10, VEC(100,  0,0):BLANK=1);
+      POI_FREE(#11, VEC(  0,100,0):BLANK=1);
+    MODE_GLOBAL();
+    MODE_LOCAL(cg_id);
+      POI_FREE(#12, VEC(  0,i_copy*dist    ,0):BLANK=1);
+      POI_FREE(#13, VEC(100,i_copy*dist    ,0):BLANK=1);
+      POI_FREE(#14, VEC(  0,i_copy*dist+100,0):BLANK=1);
+    MODE_GLOBAL();
+    TFORM_COMP(#6, ON(GLOBAL_REF( #9)),  
+                   ON(GLOBAL_REF(#10)) - ON(GLOBAL_REF( #9)),  
+                   ON(GLOBAL_REF(#11)) - ON(GLOBAL_REF( #9)),  
+                   ON(GLOBAL_REF(#12)),  
+                   ON(GLOBAL_REF(#13)) -  ON(GLOBAL_REF(#12)),  
+                   ON(GLOBAL_REF(#14)) -  ON(GLOBAL_REF(#12)));
+    tra_id := GLOBAL_REF(REFC(6,i_copy));
+    TCOPY(#20, apr_id, tra_id, 1 );
+    gra_id  := GLOBAL_REF(REFC(20,i_copy));
+    GROUP(#22, name_all(i_copy), gra_id );
+    DEL( GLOBAL_REF( #9));
+    DEL( GLOBAL_REF(#10));
+    DEL( GLOBAL_REF(#11));
+    DEL( GLOBAL_REF(#12));
+    DEL( GLOBAL_REF(#13));
+    DEL( GLOBAL_REF(#14));
+  ENDFOR;
+
+  IF  DEBUG = 1 THEN                     ! Close Debug window
+    LST_LIN("Total number of intersect curves n_inter "+STR(n_inter, 5,0)); 
+    LST_EXI();
+  ENDIF;
+
+  IF  n_inter = 0 THEN                   ! Check no of intersect curves
+    EXIT(ermess10);
+  ENDIF;
+
+ENDMODULE

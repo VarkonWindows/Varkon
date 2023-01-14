@@ -1,0 +1,148 @@
+!********************* su_pla3 ** ***********************
+!
+!e+++
+! Creates a tangent B_PLANE at a given point on a surface.
+!
+! Input is surface, a U,V parameter point on the surface and an
+! offset distance.
+!
+! Output is a tangent B_BPLANE with local identity (reference) #1.
+!
+! Note that for a non-zero input distance will the plane be a 
+! tangent plane to the offset surface.
+!e---
+!s+++
+! Skapar ett tangent B_PLANE i en punkt p} en yta.
+!
+! Indata {r en yta, en parameter punkt (U,V) och ett avst}nd.
+!
+! Utdata {r ett B_PLANE med lokala identiteten (referensen) #1.
+! 
+! Notera att med ett avst}nd skilt fr}n noll blir utdata planet 
+! ett tangentplan till offset ytan.
+!s---
+!
+! Revision history
+! ________________
+!
+! 1995-02-06  Gunnar Liden
+! 1996-05-17  s_tplanv0 -> su_pla3 Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Creates a tangent B_PLANE at a given point on a surface
+!sdescs Skapar ett tangent B_PLANE i en punkt p} en yta
+
+
+GLOBAL GEOMETRY MODULE su_pla3    (
+
+REF    s_id             > "@t16 Peka p} yta";
+VECTOR uvpt := VEC(0,0) > "Parameter (U,V) punkt p} ytan";
+FLOAT  offset := 0.0    > "Avst}nd fr}n ytan i ytnormalens riktning";
+INT    graphic:= 1  > "Grafik=0: Blanka allt Grafik=1: Visa B_PLANE Grafik=2: Visa allt");
+
+!e REF    s_id             > "@t16 Select surface";
+!e VECTOR uvpt := VEC(0,0) > "U,V point on the surface";
+!e FLOAT  offset := 0.0    > "Offset from surface";
+!e INT    graphic:= 1      > "Eq. 0: Blank all Eq. 1: Show B_PLANE Eq. 2: Show all");
+
+! Internal variables
+
+  VECTOR origin;                 ! Origin for local system
+  VECTOR xaxis;                  ! X axis for local system
+  VECTOR yaxis;                  ! Y axis for local system
+  VECTOR zaxis;                  ! Z axis for size of plane
+  FLOAT  size;                   ! Size of B_PLANE
+
+  INT    bflag_i;                ! Blank flag for B_PLANE      
+  INT    bflag_c;                ! Blank flag for coord. system
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algorithm
+! _________
+!s---
+
+!e+++
+! Initializations and checks of input data
+!e---
+!s+++
+! Initiera variabler och kontrollera indata
+!s---
+
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN          ! Eq. 0: Blank all
+    bflag_i := 1;                ! Blank B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 1 THEN          ! Eq. 1: Show B_PLANE
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 2 THEN          ! Eq. 2: Show all      
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELSE                           !
+    EXIT("su_pla3 graphic "+     !
+        "not 0, 1 or 2");        ! 
+  ENDIF;                         !
+
+!e+++
+! Create local coordinate system with X axis equal to surface normal
+! and Y axis equal to derivative DRDU (tangent for isoparameter curve)
+!e---
+!s+++
+! Skapa lokalt koordinat system med X axeln lika med ytnormalen och
+! Y axeln lika med DRDU, dvs en tangent till en isoparameter kurva.
+!s---
+
+
+  origin:= ON(s_id,uvpt) +       ! Origin in offset
+     offset*NORM(s_id,uvpt);     !
+
+  xaxis :=  NORM(s_id,uvpt);     ! X axis equal to surface normal
+
+  yaxis := EVAL(s_id,"DRDU",     ! Y axis equal to DRDU
+           uvpt);                !
+
+  CSYS_3P(#3,"Normal",           ! Create coordinate system
+   origin, origin+xaxis,         !
+   origin+yaxis                  !
+   :BLANK=bflag_c,PEN=3);        !
+
+
+!e+++
+! Activate local system and create the B_PLANE in the Y/Z plane
+!e---
+!s+++
+! Aktivera lokala systemet och skapa B_PLANE i Y/Z planet
+!s---
+
+  zaxis := EVAL(s_id,"DRDV",     ! Z vector equal to DRDV
+           uvpt);                !
+
+  size :=                        ! Size of B_plane is average of
+   (VECL(yaxis)+VECL(zaxis))/2.0;! tangent vector lengths
+
+
+  MODE_LOCAL(GLOBAL_REF(#3));    ! Activate local system
+
+  B_PLANE(#1,                    ! Create tangent plane with
+    VEC ( 0   , size ,-size),    ! three points (P2=p3).
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,-size ,-size)     !
+     :BLANK=bflag_i);            !
+
+  MODE_GLOBAL();                 ! Activate global system
+
+ENDMODULE

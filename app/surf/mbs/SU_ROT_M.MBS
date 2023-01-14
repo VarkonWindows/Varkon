@@ -1,0 +1,161 @@
+!***************** su_rot_m   ****************************
+!
+!e+++
+! Description
+! ___________
+!
+! Creates a surface by rotating a curve around an axis.
+!
+! Input data is a rotation axis (two points), a profile curve
+! and two angles. The profile curve must be planar. 
+!
+! Output is a surface of type LFT_SUR (Conic Lofting Surface).
+! The number of patches in the U direction will be equal to
+! the number of segments in the input curve. The number of
+! patches in V direction is defined by the input rotation
+! angles. Maximum number of V patches is four (4).
+!
+! Syntax
+! ______
+!
+! SUR_ROT( id, p1, p2, ref, startangle, endangle, dir )
+!
+! REF    id;
+! VECTOR p1;
+! VECTOR p2;
+! REF    ref;
+! FLOAT  startangle;
+! FLOAT  endangle;
+! INT    dir;
+!
+! Principal parameters
+! ____________________
+!
+! id           - Local identity
+! p1           - First  position on rotation axis
+! p2           - Second position on rotation axis
+! ref          - Identity of curve/line to rotate
+! startangle   - Start rotation angle
+! endangle     - End   rotation angle
+! dir          - Rotation direction (+1/-1)
+!
+! Optional parameters
+! ___________________
+!
+! None
+!
+! Attributes
+! __________
+!
+! PEN        - Pen or colour number
+! LEVEL      - Level number
+! BLANK      - Visible (0)  or invisible (1)
+! SDASHL     - Dash length
+!
+! Example
+! _______
+!
+! SUR_ROT ( #2, VEC( 0,0,0), VEC(100,0,0), #1, 90.0, 180.0 );
+!
+! Creates a surface by rotating the curve #1 around the X axis.
+!
+! Comments
+! ________
+!
+! The start and end angles are in accordance with the angles for
+! a circle created by ARC_1POS. The function SUR_ROT creates a
+! local system with the two points as the Z axis and the start
+! point of the curve defines the X axis. The rotation angles 
+! are given with respect to the X axis of this local system.
+!
+! The output surface is of type LFT_SUR with a straight line
+! spine. An unbounded line is created by input points p1 and
+! p2 and the start and end point of the input curve are 
+! projected onto this unbounded line. The spine is the line
+! between the two projected points.
+!
+!e---
+!s+++
+! Skapar en rotationsyta      
+! Indata är en rotationsaxel (två punkter), en profilkurva
+! och två vinklar.
+!
+! Utdata är en yta av typ LFT_SUR.
+!s---
+! 
+! Revision history
+! ________________
+!
+! 1996-08-31 Gunnar Liden
+! 1996-11-10 r_case Gunnar Liden
+! 1997-03-21 CUR_GL --> SUR_ROT Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Rotational surface (macro)
+!sdescs Rotationsyta (macro)
+
+MACRO  GEOMETRY MODULE su_rot_m   (
+VECTOR  p1    := VEC(0,0,0)   >"First  position on rotation axis";
+VECTOR  p2    := VEC(100,0,0) >"Second position on rotation axis";
+REF     cur_id                >"@t10 Rotation curve ";
+FLOAT   v0    :=   0.0        >"Start angle";
+FLOAT   v1    := 360.0        >"End   angle";
+FLOAT   r_case:=   1          >"Rotation direction (+/- 1)");
+
+
+! Internal variables
+
+  REF    a_id;                   ! ADD_MBS identity
+  STRING p1_s*50;                ! p1     as string
+  STRING p2_s*50;                ! p2     as string
+  STRING v0_s*50;                ! v0     as string
+  STRING v1_s*50;                ! v1     as string
+  STRING rc_s*50;                ! r_case as string
+  STRING cur_id_s*132;           ! cur_id as string
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! =========
+!e---
+
+!e+++
+! Strings for SUR_ROT
+!e---
+
+  cur_id_s := RSTR(cur_id);
+
+  p1_s   := "VEC(" 
+            + STR(p1.x,12,4) + ","  
+            + STR(p1.y,12,4) + "," 
+            + STR(p1.z,12,4) + ")" ;
+  p2_s   := "VEC(" 
+            + STR(p2.x,12,4) + ","  
+            + STR(p2.y,12,4) + "," 
+            + STR(p2.z,12,4) + ")" ;
+  v0_s   :=   STR(v0  , 8,4);
+  v1_s   :=   STR(v1  , 8,4);
+
+  rc_s   :=   STR(r_case,-1,0);
+
+!  LST_INI("sur_rot_m");
+!  LST_LIN("cur_id_s "+ cur_id_s);
+!  LST_LIN("p1_s     "+ p1_s);
+!  LST_LIN("p2_s     "+ p2_s);
+!  LST_LIN("v0_s     "+ v0_s);
+!  LST_LIN("v1_s     "+ v1_s);
+!  LST_LIN("rc_s     "+ rc_s);
+!  LST_EXI();
+
+!e+++
+! Create the MBS statement
+!e---
+
+ a_id:= ADD_MBS("SUR_ROT", cur_id_s, p1_s, p2_s, v0_s, v1_s, rc_s );
+
+
+
+ENDMODULE

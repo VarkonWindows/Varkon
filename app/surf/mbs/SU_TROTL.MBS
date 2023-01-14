@@ -1,0 +1,241 @@
+!**************** su_trotl   ***************************
+!s+++
+! TFORM_ROTL
+! __________
+!
+! Funktionen skapar en rotations transformation med optionell
+! samtidig skalning.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: TFORM_ROTL (identitet,pos1,pos2,v,sx,sy,sz :attribut)
+!
+! Obligatoriska parametrar:
+!
+! pos1    (VECTOR) - Start position f|r rotationsaxel
+! pos2    (VECTOR) - Slut  position f|r rotationsaxel
+! v       (FLOAT)  - Rotationsvinkel
+!
+! Optionella parametrar:
+!
+! sx      (FLOAT)  - Skalning i x riktning. F|rst{llt = 1.0
+! sy      (FLOAT)  - Skalning i y riktning. F|rst{llt = 1.0
+! sz      (FLOAT)  - Skalning i z riktning. F|rst{llt = 1.0
+!
+! Attribut: PEN, LEVEL och BLANK
+!
+! Exempel:
+! 
+! TFORM_ROTL ( #10, VEC(0,0,100), VEC(100,100,-100),30.0);
+! 
+! Skapar en transformationsmatris (#10) som roterar en
+! storhet 30 grader runt en axel definierad av tv}         
+! punkter (0,0,100) och (100,100,-100). 
+!s---
+!e+++
+! TFORM_ROTL
+! __________
+!
+! The function creates a rotation matrix. Optionally may 
+! scaling factors be defined.
+! 
+! Module type: GEOMETRY
+!
+! MBS syntax: TFORM_ROTL (identity,pos1,pos2,v,sx,sy,sz :attribute)
+!
+! Parameters:
+!
+! pos1    (VECTOR) - Start position of rotation axis
+! pos2    (VECTOR) - End   position of rotation axis
+! v       (FLOAT)  - Rotation angle 
+!
+! Optional parameters:
+!
+! sx      (FLOAT)  - Scaling in x direction. Default  = 1.0
+! sy      (FLOAT)  - Scaling in y direction. Default  = 1.0
+! sz      (FLOAT)  - Scaling in z direction. Default  = 1.0
+!
+! Attribute: PEN, LEVEL och BLANK
+!
+! Example:
+! 
+! TFORM_ROTL ( #10, VEC(0,0,100), VEC(100,100,-100));
+! 
+! Creates a transformations matrix (#10) which rotates an
+! entity 30 degrees around an axis defined by two points      
+! (0,0,100) and (100,100,-100). 
+!e---
+
+!sdesce Add TFORM_ROTL statement to active module (create rotation matrix)
+!sdescs Addera TFORM_ROTL sats till aktiva modulen (skapa rotation matris)    
+
+! Revision history
+! ________________
+!
+! 1995-01-18 Gunnar Liden
+! 1995-05-16 short description added Gunnar Liden
+! 1996-03-23 ma_trotl->su_trotl Gunnar Liden
+
+MACRO MODULE su_trotl   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING p_sx*80;                ! Start X value prompt string
+  STRING p_sy*80;                ! Start Y value prompt string
+  STRING p_sz*80;                ! Start Z value prompt string
+  STRING p_ex*80;                ! End   X value prompt string
+  STRING p_ey*80;                ! End   Y value prompt string
+  STRING p_ez*80;                ! End   Z value prompt string
+  STRING p_v*80;                 ! Rotation      prompt string
+  STRING p_sca*80;               ! Scaling       prompt string
+  STRING p_scx*80;               ! Scale X value prompt string
+  STRING p_scy*80;               ! Scale Y value prompt string
+  STRING p_scz*80;               ! Scale Z value prompt string
+
+  STRING s_sx*25;                ! Start X value as string
+  STRING s_sy*25;                ! Start Y value as string
+  STRING s_sz*25;                ! Start Z value as string
+  STRING s_ex*25;                ! End   X value as string
+  STRING s_ey*25;                ! End   Y value as string
+  STRING s_ez*25;                ! End   Z value as string
+  STRING s_v*25;                 ! Rotation      as string
+  STRING s_sca*1;                ! Scaling value as string
+  STRING s_scx*25;               ! Scale X value as string
+  STRING s_scy*25;               ! Scale Y value as string
+  STRING s_scz*25;               ! Scale Z value as string
+
+  STRING s_spt*80;               ! Start point as string
+  STRING s_ept*80;               ! End   point as string
+
+  STRING str_in*132;             ! Input string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  p_sx:="Start X value";         !
+  p_sy:="Start Y value";         !
+  p_sz:="Start Z value";         !
+  p_ex:="End   X value";         !
+  p_ey:="End   Y value";         !
+  p_ez:="End   Z value";         !
+  p_v :="Rotation angle";        !
+  p_sca:="Scaling factors (Y/N)";!
+  p_scx:="Scale factor X";       !
+  p_scy:="Scale factor Y";       !
+  p_scz:="Scale factor Z";       !
+ELIF language = 2 THEN           ! Swedish strings
+  p_sx:="Start X v{rde ";        !
+  p_sy:="Start Y v{rde ";        !
+  p_sz:="Start Z v{rde ";        !
+  p_ex:="Slut  X v{rde ";        !
+  p_ey:="Slut  Y v{rde ";        !
+  p_ez:="Slut  Z v{rde ";        !
+  p_v :="Rotations vinkel";      !
+  p_sca:="Skalfaktorer (J/N)";   !
+  p_scx:="Skalfaktor X";         !
+  p_scy:="Skalfaktor Y";         !
+  p_scz:="Skalfaktor Z";         !
+ELSE                             !
+  EXIT("su_trotl  : " +          !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Translation data 
+! ___________________
+
+s_sx := INPMT(p_sx,              ! Interactive input of start X
+    "0.0",25);                   !
+IF s_sx    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_sy := INPMT(p_sy,              ! Interactive input of start Y
+    "0.0",25);                   !
+IF s_sy    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_sz := INPMT(p_sz,              ! Interactive input of start Z
+    "0.0",25);                   !
+IF s_sz    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ex := INPMT(p_ex,              ! Interactive input of end   X
+    "100.0",25);                 !
+IF s_ex    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ey := INPMT(p_ey,              ! Interactive input of end   Y
+    "100.0",25);                 !
+IF s_ey    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ez := INPMT(p_ez,              ! Interactive input of end   Z
+    "100.0",25);                 !
+IF s_ez    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_v  := INPMT(p_v ,              ! Interactive input of rotation
+    "90.0",25);                  !
+IF s_v     = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+
+! 3. Scaling data     
+! _______________
+
+s_sca:= INPMT(p_sca,             ! Scaling data                
+    "N",1);                      !
+IF   s_sca   = "" THEN           !
+      EXIT();                    !
+ELIF s_sca   = "N" OR            !
+     s_sca   = "n"    THEN       !
+      GOTO noscale;              !
+ENDIF;                           !
+
+s_scx := INPMT(p_scx,            ! Interactive input scale X
+    "1.0",25);                   !
+IF s_scx    = "" THEN            !
+      EXIT();                    !
+ENDIF;                           !
+s_scy := INPMT(p_scy,            ! Interactive input scale Y
+    "1.0",25);                   !
+IF s_scy    = "" THEN            !
+      EXIT();                    !
+ENDIF;                           !
+s_scz := INPMT(p_scz,            ! Interactive input scale Z
+    "1.0",25);                   !
+IF s_scz    = "" THEN            !
+      EXIT();                    !
+ENDIF;                           !
+
+! 4. Create MBS statement
+! _______________________
+
+noscale:;                        ! Label: No scaling
+
+s_spt:="VEC("+s_sx+","           ! Start point       
+             +s_sy+","           !
+             +s_sz+")";          !
+s_ept:="VEC("+s_ex+","           ! End   point       
+             +s_ey+","           !
+             +s_ez+")";          !
+
+IF   s_sca   = "N" OR            !
+     s_sca   = "n"    THEN       !
+  a_id:= ADD_MBS("TFORM_ROTL",   ! Create MBS statement 
+       s_spt, s_ept, s_v);       !
+ELSE                             !
+  a_id:= ADD_MBS("TFORM_ROTL",   !
+       s_spt, s_ept, s_v,        !
+       s_scx, s_scy, s_scz);     !
+ENDIF;                           !
+
+ENDMODULE 
+

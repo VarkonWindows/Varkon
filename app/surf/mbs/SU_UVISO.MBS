@@ -1,0 +1,106 @@
+! ***************** su_uviso   ****************************
+!
+!s+++
+! Skapa isoparameterkurvor (path gr{nser) p} en yta     
+!
+!s---
+!e+++
+! Create isoparameter (patch boundary) curves on a surface
+!
+!e---
+! Revision history
+! ________________
+!
+! 1994-06-21 Gunnar Liden
+! 1996-03-23 s_isoparam->su_uviso  Gunnar Liden
+!
+!************************************************************
+
+!sdesce Create isoparameter (patch boundary) curves on a surface
+!sdescs Skapa isoparameterkurvor (path gr{nser) p} en yta
+
+GLOBAL GEOMETRY MODULE su_uviso   (
+
+REF    s_id               > "@t16 Peka p} yta";
+STRING iflag*3:= "U&V"    > "Vilka isoparameterkurvor: U, V eller U&V");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No. of patches in U direction
+  INT    npatv;                  ! No. of patches in V direction
+
+  STRING iso_c*1;                ! Isoparameter U or V
+  FLOAT  start_p;                ! Parameter for start point
+  FLOAT  end_p;                  ! Parameter for end   point
+
+  INT    i_u;                    ! Loop index U parameters
+  INT    i_v;                    ! Loop index V parameters
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+
+!e+++
+! Retrieve number of patches. Calls of GETSURH.
+!e---
+!s+++
+! H{mta antal "patches". Anrop av GETSURH.
+!s---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+!e+++
+! Loop for all U lines in the surface. Calls of CUR_ISO.
+!e---
+!s+++
+! Loop f|r alla U linjer i ytan. Anrop av CUR_ISO.
+!s---
+
+  IF iflag = "U&V" OR            ! U curves or U,V
+     iflag = "U"      THEN       !
+  iso_c  := "U";                 ! Type of isoparameter
+  start_p:=   0.0;               ! Start value 
+  end_p  :=   npatv;             ! End   value
+
+  FOR i_u:= 0 TO npatu DO        ! Start loop U curves
+
+    CUR_ISO(#1,s_id,iso_c,i_u,   ! Isoparameter
+        start_p,end_p);          !
+
+  ENDFOR;                        ! End   loop U curves    
+  ENDIF;                         !
+
+!e+++
+! Loop for all V lines in the surface. Calls of CUR_ISO.
+!e---
+!s+++
+! Loop f|r alla V linjer i ytan. Anrop av CUR_ISO.
+!s---
+
+  IF iflag = "U&V" OR            ! V curves or U,V
+     iflag = "V"      THEN       !
+  iso_c  := "V";                 ! Type of isoparameter
+  start_p:=   0.0;               ! Start value 
+  end_p  :=   npatu;             ! End   value
+
+  FOR i_v:= 0 TO npatv DO        ! Start loop V curves
+
+    CUR_ISO(#2,s_id,iso_c,i_v,   ! Isoparameter
+        start_p,end_p);          !
+
+  ENDFOR;                        ! End   loop V curves    
+  ENDIF;                         !
+
+
+ENDMODULE

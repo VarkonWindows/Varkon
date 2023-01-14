@@ -1,0 +1,349 @@
+!**************** su_aface *****************************
+!s+++
+! SUR_AFACE 
+! _________
+!
+! Funktionen approximerar en begr{nsad given yta. Begr{nsnings-
+! kurvan ska vara en sluten kurva, som kan ligga p} flera ytor.
+!
+! Begr{nsningskurvan kan definieras med iso-parameter kurvor
+! (CUR_ISO) och sk{rningskurvor (SUR_INT). F|r att skapa en
+! sammansatt, sluten begr{nsningskurva beh|ver normalt CUR_TRIM 
+! och CUR_COMP anv{ndas. 
+!
+! Funktion b|rjar med att fastst{lla antalet h|rn i begr{nsnings-
+! kurvan. Det f}r finnas fr}n noll till fyra h|rn i kurvan. Ett
+! h|rn definieras av en vinkel, som {r indata (c_ang) till funktionen.
+! Kriteriet f|r ett h|rn {r att en kn{ck i kurvan {r st|rre {n c_ang 
+! grader.
+! 
+! Om antalet h|rn {r 0, 1 eller 2 l{gger funktionen till fiktiva
+! h|rn s} att det blir fyra h|rn och flera ytor som utdata. Om tre 
+! h|rn {r indata skapas en triangul{r yta med triangul{ra "patches" 
+! i en av h|rnpunkterna.
+! F|r n{rvarande m}ste dock antalet h|rn vara fyra (4)!
+!
+! Funktionen skapar en approximativ yta. Nya patchgr{nser skapas och
+! och alla "patches" blir av den typ, som getts som indata. 
+! F|r n{rvarande kan dock bara yta av typ CUB_SUR skapas.
+!
+! Funktionen skapar f|rst en yta av typ Coons patch ....
+! Kurvor som ska bli patch gr{nser i utytan skapas, och funktionen    
+! skjuter sig ned i ytan och h{mtar punkter och derivator .....  
+!
+! Alla segmenten i begr{nsningskurvan beh|ver inte vara av UV typ (ligga
+! p} en yta. Funktionen ber{knar d} sj{lv h|rnpunkter och derivator. Detta
+! kan utnyttjas f|r att skapa en |verg}ngsyta mellan tv} andra ytor. Den i 
+! kompositkonstruktion vanliga trappningsytan (regelytan) mellan tv} olika 
+! offset ytor skapas genom att s{tta samman tv} UV kurvor (p} olika 
+! offsetytor) med r{ta linjer.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_AFACE (identitet, kurva, s_typ, metod, fall, c_ang, extra1, extra2 : attribut)
+!
+! Obligatoriska parametrar:
+!
+! kurva   (REF)    - Identitet f|r tidigare skapad yta
+! s_typ   (STRING) - Yttyp som ytan ska approximeras till
+!                    =CUB_SUR: Till bikubisk yta      
+!                    =FAC_SUR: .. ej implementerat ...       
+!                    =RAT_SUR: .. ej implementerat ...      
+!                    =LFT_SUR: .. ej implementerat ...      
+!
+! metod   (STRING)   - Approximationsmetod
+!                    =ARCL_NUNV: 
+!                     Coon's b}gl{ngdsmetod enligt ovan d{r anv{ndaren 
+!                     ger antal U och V linjer
+!                        extra1= antal nya "patches" i U riktningen
+!                        extra2= antal nya "patches" i V riktningen
+!                        (utel{mnat extra1 medf|r att extra2= extra1)
+!                    =ARCL_AUTO: ... ej implementerad ...
+!
+! fall    (STRING)   - Ber{kningsfall f|r ytpunkterna
+!                    = COONS: Anv{nd ej exakta ytan (ytorna)
+!                    = LIN_E: Sk{rning linje/yta med stopp vid misslyckad ber{kning
+!                    = LIN_W: Sk{rning linje/yta med varning vid misslyckad ber{kning
+!                    = LIN_C: Sk{rning linje/yta d{r Coons anv{nds vid misslyckad ber{kning
+!                    = CLO_E: N{rmaste punkt/yta med stopp vid misslyckad ber{kning
+!                    = CLO_W: N{rmaste punkt/yta med varning vid misslyckad ber{kning
+!                    = CLO_C: N{rmaste punkt/yta d{r Coons anv{nds vid misslyckad ber{kning
+!
+! c_ang   (FLOAT)  - Kriterium f|r h|rn i begr{nsningskurvan (vinkel i grader)
+!
+! extra1  (FLOAT)  - Koordinat tolerans f|r approximationen ({nnu ej impl.)
+!                    eller antal U kurvor.
+!                    
+!
+! Optionella parametrar:
+!
+! extra2  (FLOAT)  - Ytnormal  tolerans f|r approximationen ({nnu ej impl.)
+!                    eller antal V kurvor
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_AFACE (#10,#5, "CUB_SUR", "ARCL_NUNV", "LIN_E", 20.0, 3, 5 ):   
+! 
+! Skapar en ny bikubisk yta (#10) med tre U linjer (tv} "patches" i
+! U riktningen) och fem V linjer (fyra "patches" i V riktningen).
+!
+!s---
+!e+++
+! SUR_AFACE 
+! _________ 
+!
+! Approximation of a face defined by a composite curve on a surface,
+! optionally on multiple surfaces. 
+!
+! Note that the surfaces not are input to function. Surface identities 
+! are retrieved from the curve segments. In Varkon may a (composite) 
+! curve (i.e each curve segment) be linked to many surfaces.
+!
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_AFACE (identity,surf,s_typ,method,case,c_ang,extra1,extra2:attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Identity for previously created surface
+! s_typ   (STRING) - Approximation to surface type:
+!                    =CUB_SUR: Bicubic surface
+!                    =FAC_SUR: Triangular B-planes          
+!                    =RAT_SUR: .. not yet implemented ...   
+!                    =LFT_SUR: .. not yet implemented ...   
+!
+! method  (INT)    - Approximation method
+!                    =1: Number of patches is defined by the user.
+!                        extra1= No of new patches in U direction 
+!                        extra2= No of new patches in V direction 
+!                        (if extra2 not is defined ==> extra2= extra1)
+!                    =2: Function calculates the necessary no. of patches
+!                    =3: Number of patches is defined by the user (only FAC_SUR)
+!                        extra1= No of facets in U and V direction        
+!                        extra2= offset for facets                     
+!                    =11: As 1 but double patches
+!                    =12: As 2 but double patches
+!                    =13: As 3 but double patches
+! case    (STRING)   - Surface interrogation case       
+!                    = COONS: Use Coons patch (no interrogation)
+!                    = LIN_E: Intersect line/surface with stop       for failure
+!                    = LIN_W: Intersect line/surface with warning    for failure
+!                    = LIN_C: Intersect line/surface with no warning for failure
+!                    = CLO_E: Closest point/surface with stop        for failure
+!                    = CLO_W: Closest point/surface with warning     for failure
+!                    = CLO_C: Closest point/surface with no warning  for failure
+!
+!
+! extra1  (FLOAT)  - Coordinate tolerance for the approximation (not yet impl.)
+!                    or number of lines in U direction
+!
+! Optional parameters:
+!
+! extra2  (FLOAT)  - Surface normal tolerance for the approximation (not yet impl.)
+!                    or number of patches in V direction.
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Example:
+! 
+! SUR_AFACE (#10,#5, "CUB_SUR", "ARCL_NUNV", "LIN_E", 20.0, 3, 5 ):   
+! 
+! Creates a new bicubic surface (#10) with five new patches in
+! the U direction and five new patches in the V direction.
+!
+!e---
+
+!sdesce Add  SUR_AFACE  statement to active module (approx. face )
+!sdescs Addera SUR_AFACE  sats till aktiva modulen (approx. begr{nsad yta)    
+
+! Revision history
+! ________________
+!
+! 1996-05-27 Gunnar Liden
+
+MACRO MODULE su_aface   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING str_in*132;             ! Input strin to CUR_GL (tillfalligt)
+
+  STRING select*30;              ! Select prompt string
+
+  REF    c_id;                   ! Curve identity
+  STRING c_ids*132;              ! Curve identity as string
+
+
+  STRING s_type*7;               ! Surface type as string
+  STRING s_type_a*9;             ! Surface type as string
+  STRING p_type*50;              ! Surface type as prompt string
+  STRING s_method*20;            ! Approximation method as string
+  STRING p_method*50;            ! Approximation method as prompt string
+  STRING s_case*20;              ! Interrogation case   as string
+  STRING p_case*50;              ! Interrogation case   as prompt string
+  STRING s_npu*3;                ! No U patches as string
+  STRING p_npu*50;               ! No U patches as prompt string
+  STRING s_npv*3;                ! No V patches as string
+  STRING p_npv*50;               ! No V patches as prompt string
+  STRING s_c_ang*10;             ! Corner criterion
+  STRING p_c_ang*50;             ! Corner criterion as prompt string
+
+  STRING s_ctol*30;              ! Coordinate tolerance as string
+  STRING s_ntol*30;              ! Normal     tolerance as string
+
+  STRING ermess1*50;             ! Error message: Method          
+  STRING ermess2*50;             ! Error message: Method - FAC_SUR
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select boundary"+    !
+            " curve";            !
+  p_type:= "Output surface type"+!
+  " (CUB_SUR)";                  !
+  p_method:="Approximation "+    !
+  "method (ARCL_NUNV)";          ! 
+  p_case  :="Interrogation case"+!
+  " (LIN_E LIN_W LIN_C COONS)";  ! 
+  p_npu:="Number of U lines  "+  !
+  " (2, 3, 4, ...)";             !
+  p_npv:="Number of V lines "+   !
+  "(0 ==> same as in U direct.)";!
+  p_c_ang:="Criterion for "+     !
+  " corner in boundary curve";   !
+  ermess1:="Method= 1 (CUB_SUR)"+!
+  "implemented";                 !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Begr{nsnings"+       !
+           "kurva";              !
+  p_type:= "\nskad yttyp f|r ut"+!
+   "yta (CUB_SUR)";              !
+  p_method:="Approximations"+    !
+  "metod (ARCL_NUNV)";           ! 
+  p_case  :="Sk{rningsfall"+     !
+  " (LIN_E LIN_W LIN_C COONS)";  ! 
+  p_npu:="Antal U linjer " +     !
+  " (2, 3, 4, ...)";             !
+  p_npv:="Antal V linjer  (0 ="+ !
+  "=> samma som i U riktningen)";!
+  p_c_ang:="Kriterium f|r "+     !
+  " h|rn i begr{nsningskurva";   !
+  ermess1:="Metod= 1 (CUB_SUR) "+!
+  "implementerad";               !
+ELSE                             !
+  EXIT("su_aface  :"+            !
+       "Language error");        !
+ENDIF;                           !
+
+s_ctol   := "Undef";             !
+s_ntol   := "Undef";             !
+s_npu    := "Undef";             !
+s_npv    := "Undef";             !
+s_type   := "Undef";             !
+s_type_a := "Undef";             !
+s_c_ang  := "Undef";             !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+c_id:= IDENT(8);                 ! Interactive curve selection
+POP_PMT();                       ! Erase message to screen
+
+c_ids:= RSTR(c_id);              ! Curve identity as string
+IF c_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+c_ids:="GLOBAL_REF("+c_ids+")";  !
+
+! 3. Surface type     
+! _______________    
+
+s_type := INPMT(p_type,          ! Interactive input of type
+"CUB_SUR",7);                    !
+IF s_type  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 4. Approximation method
+! _______________________
+
+s_method:= INPMT(p_method,       ! 
+"ARCL_NUNV",10);                 !
+IF s_method  = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+IF s_method  = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Interrogation case   
+! _______________________
+
+s_case  := INPMT(p_case  ,       ! 
+"LIN_E",    10);                 !
+IF s_case    = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+IF s_case    = " " THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. Criterion for a corner
+! _________________________
+
+s_c_ang := INPMT(p_c_ang ,       ! Interactive input of angle
+  "20.0",3);                     !
+IF s_npu   = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 7. Number of U lines or coordinate tolerance 
+! ____________________________________________
+
+s_npu   := INPMT(p_npu ,         ! Interactive input of number of patches
+  "3",3);                        !
+IF s_npu   = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 8. Number of U lines or surface normal tolerance
+! ________________________________________________
+
+s_npv   := INPMT(p_npv ,  "0", 3 );                
+IF s_npv   = "" THEN    
+  EXIT();              
+ENDIF;                
+
+! 9. Create MBS statement
+! _______________________
+
+
+s_type_a:=CHR(34)+s_type+CHR(34);
+
+!a_id:= ADD_MBS("SUR_AFACE",  
+!       c_ids, s_type_a, s_method, s_case, s_c_ang,
+!       s_npu, s_npv);           
+
+str_in := "AFACE"+ " "+ 
+           s_type+" "+ s_method+" "+ s_case+" "+s_c_ang +
+           " "+s_npu +" "+s_npv;           
+str_in := CHR(34) + str_in + CHR(34);
+! LST_INI("Debug from su_aface");
+! LST_LIN("Input string to CUR_GL:");
+! LST_LIN(str_in);
+! LST_EXI();
+
+a_id:= ADD_MBS("CUR_GL", c_ids , str_in);
+
+ENDMODULE 
+

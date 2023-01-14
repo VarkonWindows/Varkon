@@ -1,0 +1,170 @@
+! ***************** su_curgr   ****************************
+!
+!s+++
+! Leta reda p} alla registrerade sk{rningar och lista dem
+!s---
+!e+++
+! Find all "group registered" intersect curves
+!e---
+!************************************************************
+
+! Revision history
+! ________________
+!
+! 1996-03-02 Gunnar Liden
+! 1996-05-27 blank->v_blank Gunnar Liden
+
+
+!sdesce Find all "group registered" intersect curves
+!sdescs Leta reda p} alla registrerade sk{rningar och lista dem
+
+
+GLOBAL GEOMETRY MODULE su_curgr   ();
+
+
+! Internal variables
+
+  CONSTANT INT language= 2;      ! 1: English Eq. 2: Swedish
+
+  STRING header*132;             ! Header for list window
+  STRING ermess1*60;             ! Error No registered curves
+
+  INT    n_inter;                ! Total number of intersect curves 
+  REF    group_id;               ! Reference to group
+
+                                 ! For GETGRP:
+  INT    nm;                     ! Number of entities in idvec
+  REF    idvec(100);             ! All entities in the group
+  STRING cur_name*20;            ! Curve (GROUP) name
+
+                                 ! For function GETHDR:
+  INT    typ;                    ! Type of entity
+  INT    nref;                   ! ...
+  INT    v_blank;                  ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niva;                   ! The layer for the entity
+  INT    penna;                  ! Pen number (colour)
+  REF    grupp_id(3);            ! Global identities for groups
+
+                                 ! For GET_NEXT_GM:
+  INT    tmod;                   ! 0: All entities 1: Only parts
+
+                                 ! For GETCSY:
+  STRING csys_name*10;           ! Name of coordinate system
+  FLOAT  csys_data(4,4);         ! Transformation matrix
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algoritm
+! ________
+!s---
+
+!e+++
+! 1. Initializations of internal variables and checks of input data
+!e---
+!s+++
+! 1. Initieringar av interna variabler och kontroll av indata
+!s---
+
+  DEBUG := 0;                            ! Debug 0 or 1    
+
+!e+++
+! Definition of error strings in English or Swedish
+!e---
+!s+++
+! Definition av felmeddelanden p} engelska eller svenska
+!s---
+
+IF   language = 1 THEN   ! English error messages
+  header  := "Intersects registered as GROUP's with start of name X, Y and Z";     
+  ermess1 := "No registered intersect curves in GM (su_curgr)";   
+
+ELIF language = 2 THEN   ! Swedish error messages
+  header  := "Sk{rningskurvor registrerade som GROUP's med namn X, Y and Z";     
+  ermess1 := "Inga registrerade sk{rningskurvor i GM (su_curgr)";   
+
+ELSE                        
+  EXIT("su_curgr: Language error");
+ENDIF;     
+
+  LST_INI(header);
+
+!e+++
+! 2. Get curves which are in GROUP's which start witx X, Y or Z
+!e---
+!s+++
+! 2. H{mta kurvor som finns i GROUP's som startar med  X, Y or Z
+!s---
+
+  SET_ROOT_GM(#0);
+
+  tmod := 0;                                  
+  n_inter := 0;
+
+!e+++
+! Label nxtxgr: Next GROUP in GM 
+!e---
+!s+++
+! Label nxtxgr: N{sta GROUP i GM
+!s---
+
+nxtxgr:;
+
+!e+++
+! Get next reference to group starting with X
+!e---
+!s+++
+! H{mta referens till n{sta grupp med namn som b|rjar med X
+!s---
+
+  group_id := GET_NEXT_GM (tmod,4096,"X*");
+
+!  LST_LIN("Group "+RSTR(group_id)); 
+
+  IF  group_id = #0 THEN
+    GOTO nomore;
+  ENDIF;
+
+  GETGRP(group_id,cur_name,nm,idvec);     ! Get data for entity GROUP
+
+!  LST_LIN("Group "+RSTR(group_id)+" nm= "+STR(nm,-1,0)+" Curve id "+RSTR(idvec(1))); 
+
+  IF  nm <> 1 THEN
+    GOTO nxtxgr;
+  ENDIF;
+
+  GETHDR( idvec(1),typ,nref, v_blank,niva,penna,grupp_id); 
+
+!  LST_LIN("Type of entity in GROUP typ "+STR(typ,-1,0)); 
+
+  IF  typ <> 8 THEN
+    GOTO nxtxgr;
+  ENDIF;
+
+  n_inter := n_inter + 1;
+
+  LST_LIN(STR(n_inter,4,0)+" Curve "+RSTR(idvec(1))+
+          " Group "+RSTR(group_id)+" "+cur_name); 
+
+  GOTO  nxtxgr;
+
+!e+++
+! Label nomore: End of scanning for X GROUP's
+!e---
+!s+++
+! Label nomore: Slut p} letandet efter X GROUP'er
+!s---
+
+nomore:;                                 ! Label: End of calculation
+
+  LST_EXI();
+
+ENDMODULE

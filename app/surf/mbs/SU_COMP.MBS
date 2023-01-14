@@ -1,0 +1,548 @@
+!**************** su_comp    ***************************
+!s+++
+! SUR_COMP
+! ________
+!
+! Funktionen skapar en sammansatt yta.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_COMP(identitet, yta1, yta2, yta3, .... : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta1    (REF)    - Tidigare skapad yta 1
+! yta2    (REF)    - Tidigare skapad yta 2
+!
+! Optionella parameterar:
+!
+! yta3    (REF)    - Tidigare skapad yta 3
+! yta4    (REF)    - Tidigare skapad yta 4
+! yta5    (REF)    - Tidigare skapad yta 5
+! yta6    (REF)    - Tidigare skapad yta 6
+!  .
+!  .
+!  .
+!
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_COMP(#10,GLOBAL_REF(#5),GLOBAL_REF(#8));
+! 
+! S{tter samman ytorns #5 och #8 till en ny yta (#10).
+! 
+!s---
+!e+++
+! SUR_COMP
+! ________
+!
+! The function creates a composite surface,
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_COMP(identity, surf1 , surf2, surf3  : attribute)
+!
+! Parameters:
+!
+! surf1    (REF)    - Previously defined surface 1
+! surf2    (REF)    - Previously defined surface 2
+!
+! Optional parameters
+!
+! surf3    (REF)    - Previously defined surface 3
+! surf4    (REF)    - Previously defined surface 4
+! surf5    (REF)    - Previously defined surface 5
+!  .
+!  .
+!  .
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Exemple:
+! 
+! SUR_OFFS(#10,#5,-1.7);
+! 
+! SUR_COMP(#10,GLOBAL_REF(#5),GLOBAL_REF(#8));
+! 
+! Combines surfaces #5 and #8 to a new surface,
+!e---
+
+!sdesce Add SUR_COMP  statement to active module (composite surface)
+!sdescs Addera SUR_COMP sats till aktiva modulen (sammansatt yta)    
+
+! Revision history
+! ________________
+!
+! 1996-05-13 Gunnar Liden
+! 1998-01-31 Short description changed Gunnar Liden
+
+MACRO MODULE su_comp    ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  INT    n_sur;                  ! Number of surfaces
+  STRING surid_all(25)*132;      ! All surfaces
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  FLOAT  offset;                 ! Offset value
+  STRING soffset*25;             ! Offset value as string
+
+  STRING select*30;              ! Select prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN             ! English strings
+  select:= "Select surface ";      !
+ELIF language = 2 THEN             ! Swedish strings
+  select:= "Peka p} yta ";         !
+ELSE                               !
+  EXIT("ed_sur: Language error");  !
+ENDIF;                             !
+
+! 2. Select surfaces
+! __________________
+
+n_sur := 0;
+
+addsur:;                           ! An additional surface
+
+PSH_PMT(select+STR(n_sur+1,-1,0)); ! Select string to screen
+s_id:= IDENT(16);                  ! Interactive surface selection
+POP_PMT();                         ! Erase message to screen
+
+s_ids:= RSTR(s_id);                ! Surface identity as string
+IF    s_ids = "#0.1" AND           !
+      n_sur <  2         THEN      !
+  EXIT();                          !
+ELIF  s_ids = "#0.1" AND           !
+      n_sur >= 2         THEN      !
+  GOTO addmbs;                     !
+ENDIF;                             !
+n_sur := n_sur + 1;                !   
+s_ids:="GLOBAL_REF("+s_ids+")";    !
+surid_all(n_sur) := s_ids;         !
+IF  n_sur = 25 THEN                !
+  GOTO  addmbs;                    !
+ENDIF;                             !
+
+GOTO addsur;                       ! 
+
+addmbs:;                           ! Label: Add MBS statement 
+
+! 3. Create MBS statement
+! _______________________
+
+IF     n_sur =   2   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2) 
+                             );   
+ELIF   n_sur =   3   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3) 
+                             );   
+
+ELIF   n_sur =   4   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4) 
+                             );   
+ELIF   n_sur =   5   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4),
+    surid_all(5) 
+                             );   
+ELIF   n_sur =   6   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4),
+    surid_all(5),
+    surid_all(6) 
+                             );   
+ELIF   n_sur =   7   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4),
+    surid_all(5),
+    surid_all(6),
+    surid_all(7) 
+                             );   
+ELIF   n_sur =   8   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4),
+    surid_all(5),
+    surid_all(6),
+    surid_all(7),
+    surid_all(8) 
+                             );   
+ELIF   n_sur =   9   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all(1),
+    surid_all(2),
+    surid_all(3),
+    surid_all(4),
+    surid_all(5),
+    surid_all(6),
+    surid_all(7),
+    surid_all(8),
+    surid_all(9)
+                             );   
+ELIF   n_sur =  10   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10)
+                             );   
+ELIF   n_sur =  11   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11)
+                             );   
+ELIF   n_sur =  12   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12)
+                             );   
+ELIF   n_sur =  13   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13)
+                             );   
+ELIF   n_sur =  14   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14)
+                             );   
+ELIF   n_sur =  15   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15)
+                             );   
+ELIF   n_sur =  16   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16)
+                             );   
+ELIF   n_sur =  17   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17)
+                             );   
+ELIF   n_sur =  18   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18)
+                             );   
+ELIF   n_sur =  19   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19)
+                             );   
+ELIF   n_sur =  20   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20)
+                             );   
+ELIF   n_sur =  21   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20),
+    surid_all(21)
+                             );   
+ELIF   n_sur =  22   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20),
+    surid_all(21),
+    surid_all(22)
+                             );   
+ELIF   n_sur =  23   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20),
+    surid_all(21),
+    surid_all(22),
+    surid_all(23)
+                             );   
+ELIF   n_sur =  24   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20),
+    surid_all(21),
+    surid_all(22),
+    surid_all(23),
+    surid_all(24)
+                             );   
+ELIF   n_sur =  25   THEN   
+  a_id:= ADD_MBS("SUR_COMP", 
+    surid_all( 1),
+    surid_all( 2),
+    surid_all( 3),
+    surid_all( 4),
+    surid_all( 5),
+    surid_all( 6),
+    surid_all( 7),
+    surid_all( 8),
+    surid_all( 9),
+    surid_all(10),
+    surid_all(11),
+    surid_all(12),
+    surid_all(13),
+    surid_all(14),
+    surid_all(15),
+    surid_all(16),
+    surid_all(17),
+    surid_all(18),
+    surid_all(19),
+    surid_all(20),
+    surid_all(21),
+    surid_all(22),
+    surid_all(23),
+    surid_all(24),
+    surid_all(25)
+                             );   
+ELSE
+  EXIT("su_comp Not yet progr. for "+STR(n_sur,-1,0)+" surfaces");
+ENDIF;
+
+ENDMODULE 
+

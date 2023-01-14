@@ -1,0 +1,134 @@
+! ***************** su_pla1 *******************************
+!
+!e+++
+! Creates a B_PLANE with a normal equal to the curve tangent
+!
+! Input is a curve, arc or a line and a curve parameter value.
+!
+! Output is the B_BPLANE with local identity (reference) #1.
+!e---
+!s+++
+! Skapar ett plan med en normal som {r lika med kurvtangenten.
+!
+! Indata {r en kurva, cirkel eller linje och ett parameterv{rde.
+!
+! Utdata {r ett B_PLANE med lokala identiteten (referensen) #1.
+!s---
+!
+! Revision history
+! ________________
+!
+! 1995-11-10 Gunnar Liden
+! 1996-05-16 c_bplanv0->su_pla1 Gunnar Liden
+!
+!************************************************************
+
+!sdesce Create B_PLANE. Normal= curve tangent. For given U.
+!sdescs Skapa B_PLANE. Normal= kurvtangent. F|r givet U.
+
+
+GLOBAL GEOMETRY MODULE su_pla1   (
+
+REF    c_id          > "@t14 Peka p} kurva, cirkel eller linje";
+FLOAT  u_val  := 0.0 > "Kurv parameter v{rde U f|r B_PLANE";
+INT    graphic:= 1   > "Grafik=0: Blanka allt Grafik=1: Visa B_PLANE Grafik=2: Visa allt");
+
+!e REF    c_id          > "@t10 Select curve, arc or line";
+!e FLOAT  u_val  := 0.0 > "Curve parameter value U for B_PLANE";
+!e INT    graphic:= 1   > "Eq. 0: Blank all Eq. 1: Show B_PLANE Eq. 2: Show all");
+
+! Internal variables
+
+  VECTOR origin;                 ! Origin for local system
+  VECTOR xaxis;                  ! X axis for local system
+  VECTOR yaxis;                  ! Y axis for local system
+
+  FLOAT  tot_arc;                ! Total arclength for the curve
+  FLOAT  size;                   ! Size of B_PLANE
+
+  INT    bflag_i;                ! Blank flag for B_PLANE      
+  INT    bflag_c;                ! Blank flag for coord. system
+
+BEGINMODULE
+
+!e+++
+! Algorithm
+! _________
+!e---
+!s+++
+! Algorithm
+! =========
+!s---
+
+!e+++
+! Initializations and checks of input data
+!e---
+!s+++
+! Initiera variabler och kontrollera indata
+!s---
+
+  IF   graphic = 0 THEN          ! Eq. 0: Blank all
+    bflag_i := 1;                ! Blank B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 1 THEN          ! Eq. 1: Show B_PLANE
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 2 THEN          ! Eq. 2: Show all      
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELSE                           !
+    EXIT("su_pla1 graphic "+     !
+        "not 0, 1 or 2");        ! 
+  ENDIF;                         !
+
+
+!e+++
+! Create local coordinate system with X axis equal to curve tangent
+!e---
+!s+++
+! Skapa lokalt koordinat system med X axeln lika med kurvtangenten
+!s---
+
+  origin:= ON(c_id,u_val);       ! Origin            
+
+  xaxis :=  TANG(c_id,u_val);    ! X axis
+
+  IF   ABS(xaxis.x) <= ABS(xaxis.y) AND ABS(xaxis.x) <= ABS(xaxis.z)  THEN
+    yaxis := VEC( 1.0, 0.0, 0.0 );
+  ELIF ABS(xaxis.y) <= ABS(xaxis.x) AND ABS(xaxis.y) <= ABS(xaxis.z)  THEN
+    yaxis := VEC( 0.0, 1.0, 0.0 );
+  ELIF ABS(xaxis.z) <= ABS(xaxis.y) AND ABS(xaxis.z) <= ABS(xaxis.x)  THEN
+    yaxis := VEC( 0.0, 0.0, 1.0 );
+  ELSE
+    EXIT("su_pla1  Programming error (Y axis)");
+  ENDIF;
+
+  CSYS_3P(#3,"Tangent",          ! Create coordinate system
+   origin, origin+xaxis,         !
+   origin+yaxis                  !
+   :BLANK=bflag_c,PEN=3);        !
+
+
+!e+++
+! Activate local system and create the B_PLANE in the Y/Z plane
+!e---
+!s+++
+! Aktivera lokala systemet och skapa B_PLANE i Y/Z planet
+!s---
+
+  tot_arc:= ARCL(c_id);          ! Total arclength of curve
+  size   := tot_arc*0.2;         ! Size 20% of total arclength
+
+
+  MODE_LOCAL(GLOBAL_REF(#3));    ! Activate local system
+
+  B_PLANE(#1,                    ! Create plane with 3 points
+    VEC ( 0   , size ,-size),    ! (P2=P3) in the Y/Z plane
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,-size ,-size)     !
+     :BLANK=bflag_i);            !
+
+  MODE_GLOBAL();                 ! Activate global system
+
+ENDMODULE

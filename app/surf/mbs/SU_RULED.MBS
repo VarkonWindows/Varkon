@@ -1,0 +1,87 @@
+!s+++
+! su_ruled 
+! _________
+!
+! Funktionen skapar en SUR_RULED yta
+!
+!s---
+!e+++
+! The function creates a SUR_RULED surface 
+!e---
+!
+! Author: Gunnar Liden
+!
+! Revisions
+! ---------
+!
+! 1996-09-08 Originally written 
+!********************************************************************
+
+MACRO  GEOMETRY MODULE  su_ruled   (
+REF    cur1_id                 >"@t8  Kurva  1";
+REF    cur2_id                 >"@t8  Kurva  2";
+INT    r_case  := 1            >"Case for ruled surface (1 only progr)";
+REF    spin_id := #0.1         >"@ Spine  (<CR> ==> Eq. #0.1: Ej definierad)";
+FLOAT  idpoint    := 0.01      >"Identical point criterion (< 0 from system)";
+FLOAT  idangle    := 0.10      >"Identical angle criterion (< 0 from system)");
+
+!sdesce Create SUR_RULED
+!sdescs Skapa SUR_RULED
+
+
+! Internal variables:
+
+  CONSTANT INT language= 2;     ! 1: English Eq. 2: Swedish
+
+  STRING   ermess1*40;          ! Error message
+
+  REF      a_id;                ! Reference for ADD_MBS
+
+  STRING   cur_str*132;         ! String for CUR_GL
+
+  INT      DEBUG;               !
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+!s+++
+! Algoritm
+!s---
+
+!e+++
+! Algorithm
+!e---
+
+!e+++
+! 1. Initializations and check of input data
+!e---
+
+!s+++
+! 1. Initieringar och kontroll av indata
+!s---
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+IF   language = 1 THEN           ! English strings
+  ermess1:="Not valid graphic "; !
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:="Ej till}ten grafik ";!
+ELSE                             !
+  EXIT("su_ruled: " +            !
+       "Language error");        !
+ENDIF;                           !
+
+  cur_str:= "S_RUL "+   
+      RSTR(cur2_id) + " "+
+       STR(r_case,-1,0) + " "+
+      RSTR(spin_id) + " "+
+       STR(idpoint,-8,4) + " "+
+       STR(idangle,-8,4);
+
+  cur_str := CHR(34)+cur_str+CHR(34);
+
+      
+  a_id := ADD_MBS("CUR_GL",RSTR(cur1_id), cur_str);
+
+ENDMODULE

@@ -1,0 +1,288 @@
+!**************** su_strim   ***************************
+!s+++
+! SUR_TRIM
+! ________
+!
+! Funktionen trimmar en yta dvs den skapar en yta som är en
+! del av en tidigare skapad yta.                  
+! 
+! Delytan definieras med två punkter i U,V planet. Dessa
+! två (diagonal-)punkter bestämmer fyra stycken isoparameter-
+! kurvor. Randkurvorna på delytan kommer att (exakt) vara 
+! isoparameterkurvorna.
+!
+! Den skapade delytan är ingen approximation. Den kommer att
+! vara exakt lika ursprungsytan förutom att det blir lite 
+! numeriskt "brus" efter en del beräkningar. Men en "patch"
+! kan bli för liten (smal) och då kan "bruset" ge stora fel
+! i beräkningarna (av derivator). I VARKON kan man därför 
+! trimma ytorna på två sätt - med reparametrisering eller
+! utan reparameterisering.
+!
+! För (del-) ytor som ska exporteras till andra system ska 
+! ytans "patches" reparametriseras så att (lokala) parametrar 
+! u=0, v=0, u=1, v=1 blir begränsnings kurvor för varje "patch". 
+! För (del-) ytor som ska användas för fortsatta beräkningar i 
+! systemet rekommenderas att ingen reparameterisering sker. 
+! VARKON systemet kan hålla reda på vad som ska vara "patchgränser". 
+!
+!
+! För tillfället finns bara reparametriseringsmöjligheten .....
+! För tillfället kan ytan inte extrapoleras ....
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_TRIM(identitet,yta,ustart,uslut,
+!                 vstart,vslut,fall:attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+!
+! ustart  (FLOAT)  - Start värde i U riktningen       
+! uslut   (FLOAT)  - Slut  värde i U riktningen       
+! vstart  (FLOAT)  - Start värde i V riktningen       
+! vslut   (FLOAT)  - Slut  värde i V riktningen       
+!                    ustart > uslut ==> Ytans U riktning vänds
+!                    vstart > vslut ==> Ytans V riktning vänds
+!                    ustart < 0.0   ==> Extrapolering av ytan i -U 
+!                    vstart < 0.0   ==> Extrapolering av ytan i -V
+!                    uend   > nu    ==> Extrapolering av ytan i +U
+!                    vend   > nv    ==> Extrapolering av ytan i +V
+!
+! Optionell parameter:       
+!
+! fall    (INT)    - Trimningsfall
+!                    = 1: Reparameterisera trimmade "patches"
+!                    =11: Som 1 men vänd aldrig U,V riktningar   
+!                    = 2: Ingen reparametrisering
+!                    =12: Som 2 men vänd aldrig U,V riktningar   
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_TRIM(#10,#5,2.3, 4.1, 0.0, 6.7 );
+! 
+! Skapar en ny yta (#10) som har exakt samma form som en tidigare 
+! skapad yta #5 men som avgränsas av området (isoparameterkurvorna)
+! 2.3 > U > 4.1 och 0.0 > V > 6.7
+!s---
+!e+++
+! SUR_TRIM
+! ________
+!
+! The function trims a surface, i.e it creates a surface        
+! which is a part of a previously defined surface. 
+!
+! The surface part is defined by two points in the U,V plane.
+! The four isoparametric curves (between intersection points)
+! passing through these two diagonal points will become the 
+! outer boundary of the ouput surface part.
+!
+! The created surface part is not an approximation. The     
+! surface will be equal to the input surface except for   
+! some numerical noise caused by mathematical operations.  
+! The numerical noise will normally not be a problem except
+! when patches become small. Calculation of derivatives 
+! (for instance surface normals) in small (nearly null)
+! patches can be very ill-conditioned. This problem can
+! be avoided in VARKON. The original patch coefficients 
+! can be kept and the derivative calculations will the be
+! made on the original patch. The trimming data is saved
+! in the system and the derivatives (the result of the
+! calculations) will be reparameterised and not the patch
+! coefficients.
+!
+! There is however an option in this function to do the
+! reparameterisation. For surfaces (part of surfaces) which
+! shall be exported to other systems must the .....
+!
+! So far is only case 1 and 11 below implemented.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_TRIM(identity,surface,ustart,uend,
+!                       vstart,vend,case:attribut)
+!
+! Parameters:
+!
+! surface (REF)    - Previously defined surface
+! ustart  (FLOAT)  - Start value in U direction        
+! uend    (FLOAT)  - End   value in U direction        
+! vstart  (FLOAT)  - Start value in V direction        
+! vend    (FLOAT)  - End   value in V direction        
+!                    ustart > uend  ==============> 
+!                    Surface U direction is changed
+!                    vstart > vend  ==============> 
+!                    Surface V direction is changed
+!                    ustart < 0.0   ==============> 
+!                    Extrapolation of surface in -U direction
+!                    vstart < 0.0   ==============> 
+!                    Extrapolation of surface in -V direction
+!                    uend   > nu    ==============> 
+!                    Extrapolation of surface in +U direction
+!                    vend   > nv    ==============> 
+!                    Extrapolation of surface in +V direction
+! case    (INT)    - Trimming case 
+!                    = 1: Reparameterise trimmed  patches
+!                    =11: As 1 but U,V directions are not changed
+!                    Not yet implemented:
+!                    = 2: No reparameterisation 
+!                    =12: As 2 but U,V directions are not changed
+!
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Exemple:
+! 
+! SUR_TRIM(#10,#5,2.3, 4.1, 0.0, 6.7 );
+! 
+! Creates a new surface (#10) which has the same shape as previously   
+! created surface #5 but the new surface is limited to the area           
+! 2.3 => U => 4.1 och 0.0 => V => 6.7 , i.e limited by the isoparametric
+! curves U= 2.3, U= 4.1, V= 0.0 and V= 6.7
+!e---
+
+!sdesce Add SUR_TRIM  statement to active module (trim a surface)
+!sdescs Addera SUR_TRIM  sats till aktiva modulen (trimma en yta)    
+
+! Revision history
+! ________________
+!
+! 1994-11-27 Gunnar Liden
+! 1995-03-10 CUR_GL -> SUR_TRIM    Gunnar Liden
+! 1995-05-16 short description added    G Liden
+! 1996-03-23 ma_surtrim->su_strim  Gunnar Liden
+! 1996-10-20 Reverse               Gunnar Liden
+
+MACRO MODULE su_strim   ();
+
+CONSTANT INT language= 2;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING select*30;              ! Select prompt string
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING p_su*80;                ! Start U value prompt string
+  STRING p_eu*80;                ! End   U value prompt string
+  STRING p_sv*80;                ! Start V value prompt string
+  STRING p_ev*80;                ! End   V value prompt string
+  STRING p_case*80;              ! Trimming case prompt string
+  STRING s_su*25;                ! Start U value as string
+  STRING s_eu*25;                ! End   U value as string
+  STRING s_sv*25;                ! Start V value as string
+  STRING s_ev*25;                ! End   V value as string
+  STRING s_case*25;              ! Trim case as string    
+
+  STRING str_in*132;             ! Input string to CUR_GL
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select surface";     !
+  p_case:="Trim case (1 and 11" +!
+   "are implemented)";           !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka på yta";        !
+  p_case:="Trim fall (1 och 11" +!
+   "är införda";                 !
+ELSE                             !
+  EXIT("ed_sur: Language error");!
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:="GLOBAL_REF("+s_ids+")";  !
+
+! 3. Trimming data
+! ________________
+
+GETSURH(s_id,"NPATU",npatu);     ! Retrieve number of U patches
+GETSURH(s_id,"NPATV",npatv);     ! Retrieve number of V patches
+
+IF   language = 1 THEN           ! English strings
+  p_su:="Start U (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_eu:="End   U (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_sv:="Start V (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+  p_ev:="End   V (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+ELIF language = 2 THEN           ! Swedish strings
+  p_su:="Start U (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_eu:="Slut  U (0 - "          !
+  +STR(npatu,-4,1) + ")";        ! 
+  p_sv:="Start V (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+  p_ev:="Slut  V (0 - "          !
+  +STR(npatv,-4,1) + ")";        ! 
+ELSE                             !
+  EXIT("ed_sur: Language error");!
+ENDIF;                           !
+
+
+s_su := INPMT(p_su,              ! Interactive input of start U
+    "0.0",25);                   !
+IF s_su    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_eu := INPMT(p_eu,              ! Interactive input of end   U
+   STR(npatu,4,1),25);           !
+IF s_eu    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_sv := INPMT(p_sv,              ! Interactive input of start V
+    "0.0",25);                   !
+IF s_sv    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_ev := INPMT(p_ev,              ! Interactive input of end   V
+   STR(npatv,4,1),25);           !
+IF s_ev    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+! 4. Trimming case 
+! ________________
+
+  s_case := "1";                 ! Default for function
+! s_case := INPMT(p_case,          ! 
+!     "1",2);                      !
+! IF s_case  = "" THEN             !
+!       EXIT();                    !
+! ENDIF;                           !
+
+! 5. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("SUR_TRIM",       ! Create MBS statement 
+       s_ids,                    !
+       s_su,s_eu,s_sv,s_ev);     !
+!       s_su,s_eu,s_sv,s_ev,      !
+!       s_case);                  !
+
+ENDMODULE 
+

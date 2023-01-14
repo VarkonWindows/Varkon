@@ -1,0 +1,103 @@
+!******************** su_arrow *************************************
+!s+++
+! Creates an arrow
+!s---
+!s+++
+! Skapar en pil
+!s---
+!
+! Revision history
+! ________________
+!
+! 1992-06-25 Gunnar Liden
+! 1996-03-23 cpil2->su_arrow  Gunnar Liden
+!
+!**************************************************************
+!sdesce Creates an arrow
+!sdescs Skapar en pil
+
+GLOBAL GEOMETRY MODULE su_arrow (
+FLOAT  ang:=10.0                  >"Vinkel f|r pilspets";
+FLOAT  l:=100.0                   >"L{ngd f|r pil";
+VECTOR p0:=vec(0.0,0.0,0.0)       >"Start punkt p0";
+VECTOR p1:=vec(100.0,200.0,300.0) >"Slutpunkt p1 d{r pilspets skapas");
+
+BEGINMODULE
+
+!s+++
+! Algoritm
+! ________
+!s---
+!e+++
+! Algorithm
+! _________
+!e---
+
+!s+++
+! Skapa lokalt koordinatsystem med linjen p1-p0 som x-axel
+! Origo {r p1
+!s---
+!e+++
+! Create local coordinate system with line p1-p0 as X axis 
+! Origin is p1
+!e---
+
+  CSYS_3P(#3,"c0", p1, p0, p0 + vec(100, 100, 100):BLANK=1);
+
+!s+++
+! Skapa ytterligare ett system genom att vrida det 
+! f|rsta 90 grader kring x axeln
+!s---
+!e+++
+! Create an additional system perpendicular to the first system.
+! Rotate the first system 90 degrees around the X axis.
+!e---
+
+  MODE_LOCAL(#3);
+  CSYS_1P(#4,"c90", vec(0, 0, 0), 90, 0, 0:BLANK=1);
+
+!s+++
+! Skapa pil streck i f|rsta lokala systemet
+!s---
+!e+++
+! Create arrow lines in the first local system
+!e---
+
+  LIN_ANG(#5,vec(0, 0, 0), -ang, l);
+  LIN_ANG(#6,vec(0, 0, 0),  ang, l);
+
+
+!s+++
+! Skapa pil streck i andra lokala systemet
+!s---
+!e+++
+! Create arrow lines in the second local system
+!e---
+
+  MODE_LOCAL(#4);
+  LIN_ANG(#7,vec(0, 0, 0), -ang, l);
+  LIN_ANG(#8,vec(0, 0, 0),  ang, l);
+
+!s+++
+! Skapa lokalt koordinatsystem f|r cirkel mellan {ndpunkter
+!s---
+!e+++
+! Create local coordinate system for arcs between line end points
+!e---
+
+  CSYS_3P(#10,"cc", on(#5,1), on(#6,1), on(#7,1):BLANK=1);
+
+!s+++
+! Skapa tv} cirklar mellan {ndpunkter (3 punkter)
+!s---
+!e+++
+! Create two arcs with line end points (3 points)
+!e---
+
+  MODE_LOCAL(#10);
+  ARC_3POS(#11,on(#5,1),on(#7,1),on(#6,1));
+  ARC_3POS(#12,on(#6,1),on(#8,1),on(#5,1));
+
+  MODE_GLOBAL();
+
+ENDMODULE
