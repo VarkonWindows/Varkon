@@ -1,0 +1,157 @@
+!********************  rdsurprov0 **********************
+!
+! +++
+! Import a NMG surface from a project (an application) surface 
+! library
+!
+! Revision history
+! ________________
+!
+! 1995-08-10  Gunnar Liden
+! 1995-10-14  surname*10->surname*30 Gunnar Liden
+! 1995-11-15  Directory name surflib & 80 -> 132 for str1 G Liden
+! 1995-12-04  meteor added         G Liden
+! 1996-01-19  AIX, express/dash added         G Liden
+! 1996-01-26  siddelay, a89493  added         G Liden
+! 1996-02-13  tigris            added         G Liden
+! 1997-02-13  darkstar          added         G Liden
+! ---
+!*******************************************************
+
+LOCAL  GEOMETRY MODULE  rdsurprov0 (
+STRING surname*30 := "TANKAPPR"    >"Name of surface (file name without .F07)";
+INT       graphic:=1               >"Graphics =0: Show nothing =1: Show surface ");
+
+!sdesce Import a NMG surface from a local library for an application
+!sdescs Importera en NMG yta fr}n ett lokalt biblioteket f|r en applikation
+
+! Internal variables:
+  STRING str1*132;                  ! Surface file name
+  STRING str2*80;                   ! Type of input file
+  STRING str3*80;                   ! Type of surface  
+  STRING v_proj*132;                ! Current Varkon project
+  STRING host*132;                  ! Host
+  INT    mcase;                     ! =1 Maxmin =2 No maxmin
+  STRING stype*1;                   ! =c Consurf  =b Bicubic
+  FLOAT  minx;                      ! Minimum X value for surface
+  FLOAT  maxx;                      ! Maximum X value for surface
+  FLOAT  miny;                      ! Minimum Y value for surface
+  FLOAT  maxy;                      ! Maximum Y value for surface
+  FLOAT  minz;                      ! Minimum Z value for surface
+  FLOAT  maxz;                      ! Maximum Z value for surface
+
+  INT    n_ulines;                  ! No U lines in surface       
+  INT    n_vlines;                  ! No V lines in surface       
+
+  INT    i_sv;                      ! For FINDS, VAX  directory
+  INT    i_su;                      ! For FINDS, UNIX directory
+
+  INT    b_value;                   ! BLANK value for surface
+
+  STRING s*1;                       ! For INPMT
+  INT    DEBUG;                     ! Eq. 0: No Debug  
+                                    ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! 0. Initializations
+! ==================
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  IF   graphic = 0 THEN            ! Graphic
+    b_value:= 1;                   !
+  ELIF graphic = 1 THEN            ! Graphic
+    b_value:= 0;                   !
+  ELSE                             !
+    EXIT("rdsurprov0 graphic not"+ !
+         " 0 or 1");               ! 
+  ENDIF;                           !
+
+! +++
+!  Algorithm
+!  =========
+!
+!  1. Retrieve surface data                    
+!
+!  Retrieve number of patches and surface type. Call of surnunv
+! ---
+  
+! There should be a VARKON function, which retrieves the 
+! active project ACT_PROJECT() 
+
+  v_proj:= ACT_PID();              ! Active Varkon project
+  host  := ACT_HOST();             ! Active host
+
+  IF    host = "skylane" OR        !
+        host = "meteor"   THEN     !
+    str1:= "/home/auspex16/varkon/"!
+     +"prjlib/"+v_proj+"/surflib/" !
+            + surname + ".F07";    !
+  ELIF  host = "sco1geo" OR        !
+        host = "sco2geo" OR        !
+        host = "tigris"    THEN    !
+    str1:= "/u/"+v_proj+"/surflib/"!
+            + surname + ".F07";    !
+  ELIF  host = "darkstar"  THEN    !
+    str1:= "/u/prjlib/"+v_proj+"/surflib/"
+            + surname + ".F07";    !
+  ELIF  host = "express" OR        !
+        host = "dash"     THEN     !
+    str1:= "/home/orion/a89493/v3/"!
+     +"prjlib/"+v_proj+"/surflib/" !
+            + surname + ".F07";    !
+  ELIF  host = "milibu"   OR       !
+        host = "camber"   OR       !
+        host = "charlie"  OR       !
+        host = "caribou"  OR       !
+        host = "siddelay" OR       !
+        host = "triumf"   THEN     !
+    str1:= "/home/ultra4/varkon/"  !
+     +"prjlib/"+v_proj+"/surflib/" !
+            + surname + ".F07";    !
+  ELSE                             !
+    EXIT("rdsurprov0 host "+host+  !
+      " not implemented");         !
+  ENDIF;                           !
+
+  IF DEBUG = 1 THEN
+    s:=INPMT("rdsurprov0 v_proj "+v_proj+" host "+host," ",1);
+    s:=INPMT("rdsurprov0 str1 "+str1,"y",1);
+    IF  s <> "y" THEN
+     EXIT("rdsurprov0 User interruption");
+    ENDIF;
+  ENDIF;
+
+
+  mcase := 2;                      !
+  PART(#2,surnunv  (str1,          ! Call of surnunv  
+  mcase, stype,                    !
+  minx,maxx,miny,maxy,minz,maxz,   ! 
+  n_ulines,n_vlines)               !
+  :SAVE=0);                        ! (not saved in GM)
+
+    
+  str2 :="NMG_F07";                ! Type of file
+  IF    stype = "b" THEN           !
+    str3 :="CUB_SUR";              ! Requested type Bicubic  
+  ELIF  stype = "c" THEN           !
+    str3 :="LFT_SUR";              ! Requested type Consurf
+  ELSE                             !
+    EXIT("rdsurprov0 Not bicubic"+ !
+         " or Consurf");           ! 
+  ENDIF;                           !
+
+! +++
+!  2. Create surface        
+!
+!  Create surface from data in text file. Call of SUR_EXDEF
+! ---
+
+
+  SUR_EXDEF(#1,str1, str2, str3     ! Import whole surface
+               :BLANK= b_value);    !
+ 
+
+
+ENDMODULE

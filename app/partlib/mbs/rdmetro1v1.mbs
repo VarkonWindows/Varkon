@@ -1,0 +1,223 @@
+!********************* rdmetro1v1 **************************************
+! +++
+! Funktionen l{ser in en m{t data fr}n fil skapad av METRONOR
+! systemet.
+!
+! F|r tillf{llet m}ste det vara en fil som manuell fil som redigerats
+! Mellan punkt m{ngder ska st}:
+! 1.23456  1.23456  1.23456  
+! 1.23456  1.23456  1.23456  
+! Filen ska avslutas med:
+! -1.23456  -1.23456  -1.23456
+! -1.23456  -1.23456  -1.23456
+!
+!
+! Observera att filen |ppas och st{ngs av anropande rutin
+! Anropande rutin ska ocks} st{lla pekaren r{tt i filen.
+!
+!  [ndringshistorik
+!  ________________
+!
+!  1994-04-19  Ronny Gyllensten
+!  1995-05-12  Dokumentation Gunnar Liden
+!
+! ---
+!***********************************************************************
+
+!sdescs L{ser data fr}n METRONOR m{tprotokoll (en textfil) d format
+!sdesce Reads data from METRONOR output file d format
+
+BASIC  GEOMETRY MODULE rdmetro1v1 (
+
+VAR FILE   f;                      ! Pekare till m{tdata filen (.METRO)
+VAR INT    flag;                   ! Eq. -1: Filen {r slut
+VAR INT    np;                     ! Antal punkter    i  kurvan  
+VAR INT    ptnumber(200);          ! Punkt nummer f|r uppm{tt punkt
+VAR VECTOR pcurve(200);            ! Punkter         f|r kurvan
+VAR VECTOR tcurve(200);            ! Tangent punkter f|r kurvan
+VAR FLOAT  devtot(200);            ! Totala (vinkelr{ta) avvikelsen
+VAR FLOAT  devx(200);              !    X                avvikelsen
+VAR FLOAT  devy(200);              !    Y                avvikelsen
+VAR FLOAT  devz(200);              !    Z                avvikelsen
+FLOAT      offset :=0.0);
+
+! Interna variabler:
+
+INT    p_nr;                       ! Punkt nummer
+FLOAT  x,y,z;                      ! Koordinater f|r punkt
+FLOAT  d_tot;                      ! Totala avvikelsen
+FLOAT  d_x;                        !   X    avvikelsen
+FLOAT  d_y;                        !   Y    avvikelsen
+FLOAT  d_z;                        !   Z    avvikelsen
+FLOAT  tx,ty,tz;                   ! Tangent     f|r punkt (=0.0.0)
+
+VECTOR s_n;                        ! Ytnormal
+INT    idum;                       ! Slask INT
+
+STRING t1*1;                       ! F|rsta tecknet
+STRING rad*132;                    ! Slask variabel f|r att l{sa hel
+                                   ! rad eller radslut med INLIN
+INT    DEBUG;                      ! = 0: Ingen     debug
+                                   ! = 1: Full      debug
+
+STRING s*1;                    ! F|r debug
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  DEBUG := 0;                      ! [ndra DEBUG till 0 eller 1
+
+  np := 0;                         ! Startv{rde antal utdata punkter
+  flag := 123456789;               ! Startv{rde p} fil flagga
+
+!        2. L{s data f|r en punktm{ngd fr}n indata filen
+!        ===============================================
+
+nxtpt:                               ! Label: N{sta punkt
+
+  t1 := INSTR(f,1);                  ! L{s # tecken
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("rdmetro1v1: "         ! Debug-utskrift till sk{rmen
+      +"t1=   *" + t1 +"*"           !
+                     ,"",1);         !
+    ENDIF;                           !
+  IF  t1 =  "d"   THEN               ! En punkt post
+    ;                                ! Forts{tt
+  ELSE                               !
+    x  :=INFLT(f);                   ! Punkt
+    IF DEBUG = 1 THEN                !
+     s:=INPMT("rdmetro1v1: "         ! Debug-utskrift till sk{rmen
+      +"x   = "+STR(x,-15,8)         !
+                     ,"",1);         !
+    ENDIF;                           !
+    IF IOSTAT(f) <> 0 THEN           ! Programmeringskontroll
+      EXIT("rdmetro1v1: Fel 1");     !
+    ENDIF;                           !
+    IF ABS(x+1.234567) < 0.0001 THEN !
+       flag := -1;                   !
+       GOTO slut;                    ! Slut p} filen
+    ENDIF;                           !
+    rad := INLIN(f);                 ! L{s 1.23456 1.23456 1.23456
+    rad := INLIN(f);                 ! L{s 1.23456 1.23456 1.23456
+    flag := +1;                      !
+    GOTO slut;                       ! Hoppa till Label slut
+  ENDIF;                             !
+
+  p_nr:= ININT(f);                   ! Punkt nummer
+
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"p_nr= "+STR(p_nr,-1,0)         !
+                     ,"",1);         !
+  ENDIF;
+
+!Q  idum:= ININT(f);                   ! Slask INT
+
+!Q  IF DEBUG = 1 THEN
+!Q   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+!Q    +"idum= "+STR(idum,-1,0)         !
+!Q                     ,"",1);         !
+!Q  ENDIF;
+  x  :=INFLT(f);                     ! Punkt
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "            ! Debug-utskrift till sk{rmen
+    +"x   = "+STR(x,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 1");       !
+  ENDIF;                             !
+  y  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"y   = "+STR(y,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 2");       !
+  ENDIF;                             !
+  z  :=INFLT(f);                     !
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"z   = "+STR(z,-15,8)           !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 3");       !
+  ENDIF;                             !
+                                     !
+
+  d_tot:=INFLT(f);                   ! Totala avvikelsen
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"d_tot= "+STR(d_tot,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 4");       !
+  ENDIF;                             !
+  d_x :=INFLT(f);                    !    X avvikelsen
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"d_x  = "+STR(d_x  ,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 5");       !
+  ENDIF;                             !
+  d_y :=INFLT(f);                    !    Y avvikelsen
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"d_y  = "+STR(d_y,-15,8)        !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 6");       !
+  ENDIF;                             !
+  d_z :=INFLT(f);                    !    Z avvikelsen
+  IF DEBUG = 1 THEN
+   s:=INPMT("rdmetro1v1: "           ! Debug-utskrift till sk{rmen
+    +"d_z  = "+STR(d_z  ,-15,8)      !
+                     ,"",1);         !
+  ENDIF;
+  IF IOSTAT(f) <> 0 THEN             ! Programmeringskontroll
+    EXIT("rdmetro1v1: Fel 7");       !
+  ENDIF;                             !
+                                     !
+  rad    :=INLIN(f);                 ! L{s radslut till slask variabel
+
+!  IF ABS(x-1.234567) < 0.0001 THEN   !
+!     flag := +1;                     !
+!     GOTO slut;                      ! Slut p} del punktm{ngd
+!  ENDIF;                             !
+
+
+  np := np + 1;                      ! Ytterligare en punkt p} kurvan
+  IF np > 200  THEN                  !
+    EXIT("rdmetro1v1: np > 200");    !
+  ENDIF;                             !
+
+  ptnumber(np):= p_nr;               ! Punkt nummer f|r uppm{tt punkt
+
+  pcurve(np).x:=  x;                 ! Punkt   till utdata array (X)
+  pcurve(np).y:=  y;                 ! Punkt   till utdata array (Y)
+  pcurve(np).z:=  z;                 ! Punkt   till utdata array (Z)
+
+  tcurve(np).x:= 0.0;                ! Tangent till utdata array (X)
+  tcurve(np).y:= 0.0;                ! (Noll vektor inneb{r att de
+  tcurve(np).z:= 0.0;                !  odefinierade)
+
+  s_n:=VECN(VEC(d_x,d_y,d_z));
+
+  devtot(np)  := d_tot-offset;       ! Totala avvikelsen
+  devx(np)    := d_x-offset*s_n.x;   !   X    avvikelsen
+  devy(np)    := d_y-offset*s_n.y;;  !   Y    avvikelsen
+  devz(np)    := d_z-offset*s_n.z;;  !   Z    avvikelsen
+  
+  GOTO nxtpt;                        ! L{s ytterligare en punkt
+
+slut:;                               ! F{rdigl{st 
+
+ENDMODULE

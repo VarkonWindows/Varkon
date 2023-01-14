@@ -1,0 +1,256 @@
+!******************** REG_CSYS_B *****************************************
+! +++
+! "Registrerar" och skapar ett basic-system.
+!
+! Denna rutin borde bara registrera koordinatsystemet. S|kningen 
+! efter annat Basic system borde g|ras innan man anropar denna
+! modul. Sk{len till detta f|rslag {r
+! - Det {r "snyggare" att detta objekt bara har en uppgift (att
+!   registrera)
+! - Det blir konstigt n{r denna part hittar sig sj{lv och b|rjar
+!   h{mta data om sig sj{lv innan man exekverat f{rdigt. I detta
+!   fall fungerar det. Den data vi h{mtar med GETPRT lagras i GM
+!   innan exekveringen. Skapad geometri (av denna part anropade
+!   parts ?) kan vi emellertid inte h{mta
+!
+!
+! 1994-06-20 Karl-Erik Eklund
+! 1994-12-15 Debug och kommentarer tillagt       Gunnar Liden
+! 1994-12-15 Sm} bokst{ver f|r UNIX              Gunnar Liden
+! 1995-01-02 Debug                                 G Liden
+! ---
+!***********************************************************************
+!sdesce "Registrate and create a basic coordinate system
+!sdescs "Registrerar" och skapar ett basic koordinatsystem
+
+!GLOBAL GEOMETRY MODULE REG_CSYS_B(
+GLOBAL GEOMETRY MODULE reg_csys_b(
+STRING NMGproj*44 := "39"              >"NMG projekt";
+STRING csys*28    := "417"             >"Koordinatsystem";
+INT    grafik     := 2                 >"= 1 => osynligt   = 2 => synligt";
+STRING ben{mning*132:= "ben{mning"     > "Koordinatsystemets ben{mning";
+STRING description*132:= "description" > "Koordinatsystemets engelska ben{mn";
+STRING anm1*132:= "anm1"               > "Anm{rkning";
+STRING anm2*132:= "anm2"               > "Anm{rkning");
+
+! Interna variabler:
+
+  INT         i_r;             ! Loop index f|r referenser i part
+  REF         id;              ! Referens
+
+  INT         nparts;          ! Antal parts REG_CSYS_B
+
+                               ! F|r funktion GETHDR:
+  INT         typ;             ! Typ av storhet
+  INT         nref;            ! Versionsnummer
+  INT         blank;           ! Eq. 0: T{nd  Eq. 1: Sl{ckt
+  INT         niv};            ! Storhetens niv}
+  INT         penna;           ! Storhetens pennummer
+  REF         grupp_id(3);     ! Globala identiteter f|r de
+                               ! grupper storheten ing}r i
+
+                               ! F|r funktion GETPRT:
+  STRING      namn*10;         ! Namn p} part
+  INT         mtyp;            ! Modultyp 
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Modul attribut
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identitet f|r det
+                               ! koordinatsystem som anv{nts 
+                               ! f|r att placera parten
+  INT         np;              ! Antal parametrar i parten
+  INT         mant;            ! Antal storheter  i parten
+  REF         idm(500);        ! Array med globala identiteter
+                               ! till storheterna i parten
+                               ! (antalet mant om det f}r plats)
+
+                               ! F|r funktion GETID: 
+  STRING      code*1;          ! Eq. F: F|rsta storheten i GM
+                               ! Eq. N: N{sta storhet
+                               ! Eq. n: N{sta storhet p} niv}n
+                               ! Eq. P: N{sta part   
+
+  INT         bflag;           ! Flagga f|r BLANK
+
+!QQ  REF         id_cur;          ! Denna parts id
+!QQ  STRING      id_cur_s*50;     ! Som str{ng
+!QQ  INT         id_len;          ! L{ngd id_cur_s
+
+  STRING      s*1;             ! Str{ng f|r DEBUG (INPMT)
+  INT         DEBUG;           ! F|r kontroll utskrifter
+
+BEGINMODULE
+
+! +++
+! Algoritm
+! ========
+! ----
+
+!                          Initieringar
+!                          ============
+
+  DEBUG := 0;                  ! [ndra till 0 eller 1
+
+  nparts:= 0;
+
+  IF grafik = 1 THEN
+
+    bflag:= 1;
+
+  ELSE
+
+    bflag:= 0;
+
+  ENDIF;
+
+  IF DEBUG = 1 THEN
+     s:=INPMT("REG_CSYS_B: bflag ="
+        + str(bflag,-1,0) + " "
+        ,"",1);
+  ENDIF;
+
+!Q  id_cur:= GLOBAL_REF(#100);   !
+!Q  id_cur_s:= RSTR(id_cur);     !
+!Q  id_len  := LENGTH(id_cur_s);   !
+!Q  id_cur_s:= SUBSTR(id_cur_s,1,id_len-6);
+!Q  IF DEBUG = 1 THEN
+!Q     s:=INPMT("REG_CSYS_B: id_cur_s ="
+!Q        + id_cur_s + " "
+!Q        ,"",1);
+!Q  ENDIF;
+
+
+! +++
+! 1. S|k igenom GM efter alla parts med namn REG_CSYS_B
+! ---
+
+  code := "F";                 ! St{ll pekare i GM p} f|rsta storhet
+
+  id := GETID(code);           ! L{s f|rsta storhet          
+
+
+  GETHDR(id,typ,nref,          ! L{s "header" f|r storheten
+  blank,niv},penna,grupp_id);  ! 
+
+
+  IF DEBUG = 1 THEN
+     s:=INPMT("REG_CSYS_B: F|rsta id ="
+        + RSTR(id) + " "
+        ,"",1);
+     s:=INPMT("REG_CSYS_B: GETHDR: typ ="
+        + str(typ,-1,0) + " "
+        ,"",1);
+  ENDIF;
+
+  IF typ = 16384 THEN          ! Kontrollera om f|rsta storheten {r en part
+    
+    GETPRT(id,namn,mtyp,       ! L{s data om parten
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: F|rsta storheten {r en part"
+          ,"", 1);
+    ENDIF;
+
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: GETPRT: id = "
+          + RSTR(id) + " "
+          ,"",1);
+    ENDIF;
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: GETPRT: partnamn = "
+          + namn + " "
+          ,"",1);
+    ENDIF;
+
+
+    IF namn = "REG_CSYS_B" OR  ! Kontrollerar om n}got
+       namn = "reg_csys_b" THEN! basic-system redan finns
+
+      nparts:= nparts + 1;
+
+      IF nparts > 1 THEN
+        EXIT("REG_CSYS_B: "+   !
+          "Reg. Basic-system "+!
+          "finns! ");          !
+      ENDIF;                   !
+
+    ENDIF;                     !
+
+  ENDIF;                       !
+
+  code := "P";                 ! Kod f|r att l{sa enbart parts      
+
+  FOR i_r := 1 TO 10000 DO     ! Start loop alla referenser
+
+    id := GETID(code);         ! Referens till n{sta part
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: i_r ="
+          + str(i_r,-1,0) + " "
+          ,"",1);
+    ENDIF;
+
+   IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: GETPRT: id = "
+          + RSTR(id) + " "
+          ,"",1);
+    ENDIF;
+
+
+    IF id = #0 THEN            ! G} till Label slut om
+      GOTO slut;               ! om inga fler parts finns
+    ENDIF;                     ! i aktiva modulen
+
+!Q    IF RSTR(id)=id_cur_s THEN  ! Denna part sj{lv ?
+!Q    IF DEBUG = 1 THEN
+!Q       s:=INPMT("REG_CSYS_B: GETPRT: Denna REG_CSYS_B  "
+!Q          + RSTR(id) + " "
+!Q          ,"",1);
+!Q    ENDIF;
+!Q      namn:= "REG_CSYS_B";     !
+!Q      GOTO denna;              !
+!Q    ENDIF;                     !
+  
+    GETPRT(id,namn,mtyp,       ! L{s data om parten
+     mattr,kid,np,mant,idm);   !
+
+
+
+!Qdenna:;                        ! Label hittat denna part
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("REG_CSYS_B: GETPRT: partnamn = "
+          + namn + " "
+          ,"",1);
+    ENDIF;
+
+    IF namn = "REG_CSYS_B" OR  ! Kontrollerar om n}got
+       namn = "reg_csys_b" THEN! basic-system redan finns
+
+      nparts:= nparts + 1;
+
+      IF nparts > 1 THEN
+        EXIT("REG_CSYS_B: "+   !
+          "Reg. Basic-system "+!
+          "finns! ");          !
+      ENDIF;                   !
+
+    ENDIF;                     !
+
+  ENDFOR;                      ! Slut  loop alla referenser
+
+
+slut:                          ! Inget Basic-koordinatsystem finns definierat
+
+  CSYS_1P(#1, csys,            ! Basic-koordinatsystemet skapas
+       vec(0, 0, 0), 0, 0, 0   !
+        :BLANK = bflag);       !
+
+ENDMODULE
+

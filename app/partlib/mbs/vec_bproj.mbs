@@ -1,0 +1,197 @@
+!*********************  vec_bproj  ***********************************
+! +++
+! Project vector onto a given plane in a given direction
+!
+! The direction and length of the output vector is defined
+! by the input vector. Not by the directions of the plane
+! and the projection vector.
+!
+! Calculation has failed if the output vector is zero
+!
+! The function has only been tested for ONE (1) example ....
+!
+! Revision history
+! ________________
+!
+! 1997-11-02 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Project vector onto a plane in a given direction
+!sdescs Projicera vektor pa ett plan i en given riktning
+
+BASIC  GEOMETRY MODULE  vec_bproj  (
+    VECTOR  v_in;                  ! Input  vector
+    VECTOR  v_pi;                  ! Plane  normal
+    VECTOR  v_pr;                  ! Projection direction
+VAR VECTOR  v_out);                ! Output vector
+
+! Internal variables:
+
+  INT    status;                   ! Error code
+
+  VECTOR cross;                    ! Cross product v_in X v_pr
+  FLOAT  dot;                      ! Scalar product
+
+  INT    DEBUG;                    ! Debug
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+!
+! Calculate cross product vector cross= v_pi  X v_in
+!
+! Calculate cross product vector v_out= cross X v_pi
+! ---
+
+! +++
+! Initializations
+! ---
+
+! Debug 0 or 1
+  DEBUG := 0; 
+
+  status := 0;
+
+  v_out:= VEC(-0.123456789, -0.123456789,-0.123456789);
+  cross:= VEC(-0.123456789, -0.123456789,-0.123456789);
+  dot  :=     -0.123456789;
+
+! +++
+! Check input vector lengths
+! ---
+
+   IF VECL(v_in) < 0.001 THEN
+    status := -1;
+    GOTO  failure;
+   ENDIF;                     
+   IF VECL(v_pi) < 0.001 THEN 
+    status := -2;
+    GOTO  failure;
+   ENDIF;                   
+   IF VECL(v_pr) < 0.001 THEN 
+    status := -3;
+    GOTO  failure;
+   ENDIF;                   
+
+  IF  DEBUG = 1 THEN
+  CSYS_3P(#1, "vec_bproj", VEC(0,0,0),v_pi:BLANK=0);
+  MODE_LOCAL(GLOBAL_REF(#1));
+  B_PLANE(#2, VEC( 0, -100.0,  100.0 ), 
+              VEC( 0,  100.0,  100.0 ), 
+              VEC( 0,  100.0, -100.0 ), 
+              VEC( 0, -100.0, -100.0 ) );
+  B_PLANE(#3, VEC( 0, -100.0,  100.0 ), 
+              VEC( 0, -100.0, -100.0 ), 
+              VEC( 0,  100.0, -100.0 ), 
+              VEC( 0,  100.0,  100.0 ) );
+  MODE_GLOBAL();
+  LIN_FREE(#4, VEC(0,0,0),200.0*v_pi:PEN=1);
+  LIN_FREE(#5, VEC(0,0,0), 50.0*v_in:PEN=3);
+  LIN_FREE(#6, ON(GLOBAL_REF(#5),1.0)-200.0*v_pr,
+               ON(GLOBAL_REF(#5),1.0)+200.0*v_pr
+               :PEN=4);
+  ENDIF;
+
+! +++
+! Calculate cross product vector cross= v_pi  X v_in
+! and check if vectors are parallell (cross= 0)
+! ---
+
+   cross := VPROD(VECN(v_in),VECN(v_pr)); 
+   IF  VECL(cross) < 0.0000001 THEN
+    v_out:= VEC(0, 0, 0);
+    status := -4;
+    GOTO  failure;
+   ENDIF;
+
+! +++
+! Calculate cross product vector v_out= cross X v_pi
+! and check if vectors are parallell (v_out= 0)
+! ---
+
+   v_out := VPROD(VECN(cross),VECN(v_pi));
+   IF  VECL(v_out) < 0.0000001 THEN
+    v_out:= VEC(0, 0, 0);
+    status := -5;
+    GOTO  failure;
+   ENDIF;
+
+
+! +++
+! Calculate direction and length of the output vector
+! ---
+
+! Scalar product
+  dot := v_in*(VECN(v_out));
+  IF   ABS(dot) < 0.000000001  THEN
+    v_out:= VEC(0, 0, 0);
+    status := -6;
+    GOTO  failure;
+  ENDIF;
+
+
+! Output vector is v_in projected onto v_out
+  v_out := dot*VECN(v_out);
+
+  IF  DEBUG = 1 THEN
+  LIN_FREE(#7, VEC(0,0,0)+0.01*v_pi, 50.0*v_out:PEN=2);
+  ENDIF;
+
+failure:; ! Label: Calculation failed
+
+  IF  DEBUG = 1 THEN
+    LST_INI("Debug output from module vec_bproj");
+    IF       status =  0 THEN
+      LST_LIN("Calculation was succesful");
+    ELIF     status = -1 THEN
+      LST_LIN("Failure: v_in is zero");
+    ELIF     status = -2 THEN
+      LST_LIN("Failure: v_pi is zero");
+    ELIF     status = -3 THEN
+      LST_LIN("Failure: v_pr is zero");
+    ELIF     status = -4 THEN
+      LST_LIN("v_in and v_pr are parallell");
+    ELIF     status = -5 THEN
+      LST_LIN("v_in and v_pi are parallell");
+    ELIF     status = -6 THEN
+      LST_LIN("v_in and v_out are perpendicular");
+    ELSE
+      LST_LIN("Failure: Unknown status value ..");
+    ENDIF;
+
+     LST_LIN ("v_in  "      +
+     " "+STR(  v_in.x, 15,8)+
+     " "+STR(  v_in.y, 15,8)+
+     " "+STR(  v_in.z, 15,8) );
+     LST_LIN ("v_pi  "      + 
+     " "+STR(  v_pi.x, 15,8)+
+     " "+STR(  v_pi.y, 15,8)+
+     " "+STR(  v_pi.z, 15,8) );
+     LST_LIN ("v_pr  "      + 
+     " "+STR(  v_pr.x, 15,8)+
+     " "+STR(  v_pr.y, 15,8)+
+     " "+STR(  v_pr.z, 15,8) );
+     LST_LIN ("cross "      +
+     " "+STR( cross.x, 15,8)+
+     " "+STR( cross.y, 15,8)+
+     " "+STR( cross.z, 15,8) );
+     LST_LIN ("dot   "      +
+     " "+STR( dot    , 15,8) );
+     LST_LIN ("v_out "      +
+     " "+STR( v_out.x, 15,8)+
+     " "+STR( v_out.y, 15,8)+
+     " "+STR( v_out.z, 15,8) );
+     LST_EXI();
+  ENDIF;
+
+  IF    status = -1 OR status = -2 
+     OR status = -3                 THEN
+    EXIT("vec_bproj: Input vector is zero");
+  ENDIF;
+
+ENDMODULE

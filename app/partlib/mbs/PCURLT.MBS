@@ -1,0 +1,350 @@
+!********************* PCURLT *******************************************
+!
+! Modifies a point in a limit curve and the corresponding point in
+! a tangent definition curve. 
+! 
+! The start and/or end segment point of the limit curve is moved in 
+! space along a given curve and the point on the tangent definition
+! curve is moved in such a way that the length of the tangent vector
+! is the same ...
+!
+! Output:  #1.1#1.1  Limit   conic curve
+!          #2.1#1.1  Tangent conic curve
+!
+! 1992-05-17  Gunnar Liden
+!
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE PCURLT (
+REF    lim_id                    > "@t8 Select limit curve to modify ";
+INT    li_point := 3             > "No. of point to modify (limit crv)";
+FLOAT  dist     :=0.05           > "Arclength distance for variable v? ";
+INT    i_var    := 3             > "No. of used variable (?) ";
+REF    tan_id                    > "@t8 Select corresponding tangent curve";
+INT    ti_point := 3             > "No. of point to modify (tangent crv)";
+REF    movcur_id                 > "@t8 Select point move curve  ";
+FLOAT  distmax   :=+0.5          > "@ Upper limit for dist";
+FLOAT  distmin   :=-0.5          > "@ Lower limit for dist";
+INT    graphic := 1              > "@ Graphical representation ");
+
+!!!VECTOR liv      :=vec(0.0,1.0,1.0)> "@ Vector to define the line";
+
+! Internal variables
+
+  INT    no_points;              ! Number of points in the curve
+  VECTOR psektI(26);             ! Segment start/end points
+  VECTOR tpsektI(26);            ! Tangent points to psektI
+  FLOAT  pvalsektI(26);          ! P values to curve
+  VECTOR midpsektI(26);          ! Mid (P value) points
+  INT    no_points_t;            ! Number of points in the curve
+  VECTOR psektI_t(26);           ! Segment start/end points
+  VECTOR tpsektI_t(26);          ! Tangent points to psektI
+  FLOAT  pvalsektI_t(26);        ! P values to curve
+  VECTOR midpsektI_t(26);        ! Mid (P value) points
+
+!                                ! Limit curve lim_id:
+  VECTOR p;                      ! Start and/or end segment point
+  VECTOR t;                      ! Start and/or end segment tangent
+  VECTOR pout;                   ! Output point
+  VECTOR tpout;                  ! Output tangent point
+
+!                                ! Tangent curve tan_id:
+  VECTOR p_t;                    ! Start and/or end segment point
+  VECTOR t_t;                    ! Start and/or end segment tangent
+  VECTOR pout_t;                 ! Output point
+  VECTOR tpout_t;                ! Output tangent point  
+
+  VECTOR t_cross;                ! Cross section tangent
+  FLOAT  tandist;                ! Length of input cross tangent
+
+  FLOAT  length;                 ! Length of line
+  FLOAT  u_near;                 ! Nearest point on movcur_id
+  FLOAT  u1_arcl;                ! Arclength to point p (u_near)
+  FLOAT  u_out;                  ! Parameter for output point
+  FLOAT  devdist;                ! Deviation from curve
+
+  STRING curcode*20;             ! Curve (GROUP) name:
+                                 ! TANij, MIDij, PFNij, .....
+  REF    group_id;               ! Identity for input curve group
+  STRING group_name*20;          ! Input curve (GROUP) name: LIMij,
+
+  INT       typ;                 ! Type of entity
+  INT       nref;                ! Number of references
+  INT       blnk;                !
+  INT       niv;                 !
+  INT       pen;                 !
+  INT       nm;                  !
+  INT       flag;                ! ????
+
+  REF       gid(3);              !
+  REF       idvec(100);          !
+  STRING    gnam*20;             ! Group name
+
+  STRING p1*80;                  ! Dummy string
+
+  STRING outcurcode*20;          ! Curve (GROUP) name: MOD01VAR07
+
+  INT     DEBUG;                 ! Debug flag
+                                 ! Eq. 0: No   debug
+                                 ! Eq. 1: Full debug
+
+
+  STRING s*1;                    ! For debug printout to screen
+
+
+BEGINMODULE
+
+! 1. Initializations and check of input data
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+
+
+  IF distmax < 0.0 THEN          ! Check distmax
+      EXIT("Upper limit is "+    !
+           "less than zero");    !
+  ENDIF;                         !
+
+  IF distmin > 0.0 THEN          ! Check distmin
+      EXIT("Lower limit is "+    !
+      "greater than zero");      !
+  ENDIF;                         !
+
+
+  IF    dist < distmin THEN      ! Check that distmin <= dist <= distmax
+    EXIT("PCUR: dist= "+         !
+   STR(dist,-3,2)+               !
+   " < distmin");                !
+  ELIF  dist > distmax THEN      !
+    EXIT("PCUR: dist= "+         !
+   STR(dist,-3,2)+               !
+   " > distmax");                !
+  ENDIF;
+
+
+  lim_id :=                      ! One level reference
+  GLOBAL_REF(lim_id,1);          !
+  tan_id :=                      ! One level reference
+  GLOBAL_REF(tan_id,1);          !
+  movcur_id :=                   ! One level reference
+  GLOBAL_REF(movcur_id,1);       !
+
+!  s:=INPMT("PCUR: lim_id="     ! Debug printout to screen
+!  +rstr(lim_id),"",1);         !
+!  s:=INPMT("PCUR: tan_id="     ! Debug printout to screen
+!  +rstr(tan_id),"",1);         !
+
+
+  part(#5,CURTOVEC(lim_id,       ! Get number of points and
+            no_points,           ! and points in arrays for
+            psektI,              ! the input limit curve.
+            tpsektI,             !
+            pvalsektI,           !
+            midpsektI)           !
+            :SAVE=0);            ! Part (call) not saved in GM
+
+!   s:=INPMT("PCUR: no_points= "  ! Debug printout to screen
+!   +str(no_points ,-1,0),"",1);  !
+
+  part(#11,CURTOVEC(tan_id,      ! Get number of points and
+            no_points_t,         ! and points in arrays for
+            psektI_t,            ! the input tangent curve.
+            tpsektI_t,           !
+            pvalsektI_t,         !
+            midpsektI_t)         !
+            :SAVE=0);            ! Part (call) not saved in GM
+
+
+  length:=200.0;                 ! For graphical representation
+
+!                 2. Calculate modified point on limit curve
+!                 ==========================================
+
+  p    := psektI(li_point);       ! Current  point   from array  (limit)
+
+  t    := tpsektI(li_point) -     ! Current  tangent from arrays (limit)
+          psektI(li_point);       !
+
+  u_near := INV_ON(movcur_id,p); ! Nearest point on movcur_id
+
+  devdist:= VECL(p-              ! Deviation from the curve movcur_id
+     ON(movcur_id,u_near));      !
+  IF devdist  >0.02        THEN  !
+    EXIT("PCUR: Dist from crv"+  !
+         STR(devdist,-12,6));    !
+  ENDIF;                         !
+
+!   s:=INPMT("PCUR: devdist= "    ! Debug printout to screen
+!   +STR(devdist,-12,6)+" u_near "!
+!   +STR(u_near ,-12,6)+"  "      !
+!   ,"",1);                       !
+
+  CUR_TRIM(#6,movcur_id,         ! Create trimmed curve for 
+            0.0,u_near:BLANK=0); ! arclength calculation
+  u1_arcl := ARCL(#6);           ! Arclength to point p (u_near)
+  IF u1_arcl+dist >              ! Check that dist results in a
+         ARCL(movcur_id)  THEN   ! point on the curve
+    EXIT("PCUR: dist-> pt not"+  !
+      " on the curve");          !
+  ENDIF;                         !
+  u_out:= INV_ARCL(movcur_id,    ! Parameter for output point
+          u1_arcl+dist);         !
+
+
+  pout  := ON(movcur_id,u_out);  ! Output point
+  tpout := pout + t;             ! Modified (same) tangent
+
+  psektI(li_point)  := pout;     ! Modified point   to   array
+  tpsektI(li_point) := tpout;    ! Modified tangent to   array
+
+!                 3. Calculate modified point on tangent curve
+!                 ============================================
+
+  p_t  := psektI_t(ti_point);    ! Current  point   from array 
+
+  t_t  := tpsektI_t(ti_point) -  ! Current  tangent from arrays
+          psektI_t(ti_point);    !
+
+  tandist := VECL(p_t-p);        ! Length of input cross-section
+                                 ! tangent 
+
+!   s:=INPMT("PCUR: tandist= "    ! Debug printout to screen
+!   +STR(tandist,-12,6)+" u_near "!
+!   +STR(u_near ,-12,6)+"  "      !
+!   ,"",1);                       !
+
+  t_cross:=TANG(movcur_id,u_out);! Tangent in u_out on movcur_id
+
+  pout_t:= pout+tandist*t_cross; ! Output tangent curve point
+
+  tpout_t := pout_t + t_t;       ! Modified (same) tangent
+
+  psektI_t(ti_point) := pout_t;  ! Modified point   to   array
+  tpsektI_t(ti_point):= tpout_t; ! Modified tangent to   array
+
+
+!                 4. Create modified limit curve
+!                 ==============================
+
+  BLANK(lim_id);                 ! Blank input curve
+
+  PART(#1,creusect               ! Create conic curve with points,
+      (no_points,                ! tangent points and P value
+       psektI,tpsektI,           !
+       pvalsektI));              !
+
+!                 5. Create modified tangent curve
+!                 ================================
+
+  BLANK(tan_id);                 ! Blank input curve
+
+  PART(#2,creusect               ! Create conic curve with points,
+      (no_points_t,              ! tangent points and P value
+       psektI_t,tpsektI_t,       !
+       pvalsektI_t));            !
+
+!                 6. Delete and add group for the limit curve
+!                 ===========================================
+
+  GETHDR(lim_id,typ,nref,blnk,   ! Get header for retrieved entity id
+           niv,pen,gid);         !
+
+  group_id := gid(1);            ! Group #id to output variable
+  IF group_id <> #0  THEN        !
+    GETGRP(group_id,gnam,nm,     ! Get data for entity GROUP
+        idvec);                  !
+    group_name:= gnam;           !
+!    p1 := RSTR(group_id);        ! Group reference as string
+!    p1 := SUBSTR(p1,2);          ! Remove # from global name ##
+!    group_id := RVAL(p1);        ! Convert from string to reference
+  ELSE                           !
+    group_name:= "Not defined";  !
+  ENDIF;                         !
+
+
+  IF DEBUG=1  THEN               ! Debug
+  s:=INPMT("PCUR: gid(1)= "      !
+  +RSTR(gid(1))                  !
+  +" group_id "                  !
+  +RSTR(group_id)                !
+  +" group_name "                !
+  +  group_name                  !
+  ,"",1);                        !
+!  s:=INPMT("PCUR: gid(2)= "      !
+!  +rstr(gid(2)),"",1);           !
+!  s:=INPMT("PCUR: gid(3)= "      !
+!  +rstr(gid(3)),"",1);           !
+  ENDIF;                         !
+
+  IF group_id <> #0  THEN        ! Delete input curve group
+    DEL(group_id);               !
+    GROUP(#7,group_name,         ! New group with the same name as
+             REFC(1,1,1));       ! the input group (=curcode)
+  ENDIF;                         !
+
+!                 7. Delete and add group for the tangent curve
+!                 =============================================
+
+  GETHDR(tan_id,typ,nref,blnk,   ! Get header for retrieved entity id
+           niv,pen,gid);         !
+
+  group_id := gid(1);            ! Group #id to output variable
+  IF group_id <> #0  THEN        !
+    GETGRP(group_id,gnam,nm,     ! Get data for entity GROUP
+        idvec);                  !
+    group_name:= gnam;           !
+!    p1 := RSTR(group_id);        ! Group reference as string
+!    p1 := SUBSTR(p1,2);          ! Remove # from global name ##
+!    group_id := RVAL(p1);        ! Convert from string to reference
+  ELSE                           !
+    group_name:= "Not defined";  !
+  ENDIF;                         !
+
+
+  IF DEBUG=1  THEN               ! Debug
+  s:=INPMT("PCUR: gid(1)= "      !
+  +RSTR(gid(1))                  !
+  +" group_id "                  !
+  +RSTR(group_id)                !
+  +" group_name "                !
+  +  group_name                  !
+  ,"",1);                        !
+!  s:=INPMT("PCUR: gid(2)= "      !
+!  +rstr(gid(2)),"",1);           !
+!  s:=INPMT("PCUR: gid(3)= "      !
+!  +rstr(gid(3)),"",1);           !
+  ENDIF;                         !
+
+  IF group_id <> #0  THEN        ! Delete input curve group
+    DEL(group_id);               !
+    GROUP(#12,group_name,        ! New group with the same name as
+             REFC(2,1,1));       ! the input group (=curcode)
+  ENDIF;                         !
+
+
+!                   8. Graphical representation
+!                   ============================
+
+  IF graphic = 1 OR              ! Create point
+     graphic = 2 THEN            !
+    poi_free(#4,pout);           ! Output point pout
+    poi_free(#14,pout_t);        ! Output point pout_t
+  ENDIF;                         !
+
+!   s:=INPMT("PCUR: dist= "       ! Debug printout to screen
+!   +str(dist ,-12,6),"",1);      !
+!   s:=INPMT("PCUR: graphic= "    !
+!   +str(graphic ,-1,0),"",1);    !
+
+
+  IF ABS(dist)  > 0.00001 THEN   !
+    IF graphic = 1 OR            ! Create tangent line for pout
+       graphic = 2 THEN          !
+      LIN_FREE(#8,pout,pout_t);  !
+      poi_free(#3,p);            ! Create input point
+      poi_free(#13,p_t);         ! Create input point
+    ENDIF;                       !
+  ENDIF;                         !
+
+ENDMODULE

@@ -1,0 +1,58 @@
+!***************** vy_cisov0   **********************************
+! +++
+! The function creates different types of ISO views.
+!
+! Revision history
+! ________________
+!
+! 1995-11-21   Gunnar Liden     
+! ---
+!******************************************************************
+
+!sdesce Create different types of ISO views from an input coord. system                   
+!sdescs Skapa olika ISO vyer med koordinatsystem som indata      
+
+GLOBAL GEOMETRY MODULE vy_cisov0(
+REF     csys_id                > "Select coordinate system";               
+STRING  c_type*10 := "saab"    > "Type of view =saab or =normal";
+STRING  v_name*15 := ""        > "@ View name <CR>=> ISO_coord_system_name";
+INT     cflag := 1             > "@ Eq. 1: Change to new view (<CR>=1)");
+
+
+
+! Internal variables
+
+STRING s*1;                  ! For INPMT Debug
+
+INT    DEBUG;                ! For Debug
+
+
+
+BEGINMODULE
+
+! 0. Initializations and checks 
+! 
+
+  DEBUG := 1;                  ! =0 eller =1
+
+
+! 
+! 1. Create requested type of view for the input system     
+! 
+
+  IF   c_type= "saab" OR           !
+       c_type= "SAAB"    THEN      !
+    PART(#1, vy_sisov0 (           !
+         csys_id,         v_name,  !
+         cflag));                  !
+  ELIF c_type= "normal" OR         !
+       c_type= "NORMAL"    THEN    !
+    PART(#2, vy_isov0 (            !
+         csys_id,         v_name,  !
+         cflag));                  !
+  ELSE                             !
+    EXIT("vy_cisov0 c_type " +     !
+         c_type + " not OK");      !
+  ENDIF;                           !
+
+ENDMODULE

@@ -1,0 +1,96 @@
+!******************** scalecrv ***************************************
+!
+!  Create a scaled conic curve as an MBS module.
+!
+!  Input:  One curve 
+!
+!  Output: An MBS file
+!
+!  1993-01-07 Gunnar Liden
+!  1993-01-20 Declaration of CURTOVEC, curvembs arrays changed
+!             from (25) to (26) (max number of segments 
+!             is 25 in VARKON)                          Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE scalecrv (
+
+REF    c_id                    >"@t8 Select curve to be converted to MBS";
+STRING curname*9:= "CURVEi"    > "Name of of output curve (MBS file)");
+
+
+
+! Internal variables:
+
+  VECTOR   pcurve(26);          ! Points        for output curve
+  VECTOR   tpcurve(26);         ! Tangentpoints for output curve
+  VECTOR   pmidcurve(26);       ! Tangentpoints for output curve
+  FLOAT    pvalcurve(26);       ! P values      for output curve
+  INT      n_inout;             ! Number of points in curve which 
+                                ! can be changed in trausect
+
+  INT      DEBUG;               ! Debug flag
+                                ! Eq. 0: No   debug
+                                ! Eq. 1: Full debug
+
+  INT      ix1;                 ! Temporarely used oop index
+
+  STRING   s*1;                 ! For INPMT debug printout to screen
+
+
+BEGINMODULE
+
+!               1. Initializations and check of input data
+!               ------------------------------------------
+
+  DEBUG := 0;                   ! Change to 0 or 1
+
+  c_id := GLOBAL_REF(c_id,1);   ! One level reference
+
+!              2. Data from the input curve
+!              ----------------------------
+
+  part(#2,CURTOVEC(c_id,         ! Get number of points and
+            n_inout,             ! and points in arrays for
+            pcurve,              ! the input curve.
+            tpcurve,             !
+            pvalcurve,           !
+            pmidcurve)           !
+            :SAVE=0);            ! Part (call) not saved in GM
+
+  IF DEBUG = 1 THEN             ! Printout for DEBUG=1
+!   s:=INPMT("scalecrv :"+       !
+!   " c_ns= "+                   !
+!    str(c_ns ,-1,0)             !
+!     ,"",1);                    !
+  FOR ix1:=1 TO n_inout DO      !
+   s:=INPMT(                    !
+   "ix1 "+                      !
+    str(ix1 ,-1,0) +            !
+   " P "+                       !
+    str(pcurve(ix1).x,-12,6)+   !
+   " "+                         !
+    str(pcurve(ix1).y,-12,6)+   !
+   " "+                         !
+    str(pcurve(ix1).z,-12,6)    !
+     ,"",1);                    !
+   s:=INPMT(                    !
+   "    "+                      !
+    str(ix1 ,-1,0) +            !
+   " P "+                       !
+    str(tpcurve(ix1).x,-12,6)+  !
+   " "+                         !
+    str(tpcurve(ix1).y,-12,6)+  !
+   " "+                         !
+    str(tpcurve(ix1).z,-12,6)   !
+     ,"",1);                    !
+  ENDFOR;                       !
+  ENDIF;                        !
+
+!                     3. Create output curve
+!                     ======================
+
+  PART(#1,curve2mbs(curname,n_inout ! Create a scaled conic curve
+      ,pcurve,tpcurve,pvalcurve));  ! as a MBS module
+
+ENDMODULE

@@ -1,0 +1,164 @@
+!********************* rdcons1v1 **************************************
+!
+! Funktionen fastst{ller antal U och V linjer samt ytans 
+! utstr{ckning (ytans max- och min-v{rden i R*3).
+!
+!
+!  1992-11-16  Gunnar Liden
+!
+!
+!***********************************************************************
+
+GLOBAL GEOMETRY MODULE rdcons1v1 (
+
+    STRING srffil*80;              ! Consurf ytdata (F07 fil)
+VAR FLOAT  minx;                   ! Minimum X v{rde f|r ytan
+VAR FLOAT  maxx;                   ! Maximum X v{rde f|r ytan
+VAR FLOAT  miny;                   ! Minimum Y v{rde f|r ytan
+VAR FLOAT  maxy;                   ! Maximum Y v{rde f|r ytan
+VAR FLOAT  minz;                   ! Minimum Z v{rde f|r ytan
+VAR FLOAT  maxz;                   ! Maximum Z v{rde f|r ytan
+
+VAR INT    n_ulines;               ! Antal U linjer i ytan       
+VAR INT    n_vlines);              ! Antal V linjer i ytan       
+
+!                           Internal variables
+!                           ==================
+
+INT    sektnr;                     ! U sektions nummer i ytan
+
+INT    npoints;                    ! Antal punkter i en "Consurf 
+                                   ! Section Line"
+
+INT    i_v;                        ! Loop r{knare = V kurva (punkt)
+
+FLOAT  x,y,z;                      ! Koordinater f|r punkt
+FLOAT  tx,ty,tz;                   ! Komposanter f|r tangent
+
+FILE   f;                          ! Fil med ytdata (F07 file)
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa hel
+
+                                   ! rad eller radslut med INLIN
+
+STRING s*1;                        ! F|r INPMT
+
+
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  OPEN(f,"r",srffil);              ! \ppna fil med Consurf yt-data      
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit med fel meddelande om
+    EXIT("Fil "+srffil+" saknas!");! filen srffil inte finns.      
+  ENDIF;
+
+  minx := +50000.0;                ! Startv{rden f|r minimum
+  maxx := -50000.0;                ! och maximum v{rden f|r
+  miny := +50000.0;                ! ytans utstr{ckning i R*3.
+  maxy := -50000.0;                !
+  minz := +50000.0;                !
+  maxz := -50000.0;                !
+
+  n_ulines := 0;                   ! Initiera antalet U kurvor
+  n_vlines := 0;                   ! Initiera antalet V kurvor         
+
+!        2. Best{m ytans antal U och V linjer samt max-v{rden
+!        ====================================================
+
+
+  sektnr   := 0;                   ! Initiera antalet sektioner
+
+nysekt:                            ! Label: Ny sektion i ytan
+
+!                L{s data f|r en "Consurf Section Line"
+!                --------------------------------------
+
+  rad:=INLIN(f);                   ! L{s hela raden LINE  S1/Usektnr
+                                   !
+  IF IOSTAT(f) = 0 THEN            ! Forts{tt l{sa i data filen
+     sektnr := sektnr + 1;         ! Ytterligare en U kurva i ytan
+  ELSE                             ! Fel fr}n INLIN. Detta tolkas
+                                   ! som att det inte finns mer 
+                                   ! ytdata (sektioner) att l{sa.
+     CLOSE(f);                     ! St{ng fil med yt-data.
+     GOTO slut;                    ! Hoppa till slut 
+  ENDIF;                           !
+                                   !
+  rad    :=INSTR(f,10);            ! L{s SECTION till slask variabel
+  npoints:=ININT(f);               ! Antal punkter i U kurvan    
+  rad    :=INLIN(f);               ! L{s radslut till slask variabel
+                                   !
+                                   !
+  IF (n_vlines = 0) THEN           ! Antalet punkter i U kurvan {r
+    n_vlines := npoints;           ! lika med antalet V kurvor
+  ELSE                             !
+    IF ( n_vlines = npoints ) THEN ! Kontrollera att antalet punkter
+      ;                            ! {r samma i alla U sektioner 
+    ELSE                           ! (f|r sektion 2, 3, 4, .... )
+      CLOSE(f);                    ! St{ng fil med yt-data.
+      EXIT("F07 fil fel. Olika " + ! Exit med felmeddelande 
+        "antal V kurvor !");       !
+    ENDIF;
+  ENDIF;
+
+  rad:=INLIN(f);                   ! Hoppa |ver raden:
+                                   ! NORMAL  x y z  tx ty tz
+
+!              Loop f|r alla punkter i sektionen 
+!              ---------------------------------
+
+  FOR i_v:=1 TO npoints DO         ! Det finns 3*npoints rader
+                                   ! data f|r varje U sektion
+
+    rad:=INSTR(f,10);              ! Hoppa |ver 10 positioner (i.1)
+    x  :=INFLT(f);                 ! Punkt p} V kurva
+    y  :=INFLT(f);                 !
+    z  :=INFLT(f);                 !
+    tx :=INFLT(f);                 ! Tangent f|r V kurva
+    ty :=INFLT(f);                 !
+    tz :=INFLT(f);                 !
+    rad:=INLIN(f);                 ! L{s rad slut    
+
+    rad:=INLIN(f);                 ! Hoppa |ver raden f|r punkt
+                                   ! p} tangent definitionskurvan
+                                   ! dvs tangent punkten (i.2)
+    rad:=INLIN(f);                 ! Hoppa |ver raden:
+                                   ! PVALUES  pp  pt  pc  dpds
+
+    IF x < minx THEN               ! Minimum X v{rde
+      minx := x;                   !
+    ENDIF;                         !
+    IF x > maxx THEN               ! Maximum X v{rde
+      maxx := x;                   !
+    ENDIF;                         !
+    IF y < miny THEN               ! Minimum Y v{rde
+      miny := y;                   !
+    ENDIF;                         !
+    IF y > maxy THEN               ! Maximum Y v{rde
+      maxy := y;                   !
+    ENDIF;                         !
+    IF z < minz THEN               ! Minimum Z v{rde
+      minz := z;                   !
+    ENDIF;                         !
+    IF z > maxz THEN               ! Maximum Z v{rde
+      maxz := z;                   !
+    ENDIF;                         !
+
+  ENDFOR;
+
+  GOTO nysekt;                     ! Hoppa till ny sektion     
+
+
+
+slut:                              ! Label: All data har l{sts i
+                                   !        i ytdata filen
+
+  n_ulines:= sektnr;               ! Antalet U kurvor {r lika med
+                                   ! sektnr (som |kade med ett i
+                                   ! loopen ovan f|r varje sektion)
+
+
+ENDMODULE

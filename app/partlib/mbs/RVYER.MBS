@@ -1,0 +1,119 @@
+!********************* rvyer ***************************************
+!
+!  Funktionen skapar vyer vridna med 10 graders mellanrum i syz-vyn.
+!
+!  1992-12-07   Ronny Gyllensten
+!  1993-01-22   10 graders vridn. i sxy-vyn ocks}  Ronny Gyllensten
+!
+!**********************************************************************
+
+GLOBAL GEOMETRY MODULE rvyer();
+
+
+
+! Interna variabler:
+
+STRING s*1;                        ! F|r INPMT
+
+
+
+BEGINMODULE
+
+! Skapandet av vyer ska bara ske f|rsta g}ngen denna 
+! modul anropas.
+
+  IF EXESTAT()  <>  1  THEN
+    GOTO slut;
+  ENDIF;
+
+! 1. Skapa lokalt, vridet koordinatsystem.
+
+
+!     csys_3p(#1,"XYVY",vec(0,0,0),vec(1,0,0),vec(0,-1,0):BLANK=1);
+!     csys_3p(#2,"XZVY",vec(0,0,0),vec(1,0,0),vec(0,0,-1):BLANK=1);
+!     csys_3p(#3,"YZVY",vec(0,0,0),vec(0,-1,0),vec(0,0,-1):BLANK=1);
+!     csys_3p(#4,"XYZVY",vec(0,0,0),vec(70.711, 70.711,0),
+!                                   vec(40.825,-40.825, -81.650):BLANK=1);
+
+     csys_3p(#5,"XYZVY",vec(0,0,0),vec(17.36, -98.48,0),
+                                   vec(0,0, -1):BLANK=1);
+
+     csys_3p(#6,"XYZVY",vec(0,0,0),vec(34.20, -93.97,0),
+                                   vec(0,0,-1):BLANK=1);
+
+     csys_3p(#7,"XYZVY",vec(0,0,0),vec(50, -86.60,0),
+                                   vec(0,0,-1):BLANK=1);
+
+     csys_3p(#8,"XYZVY",vec(0,0,0),vec(64.28, -76.60,0),
+                                   vec(0,0,-1):BLANK=1);
+
+     csys_3p(#9,"XYZVY",vec(0,0,0),vec(76.60,-64.28,0),
+                                   vec(0,0,-1):BLANK=1);
+
+     csys_3p(#10,"XYZVY",vec(0,0,0),vec(86.60,-50,0),
+                                   vec(0,0,-1):BLANK=1);
+
+     csys_3p(#15,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-98.48,17.36):BLANK=1);
+
+     csys_3p(#16,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-93.97,34.20):BLANK=1);
+
+     csys_3p(#17,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-86.60,50):BLANK=1);
+
+     csys_3p(#18,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-76.60,64.28):BLANK=1);
+
+     csys_3p(#19,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-64.28,76.60):BLANK=1);
+
+     csys_3p(#20,"XYZVY",vec(0,0,0),vec(1,0,0),
+                                   vec(0,-50,86.60):BLANK=1);
+
+
+
+!     CRE_VIEW("sxy",#1);
+!     CRE_VIEW("sxz",#2);
+!     CRE_VIEW("syz",#3);
+!     CRE_VIEW("siso",#4);
+
+     CRE_VIEW("syz10",#5);
+     CRE_VIEW("syz20",#6);
+     CRE_VIEW("syz30",#7);
+     CRE_VIEW("syz40",#8);
+     CRE_VIEW("syz50",#9);
+     CRE_VIEW("syz60",#10);
+
+     CRE_VIEW("sxy10",#15);
+     CRE_VIEW("sxy20",#16);
+     CRE_VIEW("sxy30",#17);
+     CRE_VIEW("sxy40",#18);
+     CRE_VIEW("sxy50",#19);
+     CRE_VIEW("sxy60",#20);
+
+!     DEL(#1);
+!     DEL(#2);
+!     DEL(#3);
+!     DEL(#4);
+
+     DEL(#5);
+     DEL(#6);
+     DEL(#7);
+     DEL(#8);
+     DEL(#9);
+     DEL(#10);
+
+     DEL(#15);
+     DEL(#16);
+     DEL(#17);
+     DEL(#18);
+     DEL(#19);
+     DEL(#20);
+
+
+slut:                              ! Label: Inga vyer skapas
+
+;
+
+ENDMODULE

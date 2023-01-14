@@ -1,0 +1,98 @@
+!********************* rdcons4v1 **************************************
+!
+! Funktionen flyttar punkter till "arrays" med 25 element.
+! Maximala antalet kurvsegment i en VARKON kurva {r 25.
+!
+!  1992-11-16   Gunnar Liden
+!  1993-01-20   Declaration of curve point arrays changed
+!               from (25) to (26) (max number of segments
+!               is 25 in VARKON)                           Gunnar Liden
+!
+!
+!***********************************************************************
+
+BASIC  GEOMETRY MODULE rdcons4v1 (
+
+    INT    np;                     ! Antal punkter    i  in-kurva
+VAR VECTOR pcurve(200);            ! Punkter         f|r in-kurva
+VAR VECTOR tcurve(200);            ! Tangent punkter f|r in-kurva
+VAR FLOAT  pvalue(200);            ! P v{rden        f|r in-kurva
+    INT    i_start;                ! Start punkt f|r del-kurva
+    INT    i_slut;                 ! Slut  punkt f|r del-kurva
+VAR INT    npd;                    ! Antal punkter    i  del-kurva
+VAR VECTOR pcurved(26);            ! Punkter         f|r del-kurva
+VAR VECTOR tcurved(26);            ! Tangent punkter f|r del-kurva
+VAR FLOAT  pvalued(26));           ! P v{rden        f|r del-kurva
+
+! Interna variabler:
+
+INT    i_p;                        ! Loop r{knare punkt i in-kurva
+
+INT    i_pd;                       ! Loop r{knare punkt i del-kurva
+
+STRING  s*1;                       ! F|r INPMT
+
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  IF np > 200       THEN           ! Programmeringskontroll
+    EXIT("rdcons4v1: Fel np");     ! (variabel np)
+  ENDIF;                           !
+
+  IF i_start < 1    THEN           ! Programmeringskontroll
+    EXIT("rdcons4v1: Fel i_start");! (variabel i_start)
+  ENDIF;                           !
+  IF i_start > 199  THEN           !
+    EXIT("rdcons4v1: Fel i_start");!
+  ENDIF;                           !
+  IF i_slut  < 2    THEN           ! Programmeringskontroll
+    EXIT("rdcons4v1: Fel i_slut ");! (variabel i_slut )
+  ENDIF;                           !
+  IF i_slut  > 200  THEN           !
+    EXIT("rdcons4v1: Fel i_slut ");!
+  ENDIF;                           !
+
+  npd := i_slut-i_start+1;         ! Antal punkter i ut-kurvan
+
+  IF npd > 25       THEN           ! Programmeringskontroll
+    EXIT("rdcons4v1: Fel npd max");!
+  ENDIF;                           !
+  IF npd < 2        THEN           ! Programmeringskontroll
+    EXIT("rdcons4v1: Fel npd min");!
+  ENDIF;                           !
+
+!                   2. Flytta punkter till del-kurva
+!                   ================================
+
+
+  i_pd := 0;                       ! Punktnummer i del-kurva
+
+  FOR i_p:=i_start TO i_slut  DO   ! Start loop punkt i kurva
+    i_pd := i_pd + 1;              ! \ka i_pd med ett
+
+      pcurved(i_pd):=pcurve(i_p);  ! Punkter         f|r del-kurva
+      tcurved(i_pd):=tcurve(i_p);  ! Tangent punkter f|r del-kurva
+      pvalued(i_pd):=pvalue(i_p);  ! P v{rden        f|r del-kurva
+
+  ENDFOR;                          ! Slut  loop punkt i kurva
+
+  IF i_pd <> npd     THEN          ! Programmeringskontroll
+    s:= INPMT("rdcons4v1: "        !
+    +  " i_start "+                !
+     STR(i_start,-1,0)  +          !
+      " i_slut "+                  !
+     STR(i_slut ,-1,0) +           !
+      " npd "+                     !
+     STR(npd  ,-1,0) +             !
+      " i_pd "+                    !
+     STR(i_pd  ,-1,0) +            !
+      " ",                         !
+     "",1);                        !
+    EXIT("rdcons4v1: Fel i_p npd");!
+  ENDIF;                           !
+
+
+ENDMODULE

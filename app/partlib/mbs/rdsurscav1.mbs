@@ -1,0 +1,590 @@
+!******************************************************************
+! +++ 
+!
+! Read surface from library, scale surface and create surface curves
+!
+! Revision history
+! ________________
+!
+! 1996-11-11 (Source rdsurscav0) rdrefsurv0 -> rdrefsurv3  Karl-Erik Eklund
+!
+! +++
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE rdsurscav1
+(
+STRING fplproj*44 := "SF340"        >"Aircraft (or other) project";
+STRING surname*30 := "SF340-543-02" >"Surface name (number)";
+STRING csyname*10 := "438"          >"Coordinat system";
+FLOAT  skala      := 1.0            >"@ Scale (<CR>=> 1)";
+FLOAT  x0         := 0.0            >"@ Origin for scaling X coordinate";
+FLOAT  y0         := 0.0            >"@ Origin for scaling Y coordinate";
+FLOAT  z0         := 0.0            >"@ Origin for scaling Z coordinate";
+INT    grafik     := 1
+>"@ 1.All 2.CATIA 3.Contour 4/14.Delta 5.File 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart     := 0.0            > "@ Ustart";
+FLOAT  udelta     := 0.0            > "@ Udelta";
+FLOAT  uslut      := 0.0            > "@ Uslut";
+FLOAT  vstart     := 0.0            > "@ Vstart";
+FLOAT  vdelta     := 0.0            > "@ Vdelta";
+FLOAT  vslut      := 0.0            > "@ Vslut";
+INT    case       := 1              > "@ Case";
+STRING surflib*1  := "r"            > "@ Surface library r/p (<CR>=reference";
+STRING uvfil*80                     > "@ uv file";
+REF    csys_id                      > "Local system for the surface"
+);
+
+!sdesce Read surface from library, scale surface, create isoparametrics 
+!sdescs Läs yta från bibliotek, skala yta och skapa iso-kurvor på ytan
+
+
+! Internal variables
+
+  INT    graphic_ref;             ! Graphics =0 for rdrefsurv3
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  INT    npatu;                   ! No patches in U direction
+  INT    npatv;                   ! No patches in V direction
+  INT    nu,nv;                   ! Number of U and V lines in surface
+
+  FLOAT  minx;                    ! Minimum X value
+  FLOAT  maxx;                    ! Maximum X value
+  FLOAT  miny;                    ! Minimum Y value
+  FLOAT  maxy;                    ! Maximum Y value
+  FLOAT  minz;                    ! Minimum Z value
+  FLOAT  maxz;                    ! Maximum Z value
+
+  REF    s_id;                    ! Unscaled surface identity
+  REF    c_id;                    ! Coordinate system identity
+  REF    i_id;                    ! Isoparameter identity
+  REF    a_id;                    ! Approx. isoparameter identity
+  REF    tra_id;                  ! Transformation identity
+
+  STRING iso_c*1;                 ! Isoparameter U or V
+  FLOAT  start_p;                 ! Parameter for start point
+  FLOAT  end_p;                   ! Parameter for end   point
+  INT    i_u;                     ! Loop index U parameters
+  INT    i_v;                     ! Loop index V parameters
+
+  FLOAT  mittenu;                 ! U-value for mid parameter
+  FLOAT  mittenv;                 ! V-value for mid parameter
+
+  FLOAT  u_c;                     ! Current U value
+  FLOAT  v_c;                     ! Current V value
+  INT    nmax;                    ! Maximum number of isoparameters
+
+  STRING desc*132;                ! Description
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 1;                        ! Change to 0, 1 or 2
+
+  IF  skala < 0 THEN                ! Mirror not yet implemented
+    EXIT("rdsurscav0 Mirror not "+  !
+         "yet implemented");        !
+  ENDIF;                            !
+
+  IF uvfil = "" OR uvfil = " " THEN ! uvfil not yet implemented
+    ;                               !
+  ELSE                              !
+    EXIT("rdsurscav0 UV file not "+ !
+         "yet implemented");        !
+  ENDIF;                            !
+
+
+! +++
+! 2. Create surface transformated to coordinate system csyname
+! ---
+
+! +++
+! Create dummy coordinate system with name csyname
+! ---
+
+  CSYS_1P(#2,csyname,VEC(0.0,0.0,0.0),0.0,0.0,0.0:BLANK=1); 
+
+! +++
+! Fetch the surface from the given library (reference or project)  
+! (project library not yet implemented)
+! Registrate the surface
+! ---
+
+  graphic_ref := 0;
+
+  IF  surflib = "r" OR surflib = "R" THEN
+    PART (#1, rdrefsurv3 (surname,csyname,graphic_ref),#2);
+    s_id  := GLOBAL_REF(#1#1);
+  ELSE
+    EXIT("rdsurscav0 surflib "+surflib+" not impl.");
+  ENDIF;
+
+  desc := "Module rdsurscav0 registered the surface";
+  PART( #51, regsurfv0 ( s_id,
+    fplproj,surname,csyname,surflib,desc));
+
+! +++
+! 3. Calculate and registrate minimum and maximum values      
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);      ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);      ! Retrieve number of V patches
+
+  nu := npatu + 1;                  ! Number of U lines
+  nv := npatv + 1;                  ! Number of V lines
+
+  IF DEBUG = 2 THEN                 ! Debug printout to screen
+  s:=INPMT("rdsurscav0: "+          !
+    "Number of U lines "            !
+      +STR(nu,-1,0)+                !
+    " and V lines "                 !
+      +STR(nv,-1,0)                 !
+         ,"",1);                    !
+  ENDIF;                            !
+
+  c_id := #0.1;                     !
+  PART(#24,s_minmaxv0(s_id,c_id,    ! Calculate max and min values
+   minx,maxx,miny,maxy,minz,maxz)); !
+
+  PART(#25,MINMAXREG(minx,maxx,     ! Registrate max and minvalues for
+      miny,maxy,minz,maxz,nu,nv));  ! surface and number of U and V lines
+
+  IF case = 2 THEN                  ! Only minmax calculation ?
+    GOTO  minmax;                   !
+  ENDIF;                            !
+
+! +++
+! 4. Create transformation matrix for isoparametric curves
+! ---
+
+  IF ABS(skala) >= 0.1  THEN        ! skala < 1 ==> Bigger surface
+    ;
+  ELIF  skala <= -0.1 THEN          ! Mirror matrix for skala < -0.1
+    ; ! Error, See above
+  ELIF skala <  0.1 AND             ! Not valid value on skala     
+     skala > -0.1      THEN         ! 
+      EXIT("rdsurscav0 "+           ! 
+       "scale less than 0.1");      !
+                                    !
+  ENDIF;                            !
+
+
+  PART ( #50, tra_2dav0 (           ! Create transformation
+    csys_id,skala,x0,y0,z0,tra_id));!
+
+! +++
+! 5. Create and register (as GROUP's) scaled isoparameter curves 
+! ---
+
+
+  IF    grafik = 1 THEN             ! Graphical representation:
+      GOTO full;                    ! All patch boundaries
+  ELIF  grafik = 2 THEN             ! Surface mid isoparameters    
+      GOTO kontur;                  ! 
+  ELIF  grafik = 3 THEN             ! Outer contour of surface
+      GOTO kontur;                  ! 
+  ELIF  grafik = 4 THEN             ! Specified U- and/or V-lines  
+      GOTO delta;                   ! solid     
+  ELIF  grafik = 14 THEN            ! Specified U- and/or V-lines  
+      GOTO delta;                   ! solid     
+  ELIF  grafik = 6 THEN             ! Specified U-lines solid     
+      GOTO delta;                   ! 
+  ELIF  grafik = 16 THEN            ! Specified U-lines dashed   
+      GOTO delta;                   ! 
+  ELIF  grafik = 7 THEN             ! Specified V-lines solid     
+      GOTO delta;                   ! 
+  ELIF  grafik = 17 THEN            ! Specified V-lines solid     
+      GOTO delta;                   ! 
+  ELSE                              !
+      s:=INPMT("Only programmed "+  !
+        " for "+                    !
+        " grafik= 1, 2, 3, 4/14,"+  !
+                 " 6/16 eller 7/17" !
+            ,"",1);                 !
+      EXIT("rdsurscav0: grafik "+   !
+             "not OK");             !
+  ENDIF;                            !
+
+
+! +++
+! Create all patch boundary curves
+! ---
+
+! +++
+full:                               ! Label: All curves
+! ---
+
+!
+! Loop for all U lines in the surface.
+!
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+
+  FOR i_u:= 0 TO npatu DO           ! Start loop U curves
+
+    CUR_ISO(#3,s_id,iso_c,i_u,      ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+
+!Radera ytkurva tveksamt i_id:=GLOBAL_REF(REFC(3,i_u+1));
+    i_id:=GLOBAL_REF(REFC(3,1));    ! Isoparameter id
+    CUR_APPROX(#30, i_id,"CUB_SEG", ! Approximate
+                    1, 2);          !
+    a_id := GLOBAL_REF(#30);        !
+    TCOPY(#31 ,a_id, tra_id, 1);    ! Scale and translate curve 
+
+    GROUP(#4,"U"+STR(i_u+1,-1,0)    ! Register U line    
+             ,REFC(31,i_u+1));      ! Group name Un, where n=i_c
+
+    DEL(a_id);                      ! Delete approxim. isoparameter
+    DEL(i_id);                      ! Delete isoparameter
+
+  ENDFOR;                           ! End   loop U curves
+
+! Loop for all V lines in the surface.
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+  FOR i_v:= 0 TO npatv DO           ! Start loop V curves
+
+    CUR_ISO(#5,s_id,iso_c,i_v,      ! Isoparameter
+        start_p,end_p);             !
+    i_id:=GLOBAL_REF(REFC(5,1));    ! Isoparameter id
+    CUR_APPROX(#33, i_id,"CUB_SEG", ! Approximate
+                    1, 2);          !
+    a_id := GLOBAL_REF(#33);        !
+    TCOPY(#32 ,a_id, tra_id, 1);    ! Scale and translate curve 
+
+
+    GROUP(#6,"V"+STR(i_v+1,-1,0)    ! Register U line    
+             ,REFC(32,i_v+1));      ! Group name Vn, where n=i_c
+
+    DEL(a_id);                      ! Delete approxim. isoparameter
+    DEL(i_id);                      ! Delete isoparameter
+
+  ENDFOR;                           ! End   loop V curves
+
+  GOTO slut;                        ! Exit
+
+! +++
+! Outer contour of surface
+! ---
+
+! +++
+kontur:                             ! Label: Contour 
+! ---
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+  i_u    :=   0;
+
+  CUR_ISO(#7,s_id,iso_c,i_u,        ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+  i_id:=GLOBAL_REF(REFC(7,1));      ! Isoparameter id
+  CUR_APPROX(#34, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#34);          !
+  TCOPY(#35 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+
+  GROUP(#8,"U"+STR(i_u+1,-1,0)      ! Register U line    
+             ,REFC(35,1));          ! Group name Un, where n=i_u
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+  i_u    :=   npatu;                ! Aktuell kurva
+
+  CUR_ISO(#9,s_id,iso_c,i_u,        ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+  i_id:=GLOBAL_REF(REFC(9,1));      ! Isoparameter id
+  CUR_APPROX(#36, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#36);          !
+  TCOPY(#37 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+  GROUP(#10,"U"+STR(i_u+1,-1,0)     ! Register U line    
+             ,REFC(37,1));          ! Group name Vn, where n=i_u
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+  i_v    :=   0;                    ! Aktuell kurva
+
+  CUR_ISO(#11,s_id,iso_c,i_v,       ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+  i_id:=GLOBAL_REF(REFC(11,1));     ! Isoparameter id
+  CUR_APPROX(#38, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#38);          !
+  TCOPY(#39 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+
+  GROUP(#12,"V"+STR(i_v+1,-1,0)     ! Register V line    
+             ,REFC(39,1));          ! Group name Vn, where n=i_v
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+  i_v    := npatv;                  ! Aktuell kurva
+
+  CUR_ISO(#13,s_id,iso_c,i_v,       ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+  i_id:=GLOBAL_REF(REFC(13,1));     ! Isoparameter id
+  CUR_APPROX(#40, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#40);          !
+  TCOPY(#41 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+
+  GROUP(#14,"V"+STR(i_v+1,-1,0)     ! Register V line    
+             ,REFC(41,1));          ! Group name Vn, where n=i_v
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+
+  IF  grafik = 2 THEN               ! Catia mitt-kurvor
+      GOTO catia;                   !
+  ELSE                              !
+      GOTO slut;                    ! Ytans konturer är ritade
+  ENDIF;
+
+! +++
+catia:;                             ! Label mid isoparameter lines
+! ---
+
+  SET(CDASHL=5);                    !
+  SET(CFONT=1);                     ! Dashed curve  
+
+
+  mittenu:= npatu/2.0;              ! Mid U value
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+
+
+  CUR_ISO(#15,s_id,iso_c,mittenu,   ! Isoparameter
+        start_p,end_p);             !
+  i_id:=GLOBAL_REF(REFC(15,1));     ! Isoparameter id
+  CUR_APPROX(#42, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#42);          !
+  TCOPY(#43 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+
+  GROUP(#16,"U"+STR(mittenu+1,-5,1) ! Register U line    
+             ,REFC(43,1));          ! Group name Un, where n=mittenu
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+
+  mittenv:= npatv/2.0;              ! Mid V value
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+
+  CUR_ISO(#17,s_id,iso_c,mittenv,   ! Isoparameter
+        start_p,end_p);             !
+  i_id:=GLOBAL_REF(REFC(17,1));     ! Isoparameter id
+  CUR_APPROX(#44, i_id,"CUB_SEG",   ! Approximate
+                    1, 2);          !
+  a_id := GLOBAL_REF(#44);          !
+  TCOPY(#45 ,a_id, tra_id, 1);      ! Scale and translate curve 
+
+
+  GROUP(#18,"V"+STR(mittenv+1,-5,1) ! Register V line    
+             ,REFC(45,1));          ! Group name Vn, where n=mittenv
+  DEL(a_id);                        ! Delete approxim. isoparameter
+  DEL(i_id);                        ! Delete isoparameter
+
+
+  SET(CFONT=0);                     ! Mode solid lines
+
+
+  GOTO slut;                        ! Catia mid lines are created 
+
+
+! +++
+delta:;                             ! Specified U and V lines
+! ---
+
+  IF ustart <> 0.0 THEN
+      IF ustart < 1 THEN
+          s:=INPMT("Ustart < 1"         !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+
+      IF udelta <= 0 AND ustart <> uslut THEN
+          s:=INPMT("Udelta <= 0"        !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+
+      IF uslut < ustart THEN
+          s:=INPMT("Uslut < Ustart"     !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+  ENDIF;
+  
+  IF vstart <> 0.0 THEN
+      IF vstart < 1 THEN
+          s:=INPMT("Vstart < 1"         !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+
+      IF vdelta <= 0 AND vstart <> vslut THEN
+          s:=INPMT("Vdelta <= 0"        !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+
+      IF vslut < vstart THEN
+          s:=INPMT("Vslut < Vstart"     !
+                ,"",1);                 !
+          EXIT("rdsurscav0 Fel värde!");!
+      ENDIF;
+  ENDIF;
+  
+
+  IF grafik = 14  OR  grafik = 16
+                  OR  grafik = 17  THEN
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+  ENDIF;
+
+
+!
+! Loop for U lines in the surface.
+!
+
+  iso_c  := "U";                    ! Type of isoparameter
+
+  IF   grafik= 4 OR grafik= 14 OR   ! Specificerade U- och/eller V-linjer
+       grafik= 6 OR grafik= 16 THEN ! Specificerade U-linjer
+    start_p:=   vstart-1.0;         ! Start value
+    end_p  :=   vslut-1.0;          ! End   value
+  ELIF grafik= 7 OR grafik= 17 THEN ! Specificerade V-linjer
+      GOTO vcurves;                 !
+  ENDIF;                            !
+
+  IF ABS(udelta) < 0.0001 THEN      !
+    nmax :=   1;                    ! Max antal isoparametrar
+  ELSE                              !
+    nmax := 200;                    ! 
+  ENDIF;                            !
+
+  FOR i_u:= 0 TO nmax  DO           ! Start loop U curves
+
+    u_c:= ustart-1.0+i_u*udelta;    !
+    IF u_c > uslut-1.0+0.00001 THEN !
+      GOTO vcurves;                 !
+    ENDIF;                          !
+    CUR_ISO(#19,s_id,iso_c,u_c,     ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+    i_id:=GLOBAL_REF(REFC(19,1));   ! Isoparameter id
+    CUR_APPROX(#46, i_id,"CUB_SEG", ! Approximate
+                    1, 2);          !
+    a_id := GLOBAL_REF(#46);        !
+    TCOPY(#47 ,a_id, tra_id, 1);    ! Scale and translate curve 
+
+
+    GROUP(#20,"U"+STR(u_c+1.0,-5,3) ! Register U line    
+             ,REFC(47,i_u+1));      ! Group name Un, where n=u_c
+    DEL(a_id);                      ! Delete approxim. isoparameter
+    DEL(i_id);                      ! Delete isoparameter
+
+
+    IF  nmax = 1 THEN               ! Only one curve ?
+      GOTO vcurves;                 !
+    ENDIF;                          !
+  ENDFOR;                           ! End   loop U curves
+
+  EXIT("rdsurscav0 nmax for U");    !
+
+vcurves:;
+
+! Loop for V lines in the surface.
+
+  iso_c  := "V";                    ! Type of isoparameter
+
+  IF   grafik= 4 OR grafik= 14 OR   ! Specificerade U- och/eller V-linjer
+       grafik= 7 OR grafik= 17 THEN ! Specificerade U-linjer
+    start_p:=   ustart-1.0;         ! Start value
+    end_p  :=   uslut-1.0;          ! End   value
+  ELIF grafik= 6 OR grafik= 16 THEN ! Specificerade U-linjer
+      GOTO slut;                    !
+  ENDIF;                            !
+
+  IF ABS(vdelta) < 0.0001 THEN      !
+    nmax :=   1;                    ! Max antal isoparametrar
+  ELSE                              !
+    nmax := 200;                    ! 
+  ENDIF;                            !
+
+  FOR i_v:= 0 TO nmax  DO           ! Start loop V curves
+
+    v_c:= vstart-1.0+i_v*vdelta;    !
+    IF v_c > vslut-1.0+0.00001 THEN !
+      GOTO slut;                    !
+    ENDIF;                          !
+    CUR_ISO(#21,s_id,iso_c,v_c,     ! Isoparameter
+        start_p,end_p:BLANK=1);     !
+    i_id:=GLOBAL_REF(REFC(21,1));   ! Isoparameter id
+    CUR_APPROX(#48, i_id,"CUB_SEG", ! Approximate
+                    1, 2);          !
+    a_id := GLOBAL_REF(#48);        !
+    TCOPY(#49 ,a_id, tra_id, 1);    ! Scale and translate curve 
+
+
+    GROUP(#22,"V"+STR(v_c+1.0,-5,3) ! Register V line    
+             ,REFC(49,i_v+1));      ! Group name Vn, where n=i_c
+    DEL(a_id);                      ! Delete approxim. isoparameter
+    DEL(i_id);                      ! Delete isoparameter
+
+
+    IF  nmax = 1 THEN               ! Only one curve ?
+      GOTO slut;                    !
+    ENDIF;                          !
+  ENDFOR;                           ! End   loop V curves
+
+  EXIT("rdsurscav0 nmax for V");    !
+
+
+!                     6. Utgång från rutin
+!                     ====================
+
+slut:                                   ! Label: Exit från rutin
+
+  SET(CFONT=0);                         ! Återställer till heldragen 'mode'
+
+  DEL(GLOBAL_REF(#24));              ! Radera minmaxberäkning
+
+
+minmax:;                            ! Label: Only minmax calculation
+
+ENDMODULE
+

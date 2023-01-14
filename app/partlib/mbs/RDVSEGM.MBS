@@ -1,0 +1,352 @@
+!********************* rdvsegm ****************************************
+!
+!  Modulen l{ser data f|r ett segment av en V isoparameter 
+!  kurva p} en bikubisk yta (fr}n NMG) fr}n en F07 fil
+!
+!  1992-10-04  Gunnar Liden & Karl-Erik Eklund
+!  1992-11-20  F|rs|k med SEEK (OPEN med U) 
+!              DEBUG bortkommenterat f|r prestanda  Gunnar Liden
+!
+!************************************************************************
+
+BASIC GEOMETRY MODULE rdvsegm (
+VAR FILE   f;                      ! Fil med ytdata (F07 fil)
+    INT    v_kurva;                ! V kurva
+    INT    i_segm;                 ! Segment i kurva
+    INT    nu;                     ! Antalet U linjer i ytan
+    INT    nv;                     ! Antalet U linjer i ytan
+VAR INT    nseg;                   ! Antal segment i kurvan
+VAR FLOAT  segdat(25,4,4));        ! Koefficienter till kurva
+
+
+! Interna variabler:
+
+
+INT    DEBUG;                      ! Eq. 0: No      debug
+                                   ! Eq. 1: Full    debug
+                                   ! Eq. 2: Reduced debug
+
+
+INT    i_patch;                    ! Patch ordningsnummer
+
+INT    pos_in;                     ! Start     position i filen
+INT    pos_read;                   ! L{s start position i filen
+
+INT    ix;                         ! Slask heltal
+INT    ix1,ix2;                    ! Tempor{rt anv{nda loop index
+
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa rad
+
+STRING   s*1;                      ! F|r debug 
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+
+!                                 Debug
+!                                 -----
+
+  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+
+
+! Karl-Erik! Det b|r l{ggas till beskrivning av i vilken ordning
+!            "patcharna" kommer. F|rklara hur i_patch ber{knas ..
+!            Enligt <APT140.GSPR031>THEORI.TXT
+
+
+  IF   v_kurva < nv THEN            !
+    i_patch:=(v_kurva-1)*(nu-1)     ! Patch nummer
+              +i_segm;              !
+  ELIF v_kurva = nv THEN            !
+    i_patch:=(v_kurva-2)*(nu-1)     ! Patch nummer
+              +i_segm;              !
+  ENDIF;
+
+!  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+!  IF i_patch > (nu-1)*(nv-1) THEN   !
+!      EXIT("rdvsegm: Programfel "+  !
+!           "(i_patch)");            !
+!  ENDIF;                            !
+!  ENDIF;                            !
+
+    IF nseg = 0 THEN                ! Read to start patch
+      IF i_patch > 1 THEN           !
+        pos_in:= FPOS(f);           ! Start     position i filen
+        pos_read:= pos_in+          ! Position f|r att starta l{sa
+         (i_patch-1)*10*82;         ! 
+
+!        s:=INPMT("rdvsegm: "+       ! Debug FPOS (start)
+!           " i_patch-1= "           !
+!             +STR(i_patch-1,-1,0)+  !
+!             " pos_in "             !
+!               +STR(pos_in,-1,0)+   !
+!             " Ber{knad slutpos "   !
+!       +STR(pos_read,-1,0)          !
+!                ,"",1);             !
+
+!1992-11-20        FOR ix1:=1 TO i_patch-1 DO  !
+!1992-11-20           FOR ix2:=1 TO 10 DO       !
+!1992-11-20             rad:= INLIN(f);         !
+!1992-11-20           ENDFOR;                   !
+!1992-11-20         ENDFOR;                     !
+        SEEK(f,pos_read);           ! St{ll filpekaren i l{sl{ge
+
+!        s:=INPMT("rdvsegm: "+       ! Debug FPOS (start)
+!             " FPOS(f) facit "      !
+!               +STR(FPOS(f),-1,0)   !
+!                ,"",1);             !
+      ENDIF;                        !
+    ENDIF;
+
+!                        2. L{s koefficienter
+!                        ====================
+
+
+    nseg := nseg + 1;               ! Increase number of output
+    IF nseg > 25 THEN               ! segments
+      EXIT("rdvsegm: Programfel "+  !
+           "(nseg>25)");            !
+    ENDIF;
+
+  IF   v_kurva < nv  THEN           !  F|r alla kurvor utom f|r nv:
+                                    !  Koefficienter f|r term 1
+    segdat(nseg,1,1) := INFLT(f);   !  k0x
+    segdat(nseg,1,2) := INFLT(f);   !  k0y
+    segdat(nseg,1,3) := INFLT(f);   !  k0z
+    segdat(nseg,1,4) :=  1.0;       !  k0w = 1.0 (l{ses ej)
+                                    !  Koefficienter f|r term U
+    segdat(nseg,2,1) := INFLT(f);   !  k1x
+    segdat(nseg,2,2) := INFLT(f);   !  k1y
+    segdat(nseg,2,3) := INFLT(f);   !  k1z
+    segdat(nseg,2,4) :=  0.0;       !  k1w = 0.0 (l{ses ej)
+    rad         := INLIN(f);        ! Radslut
+                                    !  Koefficienter f|r term U**2
+    segdat(nseg,3,1) := INFLT(f);   !  k2x
+    segdat(nseg,3,2) := INFLT(f);   !  k2y
+    segdat(nseg,3,3) := INFLT(f);   !  k2z
+    segdat(nseg,3,4) :=  0.0;       !  k2w = 0.0 (l{ses ej)
+                                    !  Koefficienter f|r term U**3
+    segdat(nseg,4,1) := INFLT(f);   !  k3x
+    segdat(nseg,4,2) := INFLT(f);   !  k3y
+    segdat(nseg,4,3) := INFLT(f);   !  k3z
+    segdat(nseg,4,4) :=  0.0;       !  k3w
+                                    !
+    IF i_segm < nu-1 THEN           ! L{s till n{sta patch
+      FOR ix2:=1 TO 9  DO           !
+          rad:= INLIN(f);           !
+      ENDFOR;                       !
+    ENDIF;                          !
+
+  ELIF   v_kurva = nv  THEN         !  Slutkurva (nv) f|r ytan:
+                                    !  Koefficienter f|r term 1
+    segdat(nseg,1,1) := INFLT(f);   !  k0x
+    segdat(nseg,1,2) := INFLT(f);   !  k0y
+    segdat(nseg,1,3) := INFLT(f);   !  k0z
+    segdat(nseg,1,4) :=  1.0;       !  k0w
+                                    !  Koefficienter f|r term U
+    segdat(nseg,2,1) := INFLT(f);   !  k1x
+    segdat(nseg,2,2) := INFLT(f);   !  k1y
+    segdat(nseg,2,3) := INFLT(f);   !  k1z
+    segdat(nseg,2,4) :=  0.0;       !  k1w
+    rad         := INLIN(f);        ! Radslut
+                                    !  Koefficienter f|r term U**2
+    segdat(nseg,3,1) := INFLT(f);   !  k2x
+    segdat(nseg,3,2) := INFLT(f);   !  k2y
+    segdat(nseg,3,3) := INFLT(f);   !  k2z
+    segdat(nseg,3,4) :=  0.0;       !  k2w
+                                    !  Koefficienter f|r term U**3
+    segdat(nseg,4,1) := INFLT(f);   !  k3x
+    segdat(nseg,4,2) := INFLT(f);   !  k3y
+    segdat(nseg,4,3) := INFLT(f);   !  k3z
+    segdat(nseg,4,4) :=  0.0;       !  k3w
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V
+    segdat(nseg,1,1) :=             !
+     segdat(nseg,1,1) + INFLT(f);   !  k0x
+    segdat(nseg,1,2) :=             !
+     segdat(nseg,1,2) + INFLT(f);   !  k0y
+    segdat(nseg,1,3) :=             !
+     segdat(nseg,1,3) + INFLT(f);   !  k0z
+                                    !
+                                    !  Koefficienter f|r term V*U
+    segdat(nseg,2,1) :=             !
+     segdat(nseg,2,1) + INFLT(f);   !  k1x
+    segdat(nseg,2,2) :=             !
+     segdat(nseg,2,2) + INFLT(f);   !  k1y
+    segdat(nseg,2,3) :=             !
+     segdat(nseg,2,3) + INFLT(f);   !  k1z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V*U**2
+    segdat(nseg,3,1) :=             !
+     segdat(nseg,3,1) + INFLT(f);   !  k2x
+    segdat(nseg,3,2) :=             !
+     segdat(nseg,3,2) + INFLT(f);   !  k2y
+    segdat(nseg,3,3) :=             !
+     segdat(nseg,3,3) + INFLT(f);   !  k2z
+                                    !
+                                    !  Koefficienter f|r term V*U**3
+    segdat(nseg,4,1) :=             !
+     segdat(nseg,4,1) + INFLT(f);   !  k3x
+    segdat(nseg,4,2) :=             !
+     segdat(nseg,4,2) + INFLT(f);   !  k3y
+    segdat(nseg,4,3) :=             !
+     segdat(nseg,4,3) + INFLT(f);   !  k3z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V**2
+    segdat(nseg,1,1) :=             !
+     segdat(nseg,1,1) + INFLT(f);   !  k0x
+    segdat(nseg,1,2) :=             !
+     segdat(nseg,1,2) + INFLT(f);   !  k0y
+    segdat(nseg,1,3) :=             !
+     segdat(nseg,1,3) + INFLT(f);   !  k0z
+                                    !
+                                    !  Koefficienter f|r term V**2*U
+    segdat(nseg,2,1) :=             !
+     segdat(nseg,2,1) + INFLT(f);   !  k1x
+    segdat(nseg,2,2) :=             !
+     segdat(nseg,2,2) + INFLT(f);   !  k1y
+    segdat(nseg,2,3) :=             !
+     segdat(nseg,2,3) + INFLT(f);   !  k1z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V**2*U**2
+    segdat(nseg,3,1) :=             !
+     segdat(nseg,3,1) + INFLT(f);   !  k2x
+    segdat(nseg,3,2) :=             !
+     segdat(nseg,3,2) + INFLT(f);   !  k2y
+    segdat(nseg,3,3) :=             !
+     segdat(nseg,3,3) + INFLT(f);   !  k2z
+                                    !
+                                    !  Koefficienter f|r term V**2*U**3
+    segdat(nseg,4,1) :=             !
+     segdat(nseg,4,1) + INFLT(f);   !  k3x
+    segdat(nseg,4,2) :=             !
+     segdat(nseg,4,2) + INFLT(f);   !  k3y
+    segdat(nseg,4,3) :=             !
+     segdat(nseg,4,3) + INFLT(f);   !  k3z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V**3
+    segdat(nseg,1,1) :=             !
+     segdat(nseg,1,1) + INFLT(f);   !  k0x
+    segdat(nseg,1,2) :=             !
+     segdat(nseg,1,2) + INFLT(f);   !  k0y
+    segdat(nseg,1,3) :=             !
+     segdat(nseg,1,3) + INFLT(f);   !  k0z
+                                    !
+                                    !  Koefficienter f|r term V**3*U
+    segdat(nseg,2,1) :=             !
+     segdat(nseg,2,1) + INFLT(f);   !  k1x
+    segdat(nseg,2,2) :=             !
+     segdat(nseg,2,2) + INFLT(f);   !  k1y
+    segdat(nseg,2,3) :=             !
+     segdat(nseg,2,3) + INFLT(f);   !  k1z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+                                    !  Koefficienter f|r term V**3*U**2
+    segdat(nseg,3,1) :=             !
+     segdat(nseg,3,1) + INFLT(f);   !  k2x
+    segdat(nseg,3,2) :=             !
+     segdat(nseg,3,2) + INFLT(f);   !  k2y
+    segdat(nseg,3,3) :=             !
+     segdat(nseg,3,3) + INFLT(f);   !  k2z
+                                    !
+                                    !  Koefficienter f|r term V**3*U**3
+    segdat(nseg,4,1) :=             !
+     segdat(nseg,4,1) + INFLT(f);   !  k3x
+    segdat(nseg,4,2) :=             !
+     segdat(nseg,4,2) + INFLT(f);   !  k3y
+    segdat(nseg,4,3) :=             !
+     segdat(nseg,4,3) + INFLT(f);   !  k3z
+    rad         := INLIN(f);        ! Radslut
+                                    !
+    IF i_segm < nu-1 THEN           !
+      FOR ix2:=1 TO 2  DO           ! L{s till n{sta patch
+          rad:= INLIN(f);           !
+      ENDFOR;                       !
+    ENDIF;                          !
+                                    !
+  ENDIF;                            !
+
+!  IF DEBUG = 1 THEN                 ! Debug printout to screen
+!   IF v_kurva = nv OR               !       (DEBUG=1)
+!      v_kurva = nv      THEN        ! F|r kurva 1 och kurva nv
+!  s:=INPMT("rdvsegm: "+             ! Debug k0x, k0y, k0z
+!    " i_patch= "                    !
+!      +STR(i_patch,-1,0)+           !
+!    " k0x= "                        !
+!      +STR(segdat(nseg,1,1),-15,8)+ !
+!    " k0y= "                        !
+!      +STR(segdat(nseg,1,2),-15,8)+ !
+!    " k0z= "                        !
+!      +STR(segdat(nseg,1,3),-15,8)  !
+!         ,"",1);                    !
+!  s:=INPMT("rdvsegm: "+             ! Debug k1x, k1y, k1z
+!    " i_patch= "                    !
+!      +STR(i_patch,-1,0)+           !
+!    " k1x= "                        !
+!      +STR(segdat(nseg,2,1),-15,8)+ !
+!    " k1y= "                        !
+!      +STR(segdat(nseg,2,2),-15,8)+ !
+!    " k1z= "                        !
+!      +STR(segdat(nseg,2,3),-15,8)  !
+!         ,"",1);                    !
+!  s:=INPMT("rdvsegm: "+             ! Debug k2x, k2y, k2z
+!    " i_patch= "                    !
+!      +STR(i_patch,-1,0)+           !
+!    " k2x= "                        !
+!      +STR(segdat(nseg,3,1),-15,8)+ !
+!    " k2y= "                        !
+!      +STR(segdat(nseg,3,2),-15,8)+ !
+!    " k2z= "                        !
+!      +STR(segdat(nseg,3,3),-15,8)  !
+!         ,"",1);                    !
+!  s:=INPMT("rdvsegm: "+             ! Debug k3x, k3y, k3z
+!    " i_patch= "                    !
+!      +STR(i_patch,-1,0)+           !
+!    " k3x= "                        !
+!      +STR(segdat(nseg,4,1),-15,8)+ !
+!    " k3y= "                        !
+!      +STR(segdat(nseg,4,2),-15,8)+ !
+!    " k3z= "                        !
+!      +STR(segdat(nseg,4,3),-15,8)  !
+!         ,"",1);                    !
+!   ENDIF;                           !
+!   ENDIF;                           !
+
+
+  IF ( IOSTAT(f) <> 0 ) then        ! Programmeringskontroll
+      EXIT("rdvsegm: Programfel "+  ! (Borde egentligen ligga
+           "(l{sning)");            !  efter varje l{sning)
+  ENDIF;
+
+
+!  IF DEBUG = 1 THEN                 ! Debug printout to screen
+!  s:=INPMT("rdvsegm: "+             !       (DEBUG=1)
+!    " Patch nummer i_patch "        !
+!      +STR(i_patch,-1,0)+           !
+!    " nu= "                         !
+!      +STR(nu,-1,0)+                !
+!    " i_c= "                        !
+!      +STR(i_segm,-1,0)             !
+!         ,"",1);                    !
+!  s:=INPMT("rdvsegm: "+             !
+!    " Exit V line= "                !
+!      +STR(v_kurva,-1,0)+           !
+!    " i_segm= "                     !
+!      +STR(i_segm,-1,0) +           !
+!    " nseg= "                       !
+!      +STR(nseg,-1,0)               !
+!         ,"",1);                    !
+!  ENDIF;                            !
+
+
+
+ENDMODULE
+

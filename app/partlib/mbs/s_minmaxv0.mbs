@@ -1,0 +1,112 @@
+!******************** s_minmaxv0 ***********************************
+! ++
+! Finds maximum and minimum coordinates for a surface
+!
+! Revision history
+! ________________
+!
+! 1994-12-15 Gunnar Liden
+! 1996-02-25 Gunnar Liden
+!
+! 
+!******************************************************************
+!sdesce Finds maximum and minimum coordinates for a surface
+!sdescs Ber{knar maximum och minimum koordinater f|r yta
+
+GLOBAL GEOMETRY MODULE s_minmaxv0 (
+    REF    s_id;                  ! Surface reference
+    REF    c_id;                  ! Coordinate system reference
+VAR FLOAT  minx;                  ! Minimum X value
+VAR FLOAT  maxx;                  ! Maximum X value
+VAR FLOAT  miny;                  ! Minimum Y value
+VAR FLOAT  maxy;                  ! Maximum Y value
+VAR FLOAT  minz;                  ! Minimum Z value
+VAR FLOAT  maxz);                 ! Maximum Z value
+
+! Internal variables:
+
+  INT     npatu;                  ! No patches in U direction
+  INT     npatv;                  ! No patches in V direction
+
+
+  INT     i_u;                    ! Loop index point in U direction
+  INT     i_v;                    ! Loop index point in V direction
+  INT     d_u;                    ! Step for U
+  INT     d_v;                    ! Step for V
+  FLOAT   f_npatu;                ! No patches in U direction
+  FLOAT   f_npatv;                ! No patches in V direction
+  VECTOR  p_s;                    ! Point on surface
+
+BEGINMODULE
+
+!               1. Initiering och kontroll av indata
+!               ====================================
+
+  IF c_id = #0.1 THEN            ! Activate local system
+    ;                            !
+  ELSE                           !
+    MODE_LOCAL(c_id);            !
+  ENDIF;                         !
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  minx := +50000.0;                 ! Minimum X v{rde
+  maxx := -50000.0;                 ! Maximum X v{rde
+  miny := +50000.0;                 ! Minimum Y v{rde
+  maxy := -50000.0;                 ! Maximum Y v{rde
+  minz := +50000.0;                 ! Minimum Z v{rde
+  maxz := -50000.0;                 ! Maximum Z v{rde
+
+
+!               2. Uppdatera minx, miny, minz, etc
+!               ====================================
+
+!  f_npatu:= npatu;               !
+!  d_u := TRUNC(f_npatu/2.0);     !
+!  IF d_u < 1 THEN                !
+!    d_u := 1;                    !
+!  ENDIF;
+!  f_npatv:= npatv;               !
+!  d_v := TRUNC(f_npatv/2.0);     !
+!  IF d_v < 1 THEN                !
+!    d_v := 1;                    !
+!  ENDIF;
+    
+  d_u := 1;
+  d_v := 1;
+
+  FOR i_u:=0 TO npatu STEP d_u DO         ! Start loop U
+    FOR i_v:=0 TO npatv STEP d_v DO       ! Start loop V
+
+    PSH_PMT("Punkt "+STR(i_u,-1,0)+"  "+STR(i_v,-1,0));
+
+    p_s := ON(s_id,VEC(i_u,i_v));!
+
+    IF p_s.x < minx         THEN ! Minimum X value
+      minx := p_s.x;             !
+    ENDIF;                       !
+    IF p_s.x > maxx         THEN ! Maximum X value
+      maxx := p_s.x;             !
+    ENDIF;                       !
+
+    IF p_s.y < miny         THEN ! Minimum Y value
+      miny := p_s.y;             !
+    ENDIF;                       !
+    IF p_s.y > maxy         THEN ! Maximum Y value
+      maxy := p_s.y;             !
+    ENDIF;                       !
+
+    IF p_s.z < minz         THEN ! Minimum Z value
+      minz := p_s.z;             !
+    ENDIF;                       !
+    IF p_s.z > maxz         THEN ! Maximum Z value
+      maxz := p_s.z;             !
+    ENDIF;                       !
+
+    POP_PMT();
+    ENDFOR;                      ! End   loop V
+  ENDFOR;                        ! End   loop U
+
+
+ENDMODULE

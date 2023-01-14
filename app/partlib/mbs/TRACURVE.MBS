@@ -1,0 +1,171 @@
+!********************* tracurve *****************************************
+!
+!  Modulen transformerar en rationell kubisk spline-kurva.
+!
+!  1992-11-11  Karl-Erik Eklund
+!  1992-11-20  DEBUG bortkommenterat f|r prestanda Gunnar Liden
+!
+!************************************************************************
+
+BASIC GEOMETRY MODULE tracurve
+(
+INT        nseg;                    ! Antal segment i kurvan
+VAR FLOAT  segdat(25,4,4);          ! Koefficienter till kurva
+VAR FLOAT  C4X4(16);                ! Transformationsmatris 4X4
+VAR FLOAT  segdat_t(25,4,4)         ! Transformerade koefficienter till kurva
+);
+
+
+! Interna variabler:
+
+!INT        DEBUG;                   ! Eq. 0: No      debug
+!                                    ! Eq. 1: Full    debug
+!                                    ! Eq. 2: Reduced debug
+
+INT        iseg;                    ! R{knare f|r segment
+FLOAT      KM4X4(16);               ! Array f|r kurvkonst i M-syst
+FLOAT      KN4X4(16);               ! Array f|r kurvkonst i N-syst
+
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+
+!  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+
+  IF nseg > 25 THEN                 ! Kontrollera antalet segment
+    EXIT("TRACURVE: nseg > 25");    !
+  ENDIF;                            !
+
+!  IF DEBUG > 0 THEN                 ! \ppna fil f|r DEBUG > 0
+!    lst_ini("TRAUCURVE: Antal "+
+!     "segment {r "+STR(nseg,-1,0));
+!  ENDIF;
+
+!                       2. Transformera kurvan
+!                       =======================
+
+  FOR iseg:=1 TO nseg DO
+
+     KM4X4(1):= segdat(iseg,1,1);
+     KM4X4(2):= segdat(iseg,1,2);
+     KM4X4(3):= segdat(iseg,1,3);
+     KM4X4(4):= segdat(iseg,1,4);
+
+     KM4X4(5):= segdat(iseg,2,1);
+     KM4X4(6):= segdat(iseg,2,2);
+     KM4X4(7):= segdat(iseg,2,3);
+     KM4X4(8):= segdat(iseg,2,4);
+
+     KM4X4(9):= segdat(iseg,3,1);
+     KM4X4(10):=segdat(iseg,3,2);
+     KM4X4(11):=segdat(iseg,3,3);
+     KM4X4(12):=segdat(iseg,3,4);
+
+     KM4X4(13):=segdat(iseg,4,1);
+     KM4X4(14):=segdat(iseg,4,2);
+     KM4X4(15):=segdat(iseg,4,3);
+     KM4X4(16):=segdat(iseg,4,4);
+
+
+     PART(#1,matrixmult(KM4X4,C4X4,KN4X4) ! Transformerar KM till KN
+            :SAVE=0);                     ! (Anrop beh|ver ej sparas
+                                          !  i GM och ingen geometri
+                                          !  skapas)
+     segdat_t(iseg,1,1):= KN4X4(1);       
+     segdat_t(iseg,1,2):= KN4X4(2);
+     segdat_t(iseg,1,3):= KN4X4(3);
+     segdat_t(iseg,1,4):= KN4X4(4);
+
+     segdat_t(iseg,2,1):= KN4X4(5);
+     segdat_t(iseg,2,2):= KN4X4(6);
+     segdat_t(iseg,2,3):= KN4X4(7);
+     segdat_t(iseg,2,4):= KN4X4(8);
+
+     segdat_t(iseg,3,1):= KN4X4(9);
+     segdat_t(iseg,3,2):= KN4X4(10);
+     segdat_t(iseg,3,3):= KN4X4(11);
+     segdat_t(iseg,3,4):= KN4X4(12);
+
+     segdat_t(iseg,4,1):= KN4X4(13);
+     segdat_t(iseg,4,2):= KN4X4(14);
+     segdat_t(iseg,4,3):= KN4X4(15);
+     segdat_t(iseg,4,4):= KN4X4(16);
+
+
+!     IF DEBUG > 0 THEN
+!         IF iseg = 1 THEN
+!          lst_lin("Transformationsmatris C4X4:");
+!          lst_lin("--------------------------");
+!          lst_lin("C1=  "+str(C4X4(1),15,9)+
+!               " C2=  "+str(C4X4(2),15,9)+
+!               " C3=  "+str(C4X4(3),15,9)+
+!               " C4=  "+str(C4X4(4),11,9));
+!          lst_lin("C5=  "+str(C4X4(5),15,9)+
+!               " C6=  "+str(C4X4(6),15,9)+
+!               " C7=  "+str(C4X4(7),15,9)+
+!               " C8=  "+str(C4X4(8),11,9));
+!          lst_lin("C9=  "+str(C4X4(9),15,9)+
+!               " C10= "+str(C4X4(10),15,9)+
+!               " C11= "+str(C4X4(11),15,9)+
+!               " C12= "+str(C4X4(12),11,9));
+!          lst_lin("C13= "+str(C4X4(13),15,9)+
+!               " C14= "+str(C4X4(14),15,9)+
+!               " C15= "+str(C4X4(15),15,9)+
+!               " C16= "+str(C4X4(16),11,9));
+!          lst_lin(" ");
+!         ENDIF;
+!          lst_lin("Matrisen f|r spline-kurvans koeff. innan transformering:");
+!          lst_lin("-------------------------------------------------------");
+!          lst_lin("Matrisen g{ller f|r segment nr. "+str(iseg,1,1));
+!          lst_lin("M11= "+str(KM4X4(1),15,9)+
+!               " M12= "+str(KM4X4(2),15,9)+
+!               " M13= "+str(KM4X4(3),15,9)+
+!               " M14= "+str(KM4X4(4),11,9));
+!          lst_lin("M21= "+str(KM4X4(5),15,9)+
+!               " M22= "+str(KM4X4(6),15,9)+
+!               " M23= "+str(KM4X4(7),15,9)+
+!               " M24= "+str(KM4X4(8),11,9));
+!          lst_lin("M31= "+str(KM4X4(9),15,9)+
+!               " M32= "+str(KM4X4(10),15,9)+
+!               " M33= "+str(KM4X4(11),15,9)+
+!               " M34= "+str(KM4X4(12),11,9));
+!          lst_lin("M41= "+str(KM4X4(13),15,9)+
+!               " M42= "+str(KM4X4(14),15,9)+
+!               " M43= "+str(KM4X4(15),15,9)+
+!               " M44= "+str(KM4X4(16),11,9));
+!          lst_lin(" ");
+!          lst_lin("Matrisen f|r spline-kurvans koeff. efter transformering:");
+!          lst_lin("-------------------------------------------------------");
+!          lst_lin("Matrisen g{ller f|r segment nr. "+str(iseg,1,1));
+!          lst_lin("N11= "+str(KN4X4(1),15,9)+
+!               " N12= "+str(KN4X4(2),15,9)+
+!               " N13= "+str(KN4X4(3),15,9)+
+!               " N14= "+str(KN4X4(4),11,9));
+!          lst_lin("N21= "+str(KN4X4(5),15,9)+
+!               " N22= "+str(KN4X4(6),15,9)+
+!               " N23= "+str(KN4X4(7),15,9)+
+!               " N24= "+str(KN4X4(8),11,9));
+!          lst_lin("N31= "+str(KN4X4(9),15,9)+
+!               " N32= "+str(KN4X4(10),15,9)+
+!               " N33= "+str(KN4X4(11),15,9)+
+!               " N34= "+str(KN4X4(12),11,9));
+!          lst_lin("N41= "+str(KN4X4(13),15,9)+
+!               " N42= "+str(KN4X4(14),15,9)+
+!               " N43= "+str(KN4X4(15),15,9)+
+!               " N44= "+str(KN4X4(16),11,9));
+!     ENDIF;
+
+  ENDFOR;
+
+!                           3. Slut
+!                           ========
+
+!  IF DEBUG > 0 THEN                 ! St{ng fil f|r DEBUG > 0
+!    lst_exi();                      !
+!  ENDIF;                            !
+
+ENDMODULE
+

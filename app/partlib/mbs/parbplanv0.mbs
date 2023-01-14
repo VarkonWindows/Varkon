@@ -1,0 +1,114 @@
+!********************* parbplanv0 ***********************
+! +++
+! Create a parallell B-plane at a given distance
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-01-27  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Skapa ett parallelt plan p} ett givet avst}nd
+!sdesce Create a parallell B-plane at a given distance
+
+GLOBAL GEOMETRY MODULE parbplanv0(
+
+REF bpl1_id           >"@t32768 Select B_PLANE"; 
+FLOAT dist    := 30.0 >"Distance";
+INT graphic   :=  1   >"Graphics 0: None  1: Show parallell plane 2: Show all");
+
+
+! Internal variables:
+
+  
+  REF        bpl2_id;            ! Extended B_PLANE
+
+  VECTOR     p1,p2,p3,p4;        ! B-plane 1 corner points 
+
+  VECTOR     n_plane;            ! Plane normal 
+
+  INT        b_flag;             ! Blank value for output B-plane
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+   DEBUG := 0;                       ! Change to 0 or 1
+
+   IF    graphic = 0  THEN           ! Blank variable 
+     b_flag:= 1;                     !
+   ELIF  graphic = 1  THEN           !
+     b_flag:= 0;                     !
+   ELIF  graphic = 2  THEN           !
+     b_flag:= 0;                     !
+   ELSE                              !
+     EXIT("parbplanv0: graphic "     !
+          + "not OK");               !
+   ENDIF;                            !
+
+   n_plane := VEC(0,0,0);   
+
+! +++
+! Retrieve B_PLANE corner points
+! --- 
+
+
+  GETBPL(bpl1_id,p1,p2,p3,p4); 
+
+! +++
+! Calculate plane normal n_plane= (p2-p1) X (p4-p1) (normalized)
+! --- 
+
+  n_plane := VPROD(p2-p1,p4-p1);
+  n_plane := VECN(n_plane);
+
+! +++
+! Create parallell B-plane
+! --- 
+
+  B_PLANE(#1,p1+dist*n_plane,p2+dist*n_plane,
+             p3+dist*n_plane,p4+dist*n_plane:BLANK=b_flag);
+
+! +++
+! Printout of data for DEBUG= 1
+! ---
+
+  IF  DEBUG = 1  THEN
+  LST_INI("parbplanev0 Parallell dist= "+STR(dist,-15,8)+" B-plane "+RSTR(bpl1_id));
+  LST_LIN("n_plane  "+STR( n_plane.x,8,5)+" "
+                     +STR( n_plane.y,8,5)+" "
+                     +STR( n_plane.z,8,5));
+  LST_EXI();
+  ENDIF;
+
+! +++
+! Show normal plane direction for graphic= 2
+! ---
+
+  IF  graphic = 2 THEN
+    LIN_FREE(#2, p1, p1 + VECL(p2-p1)*0.5*n_plane:PEN=3);
+    LIN_FREE(#3, p2, p2 + VECL(p2-p1)*0.5*n_plane:PEN=3);
+    LIN_FREE(#4, p3, p3 + VECL(p2-p1)*0.5*n_plane:PEN=3);
+    LIN_FREE(#5, p4, p4 + VECL(p2-p1)*0.5*n_plane:PEN=3);
+    LIN_FREE(#6, p1, p1 +      dist      *n_plane:PEN=2);
+    LIN_FREE(#7, p2, p2 +      dist      *n_plane:PEN=2);
+    LIN_FREE(#8, p3, p3 +      dist      *n_plane:PEN=2);
+    LIN_FREE(#9, p4, p4 +      dist      *n_plane:PEN=2);
+  ENDIF;
+
+ENDMODULE

@@ -1,0 +1,80 @@
+!********************* poi3planv0 ***********************
+! +++
+! Calculate point as the intersect between three planes  
+!
+! Reference: Faux & Pratt p 67
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-01-03  Gunnar Liden
+! 1996-05-17  Comments  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Skapa punkt som sk{rning mellan tre B_PLANE
+!sdesce Create point as intersect between three B_PLANE's         
+
+GLOBAL GEOMETRY MODULE poi3planv0(
+    VECTOR     u_1;               ! Plane 1 normal
+    FLOAT      d_1;               ! Plane 1 D value
+    VECTOR     u_2;               ! Plane 2 normal
+    FLOAT      d_2;               ! Plane 2 D value
+    VECTOR     u_3;               ! Plane 3 normal
+    FLOAT      d_3;               ! Plane 3 D value
+VAR VECTOR     p_int;             ! Intersect point
+VAR INT        status);           ! Error code: < 0 No point
+
+! Internal variables:
+
+  FLOAT      denominator;        ! Denominator
+  
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+   status := 0; 
+   p_int  := VEC(12345.6789, 12345.6789, 12345.6789);
+
+   DEBUG := 0;                       ! Change to 0 or 1
+
+! +++
+! Calculate denominator        
+! --- 
+
+  denominator:= u_1*VPROD(u_2,u_3);  
+
+  IF ABS(denominator) < 0.000001 THEN 
+    status := -1;
+    EXIT();
+  ENDIF;
+
+! +++
+! Intersect point
+! --- 
+
+  p_int:= d_1*VPROD(u_2,u_3) + d_2*VPROD(u_3,u_1) + d_3*VPROD(u_1,u_2);
+
+  p_int:= (1.0/denominator)*p_int;
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " denominator "+STR(denominator,15,10),            !
+    " ",1);                          !
+  ENDIF;                             !
+
+ENDMODULE

@@ -1,0 +1,251 @@
+!********************* PLIN *******************************************
+!
+! Modifies a point in a conic curve and creates a new curve.
+! The start and/or end segment point is moved in space along 
+! a given line (vector).
+!
+! Output:  #1.1#1.1  Conic curve
+!
+! 1992-11-24  Gunnar Liden
+! 1992-12-11  d1=dist, u1=liv, d1max=distmax, d1min=distmin
+!                                                    Ronny Gyllensten
+! 1992-12-15  tpout error corrected                  Gunnar Liden
+!  1993-01-20  Curve array sizes from (25) to (26)  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE PLIN (
+REF    curve_id                  > "@t8 Select curve to modify ";
+INT    i_point := 3              > "No. of point to modify ";
+FLOAT  dist    :=0.05            > "Distance for variable v? ";
+INT    i_var   := 3              > "No. of used variable (?) ";
+VECTOR liv      :=vec(0.0,1.0,1.0)> "@ Vector to define the line";
+FLOAT  distmax   :=+0.5          > "@ Upper limit for dist";
+FLOAT  distmin   :=-0.5          > "@ Lower limit for dist";
+INT    graphic := 1              > "@ Graphical representation ");
+
+! Internal variables
+
+  INT    no_points;              ! Number of points in the curve
+  VECTOR psektI(26);             ! Segment start/end points
+  VECTOR tpsektI(26);            ! Tangent points to psektI
+  FLOAT  pvalsektI(26);          ! P values to curve
+  VECTOR midpsektI(26);          ! Mid (P value) points
+
+  VECTOR p;                      ! Start and/or end segment point
+  VECTOR t;                      ! Start and/or end segment tangent
+  VECTOR pout;                   ! Output point
+  VECTOR tpout;                  ! Output tangent point
+  VECTOR liv_n;                   ! Normalized liv vector
+  FLOAT  length;                 ! Length of line
+
+  STRING curcode*20;             ! Curve (GROUP) name:
+                                 ! TANij, MIDij, PFNij, .....
+  REF    group_id;               ! Identity for input curve group
+  STRING group_name*20;          ! Input curve (GROUP) name: LIMij,
+
+  INT       typ;                 ! Type of entity
+  INT       nref;                ! Number of references
+  INT       blnk;                !
+  INT       niv;                 !
+  INT       pen;                 !
+  INT       nm;                  !
+  INT       flag;                ! ????
+
+  REF       gid(3);              !
+  REF       idvec(100);          !
+  STRING    gnam*20;             ! Group name
+
+  STRING p1*80;                  ! Dummy string
+
+  STRING outcurcode*20;          ! Curve (GROUP) name: MOD01VAR07
+
+  INT     DEBUG;                 ! Debug flag
+                                 ! Eq. 0: No   debug
+                                 ! Eq. 1: Full debug
+
+
+  STRING s*1;                    ! For debug printout to screen
+
+
+BEGINMODULE
+
+! 1. Initializations and check of input data
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+
+
+  IF distmax < 0.0 THEN          ! Check distmax
+      EXIT("Upper limit is "+    !
+           "less than zero");    !
+  ENDIF;                         !
+
+  IF distmin > 0.0 THEN          ! Check distmin
+      EXIT("Lower limit is "+    !
+      "greater than zero");      !
+  ENDIF;                         !
+
+
+  IF    dist < distmin THEN      ! Check that distmin <= dist <= distmax
+    EXIT("PLIN: dist= "+         !
+   STR(dist,-3,2)+               !
+   " < distmin");                !
+  ELIF  dist > distmax THEN      !
+    EXIT("PLIN: dist= "+         !
+   STR(dist,-3,2)+               !
+   " > distmax");                !
+  ENDIF;
+
+
+  IF ABS(dist)  > 0.00001 THEN   ! Check vector liv if !dist! > 0
+      IF ABS(liv.x)+ABS(liv.y)+    !
+         ABS(liv.z) < 0.001 THEN  !
+        EXIT("Line vector liv"+   !
+             " not defined");    !
+      ENDIF;                     !
+  ENDIF;                         !
+
+  curve_id :=                    ! One level reference
+  GLOBAL_REF(curve_id,1);        !
+
+!  s:=INPMT("PLIN: curve_id="     ! Debug printout to screen
+!  +rstr(curve_id),"",1);         !
+
+
+  part(#5,CURTOVEC(curve_id,     ! Get number of points and
+            no_points,           ! and points in arrays for
+            psektI,              ! the input curve.
+            tpsektI,             !
+            pvalsektI,           !
+            midpsektI)           !
+            :SAVE=0);            ! Part (call) not saved in GM
+
+!   s:=INPMT("PLIN: no_points= "  ! Debug printout to screen
+!   +str(no_points ,-1,0),"",1);  !
+
+  liv_n := VECN(liv);              ! Normalized line vector
+
+
+  length:=200.0;                 ! For graphical representation
+
+!                        2. Calculate modified point
+!                        ===========================
+
+  p    := psektI(i_point);       ! Current  point   from array
+
+  t    := tpsektI(i_point) -     ! Current  tangent from arrays
+          psektI(i_point);       !
+
+  pout  := p + dist*liv_n;        ! Distance dist along liv (liv_n)
+  tpout := pout + t;              ! Modified (same) tangent
+
+  psektI(i_point)  := pout;      ! Modified point   to   array
+  tpsektI(i_point) := tpout;     ! Modified tangent to   array
+
+
+!                        3. Create modified curve 
+!                        ========================
+
+  BLANK(curve_id);               ! Blank input curve
+
+  PART(#1,creusect               ! Create conic curve with points,
+      (no_points,                ! tangent points and P value
+       psektI,tpsektI,           !
+       pvalsektI));              !
+
+!                        4. Delete and add group
+!                        ========================
+
+  GETHDR(curve_id,typ,nref,blnk, ! Get header for retrieved entity id
+           niv,pen,gid);         !
+
+
+  group_id := gid(1);            ! Group #id to output variable
+  IF group_id <> #0  THEN        !
+    GETGRP(group_id,gnam,nm,     ! Get data for entity GROUP
+        idvec);                  !
+    group_name:= gnam;           !
+!    p1 := RSTR(group_id);        ! Group reference as string
+!    p1 := SUBSTR(p1,2);          ! Remove # from global name ##
+!    group_id := RVAL(p1);        ! Convert from string to reference
+  ELSE                           !
+    group_name:= "Not defined";  !
+  ENDIF;                         !
+
+
+  IF DEBUG=1  THEN               ! Debug
+  s:=INPMT("PLIN: gid(1)= "      !
+  +RSTR(gid(1))                  !
+  +" group_id "                  !
+  +RSTR(group_id)                !
+  +" group_name "                !
+  +  group_name                  !
+  ,"",1);                        !
+!  s:=INPMT("PLIN: gid(2)= "      !
+!  +rstr(gid(2)),"",1);           !
+!  s:=INPMT("PLIN: gid(3)= "      ! 
+!  +rstr(gid(3)),"",1);           !
+  ENDIF;                         !
+
+  IF group_id <> #0  THEN        ! Delete input curve group
+    DEL(group_id);               !
+    GROUP(#6,group_name,         ! New group with the same name as
+             REFC(1,1,1));       ! the input group (=curcode)
+  ENDIF;                         !
+
+
+!                   5. Register the modification
+!                   ============================
+
+      IF   i_point <   10  THEN  !
+        outcurcode:="MOD0"+      ! Curve (GROUP) name MODxx
+        STR(i_point,-1,0);       !
+      ELIF i_point <  100  THEN  !
+        outcurcode:="MOD"+       !
+        STR(i_point,-1,0);       !
+      ELSE                       !
+        outcurcode:="MOD_ERROR"; !
+      ENDIF;                     !
+
+      IF   i_var <   10  THEN    !
+        outcurcode:=outcurcode+  !
+        "VAR0"+                  ! Add VARyy to curve (GROUP) name MODxx
+        STR(i_var,-1,0);         !
+      ELIF i_var <  100  THEN    !
+        outcurcode:=curcode+     !
+       "VAR"+                    !
+        STR(i_var,-1,0);         !
+      ELSE                       !
+        outcurcode:="VAR_ERROR"; !
+      ENDIF;                     !
+
+! N}got {r fortfarande fel med group 1992-11-23
+!Tillf{lligt       GROUP(#6,outcurcode,      ! Curve code for modified curve
+!Tillf{lligt               refc(1,1,1));     !
+
+
+!                   5. Graphical representation
+!                   ============================
+
+  IF graphic = 1 OR              ! Create point
+     graphic = 2 THEN            !
+    poi_free(#4,pout);           ! Output point pout
+  ENDIF;                         !
+
+!   s:=INPMT("PLIN: dist= "       ! Debug printout to screen
+!   +str(dist ,-12,6),"",1);      !
+!   s:=INPMT("PLIN: graphic= "    !
+!   +str(graphic ,-1,0),"",1);    !
+
+
+  IF ABS(dist)  > 0.00001 THEN   !
+    IF graphic = 1 OR            ! Create the line
+       graphic = 2 THEN          !
+      LIN_FREE(#2,p-length*liv_n, !
+      p + length*liv_n);          !
+      poi_free(#3,p);            ! Create input point
+    ENDIF;                       !
+  ENDIF;                         !
+
+ENDMODULE

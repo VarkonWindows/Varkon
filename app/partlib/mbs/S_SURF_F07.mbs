@@ -1,0 +1,483 @@
+
+!******************** S_SURF_F07 *************************************
+!
+!  Calculation of generatrix curves in a Conic Lofting Surface and
+!  printout of data of the surface in the Consurf format.
+!
+!  There are different options for the generation of the sections:
+!
+!  Cross-section (planar, multi-conic) curves can be generated
+!  along the input spine curve at equal arclength distances.
+!
+!  Input:  A part with longitudinal curves marked SPINE, LIM01,
+!          LIM02,.. TAN01, TAN02,.. PFN01, PFN02.. or MID01, MID02,
+!          The adresses and number of conic strips in the surface
+!          is retrieved with function GET_IDCRVS.
+!  Output: A text file surname.DAT in the Consurf F07 (NMG) format
+!
+!  1994-03-08 Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE S_SURF_F07 (
+
+REF    part_id                 >"@t16384 Select Conic Lofting surface";
+
+STRING datum*28 := "79"        >"Local coordinate system name";
+
+STRING tapein*8 := "SF340"     >"NMG TAPEIN name (project) ";
+
+STRING surname*8:="D54302"     >"NMG Part Program Name";
+
+FLOAT  s_start    := 0.0       >"Start parameter for spine (0-1)"     ;
+                                  
+FLOAT  s_delta    := 0.05      >"Delta parameter for spine (>0 & <1)" ;
+
+FLOAT  s_end      := 1.0       >"End   parameter for spine (0-1)"     ;
+
+INT    graphic    := 1         >"@ =2: Display points and c-systems" );
+
+
+
+! Internal variables:
+
+  FILE   dat;                   ! Output (F07) file
+
+  FLOAT   param;                ! Parameter value on a curve
+
+  VECTOR  psektI(26);           ! Points        for generatrix crv
+  VECTOR vpsektI(26);           ! Tangents to curve definition points
+  VECTOR  tpsektI(26);          ! Tangentpoints for generatrix crv
+  VECTOR vtpsektI(26);          ! Tangents to curve tangent def. points
+  FLOAT   pvalsektI(26);        ! P values      for generatrix crv
+  FLOAT  dpvalsektI(26);        ! Curve dP/dS values
+  VECTOR  mpsektI(26);          ! Mid points    for generatrix crv
+
+                                ! For routine GET_IDCRVS
+  INT     no_strips;            ! Number of strips in the surface
+  REF     spine_id;             ! Identity of spine in surface (part)
+  STRING  lim_type(25)*20;      ! Limit   curves types
+  REF     lim_id(25,4);         ! Limit   curves (# id's)
+  STRING  tan_type(25)*20;      ! Tangent curves types
+  REF     tan_id(25,4);         ! Tangent curves (# id's)
+  STRING  pfn_type(25)*20;      ! Pvalue  curve  types
+  REF     pfn_id(25,4);         ! Pvalue  curves (# id's)
+  STRING  mid_type(25)*20;      ! Mid     curve  types
+  REF     mid_id(25,4);         ! Mid     curves (# id's)
+
+  STRING  pfnmid_flag*20;       ! Flag indicating if it is a surface
+                                ! defined with P value functions or
+                                ! mid curves (a mix is presently not
+                                ! allowed ...  )
+
+  INT     blank_flag;           ! Input to BLANK= defined by graphic
+
+  FLOAT   c_param;              ! Current parameter value on spine
+
+  REF     curve_id;             ! Identity of curve
+
+  VECTOR  pc_point;             ! Origin for PCSYi system     
+  VECTOR  c_point;              ! Current point   on the spine
+  VECTOR  c_tang;               ! Current tangent on the spine
+  VECTOR  xaxis;                ! X axis for current intersect plane
+  VECTOR  yaxis;                ! Y axis for current intersect plane
+  VECTOR  pvalpunkt;            ! Current point on P-value curve
+
+  INT     no_sekt;              ! Number of sections
+
+  STRING curname*28;            ! Name of curve
+  VECTOR   pspine;              ! Spine (coreline) point
+  VECTOR  vpspine;              ! Spine (coreline) point
+
+
+  FLOAT   pval_lim(26);         ! P value for limit   curves
+  FLOAT   pval_tan(26);         ! P value for tangent curves
+
+  
+
+
+  INT     isekt;                ! Loop index: Generatrix number
+
+  INT     iseg;                 ! Loop index: Segment in generatrix
+
+  FLOAT   s_cur;                ! Current parameter value on curve
+
+  INT      i;                   ! Loop index: ???
+
+  INT      ix1;                 ! Temporarely used oop index
+
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+!               1. Initializations and check of input data
+!               ------------------------------------------
+
+  FOR ix1:= 1 TO 26 DO          ! Tillf{lliga P v{rden
+    pval_lim(ix1):=0.5;         !  !!!!!!!!!!!!!!!!!!!!!
+    pval_tan(ix1):=0.5;         !
+  ENDFOR;                       !
+
+  OPEN(dat,"r",act_jobdir()     ! Check if file already exists
+  +surname+".DAT");             !
+  IF (IOSTAT(dat) <> 0 ) THEN   !
+!     OK, file does not exist   !
+      ;                         !
+  ELSE                          !
+    EXIT("SURF_F07: " +         !
+      surname+".DAT exists");   !
+  ENDIF;                        !
+
+  OPEN(dat,"w",act_jobdir()+    ! Open output .DAT (F07) file
+        surname+".DAT");        !
+  IF (IOSTAT(dat) <> 0 ) THEN   ! Check (program error)
+    EXIT("SURF_F07: Open "   !
+      +surname+" failed");      !
+  ENDIF;                        !
+
+                                ! Check of arclength parameter values:
+  IF s_delta < 0.0 THEN         ! Step in arclength
+     EXIT("SURF_F07 : Delta "+   !
+    "arclength less than zero");!
+  ENDIF;                        !
+  IF s_start >= s_end THEN      ! Start and end arclength
+     EXIT("SURF_F07 : Start less"!
+    +" than end arclength");    !
+  ENDIF;                        !
+  IF s_start < 0.0 THEN         ! Start arclength
+     EXIT("SURF_F07 : Start "+   !
+    "arclength less than zero");!
+  ENDIF;                        !
+  IF s_end > 1.0 THEN           ! End arclength
+     EXIT("SURF_F07 : End "+     !
+  "arclength greater than one");!
+  ENDIF;                        !
+
+
+  IF graphic = 2 THEN           ! Graphical representation
+    blank_flag:= 0;             !
+  ELSE                          !
+    blank_flag:= 1;             !
+  ENDIF;                        !
+
+
+!              2. Data from the referenced surface (part)
+!              ------------------------------------------
+
+  part(#2,GET_IDCRVS(part_id,   ! Retrieve number of strips and
+            no_strips,spine_id, ! references (# id's) from the 
+            lim_type,lim_id,    ! surface (the input part)
+            tan_type,tan_id,    !
+            pfn_type,pfn_id,    !
+            mid_type,mid_id)    !
+            :SAVE=0);           ! Part (call) not saved in GM
+
+  IF no_strips > 24 THEN        ! Program error: no_strips > 24
+    EXIT("SURF_F07 : no_strips"  !
+       +" > 24 ");              !
+  ENDIF;
+
+!   s:=INPMT("SURF_F07 :"+        ! Debug printout
+!   " pfn_type(  1)= "+          !
+!     pfn_type(  1)   +          !
+!   " mid_type(  1)= "+          !
+!     mid_type(  1)              !
+!       ,"",1);                  !
+
+IF    pfn_type(1)="UNDEFINED"   ! Determine if the surface is
+AND SUBSTR(mid_type(1),1,3)     !
+        ="MID"                  ! defined with mid curves or
+            THEN                ! P-value curves
+      pfnmid_flag:="MID";       !
+ELIF SUBSTR(pfn_type(1),1,3)    !
+        ="PFN"                  !
+AND mid_type(1)="UNDEFINED"     !
+            THEN                !
+      pfnmid_flag:="PFN";       !
+  ELSE                          !
+      pfnmid_flag:="UNDEFINED"; !
+      EXIT("SURF_F07 : Program"+ ! Program error (pfnmid_flag)
+      " error pfnmid_flag");    !
+  ENDIF;                        !
+
+!   s:=INPMT("SURF_F07 :"+        ! Debug printout
+!   " pfnmid_flag= "+            !
+!     pfnmid_flag                !
+!       ,"",1);                  !
+
+  IF   pfnmid_flag="MID" THEN   !
+  FOR ix1:=2 TO no_strips DO    !
+  IF SUBSTR(mid_type(ix1),1,3)  !
+           <>"MID"THEN          !
+      EXIT("SURF_F07 : Mix of P"+! Mid curves and P-value curves
+      "-value and mid crv");    ! are mixed
+  ENDIF;                        !
+  IF pfn_type(ix1)<>"UNDEFINED" !
+                 THEN           !
+      EXIT("SURF_F07 : Mix of P"+!
+      "-value and mid crv");    ! 
+  ENDIF;                        !
+  ENDFOR;                       !
+  ELIF pfnmid_flag="PFN" THEN   !
+  FOR ix1:=2 TO no_strips DO    !
+  IF SUBSTR(pfn_type(ix1),1,3)  !
+          <>"PFN"THEN           !
+      EXIT("SURF_F07 : Mix of P"+! Mid curves and P-value curves
+      "-value and mid crv");    ! are mixed
+  ENDIF;                        !
+  IF mid_type(ix1)<>"UNDEFINED" !
+                 THEN           !
+      EXIT("SURF_F07 : Mix of P"+!
+      "-value and mid crv");    ! 
+  ENDIF;                        !
+  ENDFOR;                       !
+  ELSE                          !
+      EXIT("SURF_F07 : Program"+ ! Program error (pfnmid_flag)
+      " error pfnmid_flag 2");  !
+  ENDIF;                        !
+
+!   s:=INPMT("SURF_F07 :"+        ! Debug printout
+!   " no_strips= "+              !
+!    str(no_strips ,-1,0),"",1); !
+
+
+
+  spine_id :=                   ! Input curve is a one level 
+  global_ref(spine_id,1);       ! reference
+
+!   s:=INPMT("SURF_F07 :"+        ! Debug printout to screen
+!   " spine_id="+                !
+!    rstr(spine_id),"",1);       !
+
+
+
+!                  3. Create generatrix curves
+!                  ---------------------------
+
+
+  no_sekt := 0;                 ! Initialize number of sections
+
+
+  FOR isekt:=1 TO 200 DO        ! Start outer loop: All sections
+
+    no_sekt := no_sekt+1;       ! Number of output sections
+
+    s_cur:= s_start +           ! Current spine arclength
+       s_delta*(no_sekt-1);     !
+
+    IF s_cur > s_end THEN       ! All sections calculated ?
+        GOTO end;               !
+    ENDIF;                      !
+
+    c_param:= INV_ARCL(spine_id,! Curve parameter for the current
+       s_cur*ARCL(spine_id));   ! relative arclength on the spine
+
+    c_point :=                  ! Point and tangent for current 
+      ON(spine_id,c_param);     ! parameter value on the spine
+    c_tang  :=                  !
+      TANG(spine_id,c_param);   !
+
+      pspine :=c_point;         ! Spine (coreline) point
+      vpspine:=c_tang;          ! Spine (coreline) vector
+
+      pc_point:=                ! Origin for ... 
+      VEC(s_cur*ARCL(spine_id), !
+           0.0,0.0);            !
+
+                                ! Intersection plane (coordinate
+                                ! system):
+    IF    c_tang.x >= c_tang.y  ! 
+      AND c_tang.x >= c_tang.z  ! 
+             THEN               ! X axis perpendicular to c_tang 
+      xaxis.y := 1.0;           ! Choose the axis direction, which
+      xaxis.z := 1.0;           ! gives a numerically well conditioned
+      xaxis.x :=                ! calculation. Two of the xaxis 
+     (-c_tang.y-c_tang.z)/      ! components are defined this way and
+       c_tang.x;                ! the third is calculated as the 
+    ELIF  c_tang.y >= c_tang.x  ! the component, which makes the 
+      AND c_tang.y >= c_tang.z  ! dot product between the xaxis and
+             THEN               ! the tangent to zero, i.e that makes
+      xaxis.x := 1.0;           ! the vectors perpendicular.
+      xaxis.z := 1.0;           !
+      xaxis.y :=                !
+     (-c_tang.x-c_tang.z)/      !
+       c_tang.y;                !
+    ELIF  c_tang.z >= c_tang.x  !
+      AND c_tang.z >= c_tang.y  !
+            THEN                !
+      xaxis.x := 1.0;           !
+      xaxis.y := 1.0;           !
+      xaxis.z :=                !
+     (-c_tang.x-c_tang.y)/      !
+       c_tang.z;                !
+    ELSE                        !
+      EXIT("SURF_F07 : Program"+ ! Program error (tangent not OK)
+      " error xaxis");          !
+    ENDIF;                      !
+
+    IF ABS(xaxis*c_tang)        ! Program check of dot product
+       > 0.0001 THEN            ! X axis and tangent
+      EXIT("SURF_F07 : Program "+!
+      "error xaxis*c_tang");    !
+    ENDIF;                      !
+
+
+    yaxis:=VPROD(c_tang,xaxis); ! Y axis perpendicular to c_tang 
+                                ! and X axis (vector product)
+
+    csys_3p(#5,"CSY"+           ! Create (intersection) coordinate
+    str(isekt,-1,0),c_point,    ! system
+    c_point+xaxis,c_point+yaxis !
+    :BLANK=blank_flag);         !
+
+    csys_3p(#50,"PCSY"+         ! Create (intersection) coordinate
+    str(isekt,-1,0),pc_point,   ! system for P-value curve
+    pc_point+VEC(0,1,0),        !
+    pc_point+VEC(0,0,1)         !
+    :BLANK=blank_flag);         !
+
+
+    FOR iseg:=1 TO no_strips+1  ! Start inner loop: Segments in
+              DO                ! the generatrix curve (all 
+                                ! strips in the surface)
+
+                                ! lim_type ska l{ggas till !!!!!!
+      curve_id:=lim_id(iseg,1); ! Reference (adress) to limit curve
+      curve_id :=               ! One level reference
+       global_ref(curve_id,1);  !
+
+!      s:=INPMT("SURF_F07 : "+    ! Debug printout to screen
+!      "limit   curve_id="       !
+!       +rstr(curve_id)          !
+!         ,"",1);                !
+
+      poi_free(#10,intersect    ! Intersect with limit curve
+      (curve_id,REFC(5,1),1)    !
+      :BLANK=blank_flag);       !
+          
+      psektI(iseg):=            ! Intersect point (#10.1) to
+      ON(refc(10,1),0);         ! to array psektI for creusectp
+      param:=INV_ON(curve_id,   ! For sectf07
+        ON(REFC(10,1),0.0));    ! For sectf07
+      vpsektI(iseg):=           ! For sectf07
+        TANG(curve_id,param);   ! For sectf07
+
+!      s:=INPMT("SURF_F07 : "+    ! Debug printout to screen
+!      "limit  id 10,1="         ! (Reference will always be
+!       +rstr(refc(10,1))        !  #10.1 in the loop since the
+!         ,"",1);                !  point is deleted when used).
+      DEL(refc(10,1));          ! Delete intersect point
+
+                                ! tan_type ska l{ggas till !!!!!!
+      curve_id:=tan_id(iseg,1); ! Reference to tangent curve
+      curve_id :=               ! One level reference
+       global_ref(curve_id,1);  !
+
+      poi_free(#11,intersect    ! Intersect with tangent curve
+      (curve_id,REFC(5,1),1)    !
+      :BLANK=blank_flag);       !
+
+!Q      param:=-0.123456789;      ! !!!  Tillf{lligt !!!!!
+      tpsektI(iseg):=           ! Intersect point (#11.1) to
+      ON(refc(11,1),0);         ! to array tpsektI for creusectp
+      param:=INV_ON(curve_id,   ! For sectf07
+        ON(REFC(11,1),0.0));    ! For sectf07
+      vtpsektI(iseg):=          ! For sectf07
+        TANG(curve_id,param);   ! For sectf07
+
+!   s:=INPMT("SURF_F07 :"+       ! Debug printout
+!   " param= "+              !
+!    str(param ,-10,6) +
+!    " t=" +
+!   str(vtpsektI(iseg).x,-10,6)+
+!   str(vtpsektI(iseg).y,-10,6)+
+!   str(vtpsektI(iseg).z,-10,6)
+!    +rstr(curve_id)
+!    ,"",1); !
+
+
+      DEL(refc(11,1));          ! Delete intersect point
+          
+
+      IF iseg < no_strips+1 THEN ! 
+                                 ! 
+       IF pfnmid_flag="MID" THEN !
+        curve_id:=mid_id(iseg,1);! Reference to mid curve
+       ELSE                      !         or
+        curve_id:=pfn_id(iseg,1);! Reference to p function curve
+       ENDIF;                    !
+        curve_id :=              ! One level reference
+        global_ref(curve_id,1);  !
+                                 !
+        poi_free(#12,intersect   ! Intersect with P value function
+        (curve_id,REFC(50,1)     !
+        ,1):BLANK=blank_flag);   !
+        pvalpunkt:=              ! Intersect point (#12.1) to
+         ON(refc(12,1),0);       ! vector pvalpunkt
+         DEL(refc(12,1));        ! Delete intersect point
+                                 !
+       IF pfnmid_flag="MID" THEN !
+        mpsektI(iseg):=pvalpunkt;! pvalpunkt to array for creusectmp
+       ELSE                      !         or
+        pvalsektI(iseg):=        ! pvalpunkt y component to 
+        pvalpunkt.y/10.0;        ! array for creusectp
+       ENDIF;                    !
+                                 !
+      ELSE                       !
+        ;                        !
+      ENDIF;                     !
+          
+
+    ENDFOR;                      ! End inner loop: All strips in surface
+
+
+      IF pfnmid_flag="MID" THEN ! Create generatrix curve 
+         ;                      !
+!      PART(#6,creusectmp        ! with creusectmp
+!      (REFC(5,1),no_strips+1    !
+!      ,psektI,tpsektI,          !
+!       mpsektI));               !
+      ELSE                      !       or
+      PART(#1,creusectp         ! with creusectp
+      (REFC(5,1),no_strips+1    !
+      ,psektI,tpsektI,          !
+       pvalsektI));             !
+
+       curname:="U/"+           ! F|r sectf07
+         STR(no_sekt ,-1,0);    !
+       PART(#7,sectf07(dat,     !
+        curname,datum,
+        no_strips+1,
+        pspine,vpspine,
+        psektI,vpsektI,
+        tpsektI,vtpsektI,
+        pval_lim,pval_tan,
+        pvalsektI,dpvalsektI));
+      ENDIF;
+
+!   s:=INPMT("SURF_F07 :"+        ! Debug printout to screen
+!   " gener_id="+                !
+!    RSTR(REFC(1,isekt,1)),"",1);!
+
+      DEL(REFC(5,1));           ! Delete coordinate system
+      DEL(REFC(50,1));          ! Delete coordinate system
+
+  ENDFOR;                       ! End outer loop: Sections
+
+end:                            ! Label: All sections are created
+  ;                             ! Dummy statement necessary
+
+!  s:=inpmt("SURF_F07 :  No sections= "+str(no_sekt-1 ,-1,0),"",1);
+!                          Exit
+!                          ====
+
+
+  CLOSE(dat);                   ! Close F07 file
+
+
+!  OS("VARCOMP "+ act_jobdir()+     ! To NMG part program library
+!  "*"+version+"*.MBS");            ! 
+
+
+ENDMODULE

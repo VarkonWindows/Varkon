@@ -1,0 +1,252 @@
+!********************* rdcons2v1 ***************************************
+!
+!  Funktionen fyller i data i f{lten u_lines och v_lines  
+!  som styr vilka U och V kurvor som ska skapas och vilken
+!  grafisk representation kurvorna ska ha:
+!  =+1 : Heldragen/svart linje 
+!  =+2 : Streckad/gr|n   linje
+!  =-1 : Odefinierat          
+!
+!  1992-11-13   Gunnar Liden    
+!  1992-11-18   grafik = 3   Ronny Gyllensten
+!  1993-01-08   grafik=14 inf|rt  Gunnar Liden
+!
+!**********************************************************************
+
+BASIC GEOMETRY MODULE rdcons2v1(
+
+
+    INT    nu;                     ! Antal U linjer i ytan
+    INT    nv;                     ! Antal V linjer i ytan
+    INT    grafik;                 ! 1.Alla 2.CATIA 3.Kontur 4.Delta 5.Fil
+    FLOAT  ustart;                 ! Ustart
+    FLOAT  udelta;                 ! Udelta
+    FLOAT  uslut ;                 ! Uslut
+    FLOAT  vstart;                 ! Vstart
+    FLOAT  vdelta;                 ! Vdelta
+    FLOAT  vslut ;                 ! Vslut
+    INT    case;                   ! Case
+    STRING uvfil*80;               ! uvfil
+VAR INT    u_lines(200,2);         ! U kurvor som ska skapas
+                                   ! Eq. -1 <==> odefinierad
+VAR INT    v_lines(200,2);         ! V kurvor som ska skapas
+                                   ! Eq. -1 <==> odefinierad
+VAR INT    u_start;                ! Start U v{rde f|r V kurva
+VAR INT    u_slut ;                ! Slut  U v{rde f|r V kurva
+VAR INT    v_start;                ! Start V v{rde f|r U kurva
+VAR INT    v_slut);                ! Slut  V v{rde f|r U kurva
+
+! Interna variabler
+
+  INT     DEBUG;                   ! Debug variabel
+                                   ! Eq. 0: Inga test utskrifter
+                                   ! Eq. 1: Max. test utskrifter
+
+  INT     u_i;                     ! Heltals slask variabel
+  INT     v_i;                     ! Heltals slask variabel
+  INT     ix1;                     ! Tempor{r loop r{knare
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  DEBUG := 1;                      ! [ndra DEBUG till noll eller ett
+
+
+!        2. Ta reda p} vilka U och V linjer som ska skapas  
+!        =================================================
+
+!                         Fall: grafik=1
+!                         --------------
+
+  IF     grafik = 1 THEN           ! Alla U och V linjer
+    FOR ix1 := 1 TO 200 DO         !
+      IF ix1 <= nu    THEN         !
+        u_lines(ix1,1):= ix1;      ! Iso-param som ska ritas
+        u_lines(ix1,2):= +1;       ! Heldragen/svart kurva
+      ELSE                         !
+        u_lines(ix1,1):= -1;       ! Iso-param ska ej ritas
+        u_lines(ix1,2):= -1;       !
+      ENDIF;                       !
+    ENDFOR;                        !
+    FOR ix1 := 1 TO 200 DO         !
+      IF ix1 <= nv    THEN         !
+        v_lines(ix1,1):= ix1;      ! Iso-param som ska ritas
+        v_lines(ix1,2):= +1;       ! Heldragen/svart kurva
+      ELSE                         !
+        v_lines(ix1,1):= -1;       ! Iso-param ska ej ritas
+        v_lines(ix1,2):= -1;       !
+      ENDIF;                       !
+    ENDFOR;                        !
+
+!                         Fall: grafik=2
+!                         --------------
+
+  ELIF   grafik = 2 THEN           ! Ytter- och mitt-kurvor
+    FOR ix1 := 1 TO 200 DO         !
+      u_lines(ix1,1):= -1;         !
+      u_lines(ix1,2):= -1;         !
+      v_lines(ix1,1):= -1;         !
+      v_lines(ix1,2):= -1;         !
+    ENDFOR;                        !
+    u_lines(1,1):=  1;             ! Iso-param som ska ritas
+    u_lines(1,2):= +1;             ! Heldragen/svart kurva
+    v_lines(1,1):=  1;             ! Iso-param som ska ritas
+    v_lines(1,2):= +1;             ! Heldragen/svart kurva
+    IF nu >= 3 THEN                !
+      u_lines(2,1):=TRUNC((nu+1)/2);   ! Iso-param som ska ritas
+      u_lines(2,2):= +2;           ! Streckad/gr|n kurva (t.ex)
+      u_lines(3,1):= nu;           ! Iso-param som ska ritas
+      u_lines(3,2):= +1;           ! Heldragen/svart kurva
+    ELSE                           !
+      u_lines(2,1):= nu;           ! Iso-param som ska ritas
+      u_lines(2,2):= +1;           ! Heldragen/svart kurva
+    ENDIF;                         !
+    IF nv >= 3 THEN                !
+      v_lines(2,1):=TRUNC((nv+1)/2);   ! Iso-param som ska ritas
+      v_lines(2,2):= +2;           ! Streckad/gr|n kurva (t.ex)
+      v_lines(3,1):= nv;           ! Iso-param som ska ritas
+      v_lines(3,2):= +1;           ! Heldragen/svart kurva
+    ELSE                           !
+      v_lines(2,1):= nv;           ! Iso-param som ska ritas
+      v_lines(2,2):= +1;           ! Heldragen/svart kurva
+    ENDIF;                         !
+
+!                         Fall: grafik=3
+!                         --------------
+
+  ELIF   grafik = 3 THEN           ! Ytter- och mitt-kurvor
+    FOR ix1 := 1 TO 200 DO         !
+      u_lines(ix1,1):= -1;         !
+      u_lines(ix1,2):= -1;         !
+      v_lines(ix1,1):= -1;         !
+      v_lines(ix1,2):= -1;         !
+    ENDFOR;                        !
+    u_lines(1,1):=  1;             ! Iso-param som ska ritas
+    u_lines(1,2):= +1;             ! Heldragen/svart kurva
+    v_lines(1,1):=  1;             ! Iso-param som ska ritas
+    v_lines(1,2):= +1;             ! Heldragen/svart kurva
+    u_lines(2,1):= nu;             ! Iso-param som ska ritas
+    u_lines(2,2):= +1;             ! Heldragen/svart kurva
+    v_lines(2,1):= nv;             ! Iso-param som ska ritas
+    v_lines(2,2):= +1;             ! Heldragen/svart kurva
+
+!                         Fall: grafik=4 eller =14
+!                         ------------------------
+
+  ELIF grafik=4 OR grafik=14 THEN  ! Vilka U och V linjer som
+    IF ROUND(ustart) >= 1. AND     ! ska skapas {r best{mt av
+       ROUND(ustart) <= nu    THEN ! ustart, udelta, uslut,
+      ;                            ! vstart, vdelta, vslut.
+    ELSE                           !
+      EXIT("ustart ej OK !");      ! 
+    ENDIF;                         !
+    IF ROUND(uslut)  >= 1. AND     !
+       ROUND(uslut)  <= nu    THEN !
+      ;                            !
+    ELSE                           !
+      EXIT("uslut  ej OK !");      ! 
+    ENDIF;                         !
+    IF ROUND(vstart) >= 1. AND     !
+       ROUND(vstart) <= nv    THEN !
+      ;                            !
+    ELSE                           !
+      EXIT("vstart ej OK !");      ! 
+    ENDIF;                         !
+    IF ROUND(vslut)  >= 1. AND     !
+       ROUND(vslut)  <= nv    THEN !
+      ;                            !
+    ELSE                           !
+      EXIT("vslut  ej OK !");      ! 
+    ENDIF;                         !
+    FOR ix1:=1 TO 200 DO           !
+      u_i:=ROUND(ustart)+          !
+           ROUND(udelta)*(ix1-1);  !
+      IF u_i <= uslut THEN         !
+        u_lines(ix1,1):= u_i;      ! Iso-param som ska skapas
+        u_lines(ix1,2):=  +1;      ! Heldragen/svart kurva   
+        IF grafik=4 THEN           !
+          u_lines(ix1,2):=  +1;    ! Heldragen/svart kurva
+        ELSE                       !
+          u_lines(ix1,2):=  +2;    ! Streckad/gr|n   kurva
+        ENDIF;                     !
+      ELSE                         !
+        u_lines(ix1,1):= -1;       ! Iso-param ska ej skapas
+        u_lines(ix1,2):= -1;       ! 
+      ENDIF;                       !
+      v_i:=ROUND(vstart)+          !
+           ROUND(vdelta)*(ix1-1);  !
+      IF v_i <= vslut THEN         !
+        v_lines(ix1,1):= v_i;      ! Iso-param som ska skapas
+        IF grafik=4 THEN           !
+          v_lines(ix1,2):=  +1;    ! Heldragen/svart kurva
+        ELSE                       !
+          v_lines(ix1,2):=  +2;    ! Streckad/gr|n   kurva
+        ENDIF;                     !
+      ELSE                         !
+        v_lines(ix1,1):= -1;       ! Iso-param ska ej skapas
+        v_lines(ix1,2):= -1;       ! 
+      ENDIF;                       !
+    ENDFOR;                        !
+
+!                         Fall: grafik=5
+!                         --------------
+
+  ELIF   grafik = 5 THEN           ! Vilka U och V linjer som
+    IF uvfil="" OR uvfil=" " THEN  ! ska skapas {r definierat
+      EXIT("uvfil ej definierad"); ! i en fil.
+    ENDIF;                         !
+    EXIT("uvfil ej programmerat"); ! 
+
+
+!                         Fall: Ok{nt ! 
+!                         --------------
+
+  ELSE                             !
+    EXIT("Ok{nt U och V fall ");   !
+  ENDIF;
+
+
+!                  3. Best{m gr{nser f|r U kurvorna
+!                  ================================
+
+  v_start:= -1;                    !
+  v_slut := -1;                    !
+  FOR ix1:=1 TO 200 DO             ! 
+    IF v_lines(ix1,1)<> -1 AND     !
+       v_start = -1          THEN  !
+      v_start:= v_lines(ix1,1);    !
+      v_slut := v_lines(ix1,1);    !
+    ENDIF;                         !
+    IF v_lines(ix1,1) = -1 AND     !
+       v_start <> -1         THEN  !
+      GOTO vend;                   !
+    ENDIF;                         !
+    v_slut := v_lines(ix1,1);      !
+  ENDFOR;                          !
+
+vend:                              ! Label: Slut leta v gr{nser
+
+!                  4. Best{m gr{nser f|r V kurvorna
+!                  ================================
+
+  u_start:= -1;                    !
+  u_slut := -1;                    !
+  FOR ix1:=1 TO 200 DO             ! 
+    IF u_lines(ix1,1)<> -1 AND     !
+       u_start = -1          THEN  !
+      u_start:= u_lines(ix1,1);    !
+      u_slut := u_lines(ix1,1);    !
+    ENDIF;                         !
+    IF u_lines(ix1,1) = -1 AND     !
+       u_start <> -1         THEN  !
+      GOTO uend;                   !
+    ENDIF;                         !
+    u_slut := u_lines(ix1,1);      !
+  ENDFOR;                          !
+
+uend:                              ! Label: Slut leta v gr{nser
+;
+
+ENDMODULE

@@ -1,0 +1,149 @@
+!********************* rdcons3v1 **************************************
+!
+! Funktionen l{ser in en U kurva fr}n fil med Consurf    
+! ytdata (en F07 fil).
+!
+! Observera att filen |ppas och st{ngs av anropande rutin
+! Anropande rutin ska ocks} st{lla pekaren r{tt i filen,
+! dvs denna rutin f|ruts{tter att pekaren st}r p} raden
+! LINE  Un/Ytnamn d{r n {r den U kurva som just ska l{sas.
+!
+!  1992-11-13  Gunnar Liden
+!
+!
+!***********************************************************************
+
+BASIC  GEOMETRY MODULE rdcons3v1 (
+
+VAR FILE   f;                      ! Pekare till ytdata (F07) fil
+    INT    nv;                     ! Antal V linjer i ytan       
+    INT    v_start;                ! Start V punkt i U kurvan
+    INT    v_slut;                 ! Slut  V punkt i U kurvan
+VAR INT    np;                     ! Antal punkter    i  kurvan  
+VAR VECTOR pcurve(200);            ! Punkter         f|r kurvan
+VAR VECTOR tcurve(200);            ! Tangent punkter f|r kurvan
+VAR FLOAT  pvalue(200));           ! P v{rden        f|r kurvan
+
+! Interna variabler:
+
+INT    i_v;                        ! Loop r{knare = V kurva (punkt)
+
+FLOAT  x,y,z;                      ! Koordinater f|r punkt
+
+FLOAT  pp,pt,pc,dpds;              ! P-v{rden f|r ett Consurf segment
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa hel
+                                   ! rad eller radslut med INLIN
+
+INT    npoints;                    ! F|r programkontroll 
+
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  np := 0;                         ! Startv{rde antal utdata punkter
+
+  IF nv > 200       THEN           ! Programmeringskontroll
+    EXIT("rdcons3v1: Fel 1");      !
+  ENDIF;                           !
+                                   !
+
+!        2. L{s data f|r U kurva (en Consurf Section Line)   
+!        ==================================================
+
+
+!                L{s data f|r en "Consurf Section Line"
+!                --------------------------------------
+
+  rad:=INLIN(f);                   ! L{s hela raden LINE  S1/Usektnr
+                                   !
+  IF IOSTAT(f) <> 0 THEN           ! Programmeringskontroll
+    EXIT("rdcons3v1: Fel 2");      !
+  ENDIF;                           !
+                                   !
+  rad    :=INSTR(f,10);            ! L{s SECTION till slask variabel
+  npoints:=ININT(f);               ! Antal punkter i U kurvan    
+  rad    :=INLIN(f);               ! L{s radslut till slask variabel
+                                   !
+  IF  npoints <> nv THEN           ! Programmeringskontroll
+    EXIT("rdcons3v1: Fel 3");      !
+  ENDIF;                           !
+                                   !
+                                   !
+  rad:=INLIN(f);                   ! Hoppa |ver raden:
+                                   ! NORMAL  x y z  tx ty tz
+
+!              Loop f|r alla punkter i sektionen 
+!              ---------------------------------
+
+  FOR i_v:=1 TO nv      DO         ! Det finns 3*nv rader data
+                                   ! f|r varje U sektion
+
+  IF i_v >= v_start AND            ! L{s f|rbi rader som ej
+     i_v <= v_slut        THEN     ! ligger mellan v_start
+    ;                              ! och u_start
+  ELSE                             !
+    rad:=INLIN(f);                 ! L{s rad 1 till slaskvariabel
+    rad:=INLIN(f);                 ! L{s rad 2 till slaskvariabel
+    rad:=INLIN(f);                 ! L{s rad 3 till slaskvariabel
+    GOTO nsegm;                    !
+  ENDIF;                           !
+
+  np := np + 1;                    ! Ytterligare en utdata punkt
+
+!                 Rad 1: i_v.1  x  y  z  tx  ty  tz
+!                 .................................
+
+    rad:=INSTR(f,10);              ! Hoppa |ver 10 positioner (i_v.1)
+
+    x  :=INFLT(f);                 ! Punkt p} V kurva
+    y  :=INFLT(f);                 !
+    z  :=INFLT(f);                 !
+
+    rad:=INLIN(f);                 ! L{s resten av raden (tx,ty,tz)
+                                   ! till slaskvariabel
+
+    pcurve(np):= vec(x,y,z);       ! Punkt i kurva
+
+!                 Rad 2: i_v.2  x  y  z  tx  ty  tz
+!                 .................................
+
+    rad:=INSTR(f,10);              ! Hoppa |ver 10 positioner (i_v.2)
+
+    x  :=INFLT(f);                 ! Punkt p} tangent definitions kurva
+    y  :=INFLT(f);                 !
+    z  :=INFLT(f);                 !
+
+    rad:=INLIN(f);                 ! L{s resten av raden (tx,ty,tz)
+                                   ! till slaskvariabel
+
+    tcurve(np):= vec(x,y,z);       ! Tangent punkt i kurva
+
+!        Rad 3: i_v.3    PVALUES  pp  pt  pc  dpds
+!        .........................................
+
+    IF i_v < npoints THEN          ! ( Rad 3 enligt ovan )
+      rad :=INSTR(f,17);           ! L{s f|rbi i_v.3 PVALUES
+      pp  :=INFLT(f);              ! P-v{rde f|r V kurva
+      pt  :=INFLT(f);              ! P-v{rde f|r tangent def. kurva
+      pc  :=INFLT(f);              ! P-v{rde f|r U kurvsegment
+      dpds:=INFLT(f);              ! P-v{rde derivata  
+      rad :=INLIN(f);              ! L{s radslut till slaskvariabel
+    ELSE                           ! ( Rad 3: i_v.3 PVALUES pp  pt )
+      rad :=INSTR(f,17);           ! L{s f|rbi 17 positioner
+      pp  :=INFLT(f);              ! P-v{rde f|r V kurva       
+      pt  :=INFLT(f);              ! P v{rde f|r tangent def. kurva
+      rad :=INLIN(f);              ! L{s radslut till slaskvariabel
+    ENDIF;
+
+    pvalue(np):= pc;               ! P-v{rde f|r sektion till array
+
+nsegm:                             ! F|r |verhoppning av punkt
+;
+
+  ENDFOR;
+
+
+ENDMODULE

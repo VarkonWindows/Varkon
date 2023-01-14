@@ -1,0 +1,86 @@
+!******************************************************************
+! +++ 
+!
+! Create transformation with one local system as input
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-05-11 Gunnar Liden
+!
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE tra_1csyv0(
+    REF    csys_id;              ! Local coordinate system 
+    INT    case;                 ! Transformation case:            
+                                 ! Eq. 1: From Local to Basic      
+                                 ! Eq. 2: From Basic to Local      
+VAR REF    tra_id);              ! Transformation (global reference)
+
+!sdesce Create transformation with one local system as input
+!sdescs Skapa transformation med ett lokalt system som indata
+
+
+! Internal variables
+
+  VECTOR p1_b;                    ! Origin  Basic system
+  VECTOR p2_b;                    ! X point Basic system
+  VECTOR p3_b;                    ! Y point Basic system
+  VECTOR p1_l;                    ! Origin  Local system
+  VECTOR p2_l;                    ! X point Local system
+  VECTOR p3_l;                    ! Y point Local system
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Initialize output data
+  tra_id := #0;
+
+! +++
+! 2. Create three points in Basic and three points in Local system
+! ---
+
+  p1_b :=  VEC(0,0,0);
+  p2_b :=  VEC(1,0,0);
+  p3_b :=  VEC(0,1,0);
+
+  MODE_LOCAL(csys_id);
+  POI_FREE(#2, VEC(0,0,0):BLANK=1);
+  POI_FREE(#3, VEC(1,0,0):BLANK=1);
+  POI_FREE(#4, VEC(0,1,0):BLANK=1);
+  MODE_GLOBAL();
+  
+  p1_l := ON(GLOBAL_REF(#2));
+  p2_l := ON(GLOBAL_REF(#3));
+  p3_l := ON(GLOBAL_REF(#4));
+
+
+! +++
+! 3. Calculate transformation matrix
+! ---
+
+  IF   case = 1 THEN
+    TFORM_COMP(#1, p1_l, p2_l-p1_l, p3_l-p1_l, 
+                   p1_b, p2_b-p1_b, p3_b-p1_b );
+    tra_id := GLOBAL_REF(#1);
+  ELIF case = 2 THEN
+    TFORM_COMP(#5, p1_b, p2_b-p1_b, p3_b-p1_b, 
+                   p1_l, p2_l-p1_l, p3_l-p1_l );
+    tra_id := GLOBAL_REF(#5);
+  ELSE
+    EXIT("tra_1csysv0 case not 1 or 2");
+  ENDIF;
+
+
+ENDMODULE
+

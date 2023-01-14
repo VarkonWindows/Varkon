@@ -1,0 +1,206 @@
+! ******************* putmbsv0  ******************************
+! +++ 
+!
+! Put MBS source code on project source code directory
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-04-10  Gunnar Liden
+!
+! *************************************************************
+
+!sdesce Put MBS source code on project source code directory
+!sdescs L{gg MBS kod p} projekt k{llkods katalog 
+
+
+MACRO  MODULE putmbsv0  (
+STRING  fname*10 := "cresurf"   >"Name of module");
+
+
+! Internal variables
+
+  STRING   o_s*4;               ! Operating system VAX/UNIX 
+  STRING   mbsdir*50;           ! Directory with fname.MBS
+  STRING   docdir*50;           ! Directory for  fname.DOC
+
+  STRING   infile*132;          ! Full name of input  file
+  STRING   bakfile*132;         ! Full name of backup file
+  STRING   jobfile*132;         ! Full name of job    file
+  STRING   logfile*132;         ! Full name of log    file
+  STRING   mbofile*132;         ! Full name of MBO    file
+  STRING   delfile*132;         ! Full name of file for deletion 
+
+  INT      status;              ! For TEST_FILE
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+
+  FILE     log;                 ! Log file
+
+  INT      l_str;               ! Length of string mbsdir
+
+  STRING   f_ext*5;             ! File extension (MBS, c, h, ERM, ..)
+  STRING   lang*1;              ! Language       (e or s)
+
+  INT      DEBUG;               ! Debug flag
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! --
+
+! +++
+! 1. Check that MBS file is on the active job directory
+! ---
+
+  jobfile := ACT_JOBDIR()+fname+".MBS";
+
+  status := TEST_FILE(jobfile,"X");
+  IF status = 0 THEN
+    EXIT("putmbsv0 "+fname+".MBS is not on your job directory");
+  ENDIF;
+
+
+! +++
+! 2. Retrieve directory with MBS code and directory for DOC file
+! ---
+
+   o_s := "UNIX";              !
+   DEBUG := 0;                 !
+   PART(#1,m_extdir(fname,     ! Retrieve name of directory
+     mbsdir, docdir,           ! with fname.MBS and
+     o_s, DEBUG));             ! directory for fname.DOC
+
+   IF mbsdir="Undefined" THEN  !
+     EXIT("putmbsv0: "     +   !
+          "Unable to find "+   !
+        fname+ ".MBS");        !
+   ENDIF;                      !
+
+   infile:= mbsdir+fname+      ! Full file name for MBS code
+            ".MBS";            !
+
+! +++
+! 3. Check that file has been checked out 
+! ---
+
+  logfile := mbsdir+"BAK/"+fname+".OUT";
+  status := TEST_FILE(logfile,"X");
+  IF status = 0 THEN
+    EXIT("putmbsv0 "+fname+" has not been checked out");
+  ENDIF;
+
+! +++
+! 4. Backup file to BAK directory
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  bakfile := mbsdir+"BAK/"+fname+"."+
+  STR(year,-1,0);
+  IF month < 10 THEN
+    bakfile := bakfile + "0"  +STR(month, -1,0);
+  ELSE
+    bakfile := bakfile        +STR(month, -1,0);
+  ENDIF;
+  IF day   < 10 THEN
+    bakfile := bakfile + "0"  +STR(day  , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    bakfile := bakfile + "0"  +STR(hour , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    bakfile := bakfile + "0"  +STR(minute,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    bakfile := bakfile + "0"  +STR(second,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(second,-1,0);
+  ENDIF;
+
+  bakfile := bakfile + "_put";
+
+  COPY_FILE(infile,bakfile);
+
+
+! +++
+! 6. Compile module
+! ---
+
+  OS("varcomp "+fname);
+  delfile := ACT_JOBDIR()+fname+".MBO";
+  status := TEST_FILE(delfile,"X");
+  IF status <> 1 THEN
+    EXIT("putmbsv0 Compilation of "+fname+" failed");
+  ENDIF;
+
+  l_str := LENGTH(mbsdir);
+  mbofile := SUBSTR(mbsdir,1,l_str-5)+"lib/"+fname+".MBO";
+!Q  s:= INPMT(mbofile,"",1);
+
+  MOVE_FILE(delfile,mbofile);
+
+! +++
+! 7. Move file from the active job directory to source code directory
+! ---
+
+  OS("7to8 "+jobfile);
+
+  MOVE_FILE(jobfile,infile);
+
+! +++
+! 4. Delete .OUT file
+! ---
+
+  DELETE_FILE(logfile);
+
+! +++
+! 8. Delete MBO, JOB and RES files on active job directory
+! ---
+
+  delfile := ACT_JOBDIR()+fname+".JOB";
+  status := TEST_FILE(delfile,"X");
+  IF status = 1 THEN
+    DELETE_FILE(delfile);
+  ENDIF;
+  delfile := ACT_JOBDIR()+fname+".RES";
+  status := TEST_FILE(delfile,"X");
+  IF status = 1 THEN
+    DELETE_FILE(delfile);
+  ENDIF;
+
+! +++
+! 9. Create new .DOC file and CONTENTS
+! ---
+
+  f_ext := "MBS";
+  lang  := "s";
+
+  PART(#2, m_contents ( mbsdir,
+           f_ext, lang, o_s ));
+
+  LST_INI("Message from module putmbsv0 ");
+  LST_LIN("Conversion from seven bits ASCII to eight bits ASCII (script 7to8)");
+  LST_LIN("New contents file created on "+mbsdir);
+  LST_LIN("Creation of .DOC for directory "+docdir+" not yet implemented");
+  LST_EXI();
+
+ENDMODULE

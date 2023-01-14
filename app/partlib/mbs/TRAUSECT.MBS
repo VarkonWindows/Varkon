@@ -1,0 +1,178 @@
+!******************** trausect ***********************************
+! +++
+! Transformera indata till en k{gelsnittskurva
+!
+! In: A         Transformationsmatris
+!     B         Translationsvektor
+!     RMTOL     Tolerans d} punkt och tangent ska tas bort
+!               (RMTOL <= 0 ==> inga punkter tas bort )
+! In och ut:
+!     nopoints  Antal punkter
+!     psektI    Punkter p} k{gelsnittskurvan
+!     tpsektI   Tangentpunkter f|r k{gelsnittskurvan
+!     pvalsektI P v{rden
+!
+! 1991-12-06 Gunnar Liden
+! 1993-01-20   Declaration of curve point arrays changed
+!              from (25) to (26) (max number of segments
+!              is 25 in VARKON)                           Gunnar Liden
+! 1995-03-09 Documentation                                Gunnar Liden
+! ---
+!******************************************************************
+!sdescs Transformera indata till en k{gelsnittskurva
+!sdesce Transformate input to a composite conic curve (CUR_CONIC data)
+
+basic geometry module trausect(
+
+VAR FLOAT  A(9) ;
+VAR FLOAT  B(3) ;
+FLOAT      RMTOL;
+
+
+VAR INT    nopoints;
+
+VAR VECTOR psektI(26) ;
+
+VAR VECTOR tpsektI(26) ;
+
+VAR FLOAT  pvalsektI(26));
+
+
+VECTOR  pout(26);               ! Utdata punkter
+VECTOR  tpout(26);              ! Utdata tangentpunkter
+FLOAT   pvalout(26);            ! Utdata P v{rden
+INT     no_out;                 ! Antal utdata punkter
+INT     i;                      ! Loop variable
+
+
+FILE   debug;                   ! Pekare till debug fil
+STRING fnam*9;                  ! Namn p} debug fil 
+
+
+
+beginmodule
+
+! 0. Debug till fil debug.DAT
+
+!  fnam:="debug.DAT";
+!  OPEN(debug,"A",act_jobdir()+fnam);
+
+!  OUTSTR(debug,"trausect:  Antal punkter in =  ");
+!  OUTINT(debug, nopoints,10);
+!  OUTLIN(debug);
+!  OUTLIN(debug);
+
+
+! Transformera 
+! ===================
+
+! Initialisera 
+
+  no_out:= 0;
+
+!JK  for i:=1 to 25 do
+!JK
+!JK      pout(i)    := vec(0.0,0.0,0.0);
+!JK      tpout(i)   := vec(0.0,0.0,0.0);
+!JK      pvalout(i) := 0.0;
+!JK
+!JK  endfor; ! Slut p} loop i=1,2,....,25
+
+  for i:=1 to nopoints do
+
+      pout(i).x:= A(1)*psektI(i).x+A(2)*psektI(i).y+A(3)*psektI(i).z+B(1);
+      pout(i).y:= A(4)*psektI(i).x+A(5)*psektI(i).y+A(6)*psektI(i).z+B(2);
+      pout(i).z:= A(7)*psektI(i).x+A(8)*psektI(i).y+A(9)*psektI(i).z+B(3);
+
+      if i = 1 then 
+          goto tangent;
+      endif;
+
+      if  RMTOL > 0.0 then
+!JK          if SQRT( (pout(no_out).x-pout(i).x)**2 +
+!JK                   (pout(no_out).y-pout(i).y)**2 +
+!JK                   (pout(no_out).z-pout(i).z)**2 )  < RMTOL then 
+              if vecl(pout(no_out)-pout(i)) < RMTOL then   !JK
+              if i = nopoints then
+                  ! Sista punkten m}ste alltid vara med
+                  no_out:= no_out - 1;
+                  goto  tangent;
+              endif;
+              goto skip;
+          endif;
+      endif;
+
+tangent:
+
+!     Another output point
+      no_out         := no_out + 1;
+
+!     Note that i >= n_out 
+      pout(no_out)   := pout(i);
+
+      tpout(no_out).x:= A(1)*tpsektI(i).x+A(2)*tpsektI(i).y+A(3)*tpsektI(i).z
+                                      + B(1);
+      tpout(no_out).y:= A(4)*tpsektI(i).x+A(5)*tpsektI(i).y+A(6)*tpsektI(i).z
+                                      + B(2);
+      tpout(no_out).z:= A(7)*tpsektI(i).x+A(8)*tpsektI(i).y+A(9)*tpsektI(i).z
+                                      + B(3);
+
+      pvalout(no_out):= pvalsektI(i);
+
+!      OUTSTR(debug,"i     =  ");
+!      OUTINT(debug, i    ,5);
+!      OUTSTR(debug," P  in=");
+!      OUTFLT(debug, psektI(i).x,12,6);
+!      OUTFLT(debug, psektI(i).y,12,6);
+!      OUTFLT(debug, psektI(i).z,12,6);
+!      OUTLIN(debug);
+!      OUTSTR(debug,"i     =  ");
+!      OUTINT(debug, i    ,5);
+!      OUTSTR(debug," PT in=");
+!      OUTFLT(debug, tpsektI(i).x,12,6);
+!      OUTFLT(debug, tpsektI(i).y,12,6);
+!      OUTFLT(debug, tpsektI(i).z,12,6);
+!      OUTLIN(debug);
+!      OUTSTR(debug,"no_out=  ");
+!      OUTINT(debug, no_out,5);
+!      OUTSTR(debug," P  ut=");
+!      OUTFLT(debug, pout(no_out).x,12,6);
+!      OUTFLT(debug, pout(no_out).y,12,6);
+!      OUTFLT(debug, pout(no_out).z,12,6);
+!      OUTLIN(debug);
+!      OUTSTR(debug,"no_out=  ");
+!      OUTINT(debug, no_out,5);
+!      OUTSTR(debug," PT ut=");
+!      OUTFLT(debug, tpout(no_out).x,12,6);
+!      OUTFLT(debug, tpout(no_out).y,12,6);
+!      OUTFLT(debug, tpout(no_out).z,12,6);
+!      OUTLIN(debug);
+
+
+skip:
+
+  ;
+
+  endfor; ! Slut p} loop i=1,2,....,nopoints
+
+
+  nopoints := no_out;
+
+  for i:=1 to nopoints do
+
+      psektI(i)    :=  pout(i);
+      tpsektI(i)   :=  tpout(i);
+      pvalsektI(i) :=  pvalout(i);
+
+  endfor; ! Slut p} loop i=1,2,....,nopoints
+
+
+!  OUTSTR(debug,"trausect:  Antal punkter ut =  ");
+!  OUTINT(debug, nopoints,10);
+!  OUTLIN(debug);
+!  OUTLIN(debug);
+
+! St{ng debug fil
+!  CLOSE(debug);
+
+endmodule

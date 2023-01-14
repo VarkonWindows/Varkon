@@ -1,0 +1,126 @@
+!********************  shownormv0 **********************
+! +++
+! Show surface normal for a given U,V point on a surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-01-31  Gunnar Liden
+! 1996-07-02 b_leng calculation and @ for uv_pt Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Show surface normal for a given U,V point on a surface
+!sdescs Visa ytnormal för en given UV punkt på en yta     
+
+GLOBAL GEOMETRY MODULE  shownormv0 (
+
+REF    sur_id                    >"@t16 Select surface"; 
+VECTOR uv_pt  := VEC(-0.5,0.0,0) >"@ UV point (Surface mid point <0)");
+
+
+! Internal variables:
+
+  INT    nu;                        ! Number of U patches in surface
+  INT    nv;                        ! Number of V patches in surface
+
+  FLOAT  b_leng;                    ! Line length
+  FLOAT  l_p;                       ! Parameter value for line
+
+  FLOAT  ang;                       ! Angle for arrow
+  FLOAT  l_a;                       ! Length of arrow
+
+  STRING s*1;                       ! For INPMT
+  
+  INT    DEBUG;                     ! Eq. 0: No Debug  
+                                    ! Eq. 1: Full Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 0. Initializations and checks
+! ---
+
+  DEBUG := 0;                            ! Change to 0 or 1
+
+! +++
+! 1. Create surface normal with arrow 
+! ---
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(sur_id,"NPATU",nu);            ! Number of U patches
+  GETSURH(sur_id,"NPATV",nv);            ! Number of V patches
+
+
+! +++
+! Calculate length for surface normal
+! ---
+
+  b_leng:= VECL(                         ! 
+       ON(sur_id,VEC(0 ,0 ))-            !
+       ON(sur_id,VEC(nu,0 )));           !
+  IF VECL(ON(sur_id,VEC(0 ,0 ))-         !
+       ON(sur_id,VEC(0 ,nv)))            !
+       > b_leng              THEN        !
+    b_leng:= VECL(                       ! 
+       ON(sur_id,VEC(0 ,0 ))-            !
+       ON(sur_id,VEC(0 ,nv)));           !
+  ENDIF;                                 !
+  IF VECL(ON(sur_id,VEC(nu,0 ))-         !
+       ON(sur_id,VEC(nu,nv)))            !
+       > b_leng              THEN        !
+    b_leng:= VECL(                       ! 
+       ON(sur_id,VEC(nu,0 ))-            !
+       ON(sur_id,VEC(nu,nv)));           !
+  ENDIF;                                 !
+  IF VECL(ON(sur_id,VEC(0 ,nv))-         !
+       ON(sur_id,VEC(nu,nv)))            !
+       > b_leng              THEN        !
+    b_leng:= VECL(                       ! 
+       ON(sur_id,VEC(0 ,nv))-            !
+       ON(sur_id,VEC(nu,nv)));           !
+  ENDIF;   
+  IF VECL(ON(sur_id,VEC(0 ,0))-          !
+       ON(sur_id,VEC(nu/2,nv/2)))        !
+       > b_leng              THEN        !
+    b_leng:= VECL(                       ! 
+       ON(sur_id,VEC(0 ,0))-             !
+       ON(sur_id,VEC(nu/2,nv/2)));       !
+  ENDIF;                                 ! 
+  b_leng := 0.2*b_leng;                  !
+
+!  s:= INPMT("shownormv0 b_leng "+STR(b_leng,15,8)," ",1);
+  IF  uv_pt.x < 0 THEN                   !
+    uv_pt := VEC(nu/2,nv/2);             !
+  ENDIF;                                 !
+
+
+  LIN_FREE(#1,                           !
+             ON(sur_id, uv_pt        ),  !
+             ON(sur_id, uv_pt        ) + !
+    b_leng*NORM(sur_id, uv_pt        )   !
+    :PEN=3);                             !
+
+
+! +++
+! Create arrow
+! ---
+
+  ang :=  8.0;                           ! Arrow dimension
+  l_a := 0.10*ABS(b_leng);               !
+
+  PART(#2, cpil2    ( ang, l_a,          ! Create arrow
+       ON(GLOBAL_REF(#1) ,0.4),          !
+       ON(GLOBAL_REF(#1) ,1.0))          !
+                       :PEN=3);          !
+
+
+ENDMODULE

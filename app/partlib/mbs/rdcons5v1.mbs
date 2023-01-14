@@ -1,0 +1,157 @@
+
+!********************* rdcons5v1 **************************************
+!
+! Funktionen l{ser in en V kurva fr}n fil med Consurf    
+! ytdata (en F07 fil).
+!
+!  1992-11-18  Gunnar Liden
+!
+!
+!***********************************************************************
+
+BASIC  GEOMETRY MODULE rdcons5v1 (
+
+STRING srffil*80;                  ! Text (F07) file for surface data
+    INT    i_strip;                ! Kurva som ska skapas 
+    INT    nu;                     ! Antal U linjer i ytan       
+    INT    nv;                     ! Antal V linjer i ytan       
+    INT    u_start;                ! Start U punkt i V kurvan
+    INT    u_slut;                 ! Slut  U punkt i V kurvan
+VAR INT    np;                     ! Antal punkter    i  kurvan  
+VAR VECTOR pcurve(200);            ! Punkter         f|r kurvan
+VAR VECTOR tcurve(200);            ! Tangent punkter f|r kurvan
+VAR FLOAT  pvalue(200));           ! P v{rden        f|r kurvan
+
+!                           Internal variables
+!                           ==================
+
+INT    sektnr;                     ! Curve section number in surface
+
+FLOAT  pp,pt,pc,dpds;              ! P values for a Consurf segment
+FLOAT  x,y,z,tx,ty,tz;             ! Point and coordinate
+
+INT    i_v;                        ! Loop index = V line (pointnumber)
+INT    n_ulines;                   ! Number of U lines in surface
+INT    i_sekt;                     ! Loop index = U section
+INT    i;                          ! Loop index = point number
+
+FILE   f;                          ! File with surface data (F07 file)
+
+STRING rad*132;                    ! Scratch string
+
+STRING s*1;                        ! F|r INPMT
+
+
+
+
+BEGINMODULE
+
+!                        1. Initializations
+!                        ===================
+
+  OPEN(f,"r",srffil);              ! Open file with surface data
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit with error message if
+    EXIT("No surface data file");  ! there is no file srffil
+  ENDIF;
+
+  np := 0;                         ! Startv{rde antal utdata punkter
+
+
+  n_ulines:= nu;                   ! Antal U linjer till lokal var.
+
+
+!            3. Create arrays defining the longitudinal curves
+!                      and the P value functions
+!            ==================================================
+
+
+    PSH_PMT("Kurva V"              ! Current strip number to (error)
+     +str(i_strip,-1,0));          ! message area of screen
+
+
+!                    Loop for all U sections in surface
+
+     FOR i_sekt:=1 TO u_slut   DO   ! Start inner loop (2)
+
+      IF i_sekt < u_start THEN     ! Skip whole section
+      rad:=INLIN(f);               ! Hoppa |ver LINE  S1/Usektnr
+      rad:=INLIN(f);               ! Hoppa |ver NORMAL ...      
+      rad:=INLIN(f);               ! Hoppa |ver SECTION n POINTS
+      FOR i_v:=1 TO nv  DO         ! Det finns 3*nv rader punkt-
+        rad:=INLIN(f);             ! data f|r varje U sektion
+        rad:=INLIN(f);             !
+        rad:=INLIN(f);             !
+      ENDFOR;                      !
+      GOTO nysekt;                 ! Hoppa till nysekt
+      ELSE                         !
+        ;                          !
+      ENDIF;                       !
+
+
+      rad:=INLIN(f);               ! Skip line LINE  S1/Usektnr
+      rad:=INLIN(f);               ! Skip line SECTION nv      POINTS
+      rad:=INLIN(f);               ! Skip line NORMAL  x y z  tx ty tz
+
+!                    Loop for all points in a U section curve
+!                    (Read only point with number i= i_strip)
+
+        FOR i:=1 TO nv      DO     ! Start inner, inner loop (3)
+
+          IF ( i = i_strip ) THEN  ! Curves i= i_strip. Read data
+
+            np := np + 1;          ! Ytterligare en utdata punkt
+
+            rad:=INSTR(f,10);      ! Skip first 10 positions (i.1)
+            x  :=INFLT(f);         ! Point   for limit curve
+            y  :=INFLT(f);         !
+            z  :=INFLT(f);         !
+            tx :=INFLT(f);         ! Tangent for limit curve
+            ty :=INFLT(f);         !
+            tz :=INFLT(f);         !
+            rad:=INLIN(f);         ! Read end of line
+
+            pcurve(np):=           ! Point         to limit curve
+                 vec(x,y,z);       ! (VECTOR) array
+             tcurve(np):=          ! Tangent point to limit curve
+            vec(x+10*tx,y+10*ty,   ! (VECTOR) array
+                z+10*tz);          !
+
+            rad:=INLIN(f);         ! Skip point for tangent curve
+
+            IF i < nv      THEN
+              rad :=INSTR(f,17);   ! Line PVALUES  pp  pt  pc  dpds
+              pp  :=INFLT(f);      ! (not for the last "point")
+              pt  :=INFLT(f);      !
+              pc  :=INFLT(f);      ! Section segment P value
+              dpds:=INFLT(f);      ! P value derivative
+              rad :=INLIN(f);      !
+            ELSE                   ! Line PVALUES pp  pt (No pc dpds !)
+              rad :=INSTR(f,17);   ! Skip 17 positions
+              pp  :=INFLT(f);      ! P value for limit   curve
+              pt  :=INFLT(f);      ! P value for tangent curve
+              rad :=INLIN(f);      ! Read end of line
+            ENDIF;
+
+            pvalue(np):= pp;       ! P for limit   crv to (FLOAT) array
+
+
+          ELSE                     ! i is not equal i_strip. Skip data
+            rad:=INLIN(f);         ! Skip point for limit   curve
+            rad:=INLIN(f);         ! Skip point for tangent curve
+            rad:=INLIN(f);         ! Skip P values
+          ENDIF;
+
+        ENDFOR;                    !  End loop i=1,nv      
+
+nysekt:                            ! Label f|r u_start
+;
+      ENDFOR;                      ! End loop each U section in surface
+                                   ! (i_sekt=1,2,..,n_ulines)
+
+
+  CLOSE(f);                        ! Close file with surface data
+
+
+  POP_PMT(); !!!!!!!!!!
+
+ENDMODULE

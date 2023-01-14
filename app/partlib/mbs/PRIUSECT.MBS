@@ -1,0 +1,105 @@
+!******************** priusect ************************************
+!
+!  Funktionen skriver en k{gelsnittskurva p} MBS format
+!
+!  1991-12-14  Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE priusect(
+
+STRING utfil*9;
+
+INT    kurvnr;
+
+INT    nopoints;
+
+VAR VECTOR psektI(25);   
+
+VAR VECTOR tpsektI(25);           
+
+VAR FLOAT  pvalsektI(25));             
+
+
+INT    iseg;      ! Loop index = segment i kurvan
+
+INT    ix;        ! Tillf{lligt loop index 
+
+FILE   mbs;
+
+STRING typ*6;
+
+
+beginmodule
+
+
+
+! \ppna filen f|r MBS programmet
+  open(mbs,"a",act_jobdir()+utfil+".MBS");
+
+  if (iostat(mbs) <> 0 ) then
+      exit("priusect: Kan inte |ppna MBS fil");
+  endif;
+
+! Skapa sektionskurva 
+! ===================
+
+!  for ix:=1 to 256 do
+!  OUTSTR(mbs,CHR(ix)+"   ASCII kod nr "+str(ix,-1,0) );
+!  OUTLIN(mbs);
+!  endfor;
+
+  typ := CHR(34)+"FREE"+CHR(34);
+
+
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"cur_conic(#"+str(kurvnr,-1,0));
+  OUTSTR(mbs,","+typ+",");
+  OUTLIN(mbs);
+
+
+  for iseg:=1 to nopoints-1 do 
+
+      OUTSTR(mbs,"vec(");
+      OUTFLT(mbs,  psektI(iseg).x,12,6); OUTSTR(mbs,",");
+      OUTFLT(mbs,  psektI(iseg).y,12,6); OUTSTR(mbs,",");
+      OUTFLT(mbs,  psektI(iseg).z,12,6); OUTSTR(mbs,"), ! P "
+                    +str(iseg,-1,0));
+
+      OUTLIN(mbs);
+
+      OUTSTR(mbs,"vec(");
+      OUTFLT(mbs, tpsektI(iseg).x,12,6); OUTSTR(mbs,",");
+      OUTFLT(mbs, tpsektI(iseg).y,12,6); OUTSTR(mbs,",");
+      OUTFLT(mbs, tpsektI(iseg).z,12,6); OUTSTR(mbs,"), ! T ");
+
+      OUTLIN(mbs);
+
+      OUTFLT(mbs, pvalsektI(iseg),15,8); OUTSTR(mbs,
+                        ",                             ! P value");
+
+      OUTLIN(mbs);
+
+   endfor;
+                   
+
+   OUTSTR(mbs,"vec(");
+   OUTFLT(mbs,  psektI(nopoints).x,12,6); OUTSTR(mbs,",");
+   OUTFLT(mbs,  psektI(nopoints).y,12,6); OUTSTR(mbs,",");
+   OUTFLT(mbs,  psektI(nopoints).z,12,6); OUTSTR(mbs,"), ! P "
+                    +str(nopoints,-1,0));
+
+   OUTLIN(mbs);
+
+   OUTSTR(mbs,"vec(");
+   OUTFLT(mbs, tpsektI(nopoints).x,12,6); OUTSTR(mbs,",");
+   OUTFLT(mbs, tpsektI(nopoints).y,12,6); OUTSTR(mbs,",");
+   OUTFLT(mbs, tpsektI(nopoints).z,12,6); OUTSTR(mbs,")); ! T ");
+
+   OUTLIN(mbs);
+   OUTLIN(mbs);
+
+   close(mbs);
+
+endmodule

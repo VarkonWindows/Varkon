@@ -1,0 +1,106 @@
+! *************** surfpathv0 **************************
+! +++ 
+! Definition of (search) path for surface libraries      
+!
+! Add the following two lines for a new directory;
+! n_path := n_path + 1
+! path(n_path) := /home/ultra4/varkon/surflib/New_directory/
+!
+!
+! Remark:
+!
+! Replace directory names with $VARKON_SURFLIB/SF340/
+! when Johan has implemented this possibility in Varkon
+!
+! 1996-02-14  Gunnar Liden
+! 1996-02-26  APR39 added Gunnar Liden
+! 1996-09-21  darkstar added Gunnar Liden
+! 1996-10-21  SU       added Gunnar Liden
+! 1996-11-19  39S      added Gunnar Liden
+! 1997-03-03  usr->u         Gunnar Liden
+!
+! --- 
+! ****************************************************
+
+!sdesce Definition of (search) path for surface libraries      
+!sdescs Definierar s|kv{g f|r referensgeometri       
+
+BASIC  GEOMETRY MODULE surfpathv0   (
+VAR STRING  path(20)*50;            ! Output directories
+VAR INT     n_path);                ! Number of directories
+
+! Internal variables
+
+  INT  i_d;                         ! Loop index directory
+  STRING host*132;                  ! Host
+
+  STRING  s*1;
+
+BEGINMODULE
+
+! +++ 
+! 1. Initializations
+! ---
+
+  n_path:= 0;                       ! Initialize n_path
+
+  FOR  i_d:= 1 TO 20 DO
+    path(i_d):= "Undefined_surface_library";
+  ENDFOR;
+
+! +++ 
+! 2. Saab surface libraries
+! ---
+
+  host  := ACT_HOST();             ! Active host
+
+!  s:= INPMT("host "+host," ",1);
+!  EXIT("Tillfalligt");
+
+  IF    host = "sco1geo" OR 
+        host = "sco2geo" OR 
+        host = "tigris"    THEN  
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/39B/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/SF340/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/APR39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/";
+
+  ELIF  host = "darkstar"  THEN
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/39B/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/SF340/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/APR39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/SU/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/surflib/39S/";
+
+  ELSE
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/surflib/39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/surflib/39B/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/surflib/SF340/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/surflib/APR39/";
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/surflib/"; !  Tillfalligt 
+
+  ENDIF;
+
+
+ENDMODULE

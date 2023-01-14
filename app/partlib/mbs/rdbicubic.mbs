@@ -1,0 +1,1775 @@
+!********************* rdbicubic ****************************************
+!
+!  Modulen l{ser en bikubisk yta (fr}n NMG) fr}n en F07 fil och
+!  konverterar ytan till ett VARKON kurvn{t.
+!
+!  1992-11-18  Gunnar Liden & Karl-Erik Eklund
+!  1992-11-20  F|rs|k med SEEK (OPEN med U) Gunnar Liden
+!  1993-01-11  Kompl. med grafik=4/14 samt godt. U/V-linjer Karl-Erik Eklund
+!  1993-01-18  Kompl. med grafik=6/16 och 7/17 Karl-Erik Eklund
+!  1993-05-15  UNIX fil directory       Gunnar Liden
+!
+!************************************************************************
+
+LOCAL GEOMETRY MODULE rdbicubic(
+
+STRING srffil*80 := "/u/surflib/yta2"   >
+"Namn p} ytdata-fil ";
+
+FLOAT  skala     := 1.0            >"Skala (skalningsfaktor=1/skala)";
+FLOAT  x0        := 3500.0         >"Origo x f|r skalning";
+FLOAT  y0        :=    0.0         >"Origo y f|r skalning";
+FLOAT  z0        := 3000.0         >"Origo z f|r skalning";
+INT    grafik    := 2
+>"@ 1.Alla 2.CATIA 3.Kontur 4/14.Delta 5.Fil 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart    := 0.0            > "@ Ustart";
+FLOAT  udelta    := 0.0            > "@ Udelta";
+FLOAT  uslut     := 0.0            > "@ Uslut";
+FLOAT  vstart    := 0.0            > "@ Vstart";
+FLOAT  vdelta    := 0.0            > "@ Vdelta";
+FLOAT  vslut     := 0.0            > "@ Vslut";
+INT    case      := 1              > "@ Case";
+STRING uvfil*80  := " "            > "@ uvfil");
+
+
+
+! Interna variabler:
+
+INT    DEBUG;                      ! Eq. 0: No      debug
+                                   ! Eq. 1: Full    debug
+                                   ! Eq. 2: Reduced debug
+
+FLOAT  A(9);                       ! Transformationsmatris
+FLOAT  B(3);                       ! Translationsvektor
+FLOAT  C4X4(16);                   ! Transformationsmatris 4X4
+
+FLOAT  segdat(25,4,4);             ! Koefficienter till kurva
+FLOAT  segdat_t(25,4,4);           ! Koefficienter till kurva
+INT    nseg;                       ! Antal segment i kurvan
+
+INT    u_start;                    ! Start U v{rde f|r kurva
+INT    u_end;                      ! Slut  U v{rde f|r kurva
+INT    v_start;                    ! Start V v{rde f|r kurva
+INT    v_end;                      ! Slut  V v{rde f|r kurva
+
+INT    i_c;                        ! Loop index kurva
+INT    n_segm25;                   ! Antal hela 25-segment p} en kurva
+INT    i_segm25;                   ! Loop index f|r antal hela 25-segment 
+
+STRING surname*30;                 ! Ytans namn (eg. 28 tecken)
+INT    npatches;                   ! Totalt antal "patches" i ytan
+INT    iu,iv;                      ! Patch adress
+INT    ip;                         ! Ordningsnummer f|r "patch"
+INT    yttyp;                      ! Typ av yta (=1001)
+INT    nu,nv;                      ! Antalet U och V linjer i ytan
+FLOAT  mittenu;                    ! U-v{rdet p} mitten
+FLOAT  mittenv;                    ! V-v{rdet p} mitten
+INT    i_mittenu;                  ! Heltalsdelen av U-v{rdet p} mitten
+INT    i_mittenv;                  ! Heltalsdelen av V-v{rdet p} mitten
+FLOAT  u_v{rde;                    ! Godtyckligt U-v{rde
+FLOAT  v_v{rde;                    ! Godtyckligt V-v{rde
+
+FLOAT  minx;                       ! Minimum X v{rde
+FLOAT  maxx;                       ! Maximum X v{rde
+FLOAT  miny;                       ! Minimum Y v{rde
+FLOAT  maxy;                       ! Maximum Y v{rde
+FLOAT  minz;                       ! Minimum Z v{rde
+FLOAT  maxz;                       ! Maximum Z v{rde
+
+STRING gname*3;                    ! Group name U1, U2, .. V1, V2, ..
+
+
+FILE   f;                          ! Fil med ytdata (F07 fil)
+
+INT    ix;                         ! Slask heltal
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa rad
+
+STRING   s*1;                      ! F|r debug 
+
+STRING isoparam*1;                 ! U eller V {r konstant
+
+INT    iu1;                        ! R{knare antal U-kurvor vid trimning
+INT    iu2;                        ! R{knare antal U-kurvor vid trimning
+INT    iu3;                        ! R{knare antal U-kurvor vid trimning
+INT    iu4;                        ! R{knare antal U-kurvor vid trimning
+INT    iu5;                        ! R{knare antal U-kurvor vid trimning
+INT    iu6;                        ! R{knare antal U-kurvor vid trimning
+INT    iv1;                        ! R{knare antal V-kurvor vid trimning
+INT    iv2;                        ! R{knare antal V-kurvor vid trimning
+INT    iv3;                        ! R{knare antal V-kurvor vid trimning
+INT    iv4;                        ! R{knare antal V-kurvor vid trimning
+INT    iv5;                        ! R{knare antal V-kurvor vid trimning
+INT    iv6;                        ! R{knare antal V-kurvor vid trimning
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+!                                 Debug
+!                                 -----
+
+  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+
+  iu1:= 0;                          ! R{knare nollst{lls
+  iu2:= 0;                          ! R{knare nollst{lls
+  iu3:= 0;                          ! R{knare nollst{lls
+  iu4:= 0;                          ! R{knare nollst{lls
+  iu5:= 0;                          ! R{knare nollst{lls
+  iu6:= 0;                          ! R{knare nollst{lls
+  iv1:= 0;                          ! R{knare nollst{lls
+  iv2:= 0;                          ! R{knare nollst{lls
+  iv3:= 0;                          ! R{knare nollst{lls
+  iv4:= 0;                          ! R{knare nollst{lls
+  iv5:= 0;                          ! R{knare nollst{lls
+  iv6:= 0;                          ! R{knare nollst{lls
+                             
+!                       Kontrollera att filen finns
+!                       ---------------------------
+
+  OPEN(f,"u",srffil);               ! \ppna filen med ytdata
+! 1992-11-20  OPEN(f,"r",srffil);               ! \ppna filen med ytdata
+  IF ( IOSTAT(f) <> 0 ) then        !
+      EXIT("rdbicubic: Programfel "+!
+           "(ytfil)");              !
+  ENDIF;
+
+!               L{s ytnamn och antal "patches" (rad 1)
+!               --------------------------------------
+
+  surname :=INSTR(f,30);            ! Ytnamn
+  npatches:=ININT(f);               ! Antal patches
+  rad     :=INLIN(f);               ! Radslut till slaskvariabel
+
+  IF DEBUG > 0 THEN                 ! Debug printout to screen
+  s:=INPMT("rdbicubic: "+           ! 
+    "Yta "+surname+" Antal patches "!
+      +STR(npatches,-1,0)           !
+         ,"",1);                    !
+  ENDIF;                            !
+
+!    L{s antal kurvor i U resp. V riktning (rad 2 i F07 filen)
+!    ---------------------------------------------------------
+
+  ix      :=ININT(f);               ! Alltid = 1
+  ix      :=ININT(f);               ! Antal (ord) v{rden per record (48 bikub)
+  ip      :=ININT(f);               ! Patch nummer i filen
+  ix      :=ININT(f);               ! Alltid = 0
+  yttyp   :=ININT(f);               ! Yttyp (=1001) NMGTYPE
+  ix      :=ININT(f);               ! 0
+  ix      :=ININT(f);               ! 0
+  nu      :=ININT(f);               ! Antal U kurvor i ytan
+  nv      :=ININT(f);               ! Antal V kurvor i ytan
+  ix      :=ININT(f);               ! 0
+  rad     :=INLIN(f);               ! Radslut till slaskvariabel
+
+  IF yttyp <> 1001 THEN             ! Kontroll s} att den inl{sta ytan
+      s:=INPMT("Ytan {r ej bikubisk"! {r bikubisk
+            ,"",1);                 !
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdbicubic: Fel yttyp!");!
+  ENDIF;
+
+  IF DEBUG = 1 THEN                 ! Debug printout to screen
+  s:=INPMT("rdbicubic: "+           ! 
+    " Antal kurvor i U led "        !
+      +STR(nu,-1,0)+                !
+    " och i V led "                 !
+      +STR(nv,-1,0)                 !
+         ,"",1);                    !
+  ENDIF;                            !
+
+! 1992-11-20  CLOSE(f);                         ! St{ng F07 filen med ytdata
+
+  minx := +50000.0;                 ! Minimum X v{rde
+  maxx := -50000.0;                 ! Maximum X v{rde
+  miny := +50000.0;                 ! Minimum Y v{rde
+  maxy := -50000.0;                 ! Maximum Y v{rde
+  minz := +50000.0;                 ! Minimum Z v{rde
+  maxz := -50000.0;                 ! Maximum Z v{rde
+
+
+!                           Skalningsmatris
+!                           ---------------
+
+  IF skala >= 0.1  THEN             ! Skala < 1 inneb{r f|rstoring
+
+      A(1) := 1.0/skala;
+      A(2) := 0.0;
+      A(3) := 0.0;
+      A(4) := 0.0;
+      A(5) := 1.0/skala;
+      A(6) := 0.0;
+      A(7) := 0.0;
+      A(8) := 0.0;
+      A(9) := 1.0/skala;
+
+      B(1) := -x0/skala;
+      B(2) := -y0/skala;
+      B(3) := -z0/skala;
+
+  ENDIF;
+
+
+  IF  skala <= -0.1 THEN            ! Speglingsmatris f|r skala < -0.1
+      IF ( ABS(y0) > 0.00001 ) then ! (Spegling endast om y0=0)
+         CLOSE(f);                  ! St{ng F07 filen med ytdata
+         EXIT("Spegling endast "+   ! 
+          "f|r origo med y0=0.0");  !
+      ENDIF;                        !
+      A(1) := -1.0/skala;           !
+      A(2) := 0.0;                  !
+      A(3) := 0.0;                  !
+      A(4) := 0.0;                  !
+      A(5) := 1.0/skala;            !
+      A(6) := 0.0;                  !
+      A(7) := 0.0;                  !
+      A(8) := 0.0;                  !
+      A(9) := -1.0/skala;           !
+                                    !
+      B(1) := +x0/skala;            !
+      B(2) := +y0/skala;            !
+      B(3) := +z0/skala;            !
+                                    !
+  ENDIF;                            !
+
+  IF skala <  0.1 AND               ! Otill}tna v{rden p} skala
+     skala > -0.1      THEN         ! (Man kan naturligtvis till}ta
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdbicubic: "+           !  st|rre uppskalning ... )
+       "skala mindre {n 0.1");      !
+                                    !
+  ENDIF;                            !
+
+  C4X4( 1) := A( 1);                ! Transformationsmatris 4X4
+  C4X4( 2) := A( 2);                ! (Det {r b{st att g|ra
+  C4X4( 3) := A( 3);                !  transformationer av
+  C4X4( 4) :=   0.0;                !  rationella kurvor med
+  C4X4( 5) := A( 4);                !  homogena koordinater)
+  C4X4( 6) := A( 5);                !  
+  C4X4( 7) := A( 6);                !  
+  C4X4( 8) :=   0.0;                !
+  C4X4( 9) := A( 7);                !
+  C4X4(10) := A( 8);                !
+  C4X4(11) := A( 9);                !
+  C4X4(12) :=   0.0;                !
+  C4X4(13) := B( 1);                !
+  C4X4(14) := B( 2);                !
+  C4X4(15) := B( 3);                !
+  C4X4(16) :=   1.0;                !
+
+  IF    grafik = 1 THEN             ! Vald grafisk representation:
+      GOTO full;                    ! Alla kurvor
+  ELIF  grafik = 2 THEN             ! Ytans ytter- och mitt-kurvor
+      GOTO kontur;                  ! 
+  ELIF  grafik = 3 THEN             ! Ytans ytterkurvor
+      GOTO kontur;                  ! 
+  ELIF  grafik = 4 THEN             ! Specificerade U- och/eller V-linjer
+      GOTO delta;                   ! heldragna
+  ELIF  grafik = 14 THEN            ! Specificerade U- och/eller V-linjer
+      GOTO delta;                   ! streckade
+  ELIF  grafik = 6 THEN             ! Specificerade U-linjer heldragna
+      GOTO delta;                   ! 
+  ELIF  grafik = 16 THEN            ! Specificerade U-linjer streckade
+      GOTO delta;                   ! 
+  ELIF  grafik = 7 THEN             ! Specificerade V-linjer heldragna
+      GOTO delta;                   ! 
+  ELIF  grafik = 17 THEN            ! Specificerade V-linjer streckade
+      GOTO delta;                   ! 
+  ELSE                              !
+      s:=INPMT("Ej programmerat"+   !
+        " f|r mer {n"+              !
+        " grafik= 1, 2, 3, 4/14,"+  !
+                 " 6/16 eller 7/17" !
+            ,"",1);                 !
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdbicubic: Fel v{rde!");!
+  ENDIF;
+
+!                    2. Skapa alla iso-parameter kurvor
+!                    ==================================
+
+full:                               ! Label: Alla kurvor
+
+
+!                    2a. Inl{sning och uppritning av alla V-kurvor
+!                    =============================================
+
+  isoparam:="V";                        ! Kurvorna som ska skapas {r V-kurvor
+
+  FOR i_c:= 1 TO nv DO                  ! Start f|r loop V kurvor
+
+      IF nu-1 > 25 THEN                 !
+          n_segm25:= TRUNC((nu-1)/25);  !
+          GOTO segm25v;                 !
+      ELSE                              !
+          n_segm25:= 0;                 ! Kurvan inneh}ller < 25 segment
+          GOTO segmslutv;               !
+      ENDIF;                            !
+
+segm25v:                                ! 25 segment att l{sa in och rita
+
+      FOR i_segm25:= 1 TO n_segm25 DO   !
+
+          u_start:=(i_segm25-1)*25+1;
+          u_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+        "visegm25="+STR(i_segm25,-1,0)+ !
+      "  vnsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+      ENDIF;                            !
+
+
+! 1992-11-20          PART(#1,rduvline(srffil,      ! L{ser V-linje i_c mellan u_start
+          PART(#1,rduvline(f,           ! L{ser V-linje i_c mellan u_start
+               isoparam,                ! och u_end
+               u_start,u_end,           !
+               i_c,i_c,                 !
+               nseg,segdat)             !
+              :SAVE=0);                 !
+
+          PART(#2,tracurve(nseg,segdat, ! Transformering av spline-kurvan
+               C4X4,segdat_t)           ! 
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+          CUR_USRDEF(#3,nseg,segdat_t); ! Skapar/ritar kurva p} sk{rmen
+
+          PART(#21,extcurve(nseg,segdat,! Best{m max- och min- v{rden
+                   minx,maxx,miny,maxy, ! f|r kurva (f|re transform.)
+                   minz,maxz)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "GRUPP#4"+                       !
+          "  V="+STR(i_c,-1,0)+              !
+        "  kurvnr=."+STR((i_c-1)*n_segm25+i_segm25,-1,0)!
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+          GROUP(#4,"V"+STR(i_c,-1,0)    ! M{rkning av V linje
+             ,REFC(3,                   ! Grupp namn Vn, d{r n=i_c
+            (i_c-1)*n_segm25+i_segm25));!
+
+      ENDFOR;                           ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutv:                              ! Sista segmenten att l{sa in och rita
+
+      u_start:=n_segm25*25+1;
+      u_end:=nu-1;
+
+      IF u_end >= u_start THEN          !
+! 1992-11-20          PART(#5,rduvline(srffil,      ! L{ser V-linje i_c mellan u_start
+          PART(#5,rduvline(f,           ! L{ser V-linje i_c mellan u_start
+               isoparam,                ! och u_end
+               u_start,u_end,           !
+               i_c,i_c,                 !
+               nseg,segdat)             !
+               :SAVE=0);                !
+
+          PART(#6,tracurve(nseg,segdat, ! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+          CUR_USRDEF(#7,nseg,segdat_t); ! Skapar/ritar kurva p} sk{rmen
+
+          PART(#22,extcurve(nseg,segdat,! Best{m max- och min- v{rden
+                   minx,maxx,miny,maxy, ! f|r kurva (f|re transform.)
+                   minz,maxz)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "GRUPP#8"+                       !
+          "  V="+STR(i_c,-1,0)+              !
+          "  kurvnr=."+STR(i_c,-1,0)         !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+          GROUP(#8,"V"+STR(i_c,-1,0)    ! M{rkning av V linje
+             ,REFC(7,i_c));             ! Grupp namn Vn, d{r n=i_c
+
+      ENDIF;                            !
+
+  ENDFOR;                               ! Slut  f|r loop V kurvor
+
+
+                        
+!                    2b. Inl{sning och uppritning av alla U-kurvor
+!                    =============================================
+
+  isoparam:="U";                        ! Kurvorna som ska skapas {r U-kurvor
+
+  FOR i_c:= 1 TO nu DO                  ! Start f|r loop U kurvor
+
+      IF nv-1 > 25 THEN                 !
+          n_segm25:= TRUNC((nv-1)/25);  !
+          GOTO segm25u;                 !
+      ELSE                              !
+          n_segm25:= 0;                 ! Kurvan inneh}ller < 25 segment
+          GOTO segmslutu;               !
+      ENDIF;                            !
+
+segm25u:                                ! 25 segment att l{sa in och rita
+
+      FOR i_segm25:= 1 TO n_segm25 DO   !
+
+          v_start:=(i_segm25-1)*25+1;
+          v_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic:"+            !
+       " uisegm25="+STR(i_segm25,-1,0)+ !
+       " unsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+      ENDIF;                            !
+
+! 1992-11-20          PART(#9,rduvline(srffil,      ! L{ser U-linje i_c mellan v_start
+          PART(#9,rduvline(f,           ! L{ser U-linje i_c mellan v_start
+               isoparam,                ! och v_end
+               i_c,i_c,                 !
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+
+          PART(#10,tracurve(nseg,segdat,! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+          CUR_USRDEF(#11,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+          PART(#23,extcurve(nseg,segdat,! Best{m max- och min- v{rden
+                   minx,maxx,miny,maxy, ! f|r kurva (f|re transform.)
+                   minz,maxz)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "GRUPP#12"+                      !
+          "  V="+STR(i_c,-1,0)+              !
+        "  kurvnr=."+STR((i_c-1)*n_segm25+i_segm25,-1,0)!
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+          GROUP(#12,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+             ,REFC(11,                  ! Grupp namn Un, d{r n=i_c
+            (i_c-1)*n_segm25+i_segm25));!
+
+      ENDFOR;                           ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutu:                              ! Sista segmenten att l{sa in och rita
+
+      v_start:=n_segm25*25+1;
+      v_end:=nv-1;
+
+      IF v_end >= v_start THEN          !
+! 1992-11-20          PART(#13,rduvline(srffil,     ! L{ser U-linje i_c mellan v_start
+          PART(#13,rduvline(f,          ! L{ser U-linje i_c mellan v_start
+               isoparam,                ! och v_end
+               i_c,i_c,                 !
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+
+          PART(#14,tracurve(nseg,segdat,! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+          CUR_USRDEF(#15,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+          PART(#24,extcurve(nseg,segdat,! Best{m max- och min- v{rden
+                   minx,maxx,miny,maxy, ! f|r kurva (f|re transform.)
+                   minz,maxz)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "GRUPP#16"+                      !
+          "  V="+STR(i_c,-1,0)+              !
+          "  kurvnr=."+STR(i_c,-1,0)         !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+          GROUP(#16,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+             ,REFC(15,i_c));            ! Grupp namn Un, d{r n=i_c
+
+      ENDIF;                            !
+
+  ENDFOR;                               ! Slut  f|r loop U kurvor
+
+  GOTO slut;                            ! Exit
+
+!                    3. Ytans ytterkurvor
+!                    ====================
+
+kontur:                                 ! Label: Konturen
+               
+
+!             3a. Inl{sning och uppritning av f|rsta och sista V-kurvan
+!             =========================================================
+
+  isoparam:="V";                        ! Kurvorna som ska skapas {r V-kurvor
+
+  i_c:= 1;                              ! Rita f|rsta v-kurvan
+
+vkurva:                                 ! Label: start rita v-kurva
+
+  IF nu-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nu-1)/25);      !
+      GOTO segm25v_kontur;              !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutv_kontur;            !
+  ENDIF;                                !
+
+segm25v_kontur:                         ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      u_start:=(i_segm25-1)*25+1;
+      u_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+        "visegm25="+STR(i_segm25,-1,0)+ !
+      "  vnsegm25="+STR(n_segm25,-1,0)+ !
+        " isoparam= "+isoparam          !
+             ,"",1);                    !
+      ENDIF;                            !
+
+
+! 1992-11-20      PART(#31,rduvline(srffil,          ! L{ser V-linje i_c mellan u_start
+      PART(#31,rduvline(f,              ! L{ser V-linje i_c mellan u_start
+           isoparam,                    ! och u_end
+           u_start,u_end,               !
+           i_c,i_c,                     !
+           nseg,segdat)                 !
+              :SAVE=0);                 !
+
+      PART(#32,tracurve(nseg,segdat,     ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+  
+      CUR_USRDEF(#33,nseg,segdat_t);     ! Skapar/ritar kurva p} sk{rmen
+
+      PART(#34,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF i_c = 1 THEN
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#35"+                      !
+              "  V="+STR(i_c,-1,0)+              !
+            "  kurvnr=."+STR(i_segm25,-1,0)      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#35,"V"+STR(i_c,-1,0)   ! M{rkning av V linje
+                 ,REFC(33,i_segm25));   ! Grupp namn Vn, d{r n=i_c
+
+      ELSE
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#36"+                      !
+              "  V="+STR(i_c,-1,0)+              !
+         "  kurvnr=."+STR(n_segm25+i_segm25,-1,0)!
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#36,"V"+STR(i_c,-1,0)   ! M{rkning av V linje
+                 ,REFC(33,              ! Grupp namn Vn, d{r n=i_c
+                  n_segm25+i_segm25));  !
+
+      ENDIF;
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutv_kontur:                       ! Sista segmenten att l{sa in och rita
+
+  u_start:=n_segm25*25+1;
+  u_end:=nu-1;
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+        "sista segm V"+                 !
+      "  u_start="+STR(u_start,-1,0)+   !
+      "  u_end="+STR(u_end,-1,0)+       !
+      "  vnsegm25="+STR(n_segm25,-1,0)+ !
+        " isoparam= "+isoparam          !
+             ,"",1);                    !
+  ENDIF;                                !
+
+  IF u_end >= u_start THEN              !
+! 1992-11-20      PART(#37,rduvline(srffil,         ! L{ser V-linje i_c mellan u_start
+      PART(#37,rduvline(f,              ! L{ser V-linje i_c mellan u_start
+           isoparam,                    ! och u_end
+           u_start,u_end,               !
+           i_c,i_c,                     !
+           nseg,segdat)                 !
+              :SAVE=0);                 !
+
+      PART(#38,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+      CUR_USRDEF(#39,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+  
+      PART(#40,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF i_c = 1 THEN
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#41"+                      !
+              "  V="+STR(i_c,-1,0)+              !
+              "  kurvnr=.1"                      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#41,"V"+STR(i_c,-1,0)   ! M{rkning av V linje
+                 ,REFC(39,1));          ! Grupp namn Vn, d{r n=i_c
+
+      ELSE
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#42"+                      !
+              "  V="+STR(i_c,-1,0)+              !
+              "  kurvnr=.2"                      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#42,"V"+STR(i_c,-1,0)   ! M{rkning av V linje
+                 ,REFC(39,2));          ! Grupp namn Vn, d{r n=i_c
+
+      ENDIF;
+
+  ENDIF;                                !
+
+  IF i_c= 1 THEN                        !
+      i_c:= nv;                         ! Ska rita sista v-linjen
+      GOTO vkurva;
+  ENDIF;                                ! Slut uppritning f|rsta och sista
+                                        ! v-linjen
+
+!             3b. Inl{sning och uppritning av f|rsta och sista U-kurvan
+!             =========================================================
+
+  isoparam:="U";                        ! Kurvorna som ska skapas {r U-kurvor
+
+  i_c:= 1;                              ! Rita f|rsta u-kurvan
+
+ukurva:                                 ! Label: start rita u-kurva
+
+  IF nv-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nv-1)/25);      !
+      GOTO segm25u_kontur;              !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutu_kontur;            !
+  ENDIF;                                !
+
+segm25u_kontur:                         ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      v_start:=(i_segm25-1)*25+1;
+      v_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+       s:=INPMT("rdbicubic:"+           !
+        " uisegm25="+STR(i_segm25,-1,0)+!
+        " unsegm25="+STR(n_segm25,-1,0)+!
+        " isoparam= "+isoparam          !
+              ,"",1);                   !
+      ENDIF;                            !
+
+! 1992-11-20      PART(#43,rduvline(srffil,         ! L{ser U-linje i_c mellan v_start
+      PART(#43,rduvline(f,              ! L{ser U-linje i_c mellan v_start
+               isoparam,                ! och v_end
+               i_c,i_c,                 !
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+
+      PART(#44,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      CUR_USRDEF(#45,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+
+      PART(#46,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF i_c = 1 THEN
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#47"+                      !
+              "  U="+STR(i_c,-1,0)+              !
+            "  kurvnr=."+STR(i_segm25,-1,0)      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#47,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+                 ,REFC(45,i_segm25));   ! Grupp namn Un, d{r n=i_c
+
+      ELSE
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#48"+                      !
+              "  U="+STR(i_c,-1,0)+              !
+         "  kurvnr=."+STR(n_segm25+i_segm25,-1,0)!
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#48,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+                 ,REFC(45,              ! Grupp namn Un, d{r n=i_c
+                  n_segm25+i_segm25));  !
+
+      ENDIF;
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutu_kontur:                       ! Sista segmenten att l{sa in och rita
+
+  v_start:=n_segm25*25+1;
+  v_end:=nv-1;
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+        "sista segm U"+                 !
+      "  v_start="+STR(v_start,-1,0)+   !
+      "  v_end="+STR(v_end,-1,0)+       !
+      "  unsegm25="+STR(n_segm25,-1,0)+ !
+        " isoparam= "+isoparam          !
+             ,"",1);                    !
+  ENDIF;                                !
+
+  IF v_end >= v_start THEN              !
+! 1992-11-20      PART(#49,rduvline(srffil,         ! L{ser U-linje i_c mellan v_start
+      PART(#49,rduvline(f,              ! L{ser U-linje i_c mellan v_start
+           isoparam,                    ! och v_end
+           i_c,i_c,                     !
+           v_start,v_end,               !
+           nseg,segdat)                 !
+               :SAVE=0);                !
+
+      PART(#50,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+      CUR_USRDEF(#51,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+
+      PART(#52,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF i_c = 1 THEN
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#53"+                      !
+              "  U="+STR(i_c,-1,0)+              !
+              "  kurvnr=.1"                      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#53,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+                 ,REFC(51,1));          ! Grupp namn Un, d{r n=i_c
+
+      ELSE
+
+          IF DEBUG > 0 THEN                      ! Debug printout to screen
+              s:=INPMT("rdbicubic: "+            !
+                "GRUPP#54"+                      !
+              "  U="+STR(i_c,-1,0)+              !
+              "  kurvnr=.2"                      !
+                     ,"",1);                     !
+          ENDIF;                                 !
+
+          GROUP(#54,"U"+STR(i_c,-1,0)   ! M{rkning av U linje
+                 ,REFC(51,2));          ! Grupp namn Un, d{r n=i_c
+
+      ENDIF;
+
+  ENDIF;                                !
+
+  IF i_c= 1 THEN                        !
+      i_c:= nu;                         ! Ska rita sista u-linjen
+      GOTO ukurva;
+  ENDIF;                                ! Slut uppritning f|rsta och sista
+                                        ! u-linjen
+
+
+  IF grafik = 3  THEN                   !
+      GOTO slut;                        ! Ytans konturer {r ritade
+  ENDIF;                                !
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+  s:=INPMT("rdbicubic: "+               !
+    "Konturen f{rdig","",1);            !
+  ENDIF;                                !
+
+  GOTO mittkurvor;
+
+!                    4. Ytans mittkurvor
+!                    ===================
+
+mittkurvor:                             ! Label: 'Catia-krysset'
+
+
+!             4a. Inl{sning och uppritning av V-kurvan p} mitten
+!             ==================================================
+
+  isoparam:="V";                        ! Kurvan som ska skapas {r en V-kurva
+
+  IF nu-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nu-1)/25);      !
+      GOTO segm25v_mitten;              !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutv_mitten;            !
+  ENDIF;                                !
+
+segm25v_mitten:                         ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      u_start:=(i_segm25-1)*25+1;
+      u_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+        "visegm25="+STR(i_segm25,-1,0)+ !
+      "  vnsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+      ENDIF;                            !
+
+      mittenv:= (nv+1)/2;               ! Ber{knar v-v{rdet p} mitten
+      i_mittenv:= TRUNC(mittenv);       ! Heltalsv{rdet p} mittenv ber{knas
+      mittenv:= mittenv - i_mittenv;    !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "CATIA-kryss"+                   !
+          "  i_mittenv="+STR(i_mittenv,-1,0)+!
+          "  mittenv="+STR(mittenv,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      IF ABS(mittenv) < 0.01 THEN       ! Blir kanske inte exakt 0 d{rf|r tol
+
+! 1992-11-20          PART(#56,rduvline(srffil,     ! L{ser mittre V-linjen mellan u_start
+          PART(#56,rduvline(f,          ! L{ser mittre V-linjen mellan u_start
+               isoparam,                ! och u_end
+               u_start,u_end,           !
+               i_mittenv,               !
+               i_mittenv,               !
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ELSE
+
+! 1992-11-20          PART(#57,rduvline(srffil,     ! L{ser en mittkurva som ligger mitt
+          PART(#57,rduvlin2v0(f,        ! L{ser en mittkurva som ligger mitt
+               isoparam,                ! i den mittre v-strippen mellan
+               (nv+1)/2,                ! u_start och u_end
+               u_start,u_end,           !  
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ENDIF;                            !
+
+      PART(#58,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+  
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+
+      CUR_USRDEF(#59,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+
+      SET(CFONT=0);                     ! ]terst{ller till heldragen 'mode'
+
+      PART(#60,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutv_mitten:                       ! Sista segmenten att l{sa in och rita
+
+  u_start:=n_segm25*25+1;
+  u_end:=nu-1;
+
+  IF u_end >= u_start THEN              !
+
+      mittenv:= (nv+1)/2;               ! Ber{knar v-v{rdet p} mitten
+      i_mittenv:= TRUNC(mittenv);       ! Heltalsv{rdet p} mittenv ber{knas
+      mittenv:= mittenv - i_mittenv;    !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "CATIA-kryss"+                   !
+          "  i_mittenv="+STR(i_mittenv,-1,0)+!
+          "  mittenv="+STR(mittenv,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      IF ABS(mittenv) < 0.01 THEN       ! Blir kanske inte exakt 0 d{rf|r tol
+
+! 1992-11-20          PART(#61,rduvline(srffil,     ! L{ser mittre V-linjen mellan u_start
+          PART(#61,rduvline(f,          ! L{ser mittre V-linjen mellan u_start
+               isoparam,                ! och u_end
+               u_start,u_end,           !
+               i_mittenv,               !
+               i_mittenv,               !
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ELSE
+
+! 1992-11-20          PART(#62,rduvline(srffil,     ! L{ser en mittkurva som ligger mitt
+          PART(#62,rduvlin2v0(f,        ! L{ser en mittkurva som ligger mitt
+               isoparam,                ! i den mittre v-strippen mellan
+               (nv+1)/2,                ! u_start och u_end
+               u_start,u_end,           !  
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ENDIF;                            !
+
+
+      PART(#63,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+
+      CUR_USRDEF(#64,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+  
+      SET(CFONT=0);                     ! ]terst{ller till heldragen 'mode'
+
+      PART(#65,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDIF;                                !
+
+
+!             4b. Inl{sning och uppritning av U-kurvan p} mitten
+!             ==================================================
+
+  isoparam:="U";                        ! Kurvorna som ska skapas {r U-kurvor
+
+  IF nv-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nv-1)/25);      !
+      GOTO segm25u_mitten;              !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutu_mitten;            !
+  ENDIF;                                !
+
+segm25u_mitten:                         ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      v_start:=(i_segm25-1)*25+1;
+      v_end:=i_segm25*25;
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+      s:=INPMT("rdbicubic:"+            !
+       " uisegm25="+STR(i_segm25,-1,0)+ !
+       " unsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+  ENDIF;                                !
+
+      mittenu:= (nu+1)/2;               ! Ber{knar u-v{rdet p} mitten
+      i_mittenu:= TRUNC(mittenu);       ! Heltalsv{rdet p} mittenu ber{knas
+      mittenu:= mittenu - i_mittenu;    !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "CATIA-kryss"+                   !
+          "  i_mittenu="+STR(i_mittenu,-1,0)+!
+          "  mittenu="+STR(mittenu,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      IF ABS(mittenu) < 0.01 THEN       ! Blir kanske inte exakt 0 d{rf|r tol
+
+! 1992-11-20          PART(#66,rduvline(srffil,     ! L{ser mittre U-linjen mellan v_start
+          PART(#66,rduvline(f,          ! L{ser mittre U-linjen mellan v_start
+               isoparam,                ! och v_end
+               i_mittenu,               !
+               i_mittenu,               !
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ELSE
+
+! 1992-11-20          PART(#67,rduvline(srffil,     ! L{ser en mittkurva som ligger mitt
+          PART(#67,rduvlin2v0(f,        ! L{ser en mittkurva som ligger mitt
+               isoparam,                ! i den mittre u-strippen mellan
+               (nu+1)/2,                ! v_start och v_end
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+
+      ENDIF;                            !
+
+      PART(#68,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+
+      CUR_USRDEF(#69,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+
+      SET(CFONT=0);                     ! ]terst{ller till heldragen 'mode'
+
+      PART(#70,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutu_mitten:                       ! Sista segmenten att l{sa in och rita
+
+  v_start:=n_segm25*25+1;
+  v_end:=nv-1;
+
+  IF v_end >= v_start THEN              !
+
+      mittenu:= (nu+1)/2;               ! Ber{knar u-v{rdet p} mitten
+      i_mittenu:= TRUNC(mittenu);       ! Heltalsv{rdet p} mittenu ber{knas
+      mittenu:= mittenu - i_mittenu;    !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "CATIA-kryss"+                   !
+          "  i_mittenu="+STR(i_mittenu,-1,0)+!
+          "  mittenu="+STR(mittenu,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      IF ABS(mittenu) < 0.01 THEN       ! Blir kanske inte exakt 0 d{rf|r tol
+
+! 1992-11-20          PART(#71,rduvline(srffil,     ! L{ser mittre U-linjen mellan v_start
+          PART(#71,rduvline(f,          ! L{ser mittre U-linjen mellan v_start
+               isoparam,                ! och v_end
+               i_mittenu,               !
+               i_mittenu,               !
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ELSE
+
+! 1992-11-20          PART(#72,rduvline(srffil,     ! L{ser en mittkurva som ligger mitt
+          PART(#72,rduvlin2v0(f,        ! L{ser en mittkurva som ligger mitt
+               isoparam,                ! i den mittre u-strippen mellan
+               (nu+1)/2,                ! v_start och v_end
+               v_start,v_end,           !
+               nseg,segdat)             !
+               :SAVE=0);                !
+      ENDIF;                            !
+
+      PART(#73,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+
+      CUR_USRDEF(#74,nseg,segdat_t);    ! Skapar/ritar kurva p} sk{rmen
+
+      SET(CFONT=0);                     ! ]terst{ller till heldragen 'mode'
+
+      PART(#75,extcurve(nseg,segdat,    ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDIF;                                !
+
+
+  GOTO slut;                            ! Exit
+
+
+
+!                 5. Specificerade U- och/eller V-kurvor
+!                 ======================================
+
+delta:                                  ! Label: Specificerade kurvor
+
+!                 5a. Kontroll av inl{sta v{rden
+!                 ==============================
+
+  IF ustart <> 0.0 THEN
+      IF ustart < 1 THEN
+          s:=INPMT("Ustart < 1"         !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+
+      IF udelta <= 0 AND ustart <> uslut THEN
+          s:=INPMT("Udelta <= 0"        !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+
+      IF uslut < ustart THEN
+          s:=INPMT("Uslut < Ustart"     !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+  ENDIF;
+  
+  IF vstart <> 0.0 THEN
+      IF vstart < 1 THEN
+          s:=INPMT("Vstart < 1"         !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+
+      IF vdelta <= 0 AND vstart <> vslut THEN
+          s:=INPMT("Vdelta <= 0"        !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+
+      IF vslut < vstart THEN
+          s:=INPMT("Vslut < Vstart"     !
+                ,"",1);                 !
+          CLOSE(f);                     ! St{ng F07 filen med ytdata
+          EXIT("rdbicubic: Fel v{rde!");!
+      ENDIF;
+  ENDIF;
+  
+
+  IF grafik = 14  OR  grafik = 16
+                  OR  grafik = 17  THEN
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+  ENDIF;
+
+!           5b. Inl{sning och uppritning av specificerade U-kurvor
+!           ======================================================
+
+  IF grafik = 7  OR  grafik = 17 THEN
+      GOTO v_kurvor;                    ! Inga U-kurvor ska ritas
+  ENDIF;
+
+  IF ustart = 0.0  THEN
+      GOTO v_kurvor;                    ! Inga U-kurvor ska ritas
+  ENDIF;
+
+  IF vstart = vslut  AND  vstart <> 0.0  THEN
+      GOTO v_kurvor;                    ! Inga U-kurvor ska ritas
+  ENDIF;
+
+  u_v{rde:= ustart;                     ! Kurva att rita
+
+  isoparam:="U";                        ! Kurvorna som ska skapas {r U-kurvor
+
+u_kurvor_loop:                          ! Label: 25-segments-kurvor
+  
+  IF nv-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nv-1)/25);      !
+      GOTO segm25u_delta;               !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutu_delta;             !
+  ENDIF;                                !
+
+segm25u_delta:                          ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      v_start:=(i_segm25-1)*25+1;
+      v_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic:"+            !
+       " uisegm25="+STR(i_segm25,-1,0)+ !
+       " unsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+      ENDIF;                            !
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+           "  u_v{rde="+                !
+              STR(u_v{rde,-12,6)+       !
+            " isoparam= "+isoparam      !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      PART(#76,rduvlin2v0(f,            ! L{ser en u-kurva mellan
+           isoparam,                    ! v_start och v_end
+           u_v{rde,                     !
+           v_start,v_end,               !
+           nseg,segdat)                 !
+           :SAVE=0);                    !
+
+      PART(#77,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+            " vstart="+                 !
+              STR(vstart,-9,6)+         !
+            " vslut="+                  !
+              STR(vslut,-9,6)+          !
+            " v_start="+                !
+              STR(v_start,-9,6)+        !
+            " v_end="+                  !
+              STR(v_end,-9,6)           !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      IF vstart = 0.0 THEN
+
+          CUR_USRDEF(#78,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+      ELSE
+
+          IF vstart >= v_start THEN
+
+              IF vstart < (v_end + 1) THEN  
+                  IF vslut > (v_end+1) THEN !
+                      iu1:= iu1 + 1;        !
+                      CUR_USRDEF(#79,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);  !
+                      CUR_TRIM(#80,         ! Trimmar/ritar kurvan
+                        REFC(79,iu1),       !
+                        vstart-1-           !
+                         (i_segm25-1)*25,   !
+                        v_end-              !
+                         (i_segm25-1)*25);  !
+                  ELSE
+                      iu2:= iu2 + 1;        !
+                      CUR_USRDEF(#81,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);  !
+                      CUR_TRIM(#82,         ! Trimmar/ritar kurvan
+                        REFC(81,iu2),       !
+                        vstart-1-           !
+                         (i_segm25-1)*25,   !
+                        vslut-1-            !
+                         (i_segm25-1)*25);  !
+                      GOTO ny_kurva_u;      !
+                  ENDIF;
+              ENDIF;
+
+          ELSE
+              IF vslut > (v_end + 1) THEN
+                  CUR_USRDEF(#83,nseg,      ! Skapar/ritar kurva
+                  segdat_t);                !
+              ELSE
+                  IF vslut > v_start THEN   !
+                    iu3:= iu3 + 1;          !
+                    CUR_USRDEF(#84,nseg,    ! Skapar kurva
+                    segdat_t:BLANK = 1);    !
+                      CUR_TRIM(#85,         ! Trimmar/ritar kurvan
+                        REFC(84,iu3),       !
+                        v_start-1-          !
+                         (i_segm25-1)*25,   !
+                        vslut-1-            !
+                         (i_segm25-1)*25);  !
+                  ELSE
+                    GOTO ny_kurva_u;
+                  ENDIF;
+              ENDIF;
+          ENDIF;
+      ENDIF;
+
+      PART(#120,extcurve(nseg,segdat,   ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutu_delta:                        ! Sista segmenten att l{sa in och rita
+
+  v_start:=n_segm25*25+1;
+  v_end:=nv-1;
+
+  IF v_end >= v_start THEN              !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "Delta"+                         !
+          "  u_v{rde="+STR(u_v{rde,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      PART(#86,rduvlin2v0(f,            ! L{ser en u-kurva mellan
+           isoparam,                    ! v_start och v_end
+           u_v{rde,                     !
+           v_start,v_end,               !
+           nseg,segdat)                 !
+           :SAVE=0);                    !
+
+      PART(#87,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+            " vstart="+                 !
+              STR(vstart,-9,6)+         !
+            " vslut="+                  !
+              STR(vslut,-9,6)+          !
+            " v_start="+                !
+              STR(v_start,-9,6)+        !
+            " v_end="+                  !
+              STR(v_end,-9,6)           !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      IF vstart = 0.0 THEN
+
+          CUR_USRDEF(#88,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+      ELSE
+          IF vstart >= v_start THEN
+
+              IF vstart > (v_end + 1) THEN   
+                  s:=INPMT("Vstart"+    !
+                  " st|rre {n antalet"+ !
+                  " V-linjer i ytan!"   !
+                     ,"",1);            !
+                  SET(CFONT=0);         ! ]terst{ller till heldragen 'mode'
+                  CLOSE(f);             ! St{ng F07 filen med ytdata
+                  EXIT("rdbicubic: Fel"+!
+                  " v{rde!");           !
+              ELSE
+                  IF vslut > (v_end + 1) THEN  !
+                      s:=INPMT("Vslut st"+     !
+                      "|rre {n antalet"+       !
+                      " V-linjer i ytan!"+     !
+                      " Ritar U-linjen"+       !
+                      " till ytan slut!"       !
+                         ,"",1);               !
+                      iu4:= iu4 + 1;           !
+                      CUR_USRDEF(#89,nseg,     ! Skapar kurva
+                      segdat_t:BLANK = 1);     !
+                      CUR_TRIM(#90,            ! Trimmar/ritar kurvan
+                        REFC(89,iu4),          !
+                        vstart-1-              !
+                         n_segm25*25,          !
+                        v_end-                 !
+                         n_segm25*25);         !
+                  ELSE
+                      iu5:= iu5 + 1;           !
+                      CUR_USRDEF(#91,nseg,     ! Skapar kurva
+                      segdat_t:BLANK = 1);     !
+                      CUR_TRIM(#92,            ! Trimmar/ritar kurvan
+                        REFC(91,iu5),          !
+                        vstart-1-              !
+                         n_segm25*25,          !
+                        vslut-1-               !
+                         n_segm25*25);         !
+                  ENDIF;
+              ENDIF;
+
+          ELSE
+              IF vslut > (v_end + 1) THEN      !
+                    s:=INPMT("Vslut st"+       !
+                    "|rre {n antalet"+         !
+                    " V-linjer i ytan!"+       !
+                    " Ritar U-linjen"+         !
+                    " till ytan slut!"         !
+                       ,"",1);                 !
+                  CUR_USRDEF(#93,nseg,         ! Skapar/ritar kurva
+                  segdat_t);                   !
+              ELSE
+                  IF vslut > v_start THEN      !
+                    iu6:= iu6 + 1;             !
+                    CUR_USRDEF(#94,nseg,       ! Skapar kurva
+                    segdat_t:BLANK = 1);       !
+                    CUR_TRIM(#95,              ! Trimmar/ritar kurvan
+                      REFC(94,iu6),            !
+                      v_start-1-               !
+                         n_segm25*25,          !
+                      vslut-1-                 !
+                         n_segm25*25);         !
+                  ELSE
+                    GOTO ny_kurva_u;
+                  ENDIF;
+              ENDIF;
+          ENDIF;
+      ENDIF;
+
+
+      PART(#121,extcurve(nseg,segdat,   ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDIF;                                !
+
+ny_kurva_u:
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+       "Delta"+                         !
+       "  u_v{rde="+                    !
+          STR(u_v{rde,-12,6)+           !
+       "  uslut="+                      !
+          STR(uslut,-12,6)+             !
+       "  udelta="+                     !
+          STR(udelta,-12,6)             !
+             ,"",1);                    !
+  ENDIF;                                !
+
+  IF u_v{rde = uslut THEN
+      GOTO v_kurvor;                    ! Rita V-kurvor
+  ENDIF;
+
+  u_v{rde:= u_v{rde + udelta;
+
+  IF u_v{rde > uslut THEN
+      u_v{rde:= uslut;
+  ENDIF;
+  
+  GOTO u_kurvor_loop;                   ! N{sta U-kurva
+
+
+!           5c. Inl{sning och uppritning av specificerade V-kurvor
+!           ======================================================
+
+v_kurvor:                               ! Label: Specificerade kurvor
+  
+  IF grafik = 6  OR  grafik = 16 THEN
+      GOTO slut;                        ! Inga V-kurvor ska ritas
+  ENDIF;
+
+  IF vstart = 0.0  THEN
+      GOTO slut;                        ! Inga V-kurvor ska ritas
+  ENDIF;
+
+  IF ustart = uslut  AND  ustart <> 0.0  THEN
+      GOTO slut;                        ! Inga V-kurvor ska ritas
+  ENDIF;
+
+  v_v{rde:= vstart;                     ! Kurva att rita
+
+  isoparam:="V";                        ! Kurvorna som ska skapas {r V-kurvor
+
+v_kurvor_loop:                          ! Label: 25-segments-kurvor
+  
+  IF nu-1 > 25 THEN                     !
+      n_segm25:= TRUNC((nu-1)/25);      !
+      GOTO segm25v_delta;               !
+  ELSE                                  !
+      n_segm25:= 0;                     ! Kurvan inneh}ller < 25 segment
+      GOTO segmslutv_delta;             !
+  ENDIF;                                !
+
+segm25v_delta:                          ! 25 segment att l{sa in och rita
+
+  FOR i_segm25:= 1 TO n_segm25 DO       !
+
+      u_start:=(i_segm25-1)*25+1;
+      u_end:=i_segm25*25;
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+      s:=INPMT("rdbicubic:"+            !
+       " visegm25="+STR(i_segm25,-1,0)+ !
+       " vnsegm25="+STR(n_segm25,-1,0)  !
+             ,"",1);                    !
+      ENDIF;                            !
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+          "  v_v{rde="+                 !
+             STR(v_v{rde,-12,6)+        !
+            " isoparam= "+isoparam      !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      PART(#96,rduvlin2v0(f,            ! L{ser en V-kurva mellan
+           isoparam,                    ! u_start och u_end
+           v_v{rde,                     !
+           u_start,u_end,               !
+           nseg,segdat)                 !
+           :SAVE=0);                    !
+
+      PART(#97,tracurve(nseg,segdat,    ! Transformering av spline-kurvan
+               C4X4,segdat_t)           !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+            " ustart="+                 !
+              STR(ustart,-9,6)+         !
+            " uslut="+                  !
+              STR(uslut,-9,6)+          !
+            " u_start="+                !
+              STR(u_start,-9,6)+        !
+            " u_end="+                  !
+              STR(u_end,-9,6)           !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      IF ustart = 0.0 THEN
+
+          CUR_USRDEF(#98,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+      ELSE
+          IF ustart >= u_start THEN
+
+              IF ustart < (u_end + 1) THEN
+                  IF uslut > u_end THEN      !
+                      iv1:= iv1 + 1;         !
+                      CUR_USRDEF(#99,nseg,   ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#100,         ! Trimmar/ritar kurvan
+                        REFC(99,iv1),        !
+                        ustart-1-            !
+                         (i_segm25-1)*25,    !
+                        u_end-               !
+                         (i_segm25-1)*25);   !
+                  ELSE
+                      iv2:= iv2 + 1;         !
+                      CUR_USRDEF(#101,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#102,         ! Trimmar/ritar kurvan
+                        REFC(101,iv2),       !
+                        ustart-1-            !
+                         (i_segm25-1)*25,    !
+                        uslut-1-
+                         (i_segm25-1)*25);   !
+                    GOTO ny_kurva_v;         !
+                  ENDIF;
+              ENDIF;
+
+          ELSE
+              IF uslut > (u_end + 1) THEN    !
+                  CUR_USRDEF(#103,nseg,      ! Skapar/ritar kurva
+                  segdat_t);                 !
+              ELSE
+                  IF uslut > u_start THEN    !
+                      iv3:= iv3 + 1;         !
+                      CUR_USRDEF(#104,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#105,         ! Trimmar/ritar kurvan
+                        REFC(104,iv3),       !
+                        u_start-1-           !
+                         (i_segm25-1)*25,    !
+                        uslut-1-             !
+                         (i_segm25-1)*25);   !
+                  ELSE
+                      GOTO ny_kurva_v;
+                  ENDIF;
+              ENDIF;
+          ENDIF;
+      ENDIF;
+
+      PART(#122,extcurve(nseg,segdat,   ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                               ! Slut f|r loop 'fulla' 25-segm.kurvor
+
+segmslutv_delta:                        ! Sista segmenten att l{sa in och rita
+
+  u_start:=n_segm25*25+1;
+  u_end:=nu-1;
+
+  IF u_end >= u_start THEN              !
+
+      IF DEBUG > 0 THEN                      ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+            !
+            "Delta"+                         !
+          "  v_v{rde="+STR(v_v{rde,-12,6)+   !
+            " isoparam= "+isoparam           !
+                 ,"",1);                     !
+      ENDIF;                                 !
+
+      PART(#106,rduvlin2v0(f,           ! L{ser en V-kurva mellan
+           isoparam,                    ! u_start och u_end
+           v_v{rde,                     !
+           u_start,u_end,               !
+           nseg,segdat)                 !
+           :SAVE=0);                    !
+
+      PART(#107,tracurve(nseg,segdat,   ! Transformering av spline-kurvan
+           C4X4,segdat_t)               !
+           :SAVE=0 );                   ! (Anrop sparas ej i GM)
+
+
+      IF DEBUG > 0 THEN                 ! Debug printout to screen
+          s:=INPMT("rdbicubic: "+       !
+           "Delta"+                     !
+            " ustart="+                 !
+              STR(ustart,-9,6)+         !
+            " uslut="+                  !
+              STR(uslut,-9,6)+          !
+            " u_start="+                !
+              STR(u_start,-9,6)+        !
+            " u_end="+                  !
+              STR(u_end,-9,6)           !
+                 ,"",1);                !
+      ENDIF;                            !
+
+      IF ustart = 0.0 THEN
+
+          CUR_USRDEF(#108,nseg,segdat_t);! Skapar/ritar kurva p} sk{rmen
+
+      ELSE
+          IF ustart >= u_start THEN
+
+              IF ustart > (u_end + 1) THEN   !
+                  s:=INPMT("Ustart"+         !
+                  " st|rre {n antalet"+      !
+                  " U-linjer i ytan!"        !
+                     ,"",1);                 !
+                  SET(CFONT=0);              ! ]terst. till heldragen 'mode'
+                  CLOSE(f);                  ! St{ng F07 filen med ytdata
+                  EXIT("rdbicubic: Fel"+     !
+                  " v{rde!");                !
+              ELSE
+                  IF uslut > (u_end + 1) THEN!
+                      s:=INPMT("Uslut st"+   !
+                      "|rre {n antalet"+     !
+                      " U-linjer i ytan!"+   !
+                      " Ritar V-linjen"+     !
+                      " till ytan slut!"     !
+                         ,"",1);             !
+                      iv4:= iv4 + 1;         !
+                      CUR_USRDEF(#109,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#110,         ! Trimmar/ritar kurvan
+                        REFC(109,iv4),       !
+                        ustart-1-            !
+                         n_segm25*25,        !
+                        u_end-               !
+                         n_segm25*25);       !
+                  ELSE
+                      iv5:= iv5 + 1;         !
+                      CUR_USRDEF(#111,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#112,         ! Trimmar/ritar kurvan
+                        REFC(111,iv5),       !
+                        ustart-1-            !
+                         n_segm25*25,        !
+                        uslut-1-             !
+                         n_segm25*25);       !
+                  ENDIF;
+              ENDIF;
+
+          ELSE
+              IF uslut > (u_end + 1) THEN    !
+                  s:=INPMT("Uslut st"+       !
+                  "|rre {n antalet"+         !
+                  " U-linjer i ytan!"+       !
+                  " Ritar V-linjen"+         !
+                  " till ytan slut!"         !
+                     ,"",1);                 !
+                  CUR_USRDEF(#113,nseg,      ! Skapar/ritar kurva
+                  segdat_t);                 !
+              ELSE
+                  IF uslut > u_start THEN    !
+                      iv6:= iv6 + 1;         !
+                      CUR_USRDEF(#114,nseg,  ! Skapar kurva
+                      segdat_t:BLANK = 1);   !
+                      CUR_TRIM(#115,         ! Trimmar/ritar kurvan
+                        REFC(114,iv6),       !
+                        u_start-1-           !
+                         n_segm25*25,        !
+                        uslut-1-             !
+                         n_segm25*25);       !
+                  ELSE
+                      GOTO ny_kurva_v;
+                  ENDIF;
+              ENDIF;
+          ENDIF;
+      ENDIF;
+
+
+      PART(#123,extcurve(nseg,segdat,   ! Best{m max- och min- v{rden
+               minx,maxx,miny,maxy,     ! f|r kurva (f|re transform.)
+               minz,maxz)               !
+               :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDIF;                                !
+
+ny_kurva_v:
+
+  IF DEBUG > 0 THEN                     ! Debug printout to screen
+      s:=INPMT("rdbicubic: "+           !
+       "Delta"+                         !
+       "  v_v{rde="+                    !
+          STR(v_v{rde,-12,6)+           !
+       "  vslut="+                      !
+          STR(vslut,-12,6)+             !
+       "  udelta="+                     !
+          STR(vdelta,-12,6)             !
+             ,"",1);                    !
+  ENDIF;                                !
+
+  IF v_v{rde = vslut THEN
+      GOTO slut;                        ! Exit
+  ENDIF;
+
+  v_v{rde:= v_v{rde + vdelta;
+
+  IF v_v{rde > vslut THEN
+      v_v{rde:= vslut;
+  ENDIF;
+  
+  GOTO v_kurvor_loop;                   ! Ny v-kurva
+
+
+!                     6. Utg}ng fr}n rutin
+!                     ====================
+
+slut:                                   ! Label: Exit fr}n rutin
+
+  SET(CFONT=0);                         ! ]terst{ller till heldragen 'mode'
+
+  PART(#25,MINMAXREG(minx,maxx,         ! Registrera max och minv{rden p}
+      miny,maxy,minz,maxz,nu,nv));      ! koordinater samt antal U och V linjer
+
+  CLOSE(f);                         ! St{ng F07 filen med ytdata
+
+
+ENDMODULE
+

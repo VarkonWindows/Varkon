@@ -1,0 +1,487 @@
+!********************* rdbicubv1 ****************************************
+! +++
+!  Modulen l{ser en bikubisk yta (fr}n NMG) fr}n en F07 fil och
+!  konverterar ytan till ett VARKON kurvn{t som {r skalat.
+!
+!  Revision history
+!  ________________
+!
+!  1994-12-19  Gunnar Liden
+!  1995-03-12  Spegling fungerar {nnu inte Gunnar Liden
+!  1995-05-18  Radera ej #24 och yta Ger konstiga fel Gunnar Liden
+! ---
+!************************************************************************
+
+LOCAL GEOMETRY MODULE rdbicubv1 (
+
+STRING srffil*80 := ""   >"Namn p} ytdata-fil som ligger p} <VARKON.SURFLIB>";
+FLOAT  skala     := 1.0            >"Skala (skalningsfaktor=1/skala)";
+FLOAT  x0        := 3500.0         >"Origo x f|r skalning";
+FLOAT  y0        :=    0.0         >"Origo y f|r skalning";
+FLOAT  z0        := 3000.0         >"Origo z f|r skalning";
+INT    grafik    := 2
+>"@ 1.Alla 2.CATIA 3.Kontur 4/14.Delta 5.Fil 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart    := 0.0            > "@ Ustart";
+FLOAT  udelta    := 0.0            > "@ Udelta";
+FLOAT  uslut     := 0.0            > "@ Uslut";
+FLOAT  vstart    := 0.0            > "@ Vstart";
+FLOAT  vdelta    := 0.0            > "@ Vdelta";
+FLOAT  vslut     := 0.0            > "@ Vslut";
+INT    case      := 1              > "@ Case (=2: Endast minmax)";
+STRING uvfil*80  := " "            > "@ uvfil");
+
+
+
+! Interna variabler:
+
+INT    DEBUG;                      ! Eq. 0: No      debug
+                                   ! Eq. 1: Full    debug
+                                   ! Eq. 2: Reduced debug
+
+STRING str1*80;                    ! Surface file name
+STRING str2*80;                    ! Type of input file
+STRING str3*80;                    ! Type of surface
+
+INT    npatu;                      ! No patches in U direction
+INT    npatv;                      ! No patches in V direction
+
+REF    s_id;                       ! Surface identity (reference)
+REF    s_id_u;                     ! Unscaled surface identity
+REF    c_id;                       ! Coordinate system identity
+
+STRING iso_c*1;                    ! Isoparameter U or V
+FLOAT  start_p;                    ! Parameter for start point
+FLOAT  end_p;                      ! Parameter for end   point
+INT    i_u;                        ! Loop index U parameters
+INT    i_v;                        ! Loop index V parameters
+
+INT    nu,nv;                      ! Antalet U och V linjer i ytan
+
+FLOAT  mittenu;                    ! U-v{rdet p} mitten
+FLOAT  mittenv;                    ! V-v{rdet p} mitten
+
+FLOAT  u_c;                        ! Current U value
+FLOAT  v_c;                        ! Current V value
+
+INT    nmax;                       ! Maximum number of isoparameters
+
+FLOAT  minx;                       ! Minimum X v{rde
+FLOAT  maxx;                       ! Maximum X v{rde
+FLOAT  miny;                       ! Minimum Y v{rde
+FLOAT  maxy;                       ! Maximum Y v{rde
+FLOAT  minz;                       ! Minimum Z v{rde
+FLOAT  maxz;                       ! Maximum Z v{rde
+
+STRING   s*1;                      ! F|r debug 
+
+BEGINMODULE
+
+! +++
+! 1. Initieringar och kontroller
+! ---
+
+!                                 Debug
+!                                 -----
+
+  DEBUG:= 1;                        ! [ndra vid behov till 0, 1 eller 2
+
+  IF  skala < 0 THEN                ! Spegling fungerar ej !!!!
+    EXIT("rdbicub1 spegling fungerar " +     !
+         "{nnu inte");            !
+  ENDIF;                            !
+
+  IF uvfil = "" OR uvfil = " " THEN ! uvfil not yet implemented
+    ;                               !
+  ELSE                              !
+    EXIT("rdbicub1 uvfil ej " +     !
+         "implenterad");            !
+  ENDIF;                            !
+
+! +++
+! 2. Skapa bikubiska ytan fr}n indata text filen
+! ---
+
+
+  str1:= srffil;                    ! Full file name
+  str2 :="NMG_F07";                 ! Type of file
+  str3 :="CUB_SUR";                 ! Requested type Bicubic
+
+  SUR_EXDEF(#150,str1, str2, str3     ! Import surface
+              :BLANK=1);            !
+
+  s_id_u:= GLOBAL_REF(#150);        !
+
+
+  GETSURH(s_id_u,"NPATU",npatu);    ! Retrieve number of U patches
+  GETSURH(s_id_u,"NPATV",npatv);    ! Retrieve number of V patches
+
+  nu := npatu + 1;                  ! Number of U lines
+  nv := npatv + 1;                  ! Number of V lines
+
+  IF DEBUG = 2 THEN                 ! Debug printout to screen
+  s:=INPMT("rdbicubv1: "+           !
+    " Antal kurvor i U led "        !
+      +STR(nu,-1,0)+                !
+    " och i V led "                 !
+      +STR(nv,-1,0)                 !
+         ,"",1);                    !
+  ENDIF;                            !
+
+  c_id := #0.1;                     !
+  PART(#24,s_minmaxv0(s_id_u,c_id,  ! Ber{kna  max och minv{rden
+   minx,maxx,miny,maxy,minz,maxz)); !
+
+  PART(#25,MINMAXREG(minx,maxx,     ! Registrera max och minv{rden p}
+      miny,maxy,minz,maxz,nu,nv));  ! koordinater samt antal U och V linjer
+
+  IF case = 2 THEN                  ! Endast minmax
+!    DEL(GLOBAL_REF(#24));           !
+!    DEL(s_id_u);                    !
+    GOTO  minmax;                   !
+  ENDIF;                            !
+
+! +++
+! 3. Skala och transformera ytan
+! ---
+
+
+  IF ABS(skala) >= 0.1  THEN        ! Skala < 1 inneb{r f|rstoring
+    TFORM_MOVE(#151,VEC(x0,y0,z0),  !
+     VEC(0,0,0),1/skala);           !
+    TCOPY(#152,s_id_u,#151);        ! Create scaled copy of surface
+    s_id:= GLOBAL_REF(#152);        !
+  ENDIF;
+
+
+  IF  skala <= -0.1 THEN            ! Speglingsmatris f|r skala < -0.1
+    TFORM_MIRR(#153,                ! 
+    VEC( 0 ,  0, 0 ),               !
+    VEC(100,  0,100),               !
+    VEC(200,  0, 0 ));              !
+    TCOPY(#154,s_id,#153);          ! Create mirrored surface
+    s_id:= GLOBAL_REF(#154);        !
+  ENDIF;                            !
+
+  IF skala <  0.1 AND               ! Otill}tna v{rden p} skala
+     skala > -0.1      THEN         ! (Man kan naturligtvis till}ta
+      EXIT("rdbicubv1: "+           !  st|rre uppskalning ... )
+       "skala mindre {n 0.1");      !
+                                    !
+  ENDIF;                            !
+
+
+
+! +++
+! 4. Skapa m{rkta (GROUP) isoparameterkurvor
+! ---
+
+
+  IF    grafik = 1 THEN             ! Vald grafisk representation:
+      GOTO full;                    ! Alla kurvor
+  ELIF  grafik = 2 THEN             ! Ytans ytter- och mitt-kurvor
+      GOTO kontur;                  ! 
+  ELIF  grafik = 3 THEN             ! Ytans ytterkurvor
+      GOTO kontur;                  ! 
+  ELIF  grafik = 4 THEN             ! Specificerade U- och/eller V-linjer
+      GOTO delta;                   ! heldragna
+  ELIF  grafik = 14 THEN            ! Specificerade U- och/eller V-linjer
+      GOTO delta;                   ! streckade
+  ELIF  grafik = 6 THEN             ! Specificerade U-linjer heldragna
+      GOTO delta;                   ! 
+  ELIF  grafik = 16 THEN            ! Specificerade U-linjer streckade
+      GOTO delta;                   ! 
+  ELIF  grafik = 7 THEN             ! Specificerade V-linjer heldragna
+      GOTO delta;                   ! 
+  ELIF  grafik = 17 THEN            ! Specificerade V-linjer streckade
+      GOTO delta;                   ! 
+  ELSE                              !
+      s:=INPMT("Ej programmerat"+   !
+        " f|r mer {n"+              !
+        " grafik= 1, 2, 3, 4/14,"+  !
+                 " 6/16 eller 7/17" !
+            ,"",1);                 !
+      EXIT("rdbicubv1: Fel v{rde!");!
+  ENDIF;
+
+
+! Skapa alla iso-parameter kurvor
+
+! +++
+full:                               ! Label: Alla kurvor
+! ---
+
+!
+! Loop for all U lines in the surface.
+!
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+
+  FOR i_u:= 0 TO npatu DO           ! Start loop U curves
+
+    CUR_ISO(#3,s_id,iso_c,i_u,      ! Isoparameter
+        start_p,end_p);             !
+
+    GROUP(#4,"U"+STR(i_u+1,-1,0)    ! M{rkning av U linje
+             ,REFC(3,i_u+1));       ! Grupp namn Un, d{r n=i_c
+
+  ENDFOR;                           ! End   loop U curves
+
+! Loop for all V lines in the surface.
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+  FOR i_v:= 0 TO npatv DO           ! Start loop V curves
+
+    CUR_ISO(#5,s_id,iso_c,i_v,      ! Isoparameter
+        start_p,end_p);             !
+
+    GROUP(#6,"V"+STR(i_v+1,-1,0)    ! M{rkning av V linje
+             ,REFC(5,i_v+1));       ! Grupp namn Vn, d{r n=i_c
+
+  ENDFOR;                           ! End   loop V curves
+
+  GOTO slut;                        ! Exit
+
+!                    3. Ytans ytterkurvor
+!                    ====================
+
+! +++
+kontur:                             ! Label: Konturen
+! ---
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+  i_u    :=   0;
+
+  CUR_ISO(#7,s_id,iso_c,i_u,        ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#8,"U"+STR(i_u+1,-1,0)      ! M{rkning av U linje
+             ,REFC(7,1));           ! Grupp namn Un, d{r n=i_c
+
+  i_u    :=   npatu;                ! Aktuell kurva
+
+  CUR_ISO(#9,s_id,iso_c,i_u,        ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#10,"U"+STR(i_u+1,-1,0)     ! M{rkning av U linje
+             ,REFC(9,1));           ! Grupp namn Un, d{r n=i_c
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+  i_v    :=   0;                    ! Aktuell kurva
+
+  CUR_ISO(#11,s_id,iso_c,i_v,       ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#12,"V"+STR(i_v+1,-1,0)     ! M{rkning av V linje
+             ,REFC(11,1));          ! Grupp namn Vn, d{r n=i_c
+
+  i_v    := npatv;                  ! Aktuell kurva
+
+  CUR_ISO(#13,s_id,iso_c,i_v,       ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#14,"V"+STR(i_v+1,-1,0)     ! M{rkning av V linje
+             ,REFC(13,1));          ! Grupp namn Vn, d{r n=i_c
+
+
+  IF  grafik = 2 THEN               ! Catia mitt-kurvor
+      GOTO catia;                   !
+  ELSE                              !
+      GOTO slut;                    ! Ytans konturer {r ritade
+  ENDIF;
+
+! +++
+catia:;                             ! Label mittlinjer
+! ---
+
+  SET(CDASHL=5);                    !
+  SET(CFONT=1);                     ! Streckad kurva
+
+
+  mittenu:= npatu/2.0;              ! Ber{knar u-v{rdet p} mitten
+
+  iso_c  := "U";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatv;                ! End   value
+
+
+  CUR_ISO(#15,s_id,iso_c,mittenu,   ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#16,"U"+STR(mittenu+1,-5,1) ! M{rkning av U linje
+             ,REFC(15,1));          ! Grupp namn Un, d{r n=i_c
+
+  mittenv:= npatv/2.0;              ! Ber{knar v-v{rdet p} mitten
+
+  iso_c  := "V";                    ! Type of isoparameter
+  start_p:=   0.0;                  ! Start value
+  end_p  :=   npatu;                ! End   value
+
+
+  CUR_ISO(#17,s_id,iso_c,mittenv,   ! Isoparameter
+        start_p,end_p);             !
+
+  GROUP(#18,"V"+STR(mittenv+1,-5,1) ! M{rkning av U linje
+             ,REFC(17,1));          ! Grupp namn Un, d{r n=i_c
+
+  SET(CFONT=0);                     ! ]terst{ller till heldragen 'mode'
+
+
+  GOTO slut;                        ! Catia mittlinjer {r ritade
+
+
+! +++
+delta:;                             ! Specificerade U och V linjer
+! ---
+
+  IF ustart <> 0.0 THEN
+      IF ustart < 1 THEN
+          s:=INPMT("Ustart < 1"         !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+
+      IF udelta <= 0 AND ustart <> uslut THEN
+          s:=INPMT("Udelta <= 0"        !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+
+      IF uslut < ustart THEN
+          s:=INPMT("Uslut < Ustart"     !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+  ENDIF;
+  
+  IF vstart <> 0.0 THEN
+      IF vstart < 1 THEN
+          s:=INPMT("Vstart < 1"         !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+
+      IF vdelta <= 0 AND vstart <> vslut THEN
+          s:=INPMT("Vdelta <= 0"        !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+
+      IF vslut < vstart THEN
+          s:=INPMT("Vslut < Vstart"     !
+                ,"",1);                 !
+          EXIT("rdbicubv1: Fel v{rde!");!
+      ENDIF;
+  ENDIF;
+  
+
+  IF grafik = 14  OR  grafik = 16
+                  OR  grafik = 17  THEN
+      SET(CDASHL=5);                    !
+      SET(CFONT=1);                     ! Streckad kurva
+  ENDIF;
+
+
+!
+! Loop for U lines in the surface.
+!
+
+  iso_c  := "U";                    ! Type of isoparameter
+
+  IF   grafik= 4 OR grafik= 14 OR   ! Specificerade U- och/eller V-linjer
+       grafik= 6 OR grafik= 16 THEN ! Specificerade U-linjer
+    start_p:=   vstart-1.0;         ! Start value
+    end_p  :=   vslut-1.0;          ! End   value
+  ELIF grafik= 7 OR grafik= 17 THEN ! Specificerade V-linjer
+      GOTO vcurves;                 !
+  ENDIF;                            !
+
+  IF ABS(udelta) < 0.0001 THEN      !
+    nmax :=   1;                    ! Max antal isoparametrar
+  ELSE                              !
+    nmax := 200;                    ! 
+  ENDIF;                            !
+
+  FOR i_u:= 0 TO nmax  DO           ! Start loop U curves
+
+    u_c:= ustart-1.0+i_u*udelta;    !
+    IF u_c > uslut-1.0+0.00001 THEN !
+      GOTO vcurves;                 !
+    ENDIF;                          !
+    CUR_ISO(#19,s_id,iso_c,u_c,     ! Isoparameter
+        start_p,end_p);             !
+
+    GROUP(#20,"U"+STR(u_c+1.0,-5,3) ! M{rkning av U linje
+             ,REFC(19,i_u+1));      ! Grupp namn Un, d{r n=i_c
+
+    IF  nmax = 1 THEN               ! Only one curve ?
+      GOTO vcurves;                 !
+    ENDIF;                          !
+  ENDFOR;                           ! End   loop U curves
+
+  EXIT("rdbicubv1 nmax f|r U");     !
+
+vcurves:;
+
+! Loop for V lines in the surface.
+
+  iso_c  := "V";                    ! Type of isoparameter
+
+  IF   grafik= 4 OR grafik= 14 OR   ! Specificerade U- och/eller V-linjer
+       grafik= 7 OR grafik= 17 THEN ! Specificerade U-linjer
+    start_p:=   ustart-1.0;         ! Start value
+    end_p  :=   uslut-1.0;          ! End   value
+  ELIF grafik= 6 OR grafik= 16 THEN ! Specificerade U-linjer
+      GOTO slut;                    !
+  ENDIF;                            !
+
+  IF ABS(vdelta) < 0.0001 THEN      !
+    nmax :=   1;                    ! Max antal isoparametrar
+  ELSE                              !
+    nmax := 200;                    ! 
+  ENDIF;                            !
+
+  FOR i_v:= 0 TO nmax  DO           ! Start loop V curves
+
+    v_c:= vstart-1.0+i_v*vdelta;    !
+    IF v_c > vslut-1.0+0.00001 THEN !
+      GOTO slut;                    !
+    ENDIF;                          !
+    CUR_ISO(#21,s_id,iso_c,v_c,     ! Isoparameter
+        start_p,end_p);             !
+
+    GROUP(#22,"V"+STR(v_c+1.0,-5,3) ! M{rkning av V linje
+             ,REFC(21,i_v+1));      ! Grupp namn Vn, d{r n=i_c
+
+    IF  nmax = 1 THEN               ! Only one curve ?
+      GOTO slut;                    !
+    ENDIF;                          !
+  ENDFOR;                           ! End   loop V curves
+
+  EXIT("rdbicubv1 nmax f|r V");     !
+
+
+!                     6. Utg}ng fr}n rutin
+!                     ====================
+
+slut:                                   ! Label: Exit fr}n rutin
+
+  SET(CFONT=0);                         ! ]terst{ller till heldragen 'mode'
+
+  DEL(s_id_u);                       ! Radera oskalade ytan
+! P} den skalade ytan finns kurvor. Denna f}r absolut inte raderas !!!!!!
+  DEL(GLOBAL_REF(#24));              ! Radera minmaxber{kning
+
+minmax:;
+
+ENDMODULE
+

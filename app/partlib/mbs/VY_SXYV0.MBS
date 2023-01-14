@@ -1,0 +1,99 @@
+!***************** vy_sxyv0   **********************************
+! +++
+! The function creates the SAAB XY view, i.e in the direction of 
+! Z axis in the input coordinate system, the Y axis in the  
+! negative direction of the Y axis in the screen system and
+! X axis in the same direction as the screen X axis.
+!
+! Revision history
+! ________________
+!
+! 1995-11-21   Gunnar Liden     
+! ---
+!******************************************************************
+
+!sdesce Create the SAAB xy view from an input coordinate system                   
+!sdescs Skapa SAAB's XY vy med koordinatsystem som indata      
+
+GLOBAL GEOMETRY MODULE vy_sxyv0(
+REF     csys_id                > "Select coordinate system";               
+STRING  v_name*15 := ""        > "@ View name <CR>=>  XY_coord_system_name";
+INT     cflag := 1             > "@ Eq. 1: Change to new view (<CR>=1)");
+
+
+
+! Internal variables
+
+VECTOR p1,p2;                ! Maximum size of the model 
+
+STRING csys_name*50;         ! Name of input coordinate system
+FLOAT  csys_data(4,4);       ! Matrix for input coordinate system
+
+VECTOR vyorigin;             ! Origin for the view        
+FLOAT  scale;                ! Scale for the view
+
+STRING s*1;                  ! For INPMT Debug
+
+INT    DEBUG;                ! For Debug
+
+
+
+BEGINMODULE
+
+!           1. Initieringar och kontroller
+!           ===============================
+
+  DEBUG := 1;                  ! =0 eller =1
+
+
+!           2. Create view for the input system     
+!           =======================================
+
+  MODE_LOCAL(csys_id);         ! Activate input system
+  CSYS_1P(#2,"Start",          ! Create start system 
+   VEC(0,0,0),                 !
+    0.0  , 0.0 ,0.0            !
+   :BLANK=0);                  !
+
+  IF v_name= "" OR             ! Create view name if not defined
+     v_name=" "    THEN        !
+    GETCSY(csys_id, csys_name, !
+           csys_data);         !
+    v_name:= "XY_"+csys_name;  !
+  ENDIF;                       !
+
+  CSYS_3P(#3,"XYVY",vec(0,0,0),vec(1,0,0),vec(0,-1,0):BLANK=1);
+
+  MODE_GLOBAL();               ! Activate global system
+
+  CRE_VIEW(v_name,#3);         ! Create view
+
+  DEL(GLOBAL_REF(#2));         ! Delete coordinate systems
+  DEL(GLOBAL_REF(#3));         ! 
+
+  IF cflag <> 1 THEN           ! Return if view only shall be created
+    EXIT();
+  ENDIF;                       !
+
+  ACT_VIEW(v_name);            ! Aktivate view
+
+  MSIZE_VIEW(p1,p2);           ! Maximum size of model
+
+  IF DEBUG = 2 THEN            ! Debug
+    s  :=INPMT("p1 "           !
+        + STR(p1.x,-15,8)+" "  !
+        + STR(p1.y,-15,8)+     !
+        " p2 "                 !
+        + STR(p2.x,-15,8)+" "  !
+        + STR(p2.y,-15,8)+" "  !
+         ," ",1);              !
+   ENDIF;                      !
+
+  vyorigin:= p1+0.5*(p2-p1);   ! Origin for view
+
+  CEN_VIEW(   v_name,          ! Centre = origin 
+                vyorigin);     !
+
+  REP_VIEW();                  ! Change view 
+
+ENDMODULE

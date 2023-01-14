@@ -1,0 +1,114 @@
+!******************** sectf07 ************************************
+!
+!  Write a curve in the Consurf section format
+!
+!  1992-11-26  Gunnar Liden
+!  1993-01-20  Curve array sizes from (25) to (26)  Gunnar Liden
+!  1995-01-28  DP/DS, spacing and no Comment lines  Gunnar Liden
+!
+!********************************************************************
+
+BASIC GEOMETRY MODULE sectf07(
+
+VAR FILE dat;                   ! Output file pointer
+STRING curname*28;              ! Name of curve
+STRING datum*28;                ! Local coordinate system
+
+INT    nopoints;                ! Number of points in the curve
+
+    VECTOR   pspine;            ! Spine (coreline) point
+    VECTOR  vpspine;            ! Spine (coreline) point
+
+VAR VECTOR  psektI(26);         ! Curve definition points (i.1)
+VAR VECTOR vpsektI(26);         ! Tangents to curve definition points
+                             
+VAR VECTOR  tpsektI(26);        ! Curve tangent definition points (i.2)
+VAR VECTOR vtpsektI(26);        ! Tangents to curve tangent def. points
+
+VAR FLOAT   pval_lim(26);       ! P value for limit   curves
+VAR FLOAT   pval_tan(26);       ! P value for tangent curves
+
+VAR FLOAT   pvalsektI(26);      ! Curve P values (i.3)
+VAR FLOAT  dpvalsektI(26));     ! Curve dP/dS values
+
+!                        Internal variables
+!                        ===================
+
+  INT    iseg;                  ! Loop index = segment in curve
+
+  INT    DEBUG;                 ! Debug variable
+                                ! Eq. 0: No   debug
+                                ! Eq. 1: Full debug
+
+BEGINMODULE
+
+!                  1. Initiations and check of input data
+!                  ======================================
+
+  DEBUG := 0;                   ! Change to 0 or 1
+
+  IF nopoints > 26 THEN         !
+    EXIT("sectf07: nopoints"    ! Program error
+       +" > 26 ");              !
+  ENDIF;
+
+!                      2. Header to curve
+!                      ===================
+  IF DEBUG=1 THEN
+  OUTSTR(dat,"C Curve is created with module sectf07.MBS (1995-01-28)");
+  OUTLIN(dat);
+  OUTSTR(dat,"C");
+  OUTLIN(dat);
+  ENDIF;
+
+  OUTSTR(dat,"LINE  "+curname+"      DATUM "+datum);
+  OUTLIN(dat);
+  OUTSTR(dat,"   SECTION  "+STR(nopoints,-1,0)+" POINTS");
+  OUTLIN(dat);
+  OUTSTR(dat,"   NORMAL   "+STR( pspine.x,10,4)+" "
+                           +STR( pspine.y,10,4)+" "
+                           +STR( pspine.z,10,4)+" "
+                           +STR(vpspine.x,10,8)+" "
+                           +STR(vpspine.y,10,8)+" "
+                           +STR(vpspine.z,10,8)      );
+
+    FOR iseg:=1 TO nopoints DO
+
+      OUTLIN(dat);
+      OUTSTR(dat,"     "+STR(iseg,-1,0)+".1  ");
+      OUTFLT(dat,  psektI(iseg).x,10,4); OUTSTR(dat," ");
+      OUTFLT(dat,  psektI(iseg).y,10,4); OUTSTR(dat," ");
+      OUTFLT(dat,  psektI(iseg).z,10,4); OUTSTR(dat," ");
+      OUTFLT(dat, vpsektI(iseg).x,10,8); OUTSTR(dat," ");
+      OUTFLT(dat, vpsektI(iseg).y,10,8); OUTSTR(dat," ");
+      OUTFLT(dat, vpsektI(iseg).z,10,8); OUTSTR(dat," ");
+
+      OUTLIN(dat);
+
+      OUTSTR(dat,"     "+STR(iseg,-1,0)+".2  ");
+      OUTFLT(dat, tpsektI(iseg).x,10,4); OUTSTR(dat," ");
+      OUTFLT(dat, tpsektI(iseg).y,10,4); OUTSTR(dat," ");
+      OUTFLT(dat, tpsektI(iseg).z,10,4); OUTSTR(dat," ");
+      OUTFLT(dat,vtpsektI(iseg).x,10,8); OUTSTR(dat," ");
+      OUTFLT(dat,vtpsektI(iseg).y,10,8); OUTSTR(dat," ");
+      OUTFLT(dat,vtpsektI(iseg).z,10,8); OUTSTR(dat," ");
+
+      OUTLIN(dat);
+
+      OUTSTR(dat,"     "+STR(iseg,-1,0)+".3 PVALUES");
+      OUTFLT(dat,  pval_lim(iseg),10,6); OUTSTR(dat," ");
+      OUTFLT(dat,  pval_tan(iseg),10,6); OUTSTR(dat," ");
+      IF iseg < nopoints THEN
+      OUTFLT(dat, pvalsektI(iseg),10,6); OUTSTR(dat," ");
+      OUTFLT(dat,dpvalsektI(iseg),10,8); OUTSTR(dat," ");
+      ENDIF;
+
+     ENDFOR;
+
+   OUTLIN(dat);
+!   OUTSTR(dat,"C ");
+!   OUTLIN(dat);
+!   OUTSTR(dat,"C ");
+!   OUTLIN(dat);
+
+ENDMODULE

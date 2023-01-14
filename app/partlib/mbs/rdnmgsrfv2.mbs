@@ -1,0 +1,72 @@
+!* OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! 
+!* Detta {r en specialvariant f|r UNIX (pc).     
+!* Den version som finns i VAX {r annorlunda.       
+!* OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! OBS ! 
+! 1993-12-15  F|r PC och ytfunktioner           Gunnar Liden
+! 1993-12-16  rdbicubv1                         Gunnar Liden
+LOCAL GEOMETRY MODULE rdnmgsrfv2
+(
+
+STRING srffil*80 := "/u/surflib/yta3.F07"
+                         > "Text (F07) fil med ytdata";
+STRING surtype*1:="b"    > "Typ av yta (c=consurf, b=bicubic";
+FLOAT  skala    := 1.0   > "Skala (skalningsfaktor=1/skala)";
+FLOAT  x0       :=3500.0 > "Origo x koordinat";
+FLOAT  y0       :=   0.0 > "Origo y koordinat";
+FLOAT  z0       :=4000.0 > "Origo z koordinat";
+INT    grafik   := 4     > "@ 1.Alla 2.CATIA 3.Kontur 4/14.Delta 5.Fil";
+FLOAT  ustart   := 1.0   > "Ustart";
+FLOAT  udelta   := 1.0   > "Udelta";
+FLOAT  uslut    := 2.0   > "Uslut";
+FLOAT  vstart   := 1.0   > "Vstart";
+FLOAT  vdelta   := 1.0   > "Vdelta";
+FLOAT  vslut    := 2.0   > "Vslut";
+INT    case     := 1     > "@ Case (<CR>=1=skapa kurvor)";
+STRING uvfil*80 := " "   > "@ uvfil <CR>= ingen fil");
+
+
+! +++ ******************************************************************
+!*
+!* Program:  rdnmgsrf2
+!*
+!* Purpose:  To invoke the appropriate routine to read an NMG surface
+!*           depending on the surface type (consurf, bicubic ...).
+!*
+!* Parms:    See above. All parameters are In/Out parameters.
+!*
+!* Remarks:  
+!*
+!* Rev hist: 1993-12-15  Gunnar Liden                
+!*
+! --- ******************************************************************
+
+
+BEGINMODULE
+
+!  Create a coordinate system to be used as a LOCAL system.
+
+   CSYS_1P(#2,"C_RDNMGSRF",VEC(0.0,0.0,0.0),0.0,0.0,0.0:BLANK=1);
+
+!  Read the surface text file and create curves to show the surface.
+
+     IF surtype = "c" THEN
+       PSH_PMT("L{ser in ytan "+srffil+" ... ");
+       PART(#11,rdconsv1 
+         (srffil,skala,x0,y0,z0,grafik,
+          ustart,udelta,uslut,vstart,vdelta,vslut,
+          case,uvfil),#2);
+       POP_PMT();
+     ELIF surtype = "b" THEN
+       PSH_PMT("L{ser in ytan "+srffil+" ... ");
+!1994-12-16       PART(#12,rdbicubic
+       PART(#12,rdbicubv1
+         (srffil,skala,x0,y0,z0,grafik,
+          ustart,udelta,uslut,vstart,vdelta,vslut,
+          case,uvfil),#2);
+       POP_PMT();
+     ELSE
+       EXIT("RDNMGSRF: Felaktig yttyp: " + surtype);
+     ENDIF;
+
+ENDMODULE
+

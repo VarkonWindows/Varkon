@@ -1,0 +1,257 @@
+!********************* PVALUE ********************************************
+!
+! Modifies a P value in a conic curve and creates a new curve.
+!
+! Output:  #1.1#1.1  Conic curve
+!
+! 1992-11-24  Gunnar Liden
+! 1992-12-14  eps=peps, epsmax=pepsmax, epsmin=pepsmin
+!                                             Ronny Gyllensten
+!  1993-01-20  Curve array sizes from (25) to (26)  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE PVALUE (
+REF    curve_id                  > "@t8 Select curve to modify ";
+INT    i_point := 3              > "No. of segment to modify ";
+FLOAT  peps    := 0.1            > "@ Eps. change for variable v? ";
+INT    i_var   := 3              > "No. of used variable (?) ";
+FLOAT  pepsmax := +0.5           > "@ Upper limit for peps ";
+FLOAT  pepsmin := -0.5           > "@ Lower limit for peps ";
+INT    graphic := 1              > "@ Graphical representation ");
+
+! Internal variables
+
+  INT    no_points;              ! Number of points in the curve
+  VECTOR psektI(26);             ! Segment start/end points
+  VECTOR tpsektI(26);            ! Tangent points to psektI
+  FLOAT  pvalsektI(26);          ! P values to curve
+  VECTOR midpsektI(26);          ! Mid (P value) points
+
+  VECTOR ps_c;                   ! Start segment point
+  VECTOR pe_c;                   ! End   segment point
+  VECTOR pm_c;                   ! Mid segment point
+  VECTOR pout;                   ! Output point
+  FLOAT  pval_c;                 ! Current           P value
+  FLOAT  pval_out;               ! Modified (output) P value
+  FLOAT  length;                 ! Length of line
+
+  INT    b_flag;                 ! For the graphical representation
+  REF    group_id;               ! Identity for input curve group
+  STRING group_name*20;          ! Input curve (GROUP) name: LIMij,
+
+  INT       typ;                 ! Type of entity
+  INT       nref;                ! Number of references
+  INT       blnk;                !
+  INT       niv;                 !
+  INT       pen;                 !
+  INT       nm;                  !
+  INT       flag;                ! ????
+
+  REF       gid(3);              !
+  REF       idvec(100);          !
+  STRING    gnam*20;             ! Group name
+
+  INT     DEBUG;                 ! Debug flag
+                                 ! Eq. 0: No   debug
+                                 ! Eq. 1: Full debug
+
+
+  STRING curcode*20;             ! Curve (GROUP) name: MOD01VAR07
+
+  STRING s*1;                    ! For debug printout to screen
+
+
+BEGINMODULE
+
+!               1. Initiations and check of input data
+!               ======================================
+
+  IF graphic = 1 OR              ! Graphical representation
+     graphic = 2 THEN            !
+    b_flag:= 0;                  !
+  ELSE                           !
+    b_flag:= 1;                  !
+  ENDIF;                         !
+
+  IF pepsmax < 0.0 THEN          ! Check pepsmax
+    EXIT("PVALUE: Upper limit"+  !
+         " pepsmax < 0");        !
+  ENDIF;                         !
+  IF pepsmin > 0.0 THEN          ! Check pepsmin
+    EXIT("PVALUE: Lower limit "+ !
+      " pepsmin > 0");           !
+  ENDIF;                         !
+
+
+  IF    peps < pepsmin THEN      ! Check that pepsmin <= peps <= pepsmax
+    EXIT("PVALUE: peps= "+       !
+   STR(peps,-3,2)+               !
+   " < pepsmin");                !
+  ELIF  peps > pepsmax THEN      !
+    EXIT("PVALUE: peps= "+       !
+   STR(peps,-3,2)+               !
+   " > pepsmax");                !
+  ENDIF;                         !
+
+  curve_id :=                    ! One level reference
+  GLOBAL_REF(curve_id,1);        !
+
+!  s:=INPMT("TPLAN: curve_id="   ! Debug printout to screen
+!  +rstr(curve_id),"",1);        !
+
+
+  part(#5,CURTOVEC(curve_id,     ! Get number of points and
+            no_points,           ! and points in arrays for
+            psektI,              ! the input curve.
+            tpsektI,             !
+            pvalsektI,           !
+            midpsektI)           !
+            :SAVE=0);            ! Part (call) not saved in GM
+
+!   s:=INPMT("TPLAN: no_points= " ! Debug printout to screen
+!   +str(no_points ,-1,0),"",1);  !
+
+  length:=10.0;                  ! For tangent point calculation
+
+!               2. Retrieve current point and tangent
+!               =====================================
+  IF i_point+1 > no_points THEN  !
+    EXIT("PVALUE: Segment does"+ !
+         " not exist ");         !
+  ENDIF;
+
+  ps_c := psektI(i_point);      ! Current  segment start point from array
+  pe_c := psektI(i_point+1);    ! Current  segment end   point from array
+  pm_c := midpsektI(i_point);   ! Current  segment mid   point from array
+
+  pval_c := pvalsektI(i_point); ! Current P value
+
+!   s:=INPMT("TPLAN: i_point= "  ! Debug printout to screen
+!   +STR(i_point ,-1,0)+         !
+!   " pvalsektI(i_point) "       !
+!   +STR(pvalsektI(i_point),-12,6)
+!   ,"",1);                      !
+
+!                3. Calculate (modified) P-value
+!                ===============================
+
+  pval_out := pval_c + peps;    ! Just add peps to current P value
+
+  IF pval_out < 0.1 THEN        ! Mininum P value is 0.1
+    EXIT("PVALUE: Output value"+!
+         " less than 0.1");     !
+  ENDIF;                        !
+  IF pval_out >= 0.85 THEN      ! Maximum P value is 0.85
+    EXIT("PVALUE: Output value"+!
+     " greater than 0.85");     !
+  ENDIF;                        !
+
+  pvalsektI(i_point):=pval_out; ! Modified P value to array
+
+
+!                     5. Create modified curve
+!                     ========================
+
+  BLANK(curve_id);              ! Blank input curve
+
+  PART(#1,creusect              ! Create conic curve with points,
+      (no_points,               ! tangent points and P value
+       psektI,tpsektI,          ! 
+       pvalsektI));             !
+
+
+!                        6. Delete and add group
+!                        ========================
+
+  GETHDR(curve_id,typ,nref,blnk,! Get header for retrieved entity id
+           niv,pen,gid);        !
+
+
+  group_id := gid(1);           ! Group #id to output variable
+  IF group_id <> #0  THEN       !
+    GETGRP(group_id,gnam,nm,    ! Get data for entity GROUP
+        idvec);                 !
+    group_name:= gnam;          !
+  ELSE                          !
+    group_name:= "Not defined"; !
+  ENDIF;
+
+
+!  IF DEBUG=1  THEN              ! Debug
+!  s:=INPMT("TPLAN: gid(1)= "    !
+!  +RSTR(gid(1))                 !
+!  +" group_id "                 !
+!  +RSTR(group_id)               !
+!  +" group_name "               !
+!  +  group_name                 !
+!  ,"",1);                       !
+!  s:=INPMT("TPLAN: gid(2)= "    ! Debug printout to screen
+!  +rstr(gid(2)),"",1);          !
+!  s:=INPMT("TPLAN: gid(3)= "    ! Debug printout to screen
+!  +rstr(gid(3)),"",1);          !
+!  ENDIF;
+
+  IF group_id <> #0  THEN       ! Delete input curve group
+    DEL(group_id);              !
+    GROUP(#6,group_name,        ! New group with the same name as
+             REFC(1,1,1));      ! the input group (=curcode)
+  ENDIF;                        !
+
+
+
+!                   7. Register the modification
+!                   ============================
+
+      IF   i_point <   10  THEN !
+        curcode:="MOD0"+        ! Curve (GROUP) name MODxx
+        STR(i_point,-1,0);      !
+      ELIF i_point <  100  THEN !
+        curcode:="MOD"+         !
+        STR(i_point,-1,0);      !
+      ELSE                      !
+        curcode:="MOD_ERROR";   !
+      ENDIF;                    !
+
+      IF   i_var <   10  THEN   !
+        curcode:=curcode+"VAR0"+! Add VARyy to curve (GROUP) name MODxx
+        STR(i_var,-1,0);        !
+      ELIF i_var <  100  THEN   !
+        curcode:=curcode+"VAR"+ !
+        STR(i_var,-1,0);        !
+      ELSE                      !
+        curcode:="VAR_ERROR";   !
+      ENDIF;                    !
+
+!Tillf{lligt      GROUP(#15,curcode, ! Curve code for modified curve
+!Tillf{lligt               refc(1,1,1));     !
+
+
+!                   8. Graphical representation
+!                   ============================
+!                   (See also system #2 above)
+
+  IF graphic = 1 OR             ! Create point
+     graphic = 2 THEN           !
+    POI_FREE(#16,pm_c);         !
+    IF ABS(peps)>0.0000001 THEN  !
+      CSYS_3P(#17,"pvalue",pm_c,!
+      pe_c-ps_c,pm_c-ps_c       !
+      :BLANK=1);                !
+      MODE_LOCAL(#17);          !
+      length:=VECL(pe_c-ps_c)   !
+               *0.2;            !
+      LIN_FREE(#18,             !
+       VEC(-length,0,0),        !
+       VEC(+length,0,0));       !
+      LIN_FREE(#19,             !
+       VEC(-length,  0,   0),   !
+       VEC(   0   ,length,0));  !
+      LIN_FREE(#20,             !
+       VEC(   0   ,length,0),   !
+       VEC(+length,   0,  0));  !
+      MODE_GLOBAL();            !
+    ENDIF;                      !
+  ENDIF;                        !
+
+
+ENDMODULE

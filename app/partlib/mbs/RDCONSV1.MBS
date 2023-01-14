@@ -1,0 +1,566 @@
+!********************* rdconsv1 ****************************************
+!
+!  Modulen l{ser en Consurf yta (fr}n NMG) fr}n en F07 fil och
+!  konverterar ytan till ett VARKON kurvn{t.
+!
+!  Kurvorna i n{tet {r begr{nsningskurvor till ytans "patches",
+!  dvs iso-parameter linjer med v{rdena U=1.0, 2.0, 3.0, ....
+!  och V=1.0, 2.0, 3.0, 4.0, ........
+!
+!*** Placering av ytan  
+!    Ytan (kurvn{tet) m}ste placeras (i en SAAB standard vy) 
+!    med hj{lp av ett lokalt koordinatsystem, dvs denna modul
+!    {r av typen LOCAL. Observera att ytdatan normalt {r given
+!    i ytans definitionssystem (vid |verf|ringen fr}n NMG till
+!    VARKON transformeras ytan fr}n Basic till definitions-
+!    systemet).
+!
+!*** Skalning av ytan 
+!    Ytan skalas normalt vid inl{sningen med origo x0,y0,z0 
+!    som skalningscentrum. Om avst}nden mellan punkterna 
+!    blir f|r litet (kordan f|r kort) tas segment bort i
+!    kurvan. Det kan ocks} intr{ffa att en hel isoparameter-
+!    kurva kan f|rsvinna om t.ex en nospunkt {r definierad 
+!    av en cirkel (Consurf Section Line) med liten radie.
+!
+!
+!*** Ytans antal U och V linjer samt utstr{ckning i R*3 
+!    Funktionen kan ocks} anropas (med case=2) s} att enbart
+!    max- min- v{rden samt antalet U och V linjer fastst{lls
+!    (detta g|rs i rdcons1v1). Ingen geometri skapas d}.
+!
+!*** Funktion i f|rsta hand f|r figurbladsapplikationen
+!    Modulen {r t{nkt att anropas av fig3dv0 vid skapandet av
+!    ett figurblad, men modulen kan naturligvis anv{ndas vid
+!    alla tillf{llen man beh|ver (patchgr{ns-) kurvor fr}n en
+!    Consurf yta. Notera dock att det {ven finns en annan 
+!    generell funktion (c_consurf) som omvandlar F07 filen till
+!    MBS filer med en fil f|r varje longitudinell kurva. 
+!
+!*** Indata fil med Consurf data
+!    Filen med Consurf data (F07 filen) ska skapas i NMG med 
+!    funktionen SPUNCH. Exempel p} NMG Part Program:
+!    TAPEIN  SF340
+!    SPUNCH  DATUM  438   !!!!!  Kontrollera detta !!!!!!!!
+!    * SF340-543-02
+!
+!  1992-11-25   Gunnar Liden
+!  1993-01-08   Prompt str{ngar (grafik var fel f|r delta )
+!               och f|rst{llda v{rden {ndrade              Gunnar Liden
+!  1993-01-20   Declaration of curve point arrays changed
+!               from (25) to (26) (max number of segments
+!               is 25 in VARKON)                           Gunnar Liden
+!  1993-05-15   UNIX filnamn       Gunnar Liden
+!
+!**********************************************************************
+
+LOCAL GEOMETRY MODULE rdconsv1(
+
+!VAXSTRING srffil*80 := "DISK$NMG:<VARKON.SURFLIB>ytnummer.DAT_79"
+
+STRING srffil*80 := "/u/surflib/D54302.F07"
+                          > "Text (F07) fil med Consurf data";
+FLOAT  skala     := 1.0   > "Skala (skalningsfaktor=1/skala)";
+FLOAT  x0        := 0.0   > "Origo x koordinat";
+FLOAT  y0        := 0.0   > "Origo y koordinat";
+FLOAT  z0        := 0.0   > "Origo z koordinat";
+INT    grafik    := 4     > "@ 1.Alla 2.CATIA 3.Kontur 4/14.Delta 5.Fil";
+FLOAT  ustart    := 1.0   > "Ustart";
+FLOAT  udelta    := 1.0   > "Udelta";
+FLOAT  uslut     := 2.0   > "Uslut";
+FLOAT  vstart    := 1.0   > "Vstart";
+FLOAT  vdelta    := 1.0   > "Vdelta";
+FLOAT  vslut     := 2.0   > "Vslut";
+INT    case      := 1     > "@ Case (<CR>=1=skapa kurvor)";
+STRING uvfil*80  := " "   > "@ uvfil <CR>= ingen fil");
+
+!QQ1993-01-08 INT    grafik    := 3  > "1.Alla 2. Reducerat 3. Delta 4. Fil";
+
+! Interna variabler
+
+  INT     DEBUG;                   ! Debug variabel
+                                   ! Eq. 0: Inga test utskrifter
+                                   ! Eq. 1: Max. test utskrifter
+
+  FLOAT   A(9);                    ! Transformationsmatris
+  FLOAT   B(3);                    ! Translationsvektor
+  FLOAT   RMTOL;                   ! Tolerans f|r att ta bort punkter
+
+  FLOAT   minx;                    ! Minimum X v{rde
+  FLOAT   maxx;                    ! Maximum X v{rde
+  FLOAT   miny;                    ! Minimum Y v{rde
+  FLOAT   maxy;                    ! Maximum Y v{rde
+  FLOAT   minz;                    ! Minimum Z v{rde
+  FLOAT   maxz;                    ! Maximum Z v{rde
+  INT     nu;                      ! Antal U linjer i ytan
+  INT     nv;                      ! Antal V linjer i ytan
+
+  INT     u_lines(200,2);          ! U kurvor som ska skapas
+                                   ! Eq. -1 <==> odefinierad
+  INT     v_lines(200,2);          ! V kurvor som ska skapas
+                                   ! Eq. -1 <==> odefinierad
+
+  FILE    f;                       ! Fil med ytdata (F07 file)
+
+  INT     i_u;                     ! Loop r{knare f|r U kurva
+  INT     i_v;                     ! Loop r{knare f|r V kurva
+
+  INT     np;                      ! Antal punkter    i  kurvan  
+  VECTOR  pcurve(200);             ! Punkter         f|r kurvan
+  VECTOR  tcurve(200);             ! Tangent punkter f|r kurvan
+  FLOAT   pvalue(200);             ! P v{rden        f|r kurvan
+    
+  INT     i_start;                 ! Start punkt f|r del-kurva
+  INT     i_slut;                  ! Slut  punkt f|r del-kurva
+  INT     npd;                     ! Antal punkter    i  del-kurva
+  VECTOR  pcurved(26);             ! Punkter         f|r del-kurva
+  VECTOR  tcurved(26);             ! Tangent punkter f|r del-kurva
+  FLOAT   pvalued(26);             ! P v{rden        f|r del-kurva
+  INT     n_inout;                 ! Antal punkter efter tracurve 
+  INT     sektnra;                 ! Antal U kurvor som skapats
+  INT     sektnrb;                 ! Antal U kurvor som skapats
+  INT     p_u;                     ! Pekare i ytdatafil         
+
+
+  INT     u_start;                 ! Start U v{rde f|r V kurva
+  INT     u_slut ;                 ! Slut  U v{rde f|r V kurva
+  INT     v_start;                 ! Start V v{rde f|r U kurva
+  INT     v_slut ;                 ! Slut  V v{rde f|r U kurva
+
+  STRING  rad*132;                 ! Slask variabel f|r att l{sa hel
+                                   ! rad eller radslut med INLIN
+
+  STRING  s*1;                     ! F|r INPMT
+
+
+  INT     ix1;                     ! Tempor{r loop r{knare
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  DEBUG := 0;                      ! [ndra DEBUG till noll eller ett
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_INI("Skapa skalade kurvor" + ! Initiera (|ppna) alfa-numerisk  
+      " fr}n F07 fil med Consurf"+ ! sk{rm                       
+       " ytdata.");                !
+!    s:= INPMT("rdconsv1: "         !
+!    +  " x0 "+                     !
+!     STR(x0,-12,6)  +              !
+!      " y0 "+                      !
+!     STR(y0  ,-12,6) +             !
+!      " z0 "+                      !
+!     STR(z0  ,-12,6) +             !
+!      " ",                         !
+!     "",1);                        !
+!    s:= INPMT("rdconsv1: "         !
+!    + " skala "+                   !
+!     STR(skala,-12,6)  +           !
+!      " grafik "+                  !
+!     STR(grafik,-1,0)  +           !
+!      " case "+                    !
+!     STR(case  ,-1,0) +            !
+!      " ",                         !
+!     "",1);                        !
+  ENDIF;                           !
+
+!                           Skalningsmatris
+!                           ---------------
+
+  IF    skala >= 0.2   THEN        ! Skalfaktor= 1/skala dvs
+      A(1) := 1.0/skala;           ! skala=0.2 ==>  5 ggr uppf|rstoring
+      A(2) := 0.0;                 ! skala=10  ==> 10 ggr f|rminskning
+      A(3) := 0.0;                 !
+      A(4) := 0.0;                 !
+      A(5) := 1.0/skala;           !
+      A(6) := 0.0;                 !
+      A(7) := 0.0;                 !
+      A(8) := 0.0;                 !
+      A(9) := 1.0/skala;           !
+      B(1) := -x0/skala;           !
+      B(2) := -y0/skala;           !
+      B(3) := -z0/skala;           !
+                                   !
+  ELIF  skala <= 0.2   THEN        ! Spegling kring Y0=0
+      IF (ABS(y0) > 0.00001 ) THEN !
+        EXIT("Spegling endast f|r"+!
+           " origo med y0=0.0");   !
+      ENDIF;                       !
+      A(1) := -1.0/skala;          !
+      A(2) := 0.0;                 !
+      A(3) := 0.0;                 !
+      A(4) := 0.0;                 !
+      A(5) := 1.0/skala;           !
+      A(6) := 0.0;                 !
+      A(7) := 0.0;                 !
+      A(8) := 0.0;                 !
+      A(9) := -1.0/skala;          !
+      B(1) := +x0/skala;           !
+      B(2) := +y0/skala;           !
+      B(3) := +z0/skala;           !
+                                   !
+  ELSE                             !
+      EXIT("Otill}ten skala f|r"+  !
+           " (Consurf) yta");      !
+  ENDIF;                           !
+
+!                       Tolerans f|r punkt borttagning
+!                       ------------------------------
+
+  RMTOL := 1.5;                    ! Anv{nds av trausect
+
+!        2. Best{m antal U V linjer och utstr{ckning av ytan
+!        ===================================================
+
+
+  PART(#1,rdcons1v1(srffil,        ! Anrop av rdcons1v1
+    minx,maxx,miny,maxy,minz,maxz, ! 
+    nu,nv)                         !
+    :SAVE=0);                      ! (sparas ej i GM)
+
+  PART(#148,MINMAXREG(minx,maxx,   ! Registrera max och minv{rden 
+             miny,maxy,minz,maxz,  ! p} koordinater samt antal U 
+             nu,nv));              ! och V linjer
+
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_LIN("Consurf data finns "+   ! Ytfilens namn
+          "p} fil:    "+srffil);   ! 
+  LST_LIN("Ytans min. X v{rde "+   ! Min. och max. X utstr{ckning
+           STR(minx,-12,6)+        ! (Konvertera flyttal till str{ng)
+     " och max. X v{rde "+         !
+           STR(maxx,-12,6));       ! 
+  LST_LIN("Ytans min. Y v{rde "+   ! Min. och max. Y utstr{ckning
+           STR(miny,-12,6)+        ! 
+     " och max. Y v{rde "+         !
+           STR(maxy,-12,6));       !
+  LST_LIN("Ytans min. Z v{rde "+   ! Min. och max. Z utstr{ckning
+           STR(minz,-12,6)+        ! 
+     " och max. Z v{rde "+         !
+           STR(maxz,-12,6));       !
+  LST_LIN("Antal U kurvor {r "+    ! Antal U och V kurvor
+           STR(nu,-1,0)+           ! (Konvertera heltal till str{ng)
+     " och antal V kurvor "+       !
+           STR(nv,-1,0));          ! 
+  ENDIF;                           !
+
+  IF case = 2 THEN                 ! Ingen geometri skapas f|r
+    GOTO slut;                     ! case=2
+  ENDIF;                           !
+
+!        3. Ta reda p} vilka U och V linjer som ska skapas  
+!        =================================================
+
+
+  PART(#2,rdcons2v1(nu,nv,grafik,  ! Anrop av rdcons2v1
+    ustart,udelta,uslut,           ! 
+    vstart,vdelta,vslut,           ! 
+    case,uvfil,u_lines,v_lines ,   !
+    u_start,u_slut,v_start,v_slut) !
+    :SAVE=0);                      ! (sparas ej i GM)
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  FOR ix1:=1 TO 200 DO             ! De U och V kurvor som
+  IF u_lines(ix1,1)=-1 AND         ! ska skapas.
+     v_lines(ix1,1)=-1       THEN  !
+    ;                              !
+  ELSE                             !
+  LST_LIN("Skapa U kurva "+        ! 
+  STR(u_lines(ix1,1),-1,0)+        !
+     " och V kurva "+              !
+  STR(v_lines(ix1,1),-1,0));       !
+  ENDIF;                           !
+  ENDFOR;                          !
+  LST_LIN("U kurva start V v{rde "+! Start och slut v v{rde
+  STR(v_start     ,-1,0)+          !
+     " och slut V v{rde "+         !
+  STR(v_slut      ,-1,0));         !
+  LST_LIN("V kurva start U v{rde "+! Start och slut v v{rde
+  STR(u_start     ,-1,0)+          !
+     " och slut U v{rde "+         !
+  STR(u_slut      ,-1,0));         !
+  ENDIF;                           !
+
+
+!                      4. Skapa alla U kurvor
+!                      ======================
+
+!                          \ppna ytdata fil
+!                          ----------------
+
+  OPEN(f,"r",srffil);              ! \ppna fil med Consurf yt-data      
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit med fel meddelande om
+    EXIT("Fil "+srffil+" saknas!");! filen srffil inte finns.      
+  ENDIF;
+
+  sektnra := 0;                    ! Antal skapade U kurvor
+  sektnrb := 0;                    ! Antal skapade U kurvor
+  p_u     := 1;                    ! Pekare p} U kurva i F07 filen
+
+  FOR i_u:=1 TO 200     DO         ! Start loop U kurvor
+
+    IF u_lines(i_u,1) <> -1 THEN   ! Skapa U kurva
+nysekt:                            ! Label: Flytta pekare i fil
+      IF u_lines(i_u,1)=p_u THEN   ! St}r pekaren r{tt i F07 filen
+
+      PSH_PMT("Kurva U"            ! Meddelande till sk{rm
+      +str(u_lines(i_u,1),-1,0));  !
+
+      PART(#3,rdcons3v1(f, nv,     ! L{s kurvdata (rdcons3v1)
+          v_start,v_slut,          ! 
+          np,pcurve,tcurve,pvalue) !
+          :SAVE=0);                ! (sparas ej i GM)
+      p_u := p_u+1;                ! St{ll pekaren p} n{sta U kurva
+                                   !
+     IF  DEBUG=1    THEN          ! Sk{rmutskrift f|r DEBUG=1
+     FOR ix1:=1 TO np DO          ! De U och V kurvor som
+     LST_LIN("Nr "+               ! 
+     STR(ix1,-1,0)+               !
+      " P "+                      !
+     STR(pcurve(ix1).x,-12,6) +   !
+      " "+                        !
+     STR(pcurve(ix1).y,-12,6) +   !
+      " "+                        !
+     STR(pcurve(ix1).z,-12,6) +   !
+         " "   );                 !
+     ENDFOR;                      !
+     s:= INPMT("rdconsv1: "       !
+     +  " forts{tt "+             !
+      " ",                        !
+      "",1);                      !
+     ENDIF;                       !
+
+      IF np <= 200 THEN            ! Start np <= 200 (dvs alltid)
+        i_start := 1;              ! 
+        IF np <= 25 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 25;           !
+        ENDIF;                     !
+        PART(#4,rdcons4v1(         ! Flytta punkt 1-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    ! 
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#10,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     ! 
+                                   !
+        IF u_lines(i_u,2)=2 THEN   !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 THEN        !
+        PART(#11,creusect(n_inout, ! Skapa kurva
+          pcurved,tcurved,pvalued) !
+          :PEN=u_lines(i_u,2));    ! Grafisk representation
+        SET(CFONT=0);              ! Heldragen
+
+        sektnra:= sektnra+1;       !
+        GROUP(#12,"U"+STR(u_lines  ! Grupp namn Unn
+         (i_u,1),-1,0)             !
+        ,REFC(11,sektnra,1));      !
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np <= 200 (on|digt IF)
+      IF np > 25 THEN              ! Start np >  25
+        i_start := 25;             ! 
+        IF np <= 50 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 50;           !
+        ENDIF;                     !
+        PART(#14,rdcons4v1(        ! Flytta punkt 25-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    ! 
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#20,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     !
+                                   !
+        IF u_lines(i_u,2)=2 THEN   !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 THEN        !
+        PART(#21,creusect(n_inout, ! Skapa kurva
+          pcurved,tcurved,pvalued) !
+          :PEN=u_lines(i_u,2));    ! Grafisk representation
+        SET(CFONT=0);              ! Heldragen
+        sektnrb:= sektnrb+1;       !
+        GROUP(#22,"U"+STR(u_lines  ! Grupp namn Unn
+         (i_u,1),-1,0)             !
+        ,REFC(21,sektnrb,1));      !
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np >  25              
+      IF np > 50 THEN              ! Start np >  50
+        EXIT("[nnu ej progr. f|r"+ !
+            "fler {n 50 U kurvor");!
+      ENDIF;                       ! Slut  np >  50
+
+      POP_PMT();                   ! Sudda i meddelande buffert
+
+      ELSE                         ! L{s f|rbi U kurva (p_u=p_u+1)
+      rad:=INLIN(f);               ! Hoppa |ver LINE  S1/Usektnr
+      rad:=INLIN(f);               ! Hoppa |ver NORMAL ...      
+      rad:=INLIN(f);               ! Hoppa |ver SECTION n POINTS
+      FOR i_v:=1 TO nv  DO         ! Det finns 3*nv rader punkt-
+        rad:=INLIN(f);             ! data f|r varje U sektion
+        rad:=INLIN(f);             !
+        rad:=INLIN(f);             !
+      ENDFOR;                      !
+      p_u := p_u+1;                ! St{ll pekaren p} n{sta U kurva
+        IF p_u <= nu THEN          ! Hoppa till nysekt
+          GOTO nysekt;             !
+        ELSE                       !
+          EXIT("Fel: p_u > nu");   !
+        ENDIF;                     !
+      ENDIF;                       ! Slut att pekaren st}r r{tt
+
+    ELSE                           ! Alla U skapade u_lines( ,1)=-1
+      GOTO uall;                   ! Hoppa till uall
+    ENDIF;                         ! Skapa U kurva  u_lines( ,1)<>-1
+
+  ENDFOR;                          ! Slut  loop U kurvor
+
+uall:                              ! Alla U kurvor {r skapade
+
+  CLOSE(f);                        ! St{ng fil med ytdata.
+
+
+!                      5. Skapa alla V kurvor
+!                      ======================
+
+  sektnra := 0;                    ! Antal skapade U kurvor
+  sektnrb := 0;                    ! Antal skapade U kurvor
+
+  FOR i_v:=1 TO 200     DO         ! Start loop V kurvor
+
+    IF v_lines(i_v,1) <> -1 THEN   ! Skapa V kurva
+      PART(#33,rdcons5v1(srffil,   ! L{s kurvdata (rdcons5v1)
+         v_lines(i_v,1), nu, nv,   !
+          u_start,u_slut,          ! 
+          np,pcurve,tcurve,pvalue) !
+          :SAVE=0);                ! (sparas ej i GM)
+
+!     IF  DEBUG=1    THEN          ! Sk{rmutskrift f|r DEBUG=1
+!     FOR ix1:=1 TO np DO          ! De U och V kurvor som
+!     LST_LIN("Nr "+               ! 
+!     STR(ix1,-1,0)+               !
+!      " P "+                      !
+!     STR(pcurve(ix1).x,-12,6) +   !
+!      " "+                        !
+!     STR(pcurve(ix1).y,-12,6) +   !
+!      " "+                        !
+!     STR(pcurve(ix1).z,-12,6) +   !
+!         " "   );                 !
+!     ENDFOR;                      !
+!     ENDIF;                       !
+
+      IF np <= 200 THEN            ! Start np <= 200 (dvs alltid)
+        i_start := 1;              ! 
+        IF np <= 25 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 25;           !
+        ENDIF;                     !
+        PART(#34,rdcons4v1(        ! Flytta punkt 1-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    ! 
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#40,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     !
+                                   !
+        IF v_lines(i_v,2)=2 THEN   !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 THEN        !
+        PART(#41,creusect(n_inout, ! Skapa kurva
+          pcurved,tcurved,pvalued) !
+          :PEN=v_lines(i_v,2));    ! Grafisk representation
+        SET(CFONT=0);              ! Heldragen
+        sektnra:= sektnra+1;       !
+        GROUP(#42,"V"+STR(v_lines  ! Grupp namn Vnn
+           (i_v,1),-1,0)           !
+        ,REFC(41,sektnra,1));      !
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np <= 200 (on|digt IF)
+      IF np > 25 THEN              ! Start np >  25
+        i_start := 25;             ! 
+        IF np <= 50 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 50;           !
+        ENDIF;                     !
+        PART(#44,rdcons4v1(        ! Flytta punkt 25-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    ! 
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#50,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     !
+
+        IF v_lines(i_v,2)=2 THEN   !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 THEN        !
+        PART(#51,creusect(n_inout, ! Skapa kurva
+          pcurved,tcurved,pvalued) !
+          :PEN=v_lines(i_v,2));    ! Grafisk representation
+        SET(CFONT=0);              ! Heldragen
+        sektnrb:= sektnrb+1;       !
+        GROUP(#52,"V"+STR(v_lines  ! Grupp namn Vnn
+         (i_v,1),-1,0)             !
+        ,REFC(51,sektnrb,1));      !
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np >  25              
+      IF np > 50 THEN              ! Start np >  50
+        EXIT("[nnu ej progr. f|r"+ !
+         "fler {n 50 U punkter");  !
+      ENDIF;                       ! Slut  np >  50
+
+    ELSE                           ! Alla V kurvor skapade
+      GOTO vall;                   ! Hoppa till vall
+    ENDIF;                         ! Slut  loop V kurvor
+
+  ENDFOR;                          ! Slut  loop V kurvor
+
+vall:                              ! Alla U kurvor {r skapade
+
+
+;
+slut:                              ! Label: Anv{nds vid fel
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_EXI();                       ! St{ng alfa-numerisk sk{rm
+  ENDIF;                           !
+
+
+ENDMODULE

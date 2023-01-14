@@ -1,0 +1,82 @@
+!******************** prtcsys   **************************************
+! +++
+! Printout coordinate system data.
+! 
+! Revision history
+! ________________
+!
+! 1998-01-16  Gunnar Liden
+! ---
+!************************************************************************
+
+!sdescs Printout coordinate system data
+!sdesce Sskriv ut koordinatsystemdata
+
+GLOBAL  GEOMETRY MODULE prtcsys    (
+ REF       csys_id >               "Active coordinate system");
+
+! Interna variabler:
+
+  STRING    csys_name*10;          ! Name of coordinate system
+
+  FLOAT     csys_data(4,4);        ! Transformation matrix
+  FLOAT     csys_data_inv(4,4);    ! Inverse        matrix
+
+
+
+  INT       i_r;                   ! Loop index row
+
+
+BEGINMODULE
+
+! +++
+! Algoritm
+! ________
+! ---
+
+! +++
+! Get all data for the coordinate system
+! ---
+
+  GETCSY(csys_id,csys_name, csys_data);
+
+! +++
+! Calculate the inverse matrix
+! ---
+
+  PART(#1, matrixiv0 ( csys_data,csys_data_inv):SAVE=0);
+
+! +++
+! Write data to Xwindow (screen)
+! ---
+
+  LST_INI("Coordinate system "+csys_name+" "+RSTR(csys_id) );
+  LST_LIN(" ");
+  LST_LIN(" ");
+
+  LST_LIN(" ");
+  LST_LIN(" ");
+  LST_LIN("Transformation matrix: ");
+  LST_LIN(" ");
+  FOR  i_r := 1 TO 4 DO
+        LST_LIN(" c"+STR(i_r,-1,0)+"1 "+STR(csys_data(i_r,1),12,8) +
+                " c"+STR(i_r,-1,0)+"2 "+STR(csys_data(i_r,2),12,8) +
+                " c"+STR(i_r,-1,0)+"3 "+STR(csys_data(i_r,3),12,8) +
+                " c"+STR(i_r,-1,0)+"4 "+STR(csys_data(i_r,4),12,8) );
+  ENDFOR;
+  LST_LIN("Inverse matrix: ");
+  LST_LIN(" ");
+  FOR  i_r := 1 TO 4 DO
+        LST_LIN(" c"+STR(i_r,-1,0)+"1 "+STR(csys_data_inv(i_r,1),12,8) +
+                " c"+STR(i_r,-1,0)+"2 "+STR(csys_data_inv(i_r,2),12,8) +
+                " c"+STR(i_r,-1,0)+"3 "+STR(csys_data_inv(i_r,3),12,8) +
+                " c"+STR(i_r,-1,0)+"4 "+STR(csys_data_inv(i_r,4),12,8) );
+  ENDFOR;
+
+
+
+  LST_EXI();
+
+ENDMODULE
+
+

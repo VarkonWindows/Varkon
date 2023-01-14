@@ -1,0 +1,286 @@
+!********************* rduvline ****************************************
+!
+!  Modulen l{ser data f|r en isoparameter kurva p} en bikubisk 
+!  yta (fr}n NMG) fr}n en F07 fil.
+!  Av prestanda sk{l skapas bara "patch boundaries" (indata som
+!  definierar kurvan som ska ber{knas {r INT)
+!  En parameter i anropet talar om om det {r U eller V som {r konstant. 
+!  Dvs om det {r en U-kurva eller V-kurva  som ska ritas.
+!
+!  1992-11-11  Gunnar Liden & Karl-Erik Eklund
+!  1992-11-20  F|rs|k med SEEK (OPEN med U) 
+!              DEBUG bortkommenterat f|r prestanda Gunnar Liden
+!
+!************************************************************************
+! 1992-11-20    STRING srffil*80;              ! Textfil f|r ytdata
+
+BASIC GEOMETRY MODULE rduvline (
+VAR FILE   f;                      ! Fil med ytdata (F07 fil)
+    STRING isoparam*1;             ! U eller V {r konstant
+    INT    u_start;                ! Start U v{rde f|r kurva
+    INT    u_end;                  ! Slut  U v{rde f|r kurva
+    INT    v_start;                ! Start V v{rde f|r kurva
+    INT    v_end;                  ! Slut  V v{rde f|r kurva
+VAR INT    nseg;                   ! Antal segment i kurvan
+VAR FLOAT  segdat(25,4,4));        ! Koefficienter till kurva
+
+
+! Interna variabler:
+
+
+INT    DEBUG;                      ! Eq. 0: No      debug
+                                   ! Eq. 1: Full    debug
+                                   ! Eq. 2: Reduced debug
+
+STRING surname*30;                 ! Ytans namn (eg. 28 tecken)
+INT    ip;                         ! Patch ordningsnummer
+INT    npatches;                   ! Totalt antal "patches" i ytan
+INT    iu,iv;                      ! Patch adress
+INT    yttyp;                      ! Typ av yta (=1001)
+INT    nu,nv;                      ! Antalet kurvor i U och V led
+
+INT    i_c;                        ! Loop index kurv-segment
+
+! 1992-11-20 FILE   f;                          ! Fil med ytdata (F07 fil)
+
+INT    ix;                         ! Slask heltal
+INT    ix1,ix2;                    ! Tempor{rt anv{nda loop index
+
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa rad
+
+STRING   s*1;                      ! F|r debug 
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+
+!                                 Debug
+!                                 -----
+
+  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+                             
+! 1992-11-20                       \ppna filen med ytdata
+
+!                       "Rewind" av F07 fil
+!                       --------------------
+
+  SEEK(f,0);                        ! St{ll pekaren i f|rsta position
+!!!!  OPEN(f,"u",srffil);               ! \ppna filen med ytdata
+! 1992-11-20  OPEN(f,"r",srffil);               ! \ppna filen med ytdata
+  IF ( IOSTAT(f) <> 0 ) then        !
+      EXIT("rduvline: Programfel "+ !
+           "(ytfil)");              !
+  ENDIF;
+
+!               L{s ytnamn och antal "patches" (rad 1)
+!               --------------------------------------
+
+  surname :=INSTR(f,30);            ! Ytnamn
+  npatches:=ININT(f);               ! Antal patches
+  rad     :=INLIN(f);               ! Radslut till slaskvariabel
+
+
+!            L{s antal patches i U resp. V riktning (rad 2)
+!            ----------------------------------------------
+
+  iu      :=ININT(f);               ! Patch U adress
+  iv      :=ININT(f);               ! Patch V adress
+  ip      :=ININT(f);               ! Patch nummer i filen
+  ix      :=ININT(f);               ! ? till slask variabel
+  yttyp   :=ININT(f);               ! Yttyp (=1001)
+  ix      :=ININT(f);               ! ? till slask variabel
+  ix      :=ININT(f);               ! ? till slask variabel
+  nu      :=ININT(f);               ! Antal kurvor i U led
+  nv      :=ININT(f);               ! Antal kurvor i V led
+  ix      :=ININT(f);               ! ? till slask variabel
+  rad     :=INLIN(f);               ! Radslut till slaskvariabel
+
+!  IF DEBUG = 1 THEN                 ! Debug printout to screen
+!  s:=INPMT("rduvline: "+            !       (DEBUG=1)
+!    "Yta "+surname+" Antal patches "!
+!      +STR(npatches,-1,0)           !
+!         ,"",1);                    !
+!  s:=INPMT("rduvline: "+            !
+!     " Antal kurvor i U led "       !
+!      +STR(nu,-1,0)+                !
+!    " och i V led "                 !
+!      +STR(nv,-1,0)                 !
+!         ,"",1);                    !
+!  ENDIF;                            !
+
+
+  nseg := 0;                        ! Initiering antal utdata segment
+
+  IF    isoparam = "U" THEN         ! U=konstant kurva
+      PSH_PMT("Kurva U"             ! Meddelande till sk{rm
+      +STR(u_start,-1,0));          !
+      GOTO iso_u;
+  ELIF  isoparam = "V" THEN         ! V=konstant kurva
+      PSH_PMT("Kurva V"             ! Meddelande till sk{rm
+      +STR(v_start,-1,0));          !
+      GOTO iso_v;
+  ELSE                              !
+      EXIT("rduvline: Programfel "  !
+          + "(kurv-val)");          !
+  ENDIF;
+
+
+!                       2. U=konstant kurva
+!                       ====================
+
+iso_u:                              ! U=konstant kurva
+
+  IF  v_start = v_end  AND          !
+      v_end <> 1 THEN               !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 1)");       !
+  ENDIF;
+  IF  v_start > v_end  THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 2)");       !
+  ENDIF;
+  IF v_start <  1      THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 3)");       !
+  ENDIF;
+  IF v_end >  nv-1     THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 4)");       !
+  ENDIF;
+  IF u_start <  1      THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 5)");       !
+  ENDIF;
+  IF u_end >  nu         THEN       !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 6)");       !
+  ENDIF;
+
+
+!  IF DEBUG = 2 THEN                 ! Debug printout to screen
+!  s:=INPMT("rduvline: "+            !     (DEBUG=2)
+!    " U kurva "                     !
+!      +STR(u_start,-1,0)+           !
+!    " fr}n V= "                     !
+!      +STR(v_start,-1,0)+           !
+!    " till V= "                     !
+!      +STR(v_end,-1,0)              !
+!         ,"",1);                    !
+!  ENDIF;                            !
+
+!                           L{s koefficienter
+!                           -----------------
+
+
+
+  FOR i_c:=v_start TO v_end DO      ! Start f|r loop i_c
+
+
+!                           L{s koefficienter
+!                           -----------------
+
+      PART(#1,rdusegm(f,u_start,i_c,! L{s U segment koefficienter
+           nu,nv,                   !
+           nseg,segdat)             !
+           :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                           ! Slut  f|r loop i_c
+
+
+!  IF DEBUG = 2 THEN                 ! Debug printout to screen
+!  s:=INPMT("rduvline: "+            !     (DEBUG=2)
+!    " Exit U line= "                !
+!      +STR(u_start,-1,0)+           !
+!    " nseg= "                       !
+!      +STR(nseg,-1,0)               !
+!         ,"",1);                    !
+!  ENDIF;                            !
+
+
+
+  GOTO slut;                        ! G} till slut
+
+
+!                       3. V=konstant kurva
+!                       ====================
+
+
+iso_v:                              ! V=konstant kurva
+
+  IF  u_start = u_end  AND          !
+      u_end <> 1 THEN               !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 7)");       !
+  ENDIF;
+  IF u_start >  u_end  THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 8)");       !
+  ENDIF;
+  IF u_start <  1      THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 9)");       !
+  ENDIF;
+  IF u_end >  nu-1     THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(u-v{rde 10)");      !
+  ENDIF;
+  IF v_start <  1      THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 11)");      !
+  ENDIF;
+  IF v_end >  nv       THEN         !
+      EXIT("rduvline: Programfel "  !
+             +"(v-v{rde 12)");      !
+  ENDIF;
+
+
+!  IF DEBUG = 2 THEN                 ! Debug printout to screen
+!  s:=INPMT("rduvline: "+            !     (DEBUG=2)
+!    " V kurva "                     !
+!      +STR(v_start,-1,0)+           !
+!    " fr}n U= "                     !
+!      +STR(u_start,-1,0)+           !
+!    " till U= "                     !
+!      +STR(u_end,-1,0)              !
+!         ,"",1);                    !
+!   ENDIF;                           !
+
+
+  FOR i_c:=u_start TO u_end DO      ! Start f|r loop i_c
+
+
+!                           L{s koefficienter
+!                           -----------------
+
+      PART(#2,rdvsegm(f,v_start,i_c,! L{s V segment koefficienter
+           nu,nv,                   !
+           nseg,segdat)             !
+           :SAVE=0 );               ! (Anrop sparas ej i GM)
+
+  ENDFOR;                           ! Slut  f|r loop i_c
+
+!  IF DEBUG = 1 THEN                 ! Debug printout to screen
+!  s:=INPMT("rduvline: "+            !     (DEBUG=1)
+!    " Exit V line= "                !
+!      +STR(v_start,-1,0)+           !
+!    " nseg= "                       !
+!      +STR(nseg,-1,0)               !
+!         ,"",1);                    !
+!  ENDIF;                            !
+
+
+slut:                               ! Kurva skapad
+
+  POP_PMT();                        ! Sudda i meddelande buffert
+
+;
+!! 1992-11-20  CLOSE(f);                         ! St{ng F07 filen med ytdata
+
+
+
+
+ENDMODULE
+

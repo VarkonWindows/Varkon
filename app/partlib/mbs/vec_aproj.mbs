@@ -1,0 +1,84 @@
+!*********************  vec_aproj  ***********************************
+! +++
+! Project vector onto a given plane.
+!
+! Revision history
+! ________________
+!
+! 1995-11-30 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Project vector onto a given plane
+!sdescs Projicera vektor p} ett givet plan
+
+BASIC  GEOMETRY MODULE  vec_aproj  (
+    VECTOR  v_in;                  ! Input  vector
+    VECTOR  v_pi;                  ! Plane  normal
+VAR VECTOR  v_out);                ! Output vector
+
+! Internal variables:
+
+  VECTOR cross;                    ! Cross product v_pi X v_in
+  INT    DEBUG;                    ! Debug
+  STRING s*1;                      ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+!
+! Check that input vector lengths not are zero
+!
+! Calculate cross product vector cross= v_pi  X v_in
+!
+! Calculate cross product vector v_out= cross X v_pi
+! ---
+
+  DEBUG := 0;                 ! =0 or =1
+
+  v_out:= VEC(-0.123456789,   !
+   -0.123456789,-0.123456789);!
+
+  IF   DEBUG =   1 THEN       !
+     s:=INPMT("v_in  "      + !
+     " "+STR(  v_in.x,-15,8)+ !
+     " "+STR(  v_in.y,-15,8)+ !
+     " "+STR(  v_in.z,-15,8)+ !
+     "","",1);                !
+     s:=INPMT("v_pi  "      + !
+     " "+STR(  v_pi.x,-15,8)+ !
+     " "+STR(  v_pi.y,-15,8)+ !
+     " "+STR(  v_pi.z,-15,8)+ !
+     "","",1);                !
+  ENDIF;                      !
+
+   IF VECL(v_in) < 0.001 THEN !
+    EXIT("vec_aproj : "+      !
+    " v_in= 0  ");
+   ENDIF;                     !
+   IF VECL(v_pi) < 0.001 THEN !
+    EXIT("vec_aproj : "+      !
+    " v_pi= 0  ");
+   ENDIF;                     !
+
+   cross := VPROD(v_pi,v_in); !
+   v_out := VPROD(cross,v_pi);!
+
+  IF   DEBUG =   1 THEN       !
+     s:=INPMT("v_out "      + !
+     " "+STR( v_out.x,-15,8)+ !
+     " "+STR( v_out.y,-15,8)+ !
+     " "+STR( v_out.z,-15,8)+ !
+     "","",1);                !
+  ENDIF;                      !
+
+  IF  v_in*v_out < 0 THEN     ! Check result
+    EXIT("vec_aproj : "+      !
+    " direction");            !
+  ENDIF;                      !
+
+ENDMODULE

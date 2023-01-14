@@ -1,0 +1,393 @@
+!********************* rdmetrov1 ****************************************
+! +++
+!  Modulen l{ser m{tdata fr}n en METRONOR "log-fil" och skapar
+!  MEAPOINT's (punkt poster) samt en MEARECORD (m{t post) f|r varje
+!  grupp av punkter.
+!
+!*** Placering av punkterna 
+!    Punkterna m}ste placeras (i en SAAB standard vy)
+!    med hj{lp av ett lokalt koordinatsystem, dvs denna modul
+!    {r av typen LOCAL. Vid en (METRONOR) m{tning p} en yta
+!    har ytan f|rst f|rts |ver fr}n Catia och d} har man samtidigt
+!    ofta transformerat ytan till ett lokalt system. Ofta {r det
+!    ytans definitionssystem.
+!
+!*** Skalning av punkterna
+!    Punkterna som ritas (den grafiska representationen) skalas 
+!    normalt vid inl{sningen med origo x0,y0,z0
+!    som skalningscentrum. 
+!
+!*** Funktion i f|rsta hand f|r measure (figurblads-) applikationen
+!
+!*** Indata fil med m{t data
+!    Filen med m{t data (.METRO filen) skapas i METRONOR systemet
+!
+!  1994-04-19   Ronny Gyllensten
+! ---
+!**********************************************************************
+
+LOCAL GEOMETRY MODULE  rdmetrov1 (
+
+
+STRING meafil*132 := "Data.METRO"
+                          > "Text fil med m{t data";
+FLOAT  skala     := 1.0   > "Skala (skalningsfaktor=1/skala)";
+FLOAT  x0        := 0.0   > "Origo x koordinat";
+FLOAT  y0        := 0.0   > "Origo y koordinat";
+FLOAT  z0        := 0.0   > "Origo z koordinat";
+FLOAT  offset    := 0.0   > "Ange offsetv{rde";
+INT    grafik    := 1     > "1. punkter 2. Heldragen kurva 3. Streckad kurva";
+INT    case      := 1     > "Format d: Case= 1 b: Case= 2: d(red) Case=3");
+
+!sdescs L{ser och registrerar data fr}n METRONOR fil
+!sdesce Read and register measured data from METRONOR file
+
+! Interna variabler
+
+  INT     DEBUG;                   ! Debug variabel
+                                   ! Eq. 0: Inga test utskrifter
+                                   ! Eq. 1: Max. test utskrifter
+
+  FLOAT   A(9);                    ! Transformationsmatris
+  FLOAT   B(3);                    ! Translationsvektor
+  FLOAT   RMTOL;                   ! Tolerans f|r att ta bort punkter
+
+
+  FILE    f;                       ! Fil med m{t (punkt) data
+
+  INT     i_u;                     ! Loop r{knare f|r U kurva
+  INT     i_v;                     ! Loop r{knare f|r V kurva
+
+  INT     flag;                    ! Eq. -1: Filen {r slut
+  INT     np;                      ! Antal punkter    i  kurvan  
+  VECTOR  pcurve(200);             ! Punkter         f|r kurvan
+  VECTOR  tcurve(200);             ! Tangent punkter f|r kurvan
+  FLOAT   pvalue(200);             ! P v{rden        f|r kurvan
+  INT     ptnumber(200);           ! Punkt nummer f|r uppm{tt punkt
+  FLOAT   devtot(200);             ! Totala (vinkelr{ta) avvikelsen
+  FLOAT   devx(200);               !    X                avvikelsen
+  FLOAT   devy(200);               !    Y                avvikelsen
+  FLOAT   devz(200);               !    Z                avvikelsen
+    
+  INT     i_start;                 ! Start punkt f|r del-kurva
+  INT     i_slut;                  ! Slut  punkt f|r del-kurva
+  INT     npd;                     ! Antal punkter    i  del-kurva
+  VECTOR  pcurved(26);             ! Punkter         f|r del-kurva
+  VECTOR  tcurved(26);             ! Tangent punkter f|r del-kurva
+  FLOAT   pvalued(26);             ! P v{rden        f|r del-kurva
+  INT     n_inout;                 ! Antal punkter efter tracurve 
+
+
+  STRING  rad*132;                 ! Slask variabel f|r att l{sa hel
+                                   ! rad eller radslut med INLIN
+
+  STRING  s*1;                     ! F|r INPMT
+
+
+  INT     ix1;                     ! Tempor{r loop r{knare
+
+BEGINMODULE
+
+!             1. Initieringar och kontroller av indata
+!             ========================================
+
+  DEBUG := 0;                      ! [ndra DEBUG till noll eller ett
+
+  IF case = 1 OR case = 2          !
+              OR case = 3 THEN     ! Kontrollera case
+    ;                              !
+  ELSE                             !
+   EXIT("Metronor format case "+   !
+         STR(case,-1,0)+" ok{nt"); !
+  ENDIF;                           !
+
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_INI("Skapa skalade punkter" + ! Initiera (|ppna) alfa-numerisk
+      " fr}n METRONOR fil med m{t"+    ! sk{rm
+       " data.");                  !
+!    s:= INPMT("rdmetrov1: "         !
+!    +  " x0 "+                     !
+!     STR(x0,-12,6)  +              !
+!      " y0 "+                      !
+!     STR(y0  ,-12,6) +             !
+!      " z0 "+                      !
+!     STR(z0  ,-12,6) +             !
+!      " ",                         !
+!     "",1);                        !
+!    s:= INPMT("rdmetrov1: "         !
+!    + " skala "+                   !
+!     STR(skala,-12,6)  +           !
+!      " grafik "+                  !
+!     STR(grafik,-1,0)  +           !
+!      " case "+                    !
+!     STR(case  ,-1,0) +            !
+!      " ",                         !
+!     "",1);                        !
+  ENDIF;                           !
+
+!                           Skalningsmatris
+!                           ---------------
+
+  IF    skala >= 0.2   THEN        ! Skalfaktor= 1/skala dvs
+      A(1) := 1.0/skala;           ! skala=0.2 ==>  5 ggr uppf|rstoring
+      A(2) := 0.0;                 ! skala=10  ==> 10 ggr f|rminskning
+      A(3) := 0.0;                 !
+      A(4) := 0.0;                 !
+      A(5) := 1.0/skala;           !
+      A(6) := 0.0;                 !
+      A(7) := 0.0;                 !
+      A(8) := 0.0;                 !
+      A(9) := 1.0/skala;           !
+      B(1) := -x0/skala;           !
+      B(2) := -y0/skala;           !
+      B(3) := -z0/skala;           !
+                                   !
+  ELIF  skala <= 0.2   THEN        ! Spegling kring Y0=0
+      IF (ABS(y0) > 0.00001 ) THEN !
+        EXIT("Spegling endast f|r"+!
+           " origo med y0=0.0");   !
+      ENDIF;                       !
+      A(1) := -1.0/skala;          !
+      A(2) := 0.0;                 !
+      A(3) := 0.0;                 !
+      A(4) := 0.0;                 !
+      A(5) := 1.0/skala;           !
+      A(6) := 0.0;                 !
+      A(7) := 0.0;                 !
+      A(8) := 0.0;                 !
+      A(9) := -1.0/skala;          !
+      B(1) := +x0/skala;           !
+      B(2) := +y0/skala;           !
+      B(3) := +z0/skala;           !
+                                   !
+  ELSE                             !
+      EXIT("Otill}ten skala f|r"+  !
+           " m{tpunkter yta");     !
+  ENDIF;                           !
+
+!                       Tolerans f|r punkt borttagning
+!                       ------------------------------
+
+  RMTOL := 0.5;                    ! Anv{nds av trausect
+
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_LIN("M{t data finns "+       ! Kurvfilens namn
+          "p} fil:    "+meafil);   !
+  ENDIF;                           !
+
+!                      2. Skapa alla punkm{ngder (kurvor)
+!                      ==================================
+
+!                          \ppna m{tdata fil
+!                          -----------------
+
+  OPEN(f,"r",meafil);              ! \ppna fil med m{t-data
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit med fel meddelande om
+    EXIT("Fil "+meafil+" saknas!");! filen meafil inte finns.
+  ENDIF;
+
+  FOR i_u:=1 TO 100      DO        ! Start loop punktm{ngder
+
+      PSH_PMT("Punktm{ngd  "       ! Meddelande till sk{rm
+      +str(i_u,-1,0));             !
+
+      IF case = 1 THEN
+        PART(#3,rdmetro1v1(f,flag, ! L{s m{tdata (en delm{ngd)
+         np,ptnumber,pcurve,tcurve ! i d format
+         ,devtot,devx,devy,devz,offset)   !
+          :SAVE=0);                ! (sparas ej i GM)
+      ELIF case = 2 THEN           !
+        PART(#5,rdmetro2v0(f,flag, ! L{s m{tdata (en delm{ngd)
+         np,ptnumber,pcurve,tcurve ! i b format
+         ,devtot,devx,devy,devz)   !
+          :SAVE=0);                ! (sparas ej i GM)
+      ELIF case = 3 THEN           !
+        PART(#7,rdmetro3v0(f,flag, ! L{s m{tdata (en delm{ngd)
+         np,ptnumber,pcurve,tcurve ! i d format (reducerat)
+         ,devtot,devx,devy,devz)   !
+          :SAVE=0);                ! (sparas ej i GM)
+      ENDIF;
+
+      FOR ix1:=1 TO np DO          ! Registrera alla punkter
+                                   !
+        PART(#1,MEAPOIREC(         !
+        pcurve(ix1),               ! Uppm{tt punkt
+        pcurve(ix1)-               ! Referenspunkt   ????? + eller - ???
+        VEC(devx(ix1),             !
+            devy(ix1),             !
+            devz(ix1)),            !
+        devtot(ix1),               ! Total avvikelse
+        ptnumber(ix1),             ! Punkt nummer
+        i_u,                       ! Grupp nummer
+        meafil));                  ! Beskrivning
+                                   !
+      ENDFOR;                      !
+
+     IF  DEBUG=1    THEN          ! Sk{rmutskrift f|r DEBUG=1
+     FOR ix1:=1 TO np DO          ! M{tdata punkter
+     LST_LIN("Nr "+               ! 
+     STR(ix1,-1,0)+               !
+      " P "+                      !
+     STR(pcurve(ix1).x,-12,6) +   !
+      " "+                        !
+     STR(pcurve(ix1).y,-12,6) +   !
+      " "+                        !
+     STR(pcurve(ix1).z,-12,6) +   !
+         " "   );                 !
+     ENDFOR;                      !
+     s:= INPMT("rdmetrov1: "       !
+     +  " forts{tt "+             !
+      " ",                        !
+      "",1);                      !
+     ENDIF;                       !
+
+      IF np <= 200 THEN            ! Start np <= 200 (dvs alltid)
+        i_start := 1;              ! 
+        IF np <= 25 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 25;           !
+        ENDIF;                     !
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+    s:= INPMT("rdmetrov1: "        !
+    +  " F|r rdcons4v1 i_slut= "+  !
+     STR(i_slut,-1,0)  +           !
+      " ",                         !
+     "",1);                        !
+  ENDIF;                           !
+        PART(#4,rdcons4v1(         ! Flytta punkt 1-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    !
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#10,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     ! 
+     IF  DEBUG=1    THEN          ! Sk{rmutskrift f|r DEBUG=1
+     FOR ix1:=1 TO np DO          ! M{tdata punkter skalade
+     LST_LIN("Nr "+               ! 
+     STR(ix1,-1,0)+               !
+      " P "+                      !
+     STR(pcurved(ix1).x,-12,6) +  !
+      " "+                        !
+     STR(pcurved(ix1).y,-12,6) +  !
+      " "+                        !
+     STR(pcurved(ix1).z,-12,6) +  !
+         " "   );                 !
+     ENDFOR;                      !
+     s:= INPMT("rdmetrov1: "      !
+     +  " forts{tt "+             !
+      " ",                        !
+      "",1);                      !
+     ENDIF;                       !
+
+!QQQ        IF grafik>1 THEN           ! Tillf{lligt !!!
+        IF grafik=1 THEN           ! Tillf{lligt !!!
+          FOR ix1:=1 TO n_inout DO ! Skapa skalade m{tdata punkter
+            POI_FREE(#30,          ! 
+            pcurved(ix1));         !
+          ENDFOR;                  !
+        ENDIF;
+
+        IF grafik=3 THEN           !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 AND         !
+           grafik > 1     THEN     !
+         FOR ix1:=1 TO n_inout DO  ! Tangent punkter = (0,0,0)
+          tcurved(ix1):=VEC(0,0,0);!
+         ENDFOR;                   !
+         PART(#11,crestiff (       !
+         n_inout,pcurved,tcurved));!
+!        PART(#11,creusect(n_inout, ! Skapa kurva
+!          pcurved,tcurved,pvalued) !
+!          );                       ! Grafisk representation
+        SET(CFONT=0);              ! Heldragen
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np <= 200 (on|digt IF)
+      IF np > 25 THEN              ! Start np >  25
+        i_start := 25;             ! 
+        IF np <= 50 THEN           ! 
+          i_slut  := np;           !
+        ELSE                       !
+          i_slut  := 50;           !
+        ENDIF;                     !
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+    s:= INPMT("rdmetrov1: "        !
+    +  " F|r rdcons4v1 i_slut= "+  !
+     STR(i_slut,-1,0)  +           !
+      " ",                         !
+     "",1);                        !
+  ENDIF;                           !
+        PART(#14,rdcons4v1(        ! Flytta punkt 25-i_slut till d-kurva
+        np,pcurve,tcurve,pvalue,   ! (anrop av rdcons4v1)
+            i_start,i_slut,npd,    !
+           pcurved,tcurved,pvalued)!
+            :SAVE=0);              !
+                                   !
+        n_inout := npd;            ! Skala kurvan (ta bort punkter)
+        IF skala > 1.0001 OR       ! (anropa trausect om skala ej
+           skala < 1.0001    THEN  !  {r lika med ett)
+           PART(#20,trausect(A,B,  !
+           RMTOL,n_inout,pcurved,  !
+            tcurved,pvalued));     !
+        ENDIF;                     !
+                                   !
+!QQQ        IF grafik>1 THEN           ! Tillf{lligt !!!
+        IF grafik = 1 THEN         ! 
+          FOR ix1:=1 TO n_inout DO ! Skapa skalade m{tdata punkter
+            POI_FREE(#31,          !
+            pcurved(ix1));         !
+          ENDFOR;                  !
+        ENDIF;
+        IF grafik=3 THEN           !
+          SET(CDASHL=10);          !
+          SET(CFONT=1);            ! Streckad kurva f|r +2
+        ENDIF;                     !
+        IF n_inout >=2 AND         !
+           grafik > 1     THEN     !
+         FOR ix1:=1 TO n_inout DO  ! Tangent punkter = (0,0,0)
+          tcurved(ix1):=VEC(0,0,0);!
+         ENDFOR;                   !
+         PART(#21,crestiff (       !
+         n_inout,pcurved,tcurved));!
+        SET(CFONT=0);              ! Heldragen
+        ENDIF;                     !
+      ENDIF;                       ! Slut  np >  25              
+      IF np > 50 THEN              ! Start np >  50
+        EXIT("[nnu ej progr. f|r"+ !
+            "fler {n 50 punkter"); !
+      ENDIF;                       ! Slut  np >  50
+
+      POP_PMT();                   ! Sudda i meddelande buffert
+
+      IF FLAG = -1 THEN            ! Slut p} fil ?
+         GOTO slut;                ! Ja, g} till slut
+      ELSE                         !
+         GOTO nykurv;              ! Nej, g} till nykurv
+      ENDIF;                       !
+
+nykurv:;                           ! Forts{tt med n{sta kurva
+
+  ENDFOR;                          ! Slut  loop alla kurvor
+
+slut:                              ! Alla kurvor {r skapade
+
+  CLOSE(f);                        ! St{ng fil med ytdata.
+
+
+
+  IF  DEBUG=1    THEN              ! Sk{rmutskrift f|r DEBUG=1
+  LST_EXI();                       ! St{ng alfa-numerisk sk{rm
+  ENDIF;                           !
+
+
+ENDMODULE

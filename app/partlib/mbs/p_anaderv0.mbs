@@ -1,0 +1,304 @@
+! ***************** p_anaderv0 ****************************
+!
+! Compare analytic derivatives with difference derivatives
+! ---
+!
+!
+!
+! Revision history
+! __________________
+!
+! 1997-03-12 Gunnar Liden
+!************************************************************
+
+!sdesce Compare analytic derivatives with difference derivatives
+!sdescs Jämför analytiska derivator med numeriska derivator
+
+BASIC GEOMETRY MODULE p_anaderv0 (
+
+REF    s_id                  > "@t16 Select surface";
+VECTOR uv := VEC(0.1,1.2,0)  > "UV punkt";
+FLOAT  eps:= 0.001           > "Epsilon");
+
+
+! Interna variabler 
+
+  CONSTANT INT language= 1;  ! 1: English Eq. 2: Swedish
+
+  VECTOR d_a;                ! Utdata vektor fr}n EVAL
+
+  VECTOR uv_epsu;            ! UV with epsilon in U direction
+  VECTOR uv_epsv;            ! UV with epsilon in V direction
+  VECTOR p_xyz;              ! Point
+  VECTOR p_xyz_epsu;         ! Point for epsilon in U direction
+  VECTOR p_xyz_epsv;         ! Point for epsilon in V direction
+  VECTOR t_u;                ! U tangent 
+  VECTOR t_u_epsu;           ! U tangent for epsilon in U direction
+  VECTOR t_u_epsv;           ! U tangent for epsilon in V direction
+  VECTOR t_v;                ! V tangent 
+  VECTOR t_v_epsu;           ! V tangent for epsilon in U direction
+  VECTOR t_v_epsv;           ! V tangent for epsilon in V direction
+  VECTOR t_u_nume;           ! Numeric U tangent 
+  VECTOR t_v_nume;           ! Numeric V tangent 
+  VECTOR t_u2;               ! Analytic D2RDU2
+  VECTOR t_v2;               ! Analytic D2RDV2
+  VECTOR t_uv;               ! Analytic D2RDUDV
+  VECTOR t_u2_nume;          ! Numeric  D2RDU2
+  VECTOR t_v2_nume;          ! Numeric  D2RDV2
+  VECTOR t_uv_nume;          ! Numeric  D2RDUDV
+
+  VECTOR t_u_diff;           ! Numeric U tangent difference (error)
+  VECTOR t_v_diff;           ! Numeric V tangent difference (error)
+  VECTOR t_u2_diff;          ! Numeric D2RDU2 difference (error)
+  VECTOR t_v2_diff;          ! Numeric D2RDV2 difference (error)
+  VECTOR t_uv_diff;          ! Numeric D2RDUDV difference (error)
+
+  FLOAT  epsu;               ! Epsilon in U direction
+  FLOAT  epsv;               ! Epsilon in V direction
+  INT    npatu;              ! Number of patches in U direction
+  INT    npatv;              ! Number of patches in V direction
+
+  STRING p_surh1*80;         ! Surface header
+  STRING p_surh2*80;         ! 
+  STRING p_surh3*80;         !
+  STRING p_curh1*80;         ! Curve   header
+  STRING p_curh2*80;         ! 
+  STRING p_rad*80;           ! Curvature radius
+  STRING p_loft*80;          ! Loft surface header
+  STRING p_pval*80;          ! P value
+  STRING p_midc*80;          ! Mid curve
+  STRING p_equal1*80;        ! Principal curvatures equal
+  STRING p_equal2*80;        ! 
+
+  STRING ermess1*80;         ! Error message
+
+
+  INT    s_typ;              ! Type of surface
+
+BEGINMODULE
+
+
+!+++
+! Algoritm
+! ________
+!
+! Definiera prompt str{ngar
+! ---
+
+IF   language = 1 THEN           ! English strings
+  ermess1:= "Identity is #0";    !
+  p_surh1:="Analytic " +  !
+     "derivatives in surface ";  !
+  p_surh2:=" for U= ";           !
+  p_surh3:=" V= ";               !
+  p_curh1:="Numeric " +  !
+     "derivatives in surface ";   !
+  p_curh2:=" for T= ";           !
+  p_rad:=" Epsilon= ";
+  p_loft :="Differences ";
+  p_pval :="                " +  !
+     "(P value)";                !
+  p_midc :="                " +  !
+     "(Mid curve)";              !
+  p_equal1:= "Directions are " + !
+   "undefined since "+           !
+   "principal curvatures are "+  !
+   "equal (sphere or plane)";    !
+  p_equal2:= "(Output vector " + !
+    "components are equal to " + !
+    "1.23456789)";               !
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:= "Identitet {r #0";   !
+  p_surh1:="Analytiska " +  !
+     "derivativor i yta ";       !
+  p_surh2:=" f|r U= ";           !
+  p_surh3:=" V= ";               !
+  p_curh1:="Numeriska " +  !
+     "derivator i yta ";     !
+  p_curh2:=" f|r T= ";           !
+  p_rad:=" Epsilon= ";
+  p_loft :="Differanser";            
+  p_pval :="                " +  !
+     "(P v{rde)";                !
+  p_midc :="                " +  !
+     "(Mitt kurva)";             !
+  p_equal1:= "Odefinierad "+     !
+   "eftersom huvudkr|kningar {r"+!
+   " lika (sf{r eller plan)";    !
+  p_equal2:= "(Utdata vektor" +  !
+    "komponenterna {r satta  " + !
+    " till 1.23456789)";         !
+ELSE                             !
+  EXIT("p_anaderv0" +            !
+  "Language error");             !
+ENDIF;                           !
+
+!+++
+! Analytic coordinates and derivatives for a surface        
+!---
+
+LST_INI(p_surh1 + RSTR(s_id) +
+        p_surh2 + STR(uv.x,-12,8) + 
+        p_surh3 + STR(uv.y,-12,8)); 
+
+d_a:= EVAL(s_id,"UVLOCAL",uv);
+LST_LIN( "   " );
+LST_LIN( "uvlocal  "+STR(  d_a.x ,15,8)+
+        "          "+STR(  d_a.y ,15,8)+ "   ");
+
+d_a:= EVAL(s_id,"PATADR",uv);
+LST_LIN( "patadr   "+STR(  d_a.x ,15,8)+
+        "          "+STR(  d_a.y ,15,8)+ "   ");
+
+LST_LIN( "   " );
+
+
+d_a:= EVAL(s_id,"XYZ",uv);
+p_xyz := d_a;
+LST_LIN( "xyz      "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"DRDU",uv);
+t_u   := d_a;
+LST_LIN( "drdu     "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"DRDV",uv);
+t_v   := d_a;
+LST_LIN( "drdv     "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"D2RDU2",uv);
+t_u2   := d_a;
+LST_LIN( "d2rdu2   "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"D2RDV2",uv);
+t_v2   := d_a;
+LST_LIN( "d2rdv2   "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"D2RDUDV",uv);
+t_uv   := d_a;
+LST_LIN( "d2rdudv  "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+
+LST_LIN( "   " );
+
+d_a:= EVAL(s_id,"NORMAL",uv);
+LST_LIN( "normal   "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"DNDU",uv);
+LST_LIN( "dndu     "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+d_a:= EVAL(s_id,"DNDV",uv);
+LST_LIN( "dndv     "+STR(d_a.x,15,8)+
+        "          "+STR(d_a.y,15,8)+
+        "          "+STR(d_a.z,15,8));
+LST_LIN( "   " );
+LST_LIN( "   " );
+
+!+++
+! Numeric  coordinates and derivatives for a surface        
+!---
+
+LST_LIN(p_curh1 + RSTR(s_id) + p_rad + STR(eps,-12,8)); 
+
+GETSURH(s_id,"NPATU",npatu);
+GETSURH(s_id,"NPATV",npatv);
+IF  uv.x + eps > npatu THEN
+  epsu := -eps;
+ELSE
+  epsu :=  eps;
+ENDIF;
+IF  uv.y + eps > npatv THEN
+  epsv := -eps;
+ELSE
+  epsv :=  eps;
+ENDIF;
+
+uv_epsu := uv + VEC(epsu,0,0);
+d_a:= EVAL(s_id,"XYZ",uv_epsu);
+p_xyz_epsu := d_a;
+d_a:= EVAL(s_id,"DRDU",uv_epsu);
+t_u_epsu   := d_a;
+d_a:= EVAL(s_id,"DRDV",uv_epsu);
+t_v_epsu   := d_a;
+
+uv_epsv := uv + VEC(0,epsv,0);
+d_a:= EVAL(s_id,"XYZ",uv_epsv);
+p_xyz_epsv := d_a;
+d_a:= EVAL(s_id,"DRDU",uv_epsv);
+t_u_epsv   := d_a;
+d_a:= EVAL(s_id,"DRDV",uv_epsv);
+t_v_epsv   := d_a;
+
+t_u_nume := (1.0/epsu)*(p_xyz_epsu-p_xyz);
+LST_LIN( "drdu     "+STR(t_u_nume.x,15,8)+
+        "          "+STR(t_u_nume.y,15,8)+
+        "          "+STR(t_u_nume.z,15,8));
+
+t_v_nume := (1.0/epsv)*(p_xyz_epsv-p_xyz);
+LST_LIN( "drdv     "+STR(t_v_nume.x,15,8)+
+        "          "+STR(t_v_nume.y,15,8)+
+        "          "+STR(t_v_nume.z,15,8));
+
+t_u2_nume := (1.0/epsu)*(t_u_epsu-t_u);
+LST_LIN( "d2rdu2   "+STR(t_u2_nume.x,15,8)+
+        "          "+STR(t_u2_nume.y,15,8)+
+        "          "+STR(t_u2_nume.z,15,8));
+
+t_v2_nume := (1.0/epsv)*(t_v_epsv-t_v);
+LST_LIN( "d2rdv2   "+STR(t_v2_nume.x,15,8)+
+        "          "+STR(t_v2_nume.y,15,8)+
+        "          "+STR(t_v2_nume.z,15,8));
+
+t_uv_nume := (1.0/epsv)*(t_u_epsv-t_u);
+LST_LIN( "d2rdudv  "+STR(t_uv_nume.x,15,8)+
+        "          "+STR(t_uv_nume.y,15,8)+
+        "          "+STR(t_uv_nume.z,15,8));
+
+
+
+LST_LIN( "   " );
+LST_LIN( "   " );
+LST_LIN(p_loft  ); 
+LST_LIN( "   " );
+
+
+
+t_u_diff := t_u_nume - t_u;
+LST_LIN( "drdu     "+STR(t_u_diff.x,15,8)+
+        "          "+STR(t_u_diff.y,15,8)+
+        "          "+STR(t_u_diff.z,15,8));
+
+t_v_diff := t_v_nume - t_v;
+LST_LIN( "drdv     "+STR(t_v_diff.x,15,8)+
+        "          "+STR(t_v_diff.y,15,8)+
+        "          "+STR(t_v_diff.z,15,8));
+
+t_u2_diff := t_u2_nume - t_u2;
+LST_LIN( "d2rdu2   "+STR(t_u2_diff.x,15,8)+
+        "          "+STR(t_u2_diff.y,15,8)+
+        "          "+STR(t_u2_diff.z,15,8));
+
+t_v2_diff := t_v2_nume - t_v2;
+LST_LIN( "d2rdv2   "+STR(t_v2_diff.x,15,8)+
+        "          "+STR(t_v2_diff.y,15,8)+
+        "          "+STR(t_v2_diff.z,15,8));
+
+t_uv_diff := t_uv_nume - t_uv;
+LST_LIN( "d2rdudv  "+STR(t_uv_diff.x,15,8)+
+        "          "+STR(t_uv_diff.y,15,8)+
+        "          "+STR(t_uv_diff.z,15,8));
+
+
+
+
+
+LST_EXI();
+
+ENDMODULE

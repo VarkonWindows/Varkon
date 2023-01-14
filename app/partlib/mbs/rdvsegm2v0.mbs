@@ -1,0 +1,542 @@
+!********************* rdvsegm2v0 ****************************************
+!
+!  Modulen l{ser data f|r en patch p} en bikubisk yta (fr}n NMG)
+!  fr}n en F07 samt ber{knar kurvkoefficienter f|r ett godtyckligt
+!  V-v{rde i patchen.
+!  Denna modul {r en generalisering av modulen rdvsegm.
+!
+!  1992-12-01  Karl-Erik Eklund
+!
+!***************************************************************************
+
+BASIC GEOMETRY MODULE rdvsegm2v0 (
+VAR FILE   f;                      ! Fil med ytdata (F07 fil)
+VAR FLOAT  v_kurva;                ! V kurva i patchen
+    INT    i_segm;                 ! Segment p} kurvan
+    INT    nu;                     ! Antalet U linjer i ytan
+    INT    nv;                     ! Antalet U linjer i ytan
+VAR INT    nseg;                   ! Antal segment i kurvan
+VAR FLOAT  segdat(25,4,4));        ! Koefficienter till kurva
+
+
+! Interna variabler:
+
+
+INT    DEBUG;                      ! Eq. 0: No      debug
+                                   ! Eq. 1: Full    debug
+                                   ! Eq. 2: Reduced debug
+
+
+INT    i_patch;                    ! Patch ordningsnummer
+INT    v_strip;                    ! V-strip d{r v-kurvan ligger i
+
+INT    pos_in;                     ! Start     position i filen
+INT    pos_read;                   ! L{s start position i filen
+
+FLOAT  SX(16);                     ! Koefficienterna f|r X(u,v)
+FLOAT  SY(16);                     ! Koefficienterna f|r Y(u,v)
+FLOAT  SZ(16);                     ! Koefficienterna f|r Z(u,v)
+
+FLOAT  v_v{rde;                    ! Det konstanta v-v{rdet 0<v<1 i v-strip
+FLOAT  v_vector(4);                ! Vektorn: (1,V,V**2,V**3)
+
+FLOAT  kx(4);                      ! Koefficienterna f|r kurvan X(u)
+FLOAT  ky(4);                      ! Koefficienterna f|r kurvan Y(u)
+FLOAT  kz(4);                      ! Koefficienterna f|r kurvan Z(u)
+
+INT    ix;                         ! Slask heltal
+INT    ix1,ix2;                    ! Tempor{rt anv{nda loop index
+
+
+STRING rad*132;                    ! Slask variabel f|r att l{sa rad
+
+STRING   s*1;                      ! F|r debug 
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+
+!                                 Debug
+!                                 -----
+
+  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+
+
+! F07-filen fr}n NMG med den bikubiska ytan har f|ljande utseende:
+! 
+! 1. F|rsta raden i filen best}r av ytnamn och antal patchar (se rduvlin2v0)
+!
+! 2. D{refter f|ljer ytans alla patchar. Varje patch inleds med en rad,
+!    som beskriver bl.a. patch nummer i filen, yttyp (=1001), antal kurvor
+!    i U led och antal kurvor i V led. Sedan f|ljer patchens 48 koefficien-
+!    ter uppdelade p} 8 rader.
+!
+!    Ordningsf|ljden p} patcharna i filen {r:
+!
+!    IU=1,IV=NV                              IU=NU,IV=NV
+!     -----------------------------------------
+!     !     !      !      !      !     !      !
+!     ! 13  ! 14   ! 15   ! 16   ! 17  ! 18   !
+!     -----------------------------------------
+!     !     !      !      !      !     !      !
+!     !  7  !  8   !  9   ! 10   ! 11  ! 12   !
+!     ----------------------------------------
+!     !     !      !      !      !     !      !
+!     !  1  !  2   !  3   !  4   !  5  !  6   !
+!     ----------------------------------------
+!
+!     IU=1,IV=1                                IU=NU,IV=1
+!
+!
+!    Patchen ges av matrisformeln:
+!    
+!                                       ! 1  !
+!                                       !    !
+!                                       ! V  !
+!      _                   2   3        !  2 !
+!      r(U,V)   =  (1  U  U   U ) * S * ! V  !
+!                                       !  3 !
+!                                       ! V  !
+!
+!
+!
+!      d{r  matrisen S {r inf|rd enligt:
+!
+!    ___                ___    ___                    ___
+!    ! A1   A13  A25  A37 !    ! SX11  SX12  SX13  SX14 !
+!    !                    !    !                        !
+!    ! A4   A16  A28  A40 !    ! SX21  SX22  SX23  SX24 !
+!    !                    !  = !                        !
+!    ! A7   A19  A31  A43 !    ! SX31  SX32  SX33  SX34 !
+!    !                    !    !                        !
+!    ! A10  A22  A34  A46 !    ! SX41  SX42  SX43  SX44 !
+!    ---                ---    ---                    ---
+!
+!
+!    ___                ___    ___                    ___
+!    ! A2   A14  A26  A38 !    ! SY11  SY12  SY13  SY14 !
+!    !                    !    !                        !
+!    ! A5   A17  A29  A41 !    ! SY21  SY22  SY23  SY24 !
+!    !                    !  = !                        !
+!    ! A8   A20  A32  A44 !    ! SY31  SY32  SY33  SY34 !
+!    !                    !    !                        !
+!    ! A11  A23  A35  A47 !    ! SY41  SY42  SY43  SY44 !
+!    ---                ---    ---                    ---
+!
+!
+!    ___                ___    ___                    ___
+!    ! A3   A15  A27  A39 !    ! SZ11  SZ12  SZ13  SZ14 !
+!    !                    !    !                        !
+!    ! A6   A18  A30  A42 !    ! SZ21  SZ22  SZ23  SZ24 !
+!    !                    !  = !                        !
+!    ! A9   A21  A33  A45 !    ! SZ31  SZ32  SZ33  SZ34 !
+!    !                    !    !                        !
+!    ! A12  A24  A36  A48 !    ! SZ41  SZ42  SZ43  SZ44 !
+!    ---                ---    ---                    ---
+!
+!
+!
+!
+!        SX11  SX12  SX13  SX14
+!
+!        SX21  SX22  SX23  SX24
+!    SX=
+!        SX31  SX32  SX33  SX34
+!
+!        SX41  SX42  SX43  SX44
+!
+!
+!        SY11  SY12  SY13  SY14
+!
+!        SY21  SY22  SY23  SY24
+!    SY=
+!        SY31  SY32  SY33  SY34
+!
+!        SY41  SY42  SY43  SY44
+!
+!
+!        SZ11  SZ12  SZ13  SZ14
+!
+!        SZ21  SZ22  SZ23  SZ24
+!    SZ=
+!        SZ31  SZ32  SZ33  SZ34
+!
+!        SZ41  SZ42  SZ43  SZ44
+!
+!
+!
+!    Koordinaten f|r en punkt ber{knas enligt f|ljande:
+!    
+!                                        ! 1  !
+!                                        !    !
+!                                        ! V  !
+!                          2   3         !  2 !
+!      X(U,V)   =  (1  U  U   U ) * SX * ! V  !
+!                                        !  3 !
+!                                        ! V  !
+!
+!    
+!                                        ! 1  !
+!                                        !    !
+!                                        ! V  !
+!                          2   3         !  2 !
+!      Y(U,V)   =  (1  U  U   U ) * SY * ! V  !
+!                                        !  3 !
+!                                        ! V  !
+!
+!    
+!                                        ! 1  !
+!                                        !    !
+!                                        ! V  !
+!                          2   3         !  2 !
+!      Z(U,V)   =  (1  U  U   U ) * SZ * ! V  !
+!                                        !  3 !
+!                                        ! V  !
+!
+!
+
+  
+  v_strip:= TRUNC(v_kurva);         ! v-strip som v-kurvan ligger i
+
+  IF v_strip = nv THEN              !
+      v_strip:= v_strip -1;         !
+  ENDIF;                            !
+
+  i_patch:=(v_strip-1)*(nu-1)       ! Patch nummer
+              +i_segm;              !
+
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+           " v_strip= "             !
+             +STR(v_strip,-1,0)+    !
+           " i_patch= "             !
+             +STR(i_patch,-1,0)     !
+                  ,"",1);           !
+  ENDIF;                            !
+
+  IF i_patch > (nu-1)*(nv-1) THEN   !
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdvsegm2v0: Programfel "+!
+           "(i_patch)");            !
+  ENDIF;                            !
+
+  IF nseg = 0 THEN                  ! Read to start patch
+      IF i_patch > 1 THEN           !
+          pos_in:= FPOS(f);         ! Start     position i filen
+          pos_read:= pos_in+        ! Position f|r att starta l{sa
+           (i_patch-1)*10*82;       !
+                                    
+          IF DEBUG=2 THEN           ! Programmeringskontroll f|r DEBUG=2
+           s:=INPMT("rdvsegm2v0:"+  ! Debug FPOS (start)
+             " i_patch-1= "         !
+               +STR(i_patch-1,-1,0)+!
+               " pos_in "           !
+                 +STR(pos_in,-1,0)+ !
+               " Ber{knad slutpos " !
+               +STR(pos_read,-1,0)  !
+                  ,"",1);           !
+          ENDIF;                    !
+
+          SEEK(f,pos_read);         ! St{ll filpekaren i l{sl{ge
+
+          IF DEBUG=2 THEN           ! Programmeringskontroll f|r DEBUG=2
+           s:=INPMT("rdvsegm2v0:"+  ! Debug FPOS (start)
+               " FPOS(f) facit "    !
+                 +STR(FPOS(f),-1,0) !
+                  ,"",1);           !
+          ENDIF;                    !
+      ENDIF;                        !
+  ENDIF;
+
+!                    2. Ber{knar koefficienter
+!                    =========================
+
+!                    2a. Kontroll av nseg
+!                    ====================
+
+  nseg := nseg + 1;                 ! Increase number of output
+  IF nseg > 25 THEN                 ! segments
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdvsegm2v0: Programfel "+!
+           "(nseg>25)");            !
+  ENDIF;
+
+!        2b. L{ser in patch-data och lagrar i matriserna SX, SY och SZ
+!        =============================================================
+
+  SX(1):= INFLT(f);                 !  A1
+  SY(1):= INFLT(f);                 !  A2
+  SZ(1):= INFLT(f);                 !  A3
+  SX(5):= INFLT(f);                 !  A4
+  SY(5):= INFLT(f);                 !  A5
+  SZ(5):= INFLT(f);                 !  A6
+  rad  := INLIN(f);                 ! Radslut
+
+  SX(9):= INFLT(f);                 !  A7
+  SY(9):= INFLT(f);                 !  A8
+  SZ(9):= INFLT(f);                 !  A9
+  SX(13):= INFLT(f);                !  A10
+  SY(13):= INFLT(f);                !  A11
+  SZ(13):= INFLT(f);                !  A12
+  rad   := INLIN(f);                ! Radslut
+
+  SX(2):= INFLT(f);                 !  A13
+  SY(2):= INFLT(f);                 !  A14
+  SZ(2):= INFLT(f);                 !  A15
+  SX(6):= INFLT(f);                 !  A16
+  SY(6):= INFLT(f);                 !  A17
+  SZ(6):= INFLT(f);                 !  A18
+  rad  := INLIN(f);                 ! Radslut
+
+  SX(10):= INFLT(f);                !  A19
+  SY(10):= INFLT(f);                !  A20
+  SZ(10):= INFLT(f);                !  A21
+  SX(14):= INFLT(f);                !  A22
+  SY(14):= INFLT(f);                !  A23
+  SZ(14):= INFLT(f);                !  A24
+  rad   := INLIN(f);                ! Radslut
+
+  SX(3):= INFLT(f);                 !  A25
+  SY(3):= INFLT(f);                 !  A26
+  SZ(3):= INFLT(f);                 !  A27
+  SX(7):= INFLT(f);                 !  A28
+  SY(7):= INFLT(f);                 !  A29
+  SZ(7):= INFLT(f);                 !  A30
+  rad  := INLIN(f);                 ! Radslut
+       
+  SX(11):= INFLT(f);                !  A31
+  SY(11):= INFLT(f);                !  A32
+  SZ(11):= INFLT(f);                !  A33
+  SX(15):= INFLT(f);                !  A34
+  SY(15):= INFLT(f);                !  A35
+  SZ(15):= INFLT(f);                !  A36
+  rad   := INLIN(f);                ! Radslut
+
+  SX(4):= INFLT(f);                 !  A37
+  SY(4):= INFLT(f);                 !  A38
+  SZ(4):= INFLT(f);                 !  A39
+  SX(8):= INFLT(f);                 !  A40
+  SY(8):= INFLT(f);                 !  A41
+  SZ(8):= INFLT(f);                 !  A42
+  rad  := INLIN(f);                 ! Radslut
+                            
+  SX(12):= INFLT(f);                !  A43
+  SY(12):= INFLT(f);                !  A44
+  SZ(12):= INFLT(f);                !  A45
+  SX(16):= INFLT(f);                !  A46
+  SY(16):= INFLT(f);                !  A47
+  SZ(16):= INFLT(f);                !  A48
+  rad   := INLIN(f);                ! Radslut
+
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SX11="+STR(SX(1),-11,6)+  !
+        " SX12="+STR(SX(2),-11,6)+  !
+        " SX13="+STR(SX(3),-11,6)+  !
+        " SX14="+STR(SX(4),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SX21="+STR(SX(5),-11,6)+  !
+        " SX22="+STR(SX(6),-11,6)+  !
+        " SX23="+STR(SX(7),-11,6)+  !
+        " SX24="+STR(SX(8),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SX31="+STR(SX(9),-11,6)+  !
+        " SX32="+STR(SX(10),-11,6)+ !
+        " SX33="+STR(SX(11),-11,6)+ !
+        " SX34="+STR(SX(12),-11,6)  !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SX41="+STR(SX(13),-11,6)+ !
+        " SX42="+STR(SX(14),-11,6)+ !
+        " SX43="+STR(SX(15),-11,6)+ !
+        " SX44="+STR(SX(16),-11,6)  !
+                  ,"",1);           !
+
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SY11="+STR(SY(1),-11,6)+  !
+        " SY12="+STR(SY(2),-11,6)+  !
+        " SY13="+STR(SY(3),-11,6)+  !
+        " SY14="+STR(SY(4),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SY21="+STR(SY(5),-11,6)+  !
+        " SY22="+STR(SY(6),-11,6)+  !
+        " SY23="+STR(SY(7),-11,6)+  !
+        " SY24="+STR(SY(8),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SY31="+STR(SY(9),-11,6)+  !
+        " SY32="+STR(SY(10),-11,6)+ !
+        " SY33="+STR(SY(11),-11,6)+ !
+        " SY34="+STR(SY(12),-11,6)  !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SY41="+STR(SY(13),-11,6)+ !
+        " SY42="+STR(SY(14),-11,6)+ !
+        " SY43="+STR(SY(15),-11,6)+ !
+        " SY44="+STR(SY(16),-11,6)  !
+                  ,"",1);           !
+
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SZ11="+STR(SZ(1),-11,6)+  !
+        " SZ12="+STR(SZ(2),-11,6)+  !
+        " SZ13="+STR(SZ(3),-11,6)+  !
+        " SZ14="+STR(SZ(4),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SZ21="+STR(SZ(5),-11,6)+  !
+        " SZ22="+STR(SZ(6),-11,6)+  !
+        " SZ23="+STR(SZ(7),-11,6)+  !
+        " SZ24="+STR(SZ(8),-11,6)   !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SZ31="+STR(SZ(9),-11,6)+  !
+        " SZ32="+STR(SZ(10),-11,6)+ !
+        " SZ33="+STR(SZ(11),-11,6)+ !
+        " SZ34="+STR(SZ(12),-11,6)  !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " SZ41="+STR(SZ(13),-11,6)+ !
+        " SZ42="+STR(SZ(14),-11,6)+ !
+        " SZ43="+STR(SZ(15),-11,6)+ !
+        " SZ44="+STR(SZ(16),-11,6)  !
+                  ,"",1);           !
+
+  ENDIF;                            !
+
+
+!        2c. Ber{knar koefficienter f|r ett konstant v-v{rde
+!        ===================================================
+
+  v_v{rde:= v_kurva - v_strip;      ! v-v{rdet i 'strippen' som koefficien-
+                                    ! terna ska ber{knas f|r
+  v_vector(1):= 1.0;                !
+  v_vector(2):= v_v{rde;            !
+  v_vector(3):= v_v{rde*v_v{rde;    !
+  v_vector(4):= v_v{rde*v_v{rde     !
+                *v_v{rde;           !
+
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+        " v_v{rde= "                !
+        +STR(v_v{rde,-8,6)+         !
+        " v_vector(1)= "            !
+        +STR(v_vector(1),-12,6)+    !
+        " v_vector(2)= "            !
+        +STR(v_vector(2),-12,6)     !
+                  ,"",1);           !
+      s:=INPMT("rdvsegm2v0:"+       !
+        " v_vector(3)= "            !
+        +STR(v_vector(3),-12,6)+    !
+        " v_vector(4)= "            !
+        +STR(v_vector(4),-12,6)     !
+                  ,"",1);           !
+  ENDIF;                            !
+
+  PART(#1,matrixm2v0(SX,v_vector,   ! Ber{knar kx-vektorn
+         kx):SAVE=0);               ! (Anrop beh|ver ej sparas
+                                    !  i GM och ingen geometri
+                                    !  skapas)
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+        " kx(1)="                   !
+        +STR(kx(1),-11,6)+          !
+        " kx(2)="                   !
+        +STR(kx(2),-11,6)+          !
+        " kx(3)="                   !
+        +STR(kx(3),-8,6)+           !
+        " kx(4)="                   !
+        +STR(kx(4),-8,6)            !
+                  ,"",1);           !
+  ENDIF;                            !
+
+  segdat(nseg,1,1) := kx(1);        !  k0x
+  segdat(nseg,2,1) := kx(2);        !  k1x
+  segdat(nseg,3,1) := kx(3);        !  k2x
+  segdat(nseg,4,1) := kx(4);        !  k3x
+
+  PART(#2,matrixm2v0(SY,v_vector,   ! Ber{knar ky-vektorn
+         ky):SAVE=0);               ! (Anrop beh|ver ej sparas
+                                    !  i GM och ingen geometri
+                                    !  skapas)
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+        " ky(1)="                   !
+        +STR(ky(1),-11,6)+          !
+        " ky(2)="                   !
+        +STR(ky(2),-11,6)+          !
+        " ky(3)="                   !
+        +STR(ky(3),-8,6)+           !
+        " ky(4)="                   !
+        +STR(ky(4),-8,6)            !
+                  ,"",1);           !
+  ENDIF;                            !
+
+  segdat(nseg,1,2) := ky(1);        !  k0y
+  segdat(nseg,2,2) := ky(2);        !  k1y
+  segdat(nseg,3,2) := ky(3);        !  k2y
+  segdat(nseg,4,2) := ky(4);        !  k3y
+
+  PART(#3,matrixm2v0(SZ,v_vector,   ! Ber{knar kz-vektorn
+         kz):SAVE=0);               ! (Anrop beh|ver ej sparas
+                                    !  i GM och ingen geometri
+                                    !  skapas)
+  IF DEBUG=1 THEN                   ! Programmeringskontroll f|r DEBUG=1
+      s:=INPMT("rdvsegm2v0:"+       !
+        " kz(1)="                   !
+        +STR(kz(1),-11,6)+          !
+        " kz(2)="                   !
+        +STR(kz(2),-11,6)+          !
+        " kz(3)="                   !
+        +STR(kz(3),-8,6)+           !
+        " kz(4)="                   !
+        +STR(kz(4),-8,6)            !
+                  ,"",1);           !
+  ENDIF;                            !
+
+  segdat(nseg,1,3) := kz(1);        !  k0z
+  segdat(nseg,2,3) := kz(2);        !  k1z
+  segdat(nseg,3,3) := kz(3);        !  k2z
+  segdat(nseg,4,3) := kz(4);        !  k3z
+
+  segdat(nseg,1,4) := 1.0;          !  k0w
+  segdat(nseg,2,4) := 0.0;          !  k1w
+  segdat(nseg,3,4) := 0.0;          !  k2w
+  segdat(nseg,4,4) := 0.0;          !  k3w
+
+  pos_in:= FPOS(f);                 ! G{llande position i filen
+  pos_read:= pos_in+2*82;           ! Hoppar fram till n{sta patch
+                                    
+  IF DEBUG=2 THEN                   ! Programmeringskontroll f|r DEBUG=2
+      s:=INPMT("rdvsegm2v0:"+       ! Debug FPOS (start)
+        " pos_in "                  !
+        +STR(pos_in,-1,0)+          !
+        " Ber{knad slutpos "        !
+        +STR(pos_read,-1,0)         !
+            ,"",1);                 !
+  ENDIF;                            !
+
+  IF pos_read < (nu-1)*             !
+      (nv-1)*10*82  THEN            !
+      SEEK(f,pos_read);             ! St{ll filpekaren i l{sl{ge
+
+      IF DEBUG=2 THEN               ! Programmeringskontroll f|r DEBUG=2
+          s:=INPMT("rdvsegm2v0:"+   ! Debug FPOS (start)
+            " FPOS(f) facit "       !
+            +STR(FPOS(f),-1,0)      !
+              ,"",1);               !
+      ENDIF;                        !
+  ENDIF;                            !
+
+  IF ( IOSTAT(f) <> 0 ) then        ! Programmeringskontroll
+      CLOSE(f);                     ! St{ng F07 filen med ytdata
+      EXIT("rdvsegm2v0: Programfel "+! (Borde egentligen ligga
+           "(l{sning)");            !  efter varje l{sning)
+  ENDIF;
+
+ENDMODULE
+

@@ -1,0 +1,31 @@
+!********************  regsurfv0  **********************
+!
+! +++
+! Registrate a reference surface 
+!
+! Revision history
+! ________________
+!
+! 1996-03-06  Gunnar Liden
+!
+! ---
+!*******************************************************
+
+BASIC  GEOMETRY MODULE  regsurfv0  (
+REF    sur_id;                     ! Global reference (# identity)
+STRING fplproj*44;                 ! Aircraft (or other) project
+STRING surname*30;                 ! Name of surface 
+STRING csyname*10;                 ! Coordinate system 
+STRING surflib*1;                  ! Surface library r/p 
+STRING desc*132);                  ! Description
+
+!sdesce Registrate a reference surface 
+!sdescs Registrera en referens yta
+
+
+BEGINMODULE
+
+! No calculations 
+;
+
+ENDMODULE
