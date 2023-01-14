@@ -1,0 +1,76 @@
+Modulnamn:         tra_2dav0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE tra_2dav0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Create transformation with scaling and translation for 2D drawing
+
+ The input is a coordinate system which defines the 2D view 
+ on the 2D drawing (surface diagram in application figurblad)
+
+ Output is reference to a transformation which can be used to 
+ transformate 3D geometry (curves - not surface curves, points, 
+ surfaces, etc.) to the 2D drawing. The geometry will be 
+ scaled and translated.     
+
+ Revision history
+ ________________
+
+ 1996-02-25 Gunnar Liden
+
+
+******************************************************************
+GLOBAL GEOMETRY MODULE tra_2dav0 (
+    REF    csys_id;               Coordinate system defining 2D view
+    FLOAT  skala;                 Scale (scale factor= 1/skala)
+    FLOAT  x0;                    Origin for scaling X coordinate
+    FLOAT  y0;                    Origin for scaling Y coordinate
+    FLOAT  z0;                    Origin for scaling Z coordinate
+VAR REF    tra_id);               Transformation (global reference)
+sdesce Create transformation with scaling and translation for 2D drawing
+sdescs Skapa transformation med skalning och translation f|r figurblad (2D)
+ Internal variables
+  INT    DEBUG;                    Eq. 0: No      debug
+                                   Eq. 1: Full    debug
+  STRING csys_name*10;             Name of coordinate system
+  FLOAT  csys_data(4,4);           Coord. system  matrix
+  INT    i_r;                      Loop index matrix
+  FLOAT  tra_data(4,4);            Transformation matrix
+BEGINMODULE
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ 2. Calculate transformation matrix
+
+
+Modulens parametrar:
+____________________
+
+REF    csys_id;              ! Coordinate system defining 2D view
+FLOAT  skala;                ! Scale (scale factor= 1/skala)
+FLOAT  x0;                   ! Origin for scaling X coordinate
+FLOAT  y0;                   ! Origin for scaling Y coordinate
+FLOAT  z0;                   ! Origin for scaling Z coordinate
+VAR REF    tra_id);              ! Transformation (global reference)
+
+
+Inga anropade moduler
+
+
+
+Modul tra_2dav0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,35 @@
+Modulnamn:         MINMAXREG
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE MINMAXREG 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Registration of minimum and maximum values for a surface
+
+
+Modulens parametrar:
+____________________
+
+FLOAT  minx;                  ! Minimum X value
+FLOAT  maxx;                  ! Maximum X value
+FLOAT  miny;                  ! Minimum Y value
+FLOAT  maxy;                  ! Maximum Y value
+FLOAT  minz;                  ! Minimum Z value
+FLOAT  maxz;                  ! Maximum Z value
+INT    nu;                    ! Number of U lines in the surface
+INT    nv);                   ! Number of V lines in the surface
+
+
+Inga anropade moduler
+
+
+
+Modul MINMAXREG finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

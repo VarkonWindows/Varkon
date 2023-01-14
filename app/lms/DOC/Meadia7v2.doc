@@ -1,0 +1,80 @@
+Modulnamn:         meadia7v2
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meadia7v2  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Diagram for deviations in z translation for a wing
+
+ The input to the function are values calculated for the camber line
+ deviation diagram. The calculated values are registered as parts
+ This function calls function meadiagtv0 which scans the whole active
+ module and gets the calculated values.
+
+
+ There is an option to calculate and draw a regression line in this
+ diagram (a line that approximates the translation deviation curve)
+
+
+
+ Algorithm
+ ________
+
+ 1. Initializations
+
+
+ 2. Retrieve data from camber line deviation diagrams
+
+
+ 3. Draw coordinate axis in the local system           
+
+
+ 4. Sort
+
+
+ 7. Draw curve for Z translation error       
+
+
+ 8. Regression line
+
+
+ 9. Leading edge
+
+
+ 10. Regression line leading edge
+
+
+ 11. Trailing edge
+
+
+ 12. Regression line trailing edge
+
+
+Modulens parametrar:
+____________________
+
+VECTOR origo      :=vec(20,100) >"Position for diagram";
+FLOAT xlangd      := 100.0      >"Length X of diagram (<CR>=100.0 mm)";
+FLOAT skalf_y     :=   5.0      >"Scale factor Y values (<CR>=5.0)";
+FLOAT ylangd      :=  15.0      >"Length X of diagram (<CR>=15.0 mm)";
+INT   case        :=   1        >"Text reg.line (case=10:No text case=11:Text)");
+
+
+Anropade moduler: 
+_________________
+
+meadiagtv0   Hamta registrerad data fran valvings diagram
+pil          Skapar en pilmarkering på koordinataxeln
+measortv3    Funktionen sorterar punkter map första variabeln
+meavregv0    Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+
+
+Modul meadia7v2 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

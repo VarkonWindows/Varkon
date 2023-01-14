@@ -1,0 +1,37 @@
+Modulnamn:         measortv3
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE measortv3  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Sorting on points on first variable
+
+
+ Algorithm
+ ________
+
+ 1. Sorting
+
+
+Modulens parametrar:
+____________________
+
+INT    case;                     ! =1: No Debug  =2: Full Debug
+INT    n_p;                      ! Number of points in x_in
+VAR  VECTOR  x_in(200) ;              ! Scaled x,y,z values In
+VAR  VECTOR  x_ut(200));              ! Sorted scaled x,y,z values Out
+
+
+Inga anropade moduler
+
+
+
+Modul measortv3 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

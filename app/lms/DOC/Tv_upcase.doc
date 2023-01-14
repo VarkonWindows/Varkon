@@ -1,0 +1,35 @@
+Modulnamn:         tv_upcase
+__________
+
+Moduldeklaration:  basic geometry module tv_upcase
+_________________
+
+Modulbeskrivning:
+_________________
+
+ ******************************************************************
+ basic geometry module tv_upcase(VAR STRING s*132);
+*
+*      Konverterar text till stora bokst{ver.
+*
+*      In : Godtycklig textstr{ng.
+*
+*      Ut : Samma str{ng, sm} bokst{ver stora.
+*
+*      (C)microform ab 21/4/88 J. Kjellander
+*
+ ******************************************************************
+
+Inga parametrar
+
+
+
+Inga anropade moduler
+
+
+
+Modul tv_upcase finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

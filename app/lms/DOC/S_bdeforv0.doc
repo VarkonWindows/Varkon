@@ -1,0 +1,62 @@
+Modulnamn:         s_bdeforv0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE s_bdeforv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Deformation of a surface with a random translation function
+ in a given direction
+
+
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ Retrieve number of patches
+
+
+ Start random value
+
+
+ 4. Create scalar (random) functions for the translation
+
+
+ Random function in U direction
+
+
+ Random function in V direction
+
+
+ 5. Create points and tangents for surface        
+
+
+ 6. Create surface
+
+
+Modulens parametrar:
+____________________
+
+REF    s_id                        >"Surface reference";
+FLOAT  mtrans    :=  23.5          >"Maximum (random) translation";
+VECTOR v_deform  := VEC(0,0,1)     >"Deformation direction (Surface normal for 0,0,0)";
+INT    graphic   :=   1            >"Graphics 0: No surface 1: Surface 2: All");
+
+
+Inga anropade moduler
+
+
+
+Modul s_bdeforv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

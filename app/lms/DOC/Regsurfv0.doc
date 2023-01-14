@@ -1,0 +1,39 @@
+Modulnamn:         regsurfv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE  regsurfv0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Registrate a reference surface 
+
+ Revision history
+ ________________
+
+ 1996-03-06  Gunnar Liden
+
+
+
+Modulens parametrar:
+____________________
+
+REF    sur_id;                     ! Global reference (# identity)
+STRING fplproj*44;                 ! Aircraft (or other) project
+STRING surname*30;                 ! Name of surface 
+STRING csyname*10;                 ! Coordinate system 
+STRING surflib*1;                  ! Surface library r/p 
+STRING desc*132);                  ! Description
+
+
+Inga anropade moduler
+
+
+
+Modul regsurfv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

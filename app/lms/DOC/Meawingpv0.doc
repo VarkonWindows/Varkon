@@ -1,0 +1,60 @@
+Modulnamn:         meawingpv0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meawingpv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Create a wing plane and registrate the wing plane with MEAWPLREC
+ 
+ Note that all measured points must be within the wing plane
+ the projected leading (and trailing) edge must. A delta distance
+ distance for the leading edge is therefore input to the function.
+
+
+
+ 1. Retrieve view data
+
+
+ 2. Get reference to surface 
+
+
+ 3. Calculate wing plane      
+
+
+ 4. Registrate wing plane      
+
+
+ 5. Graphical representation   
+
+
+Modulens parametrar:
+____________________
+
+REF    view_id                 > "@t16384 Select coordinate system (view)";
+STRING proj_dir*1:= "Z"        > "Projection direction (only Z implem.)";
+VECTOR fkstart_uv:= VEC(-1,-1) > "@ Leading edge UV start pt <CR>= (-1,-1)= automatic";
+VECTOR fkslut_uv := VEC(-1,-1) > "@ Leading edge UV end   pt";
+VECTOR bkstart_uv:= VEC(-1,-1) > "@ Trailing edge UV start pt";
+VECTOR bkslut_uv := VEC(-1,-1) > "@ Trailing edge UV end   pt";
+FLOAT  delta_l   :=  20.0      > "@ Delta for leading edge (normal direction)";
+INT    grafik    := 1          > "0: No graphic 1: Show plane ");
+
+
+Anropade moduler: 
+_________________
+
+figgetvyv2   Hämtar information om aktuell vy
+meawprov0    Beräkna vingplan som silhuetter, utdata är UV punkter 
+MEAWPLREC    Registrering av ett vingplan
+meawinggv0   Grafik för vingplan
+
+
+Modul meawingpv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

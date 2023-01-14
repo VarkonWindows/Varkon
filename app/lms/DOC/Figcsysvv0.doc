@@ -1,0 +1,85 @@
+Modulnamn:         figcsysv0
+__________
+
+Moduldeklaration:  LOCAL GEOMETRY MODULE figcsysv0
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function creates a coordinate system for a view on a drawing sheet
+
+ Remark:
+ The function will not only create the graphics representing the coordinate
+ system. The calculated lengths of the axis are also output from this module.
+ --
+
+s+++ 
+  Funktionen lägger ut och ritar axlarna i ett lokalt
+  koordinatsystem i en SAAB standard vy.
+s---
+
+ Revision history:
+
+ 1995-06-09  Ronny Gyllensten, Gun-Britt Ekros, Johan Ankarswärd
+ 1996-02-24  åäö 8 bitars ASCII ännu ej i parameternamn G Liden    
+ 1997-04-23  Documentation in English added             G Liden    
+
+
+**********************************************************************
+sdesce Places a coordinate system with axis in a SAAB view
+sdescs Lägger ut ett lokalt koordinatsystem i SAAB vy
+LOCAL GEOMETRY MODULE figcsysv0(
+    STRING vy*6;                View
+    STRING fplproj*44;          Aircraft or other project
+    STRING datum*28;            Coordinate system (" "= BASIC)
+    FLOAT  skala;               Scale (scale factor=1/skala)
+    FLOAT  x0;                  Origin x coordinate
+    FLOAT  y0;                  Origin y coordinate
+    FLOAT  z0;                  Origin z coordinate
+VAR FLOAT  xlangd ;             Length of X axis (output)
+VAR FLOAT  ylangd ;             Length of Y axis (output)
+VAR FLOAT  zlangd ;             Length of Z axis (output)
+    INT    grafik;              Graphics
+    VECTOR ang;                 Euler angles  (ang.X=alfa)";
+    STRING reserv2*80);         A not yet used parameter
+ Internal variables:
+STRING s*1;                         For INPMT
+BEGINMODULE
+
+ 1. Create (blanked) local coordinate systems for all Saab views
+
+
+ 2. Draw axis in the local coordinate system
+
+
+Modulens parametrar:
+____________________
+
+STRING vy*6;               ! View
+STRING fplproj*44;         ! Aircraft or other project
+STRING datum*28;           ! Coordinate system (" "= BASIC)
+FLOAT  skala;              ! Scale (scale factor=1/skala)
+FLOAT  x0;                 ! Origin x coordinate
+FLOAT  y0;                 ! Origin y coordinate
+FLOAT  z0;                 ! Origin z coordinate
+VAR FLOAT  xlangd ;            ! Length of X axis (output)
+VAR FLOAT  ylangd ;            ! Length of Y axis (output)
+VAR FLOAT  zlangd ;            ! Length of Z axis (output)
+INT    grafik;             ! Graphics
+VECTOR ang;                ! Euler angles  (ang.X=alfa)";
+STRING reserv2*80);        ! A not yet used parameter
+
+
+Anropade moduler: 
+_________________
+
+pil          Skapar en pilmarkering på koordinataxeln
+
+
+Modul figcsysv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

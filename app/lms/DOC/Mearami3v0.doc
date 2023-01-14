@@ -1,0 +1,36 @@
+Modulnamn:         mearami3v0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE mearami3v0
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Creates a drawing sheet for presentation of results (diagrams)
+ from analyzation of measured points from METRONOR or other systems. 
+ The size of the drawing sheet is A3.
+
+
+
+
+ 1. Draw the sheet
+
+
+ 2. Write text in the drawing sheet 
+
+
+Inga parametrar
+
+
+
+Inga anropade moduler
+
+
+
+Modul mearami3v0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

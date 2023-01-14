@@ -1,0 +1,32 @@
+Modulnamn:         s_minmaxv0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE s_minmaxv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+Modulens parametrar:
+____________________
+
+REF    s_id;                  ! Surface reference
+REF    c_id;                  ! Coordinate system reference
+VAR FLOAT  minx;                  ! Minimum X value
+VAR FLOAT  maxx;                  ! Maximum X value
+VAR FLOAT  miny;                  ! Minimum Y value
+VAR FLOAT  maxy;                  ! Maximum Y value
+VAR FLOAT  minz;                  ! Minimum Z value
+VAR FLOAT  maxz);                 ! Maximum Z value
+
+
+Inga anropade moduler
+
+
+
+Modul s_minmaxv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

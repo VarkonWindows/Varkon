@@ -1,0 +1,162 @@
+Modulnamn:         rdsurscav0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE rdsurscav0
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Read surface from library, scale surface and create surface curves
+
+ Revision history
+ ________________
+
+ 1996-02-24 Gunnar Liden
+
+
+******************************************************************
+GLOBAL GEOMETRY MODULE rdsurscav0
+(
+STRING fplproj*44 := "SF340"        >"Aircraft (or other) project";
+STRING surname*30 := "SF340-543-02" >"Surface name (number)";
+STRING csyname*10 := "438"          >"Coordinat system";
+FLOAT  skala      := 1.0            >"@ Scale (<CR>=> 1)";
+FLOAT  x0         := 0.0            >"@ Origin for scaling X coordinate";
+FLOAT  y0         := 0.0            >"@ Origin for scaling Y coordinate";
+FLOAT  z0         := 0.0            >"@ Origin for scaling Z coordinate";
+INT    grafik     := 1
+>"@ 1.All 2.CATIA 3.Contour 4/14.Delta 5.File 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart     := 0.0            > "@ Ustart";
+FLOAT  udelta     := 0.0            > "@ Udelta";
+FLOAT  uslut      := 0.0            > "@ Uslut";
+FLOAT  vstart     := 0.0            > "@ Vstart";
+FLOAT  vdelta     := 0.0            > "@ Vdelta";
+FLOAT  vslut      := 0.0            > "@ Vslut";
+INT    case       := 1              > "@ Case";
+STRING surflib*1  := "r"            > "@ Surface library r/p (<CR>=reference";
+STRING uvfil*80                     > "@ uv file";
+REF    csys_id                      > "Local system for the surface"
+);
+sdesce Read surface from library, scale surface, create isoparametrics 
+sdescs L{s yta fr}n bibliotek, skala yta och skapa iso-kurvor p} ytan
+ Internal variables
+  INT    graphic_ref;              Graphics =0 for rdrefsurv0
+  INT    DEBUG;                    Eq. 0: No      debug
+                                   Eq. 1: Full    debug
+                                   Eq. 2: Reduced debug
+  INT    npatu;                    No patches in U direction
+  INT    npatv;                    No patches in V direction
+  INT    nu,nv;                    Number of U and V lines in surface
+  FLOAT  minx;                     Minimum X value
+  FLOAT  maxx;                     Maximum X value
+  FLOAT  miny;                     Minimum Y value
+  FLOAT  maxy;                     Maximum Y value
+  FLOAT  minz;                     Minimum Z value
+  FLOAT  maxz;                     Maximum Z value
+  REF    s_id;                     Unscaled surface identity
+  REF    c_id;                     Coordinate system identity
+  REF    i_id;                     Isoparameter identity
+  REF    a_id;                     Approx. isoparameter identity
+  REF    tra_id;                   Transformation identity
+  STRING iso_c*1;                  Isoparameter U or V
+  FLOAT  start_p;                  Parameter for start point
+  FLOAT  end_p;                    Parameter for end   point
+  INT    i_u;                      Loop index U parameters
+  INT    i_v;                      Loop index V parameters
+  FLOAT  mittenu;                  U-value for mid parameter
+  FLOAT  mittenv;                  V-value for mid parameter
+  FLOAT  u_c;                      Current U value
+  FLOAT  v_c;                      Current V value
+  INT    nmax;                     Maximum number of isoparameters
+  STRING desc*132;                 Description
+  STRING s*1;                      For Debug 
+BEGINMODULE
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ 2. Create surface transformated to coordinate system csyname
+
+
+ Create dummy coordinate system with name csyname
+
+
+ Fetch the surface from the given library (reference or project)  
+ (project library not yet implemented)
+ Registrate the surface
+
+
+ 3. Calculate and registrate minimum and maximum values      
+
+
+ 4. Create transformation matrix for isoparametric curves
+
+
+ 5. Create and register (as GROUP's) scaled isoparameter curves 
+
+
+ Create all patch boundary curves
+
+
+full:                                Label: All curves
+
+
+ Outer contour of surface
+
+
+kontur:                              Label: Contour 
+
+
+catia:;                              Label mid isoparameter lines
+
+
+delta:;                              Specified U and V lines
+
+
+Modulens parametrar:
+____________________
+
+STRING fplproj*44 := "SF340"        >"Aircraft (or other) project";
+STRING surname*30 := "SF340-543-02" >"Surface name (number)";
+STRING csyname*10 := "438"          >"Coordinat system";
+FLOAT  skala      := 1.0            >"@ Scale (<CR>=> 1)";
+FLOAT  x0         := 0.0            >"@ Origin for scaling X coordinate";
+FLOAT  y0         := 0.0            >"@ Origin for scaling Y coordinate";
+FLOAT  z0         := 0.0            >"@ Origin for scaling Z coordinate";
+INT    grafik     := 1
+>"@ 1.All 2.CATIA 3.Contour 4/14.Delta 5.File 6/16.Udelta 7/17.Vdelta ";
+FLOAT  ustart     := 0.0            > "@ Ustart";
+FLOAT  udelta     := 0.0            > "@ Udelta";
+FLOAT  uslut      := 0.0            > "@ Uslut";
+FLOAT  vstart     := 0.0            > "@ Vstart";
+FLOAT  vdelta     := 0.0            > "@ Vdelta";
+FLOAT  vslut      := 0.0            > "@ Vslut";
+INT    case       := 1              > "@ Case";
+STRING surflib*1  := "r"            > "@ Surface library r/p (<CR>=reference";
+STRING uvfil*80                     > "@ uv file";
+REF    csys_id                      > "Local system for the surface"
+);
+
+
+Anropade moduler: 
+_________________
+
+rdrefsurv0   Importera en referens NMG yta fr}n det generella ytbiblioteket
+regsurfv0    Registrera en referens yta
+s_minmaxv0   Ber{knar maximum och minimum koordinater f|r yta
+MINMAXREG    Registrering av minimum och maximum varden for en yta
+tra_2dav0    Skapa transformation med skalning och translation f|r figurblad (2D)
+
+
+Modul rdsurscav0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

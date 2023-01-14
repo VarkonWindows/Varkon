@@ -1,0 +1,118 @@
+Modulnamn:         meametrov3
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meametrov3 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Read point data and optionally deviations from a METRONOR file and 
+ draw points in a 2D view (Saab view XY, XZ, YZ or ISO).
+
+ Format of the Metronor file: d , b or d (reduced)
+
+ There is a parameter which optionally offset the points with
+ respect to the surface normals of the measured surface points.
+ The outside of an aicraft wing is defined mathematically (as
+ the reference surface) but measurements may for instance be done
+ on the inside tool surface for a wing panel. In this case can
+ the offset parameter be used (offset= wing panel thickness).
+
+
+
+ The module reads data from a Metronor file with measured points.
+
+ Each point is registered as a part with the name MEAPOIREC. The
+ attributes (parameters) to this module (object) hold all data
+ about the point. Attributes are:
+ VECTOR       m_p;                ! Measured point
+ VECTOR       r_p;                ! Reference point 
+ FLOAT        d_tot;              ! Total (perpend.) deviation to surface
+                                  ! (distance beween m_p and r_p)
+ INT          p_no;               ! Point number
+ INT          g_no;               ! Subset number
+ STRING       descr*132           ! Name and description of the point  
+
+ The module is of type DRAWING (2D), since the module is used
+ (called) in the VARKON MEASURE application which is a 2D
+ application. Diagrams and drawings are output (but many 
+ calculations are of cource in 3D, i.e. called modules are
+ of type GEOMETRY).
+ 
+ Input to this module is a view, i.e. a part which defines
+ the transformation and scaling of the points for the 
+ drawings. There is a module (object) figvyv2 which creates
+ one of four standard Saab drawing views (with the Z axis
+ pointing downwards).
+
+ The Metronor file cannot be used directly. Some manual 
+ editing is needed (a new module is planned ...)
+
+ Comment lines must be erased and between each subset of points
+ must two lines be added:
+     1.234567  1.234567  1.234567
+    1.234567  1.234567  1.234567
+
+ The file must end with the following two lines:
+    -1.234567  -1.234567  -1.234567
+    -1.234567  -1.234567  -1.234567
+
+ Free comments may be written after these two lines.
+
+
+ It is for the wing profile analysis assumed that a subset
+ of points are points from the upper or lower part of the 
+ wing.
+
+ An edited Metronor file can be created by the simulation
+ module meapsim1v1
+
+ This part is input to the modules which creates measurement
+ analysis diagrams. The graphical representation of the points
+ (as points or curves interpolating the subsets of points) makes
+ it possible for the user to select this part interactively .
+
+
+
+-------------------------------------
+------------------------------
+--------------------
+-------------------
+
+ Exemple of data in a Metronor file (d format):
+-------------------------------------------
+
+
+ 1. Initializations
+
+
+ 2. Get data about the SAAB view
+
+
+ 3. Measured points from METRONOR file to 2D view
+
+
+Modulens parametrar:
+____________________
+
+REF     view_id                   > "@t16384 Select view"   ;
+STRING metfil*132 := "xxxx.METRO" > "File with METRONOR data";
+FLOAT  offset     :=  0.0         > "Offset for points";
+INT    grafik     :=  2           > "@ 1. Points 2. Solid crv  3. Dashed";
+INT     case      :=  1           > "Format d: Case= 1 b: Case= 2: d(red) Case= 3");
+
+
+Anropade moduler: 
+_________________
+
+figgetvyv2   Hämtar information om aktuell vy
+meametrav0   Läser och registrerar data från METRONOR fil (3D)
+
+
+Modul meametrov3 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

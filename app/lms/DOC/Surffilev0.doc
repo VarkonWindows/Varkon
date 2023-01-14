@@ -1,0 +1,51 @@
+Modulnamn:         surffilev0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE  surffilev0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Get full file name for file with surface data
+
+ Revision history
+ ________________
+
+ 1996-02-13  Gunnar Liden
+ 1996-02-22  Small and capital letters Gunnar Liden
+
+
+
+  Algorithm
+  _________
+
+  1. Get names to all directories with surface data
+
+
+  Loop for all subdirectories with surface data
+  Try to open surname.DAT_csysname or surname.dat_csysname
+
+
+Modulens parametrar:
+____________________
+
+STRING surname*30;       ! Name of surface 
+STRING csyname*10;       ! Coordinate system
+VAR STRING f_name*132);      ! Full file name   
+
+
+Anropade moduler: 
+_________________
+
+surfpathv0   Definierar sokvag for referensgeometri       
+tv_upcase   Kort beskrivning saknas
+tv_locase    Konverterar text till sm} bokst{ver.
+
+
+Modul surffilev0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

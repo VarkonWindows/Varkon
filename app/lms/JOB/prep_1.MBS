@@ -1,0 +1,29 @@
+GLOBAL DRAWING MODULE test_prep_1();
+
+
+BEGINMODULE
+
+  part(#1,mearami3v0());
+  part(#2,figvyv2("iso", "SF340", "439", "439", 50, vec(23.26937704918, 
+    225.71645901639), 1500, 0, 0, 2500, 1500, 1000, 1, vec(0.0, 0.0), ""));
+  part(#7,figytav0(global_ref(#2), "FLAP_DEMO", 3, 0.0, 0.0, 0.0, 0.0, 0.0, 
+    0.0, 1, "r", "", ""));
+  part(#8,meawingpv0(global_ref(#2), "Z", vec(-1.0, -1.0), vec(-1.0, -1.0), 
+    vec(-1.0, -1.0), vec(-1.0, -1.0), 20.0, 1));
+  part(#9,meagraphv0(0.7, 3, 2, 4, vec(5.0, 250.0)));
+  part(#10,meatxti3v0("    FLAP 2000", "VARKON application MEASURE", 
+    "FLAP_DEMO", "Page 1", "1997-04-24", "LMS", "Ref: File name ..", 
+    "VARKON module ...", 2, 12));
+  part(#12,meapsimv1(global_ref(#2), "FLAP_DEMO", "r", "Y", 1000, 1242, 6500
+    , 50, 0.9, 1.7, 1.9, 0, 12.8, "Z", 1));
+  part(#14,meadia3v2(global_ref(#12), 1, vec(13.53731147541, 342.73360100883)
+    , 300, 5, 15, "Upper", 1));
+  part(#15,meadia4v2(global_ref(#12), 1, 2, vec(5.7754754098361, 
+    431.99471576293), 300, 5, 15, 1));
+  part(#16,meadia5v3(global_ref(#12), 1, 2, vec(3.8350163934427, 
+    505.73215838588), 300, 5, 15, 11));
+  part(#17,meadia5v3(global_ref(#12), 7, 8, vec(-0.045901639344152, 
+    588.2016665826), 300, 5, 15, 11));
+  part(#18,meadia6v2(vec(52.557099101041, 59.512300537903), 100, 5, 15, 1));
+
+ENDMODULE

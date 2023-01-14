@@ -1,0 +1,48 @@
+Modulnamn:         csysfilev0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE  csysfilev0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Get full file name for file with coordinate system data
+
+ Revision history
+ ________________
+
+ 1996-02-13  Gunnar Liden
+
+
+
+  Algorithm
+  _________
+
+  1. Get names to all directories with coordinate system data
+
+
+  Loop for all subdirectories with surface data
+  Try to open csyname.DAT_csys or csyname.dat_csys
+
+
+Modulens parametrar:
+____________________
+
+STRING csyname*10;       ! Coordinate system
+VAR STRING csy_basic*25;     ! Basic system for project
+VAR STRING f_name*132);      ! Full file name   
+
+
+Anropade moduler: 
+_________________
+
+csyspathv0   Definierar s|kv{g f|r koordinatsystem
+
+
+Modul csysfilev0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

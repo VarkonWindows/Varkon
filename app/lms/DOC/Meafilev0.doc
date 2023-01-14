@@ -1,0 +1,47 @@
+Modulnamn:         meafilev0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meafilev0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Create a Metronor file with point data from a simulation
+ 
+ Description of the data in the file
+--------------------------------
+
+
+ 1. Initializations 
+
+
+ 2. Open file for output point data
+
+
+ 3. Get points for for all subsets of points and write data to a file
+
+
+ 4. Exit (close output file)
+
+
+Modulens parametrar:
+____________________
+
+REF    ppts_id                    > "@t16384 Select set of points";
+STRING ut_fil*80 := "FLAP.METRO"  > "Name of output text file ";
+INT    case      := 1             > "Case= 1: d format  Case= 2: b format");
+
+
+Anropade moduler: 
+_________________
+
+meagetpv0    Hämta en grupp uppmätta punkter från totala uppmätta mängden
+
+
+Modul meafilev0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

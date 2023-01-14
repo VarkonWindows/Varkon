@@ -1,0 +1,161 @@
+Modulnamn:         meametrav0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE  meametrav0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Read point data and optionally deviations from a METRONOR file and 
+ transformate/scale points.
+
+ Format of the Metronor file: d , b or d (reduced)
+
+ There is a parameter which optionally offset the points with
+ respect to the surface normals of the measured surface points.
+ The outside of an aicraft wing is defined mathematically (as
+ the reference surface) but measurements may for instance be done
+ on the inside tool surface for a wing panel. In this case can
+ the offset parameter be used (offset= wing panel thickness).
+
+
+
+ The module reads data from a Metronor file with measured points.
+
+ Each point is registered as a part with the name MEAPOIREC. The
+ attributes (parameters) to this module (object) hold all data
+ about the point. Attributes are:
+ VECTOR       m_p;                ! Measured point
+ VECTOR       r_p;                ! Reference point 
+ FLOAT        d_tot;              ! Total (perpend.) deviation to surface
+                                  ! (distance beween m_p and r_p)
+ INT          p_no;               ! Point number
+ INT          g_no;               ! Subset number
+ STRING       descr*132           ! Name and description of the point  
+
+ The module is of type GEOMETRY (3D). The module is in the 
+ VARKON MEASURE application called by a DRAWING (2D) module
+ since this a 2D application.
+ 
+ The Metronor file cannot be used directly. Some manual 
+ editing is needed (a new module is planned ...)
+
+ Comment lines must be erased and between each subset of points
+ must two lines be added:
+     1.234567  1.234567  1.234567
+    1.234567  1.234567  1.234567
+
+ The file must end with the following two lines:
+    -1.234567  -1.234567  -1.234567
+    -1.234567  -1.234567  -1.234567
+
+ Free comments may be written after these two lines.
+
+
+ It is for the wing profile analysis assumed that a subset
+ of points are points from the upper or lower part of the 
+ wing.
+
+ An edited Metronor file can be created by the simulation
+ module meapsim1v1
+
+ The graphical representation of the points (as points or 
+ curves interpolating the subsets of points) makes
+ it possible for the user to select this part interactively .
+
+
+
+
+ Exemple of data in a Metronor file (d format):
+-------------------------------------------
+
+
+ 1. Initializations and checks
+
+
+ Open debug printout file for DEBUG= 1
+
+
+ Get colours for graphical representation of deviations
+
+
+ 2. Create transformation matrix for the points
+
+
+ 2. Create all sets of points (curves)
+
+
+ Open METRONOR file
+
+
+ Start loop all sets of points in the file: i_u= 1, 2, 3, .....
+
+
+   Read one set of points: 
+   Format d:           Call meametrdv0
+   Format b:           Call meametrbv0
+   Format d (reduced): Call meametrcv0
+
+
+   Registrate all points in the set. Calls of MEAPOIREC.
+
+
+   Printout of points to list window for Debug On
+
+
+   Scale points for graphics. Remove points if distance < rmtol 
+
+
+   Printout of scaled points to list window for Debug On
+
+
+   Draw (create) scaled points for grafik= 1 
+
+
+   Set dash length for grafik= 3
+
+
+   Draw (create) curves for grafik= 2 and grafik= 3
+
+
+   Goto slut if all points are retrieved from the file 
+
+
+ Label slut: End Of File
+
+
+ Close file with METRONOR data and debug printout window for DEBUG= 1
+
+
+Modulens parametrar:
+____________________
+
+STRING meafil*132 := "Data.METRO"
+                          > "Text file with measured data";
+FLOAT  skala     := 1.0   > "Scale (scale factor=1/skala)";
+FLOAT  x0        := 0.0   > "Origin x coordinate";
+FLOAT  y0        := 0.0   > "Origin y coordinate";
+FLOAT  z0        := 0.0   > "Origin z coordinate";
+FLOAT  offset    := 0.0   > "Offset";
+INT    grafik    := 1     > "1. Points 2. Solid curve 3. Dashed curve";
+INT    case      := 1     > "Format d: Case= 1 b: Case= 2: d(red) Case=3";
+REF    csys_id            > "Local system for the points (view)");
+
+
+Anropade moduler: 
+_________________
+
+tra_2dav0    Skapa transformation med skalning och translation f|r figurblad (2D)
+meametrdv0   Läser data från METRONOR mätprotokoll (en textfil) d format
+meametrbv0   Läser data från METRONOR mätprotokoll (en textfil) b format
+meametrcv0   Läser data från METRONOR mätprotokoll d(reducerat) format
+MEAPOIREC    Registrering av uppmätt pkt, avvikelser, punktnummer, ..
+
+
+Modul meametrav0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

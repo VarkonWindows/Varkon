@@ -1,0 +1,51 @@
+Modulnamn:         s_anestv0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE s_anestv0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Nest of planar intersects in a surface. Output curve references
+
+
+
+ Algorithm
+ _________
+
+
+
+ 1. Intersect start coordinate system
+
+
+ 3. Calculate intersects    
+
+  Loop for all given station values
+
+
+Modulens parametrar:
+____________________
+
+REF    s_id;               ! Surface
+REF    c_id;               ! Coordinate system
+STRING stat*1;             ! Station X, Y or Z
+FLOAT  start;              ! Start station value
+FLOAT  delta;              ! Delta station value
+FLOAT  end;                ! End   station value
+INT    graphic;            ! Graphical case
+VAR REF   id_int(100);         ! References to curves
+
+
+Anropade moduler: 
+_________________
+
+csysnestv0   Start koordinat system f|r knippe av plana snitt
+
+
+Modul s_anestv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

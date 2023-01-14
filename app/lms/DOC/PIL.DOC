@@ -1,0 +1,50 @@
+Modulnamn:         pil
+__________
+
+Moduldeklaration:  LOCAL GEOMETRY MODULE pil 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Create an arrow for a coordinate axis
+
+
+ Angle and length for the arrow
+
+
+ Create a local coordinate system with the line p0-p1 as the X axis
+
+
+ Create an additional system by a 90 degree rotation of the first system 
+
+
+ Create arrow lines in the first local coordinate system
+
+
+ Create arrow lines in the second local coordinate system
+
+
+ Create a local system for the arrow circles
+
+ 
+ Create circles
+
+
+Modulens parametrar:
+____________________
+
+VECTOR p0:=vec(0.0,0.0,0.0) > "Direction (indication end) point for arrow";
+VECTOR p1:=vec(100.0,200.0,300.0) > "Start point for arrow");
+
+
+Inga anropade moduler
+
+
+
+Modul pil finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

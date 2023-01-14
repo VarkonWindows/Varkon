@@ -1,0 +1,107 @@
+Modulnamn:         meapsim1v1
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE meapsim1v1
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Read surface from library, make intersects, calculate points, scale 
+ transform and register measured points.
+
+
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ Get colours for graphical representation of deviations
+
+
+ 2. Create surface 
+
+
+ Create surface transformated to coordinate system csyname
+
+
+ Create dummy coordinate system with name csyname
+
+
+ Fetch the surface from the given library (reference or project)  
+ (project library not yet implemented)
+
+
+ Deformation of surface if twist is defined
+
+
+ Deformation of surface if translation in X is defined
+
+
+ Deformation of surface if translation in Y is defined
+
+
+ Deformation of surface if translation in Z is defined
+
+
+ 3. Create transformation matrix for points
+
+
+ 4. Make 3D intersects and put curve references in an array 
+
+
+ 6. Calculate points with random error, scale, transformate and register
+
+
+ Loop for all intersect curves
+
+
+Modulens parametrar:
+____________________
+
+STRING fplproj*44 := "SF340"        >"Aircraft (or other) project";
+STRING surname*30 := "FLAP_DEMO"    >"Surface name (number)";
+STRING surflib*1  := "r"            > "@ Surface library r/p (<CR>=reference";
+STRING csyname*10 := "439"          >"Coordinat system";
+FLOAT  skala      := 1.0            >"@ Scale (<CR>=> 1)";
+FLOAT  x0         := 0.0            >"@ Origin for scaling X coordinate";
+FLOAT  y0         := 0.0            >"@ Origin for scaling Y coordinate";
+FLOAT  z0         := 0.0            >"@ Origin for scaling Z coordinate";
+STRING stat*1     := "Y"            > "Station X, Y or Z ";
+FLOAT  start      := -200.0         > "Start station value";
+FLOAT  delta      :=   55.0         > "Delta station value";
+FLOAT  end        :=  100.0         > "End   station value";
+FLOAT  cdelta     :=  100.0         > "Delta (average value) for pts along curve";
+FLOAT  merror     :=    3.0         > "Maximum (random) error ";
+FLOAT  mtwist     :=    2.5         > "Maximum (random) twist ";
+FLOAT  mxtransl   :=   10.0         > "Maximum (random) X translation";
+FLOAT  mytransl   :=   20.0         > "Maximum (random) Y translation";
+FLOAT  mztransl   :=   30.0         > "Maximum (random) Z translation";
+VECTOR v_lead     := VEC(0,0,1)     > "Vector criterion for leading edge";
+INT    grafik     :=    1           > "=0: No graphics =1: Show points";
+REF    csys_id                      > "Local system for the surface"
+);
+
+
+Anropade moduler: 
+_________________
+
+rdrefsurv0   Importera en referens NMG yta fr}n det generella ytbiblioteket
+s_adeforv0   Deformation av en vinge med slumpmässig twist kurva
+s_bdeforv0   Translations deformation av en yta med slumpm{ssig kurva
+tra_2dav0    Skapa transformation med skalning och translation f|r figurblad (2D)
+s_anestv0    Knippe av plana X, Y eller Z snitt i en yta. Utdata kurvreferenser
+eval_utouv   Från U parameter för kurva på yta till UV ytpunkt
+MEAPOIREC    Registrering av uppmätt pkt, avvikelser, punktnummer, ..
+
+
+Modul meapsim1v1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

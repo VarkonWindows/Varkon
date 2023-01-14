@@ -1,0 +1,83 @@
+Modulnamn:         rdrefsurv0
+__________
+
+Moduldeklaration:  LOCAL  GEOMETRY MODULE  rdrefsurv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Import a reference (NMG) surface from the surface library 
+
+ Revision history
+ ________________
+
+ 1996-01-19  Gunnar Liden
+ 1996-01-26  siddelay added Gunnar Liden
+ 1996-02-14  surffile, check csys added Gunnar Liden
+ 1996-02-23  graphics                   Gunnar Liden
+ 1996-02-24  Comments                   Gunnar Liden
+
+
+
+  Algorithm
+  _________
+---
+
+ 1. Initializations
+
+
+ Get identity to coordinate system   
+
+
+ Get all data for the coordinate system
+
+
+ Check that selected coordinate system is same as csyname
+
+
+ 2. Create local system for surface which is defined in Basic
+
+
+ Get full name for coordinate system data file     
+
+
+ Read coordinate system matrix
+
+
+ Create coordinate system
+
+
+  3. Retrieve surface data                    
+
+  Retrieve number of patches and surface type. Call of surnunv
+
+
+  2. Create surface        
+
+  Create surface from data in text file. Call of SUR_EXDEF
+
+
+Modulens parametrar:
+____________________
+
+STRING surname*30 := "39-812-01"   >"Name of surface (file name without .DAT_..)";
+STRING csyname*10 := "417"         >"Coordinate system (also F07 accepted)";
+INT       graphic:=1               >"Graphics =0: Show nothing =1: Show surface ");
+
+
+Anropade moduler: 
+_________________
+
+csysfilev0   H{mta fullst{ndigt namn f|r datafil med koordinatsystem
+csysreadv0   L{ser koordinatsystem data fr}n fil            
+surffilev0   H{mta fullst{ndigt namn f|r ytdatafil p} ett generellt ytbibliotek
+surnunv      Ta reda p} antal patches och yt typ
+
+
+Modul rdrefsurv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,95 @@
+#include "$VARKON_MDF\v319.MDF"
+
+
+! This is the menufile for the lms project (application)
+
+! 1994-04-28 Gunnar Liden
+! 2010-05-09 Text deleted Gunnar Liden
+
+!sdesce Main 3D menue for project VARKON MEASURE
+
+! Load VARKON standard menus for X-Windows 
+
+!UNIX #include "$VARKON_MDF/v318.MDF"
+!  #include  "$VARKON_MDF/v319.MDF"
+
+
+! The ordinary VARKON 2D main menu defined in v319.MDF for Windows 
+! above (v318.MDF for UNIX) is always m2. For this application we will 
+! use our own main menu but include a link to m2 so that we can access the
+! ordinary VARKON menus if we want to. User defined menus
+! start at 200. m1 to m199 are reserved for VARKON.
+!
+
+Main_menu = 200
+
+m200 = "MEASURE"
+       "preparation"   ,m350 
+! Later       "measurement"   ,m359 
+       "postprocess"   ,m351 
+       "-------"       ,a0
+       "varkon"        ,m2
+       "help"          ,f153
+       "exit"          ,f173;
+
+t1300 = "mearami3v0" ! Drawing sheet for measure diagrams
+t1301 = "figvyv2"    ! View XY, YZ, YZ or ISO for surface, curves, points, ..
+t1302 = "meatxti3v0" ! Text to drawing sheet for measure diagrams
+t1309 = "figytav0"   ! Surface from library to 2D view
+t1313 = "meawingpv0" ! Calculate and register a wing plane
+t1315 = "meapsimv1"  ! Simulate wing profile measurements
+t1323 = "meagraphv0" ! Definition of colours for deviations
+t1312 = "meametrov3" ! Read data from a METRONOR file
+t1321 = "meafilev0"  ! Create Metronor file (with simulated points)
+t1331 = "meadia3v2"  ! Diagram: X= Relative chord  Y= Deviation to wing
+t1332 = "meadia4v2"  ! Diagram: X= Relative chord  Y= Thickness deviation
+t1333 = "meadia5v3"  ! Diagram: X= Relative chord  Y= Camber    deviation
+t1334 = "meadia6v2"  ! Diagram: X= Root to tip (Y) Y= Twist for profile
+
+t1330 = "meatotv1"  ! Calculate and draw all diagrams
+
+
+m350 = "PREPARATION"
+       "geometry"      ,m353 
+       "graphics"      ,m358 
+       "text"          ,m352       
+       "get points"    ,m354
+ !      "analyse"       ,m357 
+       "diagrams"      ,m355;
+
+m351 = "POSTPROCESS"
+       "all diagrams"  ,M1330;
+
+m352 = "TEXT"
+       "a3 measure"    ,p1302;
+
+m353 = "GEOMETRY"
+       "drawing sheet" ,p1300
+       "view"          ,p1301
+       "surface"       ,p1309
+       "wing plane"    ,p1313;
+
+m354 = "GET POINTS"
+       "simulate"      ,p1315
+       "create file"   ,F1321
+       "metronor"      ,p1312;
+
+m355 = "DIAGRAMS"
+       "Deviation"     ,p1331
+       "Thickness"     ,p1332
+       "Camber crv"    ,p1333
+       "Twist"         ,p1334;
+
+m358 = "GRAPHICS"      
+       "colours dev."  ,p1323;
+
+m359 = "MEASUREMENT"     
+       "geometry"      ,m360 
+       "graphics"      ,m358 
+       "measure"       ,p1326;
+
+m360 = "GEOMETRY"
+       "drawing sheet" ,p1300
+       "view"          ,p1301
+       "surface"       ,p1325;
+

@@ -1,0 +1,53 @@
+Modulnamn:         meamedelv0
+__________
+
+Moduldeklaration:  LOCAL GEOMETRY MODULE meamedelv0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculates and creates a camber line deviation curve for 
+ a wing profile. 
+
+ The camber line, i.e. the deviations for the camber line, are
+ calculated with the following simplifications:
+ - The upper and lower deviations (errors) are approximated
+   with straight lines between measured data. 
+ - The camber curve (deviations) is the difference between 
+   the upper and lower deviation curve for constant X values
+
+
+
+ Algorithm
+ _________
+
+ 1. Initializations
+
+
+ 2. Make intersects
+
+
+ 3. Create a straight line composite curve
+
+
+Modulens parametrar:
+____________________
+
+REF    u_id;         ! Upper (or lower) deviation curve
+REF    l_id;         ! Lower (or upper) deviation curve
+INT    n_x_uta;      ! Number of values in x_uta
+INT    grafik;       ! =1: Show all  =2: Blank all
+VAR  FLOAT  x_uta(200));  ! Scaled intersect X values  
+
+
+Inga anropade moduler
+
+
+
+Modul meamedelv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

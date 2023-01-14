@@ -1,0 +1,54 @@
+Modulnamn:         figvyv2
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE figvyv2
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function creates a scaled coordinate system for a drawing view
+
+
+ 1. Create a local system for the positioning of the view
+
+
+ 2. Create the view
+
+
+ 3. Text for the coordinate axis
+
+
+Modulens parametrar:
+____________________
+
+STRING vy*6       := "iso"      > " View xy, xz, yz or iso";
+STRING fplproj*44 := "SF340"    > " Aircraft (or other) project";
+STRING datum*28   := "439"      > " Coordinate system (for transf. of surf.)";
+STRING coname*6   := "439"      > " Text for coordinate axis  ? ";
+FLOAT  skala      := 50.0       > " Scale (scale factor= 1/skala)";
+VECTOR origo      :=vec(20,100) > " Position for the view";
+FLOAT  x0         := 1500.0     > " Origin x coordinat";
+FLOAT  y0         :=    0.0     > " Origin y coordinat";
+FLOAT  z0         :=    0.0     > " Origin z coordinat";
+FLOAT  xlangd     := 2500.0     > " Length of x axis";
+FLOAT  ylangd     := 1500.0     > " Length of y axis";
+FLOAT  zlangd     := 1000.0     > " Length of z axis";
+INT    grafik     := 1          > " Graphic";
+VECTOR ang        := vec(0,0)       
+> "@ Euler angles <CR>==> (0,0) or (ang.x=alfa, ang.y=beta) ";
+STRING reserv2*80               > "@ Extra (not yet used) parameter");
+
+
+Anropade moduler: 
+_________________
+
+figcsysv0    Lägger ut ett lokalt koordinatsystem i SAAB vy
+
+
+Modul figvyv2 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

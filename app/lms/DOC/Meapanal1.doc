@@ -1,0 +1,67 @@
+Modulnamn:         meapanal1
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE meapanal1  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function analysis a subset of measured points with
+ respect to mean, maximum and minimum deviations.
+
+ A proposal for a plane (X, Y or Z) and proposal for
+ X axis in diagrams are also calculated.
+
+ Remark:
+
+ This module can only be called by another module since
+ there are VAR variables
+
+
+ 1. Initializations and checks 
+
+
+ 2. Calculate max, min and avrage values 
+
+
+ 3. Plane for points and propose X axis for diagrams 
+
+
+ 4. Presentation of resultat for DEBUG
+
+
+Modulens parametrar:
+____________________
+
+REF    csys;                 ! Local coordinate system for the analysis
+INT    n_p;                  ! Number of points in the subset 
+VAR  VECTOR m_points(200) ;       ! Measured points 
+VAR  VECTOR r_points(200) ;       ! Reference points
+VAR  FLOAT  devtot(200) ;         ! Total (perpendicular) deviation
+VAR  INT    ptnumber(200) ;       ! Point number for measured point 
+VAR  FLOAT  max_x;                ! Maximum  value X
+VAR  FLOAT  min_x;                ! Minimum  value X
+VAR  FLOAT  med_x;                ! Average  value X
+VAR  FLOAT  max_y;                ! Maximum  value Y
+VAR  FLOAT  min_y;                ! Minimum  value Y
+VAR  FLOAT  med_y;                ! Average  value Y
+VAR  FLOAT  max_z;                ! Maximum  value Z
+VAR  FLOAT  min_z;                ! Minimum  value Z
+VAR  FLOAT  med_z;                ! Average  value Z
+VAR  STRING plane*1;              ! Plane  proposal (min deviation)
+VAR  STRING xaxis*1;              ! X axis proposal (max deviation)
+VAR  FLOAT  max_d_pos;            ! Maximum  positive error value
+VAR  FLOAT  max_d_neg);           ! Maximum  negative error value
+
+
+Inga anropade moduler
+
+
+
+Modul meapanal1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,42 @@
+Modulnamn:         MEAWPLREC
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE MEAWPLREC 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Registration of a wing plane, which is a bounded plane
+ defined as four points in a local coordinate system.
+
+ Aerodynamic analysis of wing type surfaces is normally made 
+ relative to a wing plane. The wing plane can for instance
+ be the contours (silhouettes) of the wing projected onto a 
+ plane. 
+ 
+
+
+Modulens parametrar:
+____________________
+
+STRING  fplproj*44:= "39"    >"Aircraft (or other) project";
+STRING  datum*28:= "1143"    >"Coordinate system (name)";
+VECTOR  fkstart:= VEC(0,0,0) >"Leading  edge start point";
+VECTOR  fkslut:= VEC(0,0,0)  >"Leading  edge end   point";
+VECTOR  bkstart:= VEC(0,0,0) >"Trailing edge start point";
+VECTOR  bkslut:= VEC(0,0,0)  >"Trailing edge end   point";
+STRING  surface*28 :="Roder" >"Surface (wing) name";
+STRING  descr*132  := " "    >"Description of wing plane");
+
+
+Inga anropade moduler
+
+
+
+Modul MEAWPLREC finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

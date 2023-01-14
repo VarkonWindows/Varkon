@@ -1,0 +1,50 @@
+Modulnamn:         meacompv1
+__________
+
+Moduldeklaration:  LOCAL GEOMETRY MODULE meacompv1  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Creates a composite (straight lines) deviation curve
+
+
+
+ Algorithm
+ ________
+
+ 1. Initializations and checks 
+
+
+ 2. Arrays with scaled point data
+
+
+ 3. Create the composite straight line curve
+
+
+Modulens parametrar:
+____________________
+
+FLOAT  transl_x;             ! Translation for X axel values 
+FLOAT  skalf_x;              ! Scale factor  for X axel values 
+FLOAT  skalf_y;              ! Scale factor  for Y      values 
+INT    grafik;               ! =1: Visa allt =2: Blanka allt 
+INT    n_p;                  ! Number of points in subset (in arrays)
+VAR  VECTOR m_points(200) ;       ! Measured  points 
+VAR  VECTOR r_points(200) ;       ! Reference points 
+VAR  FLOAT  devtot(200) ;         ! Total (perpendic.) deviation 
+VAR  INT    ptnumber(200) ;       ! Point number for measured point
+VAR  FLOAT  x_ut(200));           ! Scaled X coordinates
+
+
+Inga anropade moduler
+
+
+
+Modul meacompv1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

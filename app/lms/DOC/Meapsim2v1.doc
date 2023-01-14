@@ -1,0 +1,62 @@
+Modulnamn:         meapsim2v1
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE meapsim2v1 
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Create deviation curves
+
+
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ Retrieve number of patches
+
+
+ Start random value
+
+
+ 2. Twist curves        
+
+
+ Find leading edge
+
+
+Modulens parametrar:
+____________________
+
+REF    s_id;                    ! Surface reference
+FLOAT  mtwist;                  ! Maximum (random) twist
+FLOAT  mxtransl;                ! Maximum (random) X translation
+FLOAT  mytransl;                ! Maximum (random) Y translation
+FLOAT  mztransl;                ! Maximum (random) Z translation
+VECTOR v_lead;                  ! Vector criterion for leading edge
+VAR REF    twistu_id;               ! Reference to twist curve U
+VAR REF    twistv_id;               ! Reference to twist curve V
+VAR REF    xtransu_id;              ! Reference to twist curve U
+VAR REF    xtransv_id;              ! Reference to twist curve V
+VAR REF    ytransu_id;              ! Reference to twist curve U
+VAR REF    ytransv_id;              ! Reference to twist curve V
+VAR REF    ztransu_id;              ! Reference to twist curve U
+VAR REF    ztransv_id);             ! Reference to twist curve V
+
+
+Inga anropade moduler
+
+
+
+Modul meapsim2v1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,51 @@
+Modulnamn:         meawinggv0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meawinggv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Graphics for wing plane
+
+ Revision history
+ ________________
+
+ 1996-03-06  Gunnar Liden
+
+
+
+ 0. Initializations
+
+
+ 1. Graphical representation   
+
+
+Modulens parametrar:
+____________________
+
+VECTOR fkstart;                  ! Leading edge  start point
+VECTOR fkslut;                   ! Leading edge  end   point
+VECTOR bkstart;                  ! Trailing edge  start point
+VECTOR bkslut;                   ! Trailing edge  end   point
+REF    csys_id;                  ! Coordinate system for points
+FLOAT  skala;                    ! Scale (scale factor= 1/skala)
+FLOAT  x0;                       ! Origin x coordinate
+FLOAT  y0;                       ! Origin y coordinate
+FLOAT  z0;                       ! Origin z coordinate
+INT    grafik);                  ! 0: No graphic 1: Show plane
+
+
+Anropade moduler: 
+_________________
+
+tra_2dav0    Skapa transformation med skalning och translation f|r figurblad (2D)
+
+
+Modul meawinggv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

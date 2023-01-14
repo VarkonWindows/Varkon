@@ -1,0 +1,89 @@
+Modulnamn:         meadia4v2
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meadia4v2  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function creates a diagram which shows deviation in the thickness
+ function for a wing profile. Relative chord length along the X axis
+ and thickness deviation along the Y axis.
+
+ There are two text and two regression line options:
+ case=  0: No text and no regression line
+ case= 10: No text and    regression line
+ case=  1: Text    and no regression line
+ case= 11: Text    and    regression line
+
+
+
+ Algorithm
+ ________
+
+ 1. Initializations
+
+
+ 2. Get points for requested subsets of points
+
+
+ 3. Calculate maximum, minimum, average values, plane and X axis
+
+
+ 4. Get wing plane and calculate the current chord length
+
+
+ 5. Determine chord direction and scale factors
+
+
+ 6. Draw coordinate axes in a 2D local coordinate system 
+
+
+ 7. Create scaled composite curves with straight lines as segments
+
+
+ 8.   Sorting of scaled values  
+
+
+ 9. Calculate and create scaled thickness curve
+
+
+ 10. Write point number for some of the points
+
+
+ 11. Draw a regression line  
+
+
+Modulens parametrar:
+____________________
+
+REF    ppts_id               > "@t16384 Select set of points (use button p)";
+INT    i_gr1   :=1           >"Sub-set number for lower side ";
+INT    i_gr2   :=2           >"Sub-set number for upper side ";
+VECTOR origo   :=vec(20,100) > "Position for the diagram";
+FLOAT  xlangd  := 300        > "Length of X axis for the diagram";
+FLOAT  skalf_y :=   5        > "Scale factor for Y (deviation) values";
+FLOAT  ylangd  :=  15        > "Length of Y axis for the diagram";
+INT    case    :=   1        > "0:Nothing 10: Line 1: Text 11: Text & line");
+
+
+Anropade moduler: 
+_________________
+
+meagetpv0    Hämta en grupp uppmätta punkter från totala uppmätta mängden
+meapanal1    Analyserar uppmätt punktmängd m.a.p medelvärde, min och max fel
+meacordv0    Beräkna kordalängd för given sektion i vinge 
+pil          Skapar en pilmarkering på koordinataxeln
+meacompv1    Funktionen skapar en sammansatt felkurva av räta linjer
+measort1     Funktionen sorterar X (skärnings) värden
+meathickv1   Beräknar och skapar tjockleksavvikelsekurva för vingprofil
+meavregv0    Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+
+
+Modul meadia4v2 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

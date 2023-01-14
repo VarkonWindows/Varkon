@@ -1,0 +1,59 @@
+Modulnamn:         surnunv
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE surnunv 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Funktionen fastst{ller antal U och V linjer, ytans 
+ utstr{ckning (ytans max- och min-v{rden i R*3) samt
+ typ av yta.
+
+  1994-04-10  Gunnar Liden
+  1996-02-13  Consurf coefficient added Gunnar Liden
+
+
+                  Algoritm
+                  ========
+
+
+    L{s f|rsta raden i filen f|r att fastst{lla yttyp        
+
+
+   Antal U och V linjer f|r en Consurf yta. Anrop av rdcons1v1.
+
+
+   Antal U och V linjer f|r en Bicubic yta. L{s antal kurvor
+   i U resp. V riktning (rad 2 i F07 filen)
+
+
+Modulens parametrar:
+____________________
+
+STRING srffil*80;              ! Ytdata (F07 fil)
+INT    mcase;                  ! =1 Maxmin =2 Ej maxmin
+VAR STRING stype*1;                ! =c Consurf  =b Bicubic
+VAR FLOAT  minx;                   ! Minimum X v{rde f|r ytan
+VAR FLOAT  maxx;                   ! Maximum X v{rde f|r ytan
+VAR FLOAT  miny;                   ! Minimum Y v{rde f|r ytan
+VAR FLOAT  maxy;                   ! Maximum Y v{rde f|r ytan
+VAR FLOAT  minz;                   ! Minimum Z v{rde f|r ytan
+VAR FLOAT  maxz;                   ! Maximum Z v{rde f|r ytan
+VAR INT    n_ulines;               ! Antal U linjer i ytan       
+VAR INT    n_vlines);              ! Antal V linjer i ytan       
+
+
+Anropade moduler: 
+_________________
+
+rdcons1v1   Ej funnen i n}gon katalog
+
+
+Modul surnunv finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

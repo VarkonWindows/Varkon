@@ -1,0 +1,46 @@
+Modulnamn:         meathickv1
+__________
+
+Moduldeklaration:  LOCAL GEOMETRY MODULE meathickv1  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculates and creates thickness deviation curve for wing profile
+
+
+ Algorithm
+ ________
+
+ 1. Initializations
+
+
+ 2. Make intersects
+
+
+ 3. Create straight lines and combine to a curve         
+
+
+Modulens parametrar:
+____________________
+
+REF    u_id;                     ! Scaled curve with deviations (Upper)   
+REF    l_id;                     ! Scaled curve with deviations (Lower)
+INT    n_x_uta;                  ! Number of values in x_uta 
+INT    grafik;                   ! =1: Show all  =2: Blank all
+VAR  FLOAT  x_uta(200) ;              ! Scaled intersect X values
+VAR  INT    n_t;                      ! Number of pts in p_thick
+VAR  VECTOR p_thick(200));            ! Thickness points
+
+
+Inga anropade moduler
+
+
+
+Modul meathickv1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

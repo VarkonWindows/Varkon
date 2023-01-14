@@ -1,0 +1,44 @@
+Modulnamn:         meavregv0
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE meavregv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculate a straight line approximating a a set of
+ points with the least square method
+
+
+ 1. Initializations of variables
+
+
+ 2. Calculate the straight line
+
+
+ 3. Slope of the line 
+
+
+ 4. Translation coefficient
+
+
+Modulens parametrar:
+____________________
+
+INT     N;                     ! Number of points  
+VAR VECTOR  u_in(200) ;            ! Point with x and y= f(x) value
+VAR FLOAT   A;                     ! Direction   coefficient
+VAR FLOAT   B);                    ! Translation coefficient
+
+
+Inga anropade moduler
+
+
+
+Modul meavregv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

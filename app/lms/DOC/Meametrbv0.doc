@@ -1,0 +1,49 @@
+Modulnamn:         meametrbv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE meametrbv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Reads data from METRONOR output file b format
+ Refer to meametrav0 for a description of data in the file.
+ Refer to meametrdv0 for a description in English of this  
+ module (of a similar module).
+
+
+ Algoritm
+ ________
+
+ 1. Initieringar och kontroller av indata
+
+
+ 2. Läs data för en punktmängd från indata filen
+
+
+Modulens parametrar:
+____________________
+
+VAR FILE   f;                      ! Pointer to data file (.METRO)
+VAR INT    flag;                   ! Eq. -1: End of file    
+VAR INT    np;                     ! Number of points in the subset
+VAR INT    ptnumber(200) ;         ! Point number for measured point
+VAR VECTOR pcurve(200) ;           ! Points          for curve (subset)
+VAR VECTOR tcurve(200) ;           ! Tangents        for curve (subset)
+VAR FLOAT  devtot(200) ;           ! Total (perpend.)    deviation  
+VAR FLOAT  devx(200) ;             !    X                deviation 
+VAR FLOAT  devy(200) ;             !    Y                deviation 
+VAR FLOAT  devz(200));             !    Z                deviation 
+
+
+Inga anropade moduler
+
+
+
+Modul meametrbv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,38 @@
+Modulnamn:         meagraphv0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meagraphv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Definition of colours for graphical representation of deviations
+
+ pen= 1: Black
+ pen= 2: Red
+ pen= 3: Green
+ pen= 4: Blue
+ pen= 5: ....
+
+
+Modulens parametrar:
+____________________
+
+FLOAT c_tol := 0.7          >"Criterion for acceptable deviations";
+INT   i_pen := 3            >"Pen (colour) for pts within tolerance";
+INT   p_pen := 2            >"Pen (colour) for pts outside + tolerance";
+INT   n_pen := 4            >"Pen (colour) for pts outside - tolerance";
+VECTOR origin := VEC(5,250) >"@ Description coloured points <CR>=upper corner");
+
+
+Inga anropade moduler
+
+
+
+Modul meagraphv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

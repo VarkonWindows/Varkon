@@ -1,0 +1,34 @@
+Modulnamn:         meadiargv0
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE meadiargv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function registers camber line diagram data
+
+
+Modulens parametrar:
+____________________
+
+FLOAT  med_y;                ! Average value  Y
+FLOAT  twist_error;          ! Twist error (least square estimation)
+FLOAT  A;                    ! Slope       (least square estimation)
+FLOAT  lead_error_z;         ! Leading  edge Z translation error
+FLOAT  trail_error_z;        ! Trailing edge Z translation error
+FLOAT  lead_error_x;         ! Leading  edge X translation error
+FLOAT  trail_error_x);       ! Trailing edge X translation error
+
+
+Inga anropade moduler
+
+
+
+Modul meadiargv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

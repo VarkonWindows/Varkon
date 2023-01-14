@@ -1,0 +1,38 @@
+Modulnamn:         meafregv0
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE meafregv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculate the regression line for X coordinates of
+ array of input points and an array of function values
+
+
+ 1. Calculate the straight line
+
+
+Modulens parametrar:
+____________________
+
+INT     N;                     ! Number of points 
+VAR VECTOR  u_in(200) ;            ! Point with x- y- and z-coordinates
+VAR FLOAT   f(200) ;               ! Function values 
+VAR FLOAT   A;                     ! Direction coefficient
+VAR FLOAT   B);                    ! Translation coefficient
+
+
+Anropade moduler: 
+_________________
+
+meavregv0    Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+
+
+Modul meafregv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

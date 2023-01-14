@@ -1,0 +1,45 @@
+Modulnamn:         csysreadv0
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE csysreadv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Reads coordinate system data from text file .
+
+ Revision history
+ ________________
+
+ 1996-02-13 (Source reg_csys) Gunnar Liden
+ 
+
+
+ Algorithm
+ _________
+-
+
+ Open file
+
+
+ Close file
+
+
+Modulens parametrar:
+____________________
+
+STRING c_name*132;           ! Full file name
+VAR FLOAT  c_data(4,4);          ! Coordinate system data
+
+
+Inga anropade moduler
+
+
+
+Modul csysreadv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

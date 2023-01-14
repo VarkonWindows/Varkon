@@ -1,0 +1,39 @@
+Modulnamn:         meadiagtv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE meadiagtv0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Get calculated and registered data from camber line deviation diagrams
+
+
+
+ 1. Initializations and checks 
+
+
+ 2. Get data from all parts in GM with the name meadiargv0
+
+
+ 3. Remove points with same X (y average station) value
+
+
+Modulens parametrar:
+____________________
+
+VAR INT    np;                     ! Number of retrieved values in x_ut
+VAR VECTOR x_ut(200);              ! Y avarage, twist or translation values
+
+
+Inga anropade moduler
+
+
+
+Modul meadiagtv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

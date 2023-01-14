@@ -1,0 +1,41 @@
+Modulnamn:         meametrdv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE meametrdv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Reads data from METRONOR output file d format
+ Refer to meametrav0 for a description of data in the file.
+
+
+ Algorithm
+
+
+ 1. Initializations and checks of input data   
+
+
+ 2. Read subset of point data from the input text file
+
+
+Modulens parametrar:
+____________________
+
+VAR FILE   f;                      ! Pointer to measure file (.METRO)
+VAR INT    flag;                   ! Eq. -1: End of file   
+VAR INT    np;                     ! Number of points in subset (curve)
+VAR INT    ptnumber(200);          ! Point number for measured point
+
+
+Inga anropade moduler
+
+
+
+Modul meametrdv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

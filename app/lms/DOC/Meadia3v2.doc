@@ -1,0 +1,73 @@
+Modulnamn:         meadia3v2
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meadia3v2  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ The function creates a diagram with chord length along the X axis
+ and deviation along the Y axis.
+
+ There are two text and two regression line options:
+ case=  0: No text and no regression line
+ case= 10: No text and    regression line
+ case=  1: Text    and no regression line
+ case= 11: Text    and    regression line
+
+
+
+ 1. Initializations 
+
+
+ 2. Get points for requested subset of points
+
+
+ 3. Calculate maximum, minimum, average values, plane and X axis
+
+
+ 4. Get wing plane and calculate the current chord length
+
+
+ 5. Determine chord direction and scale factors
+
+
+ 6. Draw coordinate axes in a 2D local coordinate system 
+
+
+ 7. Draw diagram
+
+
+ 8. Draw a regression line
+
+
+Modulens parametrar:
+____________________
+
+REF    pts_id                > "@t16384 Select set of points (use button p)";
+INT    i_grupp :=   1        > "Which subset (section) of points 1, 2, 3, .... ";
+VECTOR origo   :=vec(20,100) > "Position for the diagram";
+FLOAT  xlangd  := 300        > "Length of X axis for the diagram";
+FLOAT  skalf_y :=   5        > "Scale factor for Y (deviation) values";
+FLOAT  ylangd  :=  15        > "Length of Y axis for the diagram";
+STRING kdesc*28:= "Upper"    > "Text for the curve (Upper/Lower)";
+INT    case    :=   1        > "0:Nothing 10: Line 1: Text 11: Text & line");
+
+
+Anropade moduler: 
+_________________
+
+meagetpv0    Hämta en grupp uppmätta punkter från totala uppmätta mängden
+meapanal1    Analyserar uppmätt punktmängd m.a.p medelvärde, min och max fel
+meacordv0    Beräkna kordalängd för given sektion i vinge 
+pil          Skapar en pilmarkering på koordinataxeln
+meafregv0    Beräknar en regressionslinje för punktmängd (minsta kvadratmetoden)
+
+
+Modul meadia3v2 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

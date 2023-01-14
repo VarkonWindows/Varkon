@@ -1,0 +1,38 @@
+Modulnamn:         measort1
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE measort1  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Sorting of X values (from intersect calculation)
+ 
+ Warning: Input values are changed !!!!!
+
+
+ Algorithm
+ ________
+
+ 1. Sort
+
+
+Modulens parametrar:
+____________________
+
+INT    case;                     ! =1: No Debug  =2: Full Debug
+INT    n_p1;                     ! No. of pts in   x_ut1
+VAR  FLOAT  x_ut1(200);               ! Scaled X values
+
+
+Inga anropade moduler
+
+
+
+Modul measort1 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

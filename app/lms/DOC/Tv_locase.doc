@@ -1,0 +1,33 @@
+Modulnamn:         tv_locase
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE tv_locase
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Converts text to lower case (small) letters.
+
+  Revision history
+  ________________
+
+  1996-02-22 Gunnar Liden
+
+
+Modulens parametrar:
+____________________
+
+VAR STRING s*132);               ! Input and output string
+
+
+Inga anropade moduler
+
+
+
+Modul tv_locase finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

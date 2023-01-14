@@ -1,0 +1,89 @@
+Modulnamn:         eval_utouv
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE eval_utouv   
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Curve evaluation routine for a surface curve:
+ From surface curve parameter U to surface UV point
+
+
+
+ 1. Initializations and checks      
+ 
+
+ 2. Retrieve curve data
+
+
+ 3. Determine segment and local parameter
+  ---  
+ 
+  i_seg:= TRUNC(u_cur)+1;        Curve segment number
+  u_l  := u_cur - TRUNC(u_cur);  Local parameter
+  IF DEBUG = 1 AND u_cur > ns_geo - 1 THEN              Debug to screen
+   s:= INPMT("eval_utouv " +     
+   " ns_geo "+STR(ns_geo,-1,0)+ 
+   " u_cur "+STR(u_cur,-10,6)+  
+   " u_l "+STR(u_l,-10,6)+      
+   " i_seg "+STR(i_seg,-1,0),   
+    "",1);                      
+  ENDIF;                        
+  IF   i_seg > ns_geo+1 THEN    
+    EXIT("eval_utouv: "+         
+     "i_seg > ns_geo+1 ");       
+  ELIF i_seg <= 0       THEN    
+   s:= INPMT("eval_utouv " +     
+   " ns_geo "+STR(ns_geo,-1,0)+ 
+   " u_cur "+STR(u_cur,-10,6)+  
+   " u_l "+STR(u_l,-10,6)+      
+   " i_seg "+STR(i_seg,-1,0),   
+    "",1);                      
+    EXIT("eval_utouv: "+         
+     "i_seg <= 0       ");       
+  ELIF i_seg = ns_geo+1 THEN    
+   IF ABS(u_l) < 0.0001 THEN    
+     i_seg:= i_seg-1;           
+1996-05-04     u_l  := u_l - 1.0;         !
+     u_l  := u_l + 1.0;         
+   ELSE                         
+  IF DEBUG = 1 THEN              Debug to screen
+   s:= INPMT("eval_utouv " +     
+   " ns_geo "+STR(ns_geo,-1,0)+ 
+   " u_cur "+STR(u_cur,-10,6)+  
+   " u_l "+STR(u_l,-10,6)+      
+   " i_seg "+STR(i_seg,-1,0),   
+    "",1);                      
+  ENDIF;                        
+    EXIT("eval_utouv: "+         
+     "u_l not 0 for ns_geo+1");  
+   ENDIF;                       
+  ENDIF;
+
+ 4. Retrieve curve segment coefficients  
+
+
+ 5. Calculate output U,V point           
+ 
+
+Modulens parametrar:
+____________________
+
+REF    cur_id;     ! Surface curve          
+FLOAT  u_cur;      ! Global curve parameter U
+VAR REF    sur_id;     ! Surface identity
+VAR VECTOR uv_sur );   ! Surface U,V(,W) point
+
+
+Inga anropade moduler
+
+
+
+Modul eval_utouv finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

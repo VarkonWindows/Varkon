@@ -1,0 +1,41 @@
+Modulnamn:         surfpathv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE surfpathv0   
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+ Definition of (search) path for surface libraries      
+
+ Add the following two lines for a new directory;
+ n_path := n_path + 1
+ path(n_path) := /home/ultra4/varkon/surflib/New_directory/
+
+
+
+ 
+ 1. Initializations
+
+ 
+ 2. Saab surface libraries
+
+
+Modulens parametrar:
+____________________
+
+VAR STRING  path(20)*50;            ! Output directories
+VAR INT     n_path);                ! Number of directories
+
+
+Inga anropade moduler
+
+
+
+Modul surfpathv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

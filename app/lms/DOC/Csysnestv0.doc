@@ -1,0 +1,46 @@
+Modulnamn:         csysnestv0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE csysnestv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Create intersect coordinate system for nest of planar intersects
+
+ Revision history
+ ________________
+
+ 1996-02-26 Gunnar Liden
+
+
+
+ Algorithm
+ _________
+
+
+
+ 1. Intersect coordinate system
+
+  Create start coordinate system (INTPLANE) for intersects.
+
+
+Modulens parametrar:
+____________________
+
+REF    csys_id;         ! Coordinate system
+STRING stat*1;          ! Station X, Y or Z 
+VAR REF    cint_id);        ! Intersect system
+
+
+Inga anropade moduler
+
+
+
+Modul csysnestv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

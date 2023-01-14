@@ -1,0 +1,40 @@
+Modulnamn:         meatxti3v0
+__________
+
+Moduldeklaration:  GLOBAL DRAWING MODULE meatxti3v0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Text (surface, description, .. ) for drawing sheet mearami3v0 
+
+
+
+Modulens parametrar:
+____________________
+
+STRING s_d*132   :="    FLAP 2000"              >"Surface description";
+STRING f_txt*132 :="VARKON application MEASURE" >"Free text";
+STRING projyt*132:="FLAP_DEMO"                  >"Surface name";
+STRING bladnr*132:="Page 1"                     >"Page number";
+STRING datum*132 :="1997-04-24"                 >"Date";
+STRING dept*132  :="LMS"                        >"Department";
+STRING ref1*132  :="Ref: File name .."          >"Reference";
+STRING modul*132 :="VARKON module ..."          >"VARKON module name";
+INT    text_pen  :=  2                          >"Colour for text";
+INT    text_niva := 12                          >"Level for text");
+
+
+Anropade moduler: 
+_________________
+
+modtsize     Beräknar ny teckenstorlek i text
+
+
+Modul meatxti3v0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,43 @@
+Modulnamn:         meawprov0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE meawprov0  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculate wing plane as approx. silhouettes, define as UV points
+ 
+
+
+ 1. Retrieve number of patches
+
+
+ 2. Determine if sections are U or V lines
+
+
+ 3. Find the leading edge V isoparameter      
+
+
+Modulens parametrar:
+____________________
+
+REF    sur_id;                ! Reference to surface
+VECTOR v_sil;                 ! Vector defining forward edge silhouette 
+VAR VECTOR fkstart_uv;            ! Leading edge UV start point
+VAR VECTOR fkslut_uv ;            ! Leading edge UV end   point
+VAR VECTOR bkstart_uv;            ! Trailing edge UV start point
+VAR VECTOR bkslut_uv);            ! Trailing edge UV end   point
+
+
+Inga anropade moduler
+
+
+
+Modul meawprov0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

@@ -1,0 +1,64 @@
+Modulnamn:         s_adeforv0
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE s_adeforv0 
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+
+ Deformation of a wing surface with a random twist function
+
+ The function assumes that the profiles of the wing are constant
+ U lines.
+
+
+
+ Algorithm
+ _________
+
+
+ 1. Initializations and checks
+
+
+ Retrieve number of patches
+
+
+ Start random value
+
+
+ 2. Find leading edge
+
+
+ 3. Create rotation line  
+
+
+ 4. Create scalar (random) function for the twist
+
+
+ 5. Rotate U section curves (wing profiles)       
+
+
+ 6. Create points and tangents for surface        
+
+
+Modulens parametrar:
+____________________
+
+REF    s_id                        >"Surface reference";
+FLOAT  mtwist    :=   3.5          >"Maximum (random) twist in degrees";
+VECTOR v_lead    := VEC(0,0,1)     >"Vector criterion for leading edge";
+INT    graphic   :=   1            >"Graphics 0: No surface 1: Surface 2: All");
+
+
+Inga anropade moduler
+
+
+
+Modul s_adeforv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

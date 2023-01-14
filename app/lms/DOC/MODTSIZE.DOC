@@ -1,0 +1,34 @@
+Modulnamn:         modtsize
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE modtsize
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Calculates text size for a given space (in a table)
+
+
+
+Modulens parametrar:
+____________________
+
+STRING intext*132;        ! Input string
+FLOAT  faltbredd;         ! Available space (mm)
+FLOAT  inhojd;            ! Input TSIZE
+FLOAT  inbredd;           ! Input TWIDTH
+VAR FLOAT  uthojd;            ! Output TSIZE
+VAR FLOAT  utbredd);          ! Output TWIDTH
+
+
+Inga anropade moduler
+
+
+
+Modul modtsize finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

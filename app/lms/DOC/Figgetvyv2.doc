@@ -1,0 +1,56 @@
+Modulnamn:         figgetvyv2
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE figgetvyv2
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Get information about the input view
+
+ A part identity (# id) is input to the function. This part
+ must be figvyv2  (checked in the module). All current parameter
+ values for the figvyv2 module are output from this module 
+ (parameters are declared as VAR, i.e. as pointers).
+
+
+ 1. Initializations and checks
+                  
+
+ 2. Get parameter data for the entity
+              
+
+ 3. Parameter data to output variables
+              
+
+Modulens parametrar:
+____________________
+
+REF         view_id;               ! Input view part
+VAR REF     csys_id;               ! System of co-ordinates
+VAR STRING  vy*6;                  ! View
+VAR STRING  fplproj*44;            ! Aircraft (or other) project
+VAR STRING  datum*28;              ! Coordinate system (name)
+VAR FLOAT   skala;                 ! Drawing scale
+VAR VECTOR  origo;                 ! Position for axis origin
+VAR FLOAT   x0;                    ! Origin x coordinate
+VAR FLOAT   y0;                    ! Origin y coordinate
+VAR FLOAT   z0;                    ! Origin z coordinate
+VAR FLOAT   xlangd;                ! Length of x axis
+VAR FLOAT   ylangd;                ! Length of y axis
+VAR FLOAT   zlangd;                ! Length of z axis
+VAR VECTOR  ang;                   ! Eulervinklar
+VAR STRING  namn*20);              ! Input PART name
+
+
+Inga anropade moduler
+
+
+
+Modul figgetvyv2 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

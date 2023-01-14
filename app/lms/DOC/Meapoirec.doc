@@ -1,0 +1,42 @@
+Modulnamn:         MEAPOIREC
+__________
+
+Moduldeklaration:  GLOBAL GEOMETRY MODULE MEAPOIREC  
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Registration of measured point, deviations, point number,
+ group number and a description of the point 
+
+ Revision history
+ ________________
+
+ 1993-08-31  Gunnar Liden
+ 1995-03-09 Documentation Gunnar Liden
+ 1996-03-04 Documentation Gunnar Liden
+
+
+Modulens parametrar:
+____________________
+
+VECTOR       m_p;                ! Measured point
+VECTOR       r_p;                ! Reference point (closest pt on surface)
+FLOAT        d_tot;              ! Total deviation to surface
+                                 ! (Deviation between m_p and r_p)
+INT          p_no;               ! Point number
+INT          g_no;               ! Group number (e.g section number)
+STRING       descr*132);         ! Name and description of point
+
+
+Inga anropade moduler
+
+
+
+Modul MEAPOIREC finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

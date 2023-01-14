@@ -1,0 +1,41 @@
+Modulnamn:         meagetpv0
+__________
+
+Moduldeklaration:  BASIC GEOMETRY MODULE meagetpv0
+_________________
+
+Modulbeskrivning:
+_________________
+
+
+ Algorithm
+ ________
+
+ 1. Initializations
+
+
+ 2. Get requested point data from input part (sub-tree)
+
+
+Modulens parametrar:
+____________________
+
+REF    ppts_id;                ! Part with calls to  MEAPOIREC
+INT    i_grupp;                ! Requested subset of points (section)
+VAR INT    n_p;                    ! Number of points in the subset 
+VAR VECTOR m_points(200) ;         ! Measured pointsr
+VAR VECTOR r_points(200) ;         ! Reference points
+VAR FLOAT  devtot(200) ;           ! Total (perpend.) deviation    
+VAR INT    ptnumber(200) ;         ! Point number for the measured point
+VAR STRING p_descr(200)*132);      ! Point description
+
+
+Inga anropade moduler
+
+
+
+Modul meagetpv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+

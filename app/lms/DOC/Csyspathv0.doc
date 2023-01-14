@@ -1,0 +1,52 @@
+Modulnamn:         csyspathv0
+__________
+
+Moduldeklaration:  BASIC  GEOMETRY MODULE csyspathv0   
+_________________
+
+Modulbeskrivning:
+_________________
+
+ 
+ Definition of (search) path for coordinate system libraries      
+
+ Add the following three lines for a new directory;
+ n_path := n_path + 1
+ path(n_path) := /home/ultra4/varkon/csyslib/New_directory/
+ csys(n_path) := "Basic"                                     
+
+
+ Remark:
+
+ Replace directory names with $VARKON_CSYSLIB/SF340/
+ when Johan has implemented this possibility in Varkon
+
+ 1996-02-13  Gunnar Liden
+ 1996-04-02  37  R Gyllensten
+ 1996-04-14  IPK modification Gunnar Liden
+
+ 
+ 
+ 1. Initializations
+
+ 
+ 2. Saab surface libraries
+
+
+Modulens parametrar:
+____________________
+
+VAR STRING  path(20)*50;            ! Output directories
+VAR STRING  csys(20)*25;            ! Basic system for the project
+VAR INT     n_path);                ! Number of directories
+
+
+Inga anropade moduler
+
+
+
+Modul csyspathv0 finns på katalog /home/ultra4/a73320/varkon/app/lms/code/
+
+Detta dokument skapades 1997-04-28 av modul m_extdoc
+
+
