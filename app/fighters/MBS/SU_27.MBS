@@ -1,0 +1,81 @@
+!**********************************************************
+! 
+
+   GLOBAL  GEOMETRY MODULE su_27   ();
+
+!  Fighter SU 27. Defined by Pertti Skillermark
+! 
+!     (C)Microform AB 1997
+! 
+!**********************************************************
+
+! Internal variables:
+
+  CONSTANT INT Alu=10;           ! Colours
+  CONSTANT INT Glass=11; 
+  CONSTANT INT Robot=12; 
+
+  STRING surflib*132;            ! Surface data library
+
+BEGINMODULE
+
+! Define colours
+
+  cre_color(Alu, 100, 100, 100);
+  cre_color(Glass, 173, 216, 230);
+  cre_color(Robot, 173, 255, 80);
+
+! Surface library
+
+  surflib:=act_jobdir();
+
+! Retrieve surfaces from library
+
+  sur_exdef(#1 ,surflib+"rearfuse.F07", "NMG_F07", "CON_SUR":PEN=Alu);
+  sur_exdef(#2 ,surflib+"missil_l.F07", "NMG_F07", "CON_SUR":PEN=Robot);
+  sur_exdef(#3 ,surflib+"fin_r.F07",    "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#4 ,surflib+"fin_l.F07",    "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#5 ,surflib+"fuselage.F07", "NMG_F07", "CON_SUR":PEN=Alu);
+  sur_exdef(#6 ,surflib+"canopy.F07",   "NMG_F07", "CON_SUR":PEN=Glass);
+  sur_exdef(#7 ,surflib+"hood.F07",     "NMG_F07", "CON_SUR":PEN=Glass);
+  sur_exdef(#8 ,surflib+"n_wing_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#9 ,surflib+"n_wing_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#10,surflib+"missil_r.F07", "NMG_F07", "CON_SUR":PEN=Robot);
+  sur_exdef(#11,surflib+"stabil_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#12,surflib+"stabil_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#13,surflib+"strike_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#14,surflib+"strike_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#15,surflib+"ufillo_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#16,surflib+"ufilli_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#17,surflib+"ufillo_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#18,surflib+"ufilli_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#19,surflib+"v_fin_l.F07",  "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#20,surflib+"v_fin_r.F07",  "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#21,surflib+"wing_l.F07",   "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#22,surflib+"wing_r.F07",   "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#23,surflib+"vfillf_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#24,surflib+"vfillr_l.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#25,surflib+"vfillf_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+  sur_exdef(#26,surflib+"vfillr_r.F07", "NMG_F07", "CUB_SUR":PEN=Alu);
+
+! Air intake and motor are defined as LFT_SUR surfaces
+  part(#30,int_mot(Alu));
+
+! Create views 
+
+  PART(#35, saabvyer());
+
+  csys_1p(#50,"nose_z", vec(0, 0, 0), -120, -70, 0:BLANK=1);
+  cre_view("nose_z", #50);
+  act_view("nose_z");
+  rep_view(1);
+
+! Set curve_accuracy to value suitable for "smooth" shading
+
+  cacc_view(15);
+
+! Define ligth
+
+  light_view(0, vec(0, 8, -3));
+
+ENDMODULE

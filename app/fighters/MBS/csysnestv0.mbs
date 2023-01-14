@@ -1,0 +1,86 @@
+! ***************** csysnestv0 ****************************
+!
+! +++
+! Create intersect coordinate system for nest of planar intersects
+!
+! Revision history
+! ________________
+!
+! 1996-02-26 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Intersect coordinate system for nest of planar intersects
+!sdescs Start koordinat system f|r knippe av plana snitt
+
+
+GLOBAL GEOMETRY MODULE csysnestv0 (
+
+    REF    csys_id;         ! Coordinate system
+    STRING stat*1;          ! Station X, Y or Z 
+VAR REF    cint_id);        ! Intersect system
+
+
+! Internal variables
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+! 0. Initializations and checks      
+!
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+! +++
+! 1. Intersect coordinate system
+!
+!  Create start coordinate system (INTPLANE) for intersects.
+! ---
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("csys_id "      +   !
+    RSTR(csys_id),               !
+    "",1);                       !
+  ENDIF;                         !
+
+  MODE_LOCAL(csys_id);           ! Activate input system
+
+  IF   stat="X" OR stat="x" THEN ! System for X planes
+    CSYS_3P(#4,"Xstat",          !
+    VEC(0,0,0),VEC(0,1,0),       !
+    VEC(0,0,1):BLANK=1);         !
+    MODE_LOCAL(#4);              !
+  ELIF stat="Y" OR stat="y" THEN ! System for Y planes
+    CSYS_3P(#5,"Ystat",          !
+    VEC(0,0,0),VEC(1,0,0),       !
+    VEC(0,0,-1):BLANK=1);        !
+    MODE_LOCAL(#5);              !
+  ELIF stat="Z" OR stat="z" THEN ! System for Z planes
+    CSYS_3P(#6,"Zstat",          !
+    VEC(0,0,0),VEC(1,0,0),       !
+    VEC(0,1,0):BLANK=1);         !
+    MODE_LOCAL(#6);              !
+  ELSE                           !
+   EXIT("csysnestv0 stat "+      !
+          stat + " not OK");     !
+  ENDIF;                         !
+
+  CSYS_3P(#1,"INTPLANE",         !
+    VEC(0,0,0),VEC(1,0,0),       !
+    VEC(0,1,0):BLANK=1);         !
+  
+  MODE_GLOBAL();                 ! Activate global system
+
+  cint_id := GLOBAL_REF(#1);     ! Output coordinate system reference 
+
+
+ENDMODULE

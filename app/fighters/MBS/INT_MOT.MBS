@@ -1,0 +1,314 @@
+!**********************************************************
+! 
+
+   GLOBAL  GEOMETRY MODULE int_mot (
+   INT  colour := 10 >"Colour (pen) number");
+
+!  Definition of air intake and motor
+! 
+!     (C)Microform AB 1997
+! 
+!**********************************************************
+
+! Internal variables:
+
+  REF pval_l;              ! P-value straight line
+  REF pval_c_i;            ! P-value corner intake
+  REF pval_c_m;            ! P-value corner motor 
+  REF lim1;                ! Limit curves 
+  REF lim2; 
+  REF lim3; 
+  REF lim4; 
+  REF lim5; 
+  REF lim6; 
+  REF lim7; 
+  REF lim8; 
+  REF tan1;                ! Tangent curves 
+  REF tan2; 
+  REF tan3; 
+  REF tan4; 
+  REF tan5; 
+  REF tan6; 
+  REF tan7; 
+  REF tan8; 
+  REF spine_i;             ! Spine curve for intake
+  REF spine_m;             ! Spine curve for motor
+  REF mirror;              ! Mirror matrix
+  REF lim1_m;              ! Limit curves mirrored
+  REF lim2_m;
+  REF lim3_m;
+  REF lim4_m;
+  REF lim5_m;
+  REF lim6_m;
+  REF lim7_m;
+  REF lim8_m;
+  REF tan1_m;              ! Tangent curves mirrored
+  REF tan2_m;
+  REF tan3_m;
+  REF tan4_m;
+  REF tan5_m;
+  REF tan6_m;
+  REF tan7_m;
+  REF tan8_m;
+
+  VECTOR p_rot1;           ! For SUR_ROT
+  VECTOR p_rot2; 
+  VECTOR p_l1;
+  VECTOR p_rot1_m;
+  VECTOR p_rot2_m; 
+  VECTOR p_l1_m;
+
+  INT blank_flag;          ! For the graphical representation
+
+BEGINMODULE
+
+! Initializations
+
+  blank_flag := 1;
+
+! Creation of limit and tangent curves
+
+CUR_CONIC(#1,"FREE",
+vec( 9500.000000,  769.578000,  -67.674000), ! P 1
+vec( 9508.572691,  769.798804,  -62.530051), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000,  808.213093,  832.384540), ! P 2
+vec(11009.993363,  808.551427,  832.249543), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1139.999967,  700.000013), ! P 3
+vec(20809.992383, 1140.338300,  699.865017)  ! T 
+          :BLANK=blank_flag ); 
+
+CUR_CONIC(#2,"FREE",
+vec( 9500.000000, 1486.842000, -130.426000), ! P 1
+vec( 9508.572682, 1487.518249, -125.321902), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000, 1605.168361,  762.660509), ! P 2
+vec(11009.989495, 1604.714584,  762.596637), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1160.000045,  700.000006), ! P 3
+vec(20809.988515, 1159.546268,  699.936134)  ! T 
+          :BLANK=blank_flag ); 
+
+CUR_CONIC(#3,"FREE",
+vec( 9500.000000, 1576.281992, -140.760087), ! P 1
+vec( 9508.853981, 1576.980495, -136.164533), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000, 1694.618990,  637.797027), ! P 2
+vec(11009.988134, 1694.624475,  637.310058), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1699.999999,  160.000048), ! P 3
+vec(20809.987154, 1700.005484,  159.513078)  ! T 
+          :BLANK=blank_flag ); 
+
+
+CUR_CONIC(#4,"FREE",
+vec( 9500.000000, 1574.537932, -160.680781), ! P 1
+vec( 9509.958956, 1574.795077, -161.548578), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000, 1613.268760, -291.386796), ! P 2
+vec(11009.989935, 1613.357172, -290.947048), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1699.999991,  139.999957), ! P 3
+vec(20809.988955, 1700.088404,  140.439704)  ! T 
+          :BLANK=blank_flag ); 
+
+
+CUR_CONIC(#5,"FREE",
+vec( 9500.000000, 1484.661939, -155.326695), ! P 1
+vec( 9509.870039, 1484.785766, -156.928881), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000, 1503.480590, -398.819077), ! P 2
+vec(11009.993863, 1503.130314, -398.820281), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1160.000034, -400.000000), ! P 3
+vec(20809.992883, 1159.649759, -400.001204)  ! T 
+          :BLANK=blank_flag ); 
+
+
+CUR_CONIC(#6,"FREE",
+vec( 9500.000000,  767.398061,  -92.573305), ! P 1
+vec( 9509.870029,  766.997518,  -94.129613), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000,  706.525457, -329.093503), ! P 2
+vec(11009.989516,  706.977508, -329.165781), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020, 1149.999956, -399.999993), ! P 3
+vec(20809.988536, 1150.452006, -400.072271)  ! T 
+          :BLANK=blank_flag ); 
+
+
+CUR_CONIC(#7,"FREE",
+vec( 9500.000000,  677.958068,  -82.239219), ! P 1
+vec( 9509.958946,  677.553846,  -83.049152), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000,  617.074828, -204.230021), ! P 2
+vec(11009.993822,  617.057415, -203.878983), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020,  600.000002,  139.999966), ! P 3
+vec(20809.992842,  599.982589,  140.351004)  ! T 
+          :BLANK=blank_flag ); 
+
+
+
+CUR_CONIC(#8,"FREE",
+vec( 9500.000000,  679.702008,  -62.319913), ! P 1
+vec( 9508.853992,  679.812523,  -57.672912), ! T 
+     0.50000000,                             ! P value
+vec(11000.000000,  698.424923,  724.952258), ! P 2
+vec(11009.982923,  698.324661,  724.376761), ! T 
+     0.50000000,                             ! P value
+vec(20799.999020,  600.000010,  160.000056), ! P 3
+vec(20809.981943,  599.899748,  159.424559)  ! T 
+          :BLANK=blank_flag ); 
+
+
+  lim1:=GLOBAL_REF(#1);
+  tan2:=lim1;
+  lim2:=GLOBAL_REF(#2);
+  tan1:=lim2;
+  lim3:=GLOBAL_REF(#3);
+  tan4:=lim3;
+  lim4:=GLOBAL_REF(#4);
+  tan3:=lim4;
+  lim5:=GLOBAL_REF(#5);
+  tan6:=lim5;
+  lim6:=GLOBAL_REF(#6);
+  tan5:=lim6;
+  lim7:=GLOBAL_REF(#7);
+  tan8:=lim7;
+  lim8:=GLOBAL_REF(#8);
+  tan7:=lim8;
+
+! Spine curves
+
+  CUR_SPLINE(#10,"FREE", vec( 9500, 1200, 1000), vec(0.0, 0.0, 0.0), 
+                         vec(11000, 1200, 1000), vec(0.0, 0.0, 0.0)
+          :BLANK=blank_flag ); 
+  spine_i:=GLOBAL_REF(#10);
+
+  CUR_SPLINE(#11,"FREE", vec(11000, 1200, 1000), vec(0.0, 0.0, 0.0), 
+                         vec(20800, 1200, 1000), vec(0.0, 0.0, 0.0)
+          :BLANK=blank_flag ); 
+  spine_m:=GLOBAL_REF(#11);
+
+! P-value curves
+
+  mode_basic();
+  LIN_FREE(#21,vec(0, 0.5, 0), vec(ARCL(spine_i)+ARCL(spine_m), 0.5, 0):BLANK=1);
+  LIN_FREE(#22,vec(0, 0.6, 0), vec(ARCL(spine_i), 0.7,    0):BLANK=1);
+  LIN_FREE(#23,vec(0, 0.7, 0), vec(ARCL(spine_m), 0.4142, 0):BLANK=1);
+  CUR_COMP(#24,GLOBAL_REF(#21):BLANK=1);
+  CUR_COMP(#25,GLOBAL_REF(#22):BLANK=1);
+  CUR_COMP(#26,GLOBAL_REF(#23):BLANK=1);
+  pval_l  :=GLOBAL_REF(#24);
+  pval_c_i:=GLOBAL_REF(#25);
+  pval_c_m:=GLOBAL_REF(#26);
+  mode_global();
+
+! Create left surfaces
+
+  SUR_CONIC(#31 ,spine_i, 
+!   lim1, tan1, "P", pval_l, 
+    lim2, tan2, "P", pval_c_i, 
+    lim3, tan3, "P", pval_l, 
+    lim4, tan4, "P", pval_c_i, 
+    lim5, tan5, "P", pval_l,   
+    lim6, tan6, "P", pval_c_i, 
+    lim7, tan7, "P", pval_l,   
+    lim8, tan8, "P", pval_c_i, 
+    lim1, tan1:PEN=colour);
+
+
+  SUR_CONIC(#32 ,spine_m, 
+    lim1, tan1, "P", pval_l, 
+    lim2, tan2, "P", pval_c_m, 
+    lim3, tan3, "P", pval_l, 
+    lim4, tan4, "P", pval_c_m, 
+    lim5, tan5, "P", pval_l,   
+    lim6, tan6, "P", pval_c_m, 
+    lim7, tan7, "P", pval_l,   
+    lim8, tan8, "P", pval_c_m, 
+    lim1, tan1:PEN=colour);
+
+! Mirror limit curves
+
+! Mirror in Y=0 plane
+  TFORM_MIRR  (#20, VEC(0,0,0), VEC(100,0,100), VEC(200,0,0));
+  mirror := GLOBAL_REF(#20);
+
+  TCOPY(#41, lim1, mirror );
+  TCOPY(#42, lim2, mirror );
+  TCOPY(#43, lim3, mirror );
+  TCOPY(#44, lim4, mirror );
+  TCOPY(#45, lim5, mirror );
+  TCOPY(#46, lim6, mirror );
+  TCOPY(#47, lim7, mirror );
+  TCOPY(#48, lim8, mirror );
+
+  lim1_m := GLOBAL_REF(#41);
+  lim2_m := GLOBAL_REF(#42);
+  lim3_m := GLOBAL_REF(#43);
+  lim4_m := GLOBAL_REF(#44);
+  lim5_m := GLOBAL_REF(#45);
+  lim6_m := GLOBAL_REF(#46);
+  lim7_m := GLOBAL_REF(#47);
+  lim8_m := GLOBAL_REF(#48);
+
+! Tangent curves 
+
+  tan2_m:=lim1_m;
+  tan1_m:=lim2_m;
+  tan4_m:=lim3_m;
+  tan3_m:=lim4_m;
+  tan6_m:=lim5_m;
+  tan8_m:=lim7_m;
+  tan7_m:=lim8_m;
+  tan5_m:=lim6_m;
+
+! Create right surfaces
+
+  SUR_CONIC(#33 ,spine_i, 
+    lim1_m, tan1_m, "P", pval_l, 
+    lim8_m, tan8_m, "P", pval_c_i, 
+    lim7_m, tan7_m, "P", pval_l, 
+    lim6_m, tan6_m, "P", pval_c_i, 
+    lim5_m, tan5_m, "P", pval_l,   
+    lim4_m, tan4_m, "P", pval_c_i, 
+    lim3_m, tan3_m, "P", pval_l,   
+    lim2_m, tan2_m:PEN=colour);
+
+!   lim2_m, tan2_m, "P", pval_c_i, 
+!   lim1_m, tan1_m:PEN=colour);
+
+  SUR_CONIC(#34 ,spine_m, 
+    lim1_m, tan1_m, "P", pval_l, 
+    lim8_m, tan8_m, "P", pval_c_m, 
+    lim7_m, tan7_m, "P", pval_l, 
+    lim6_m, tan6_m, "P", pval_c_m, 
+    lim5_m, tan5_m, "P", pval_l,   
+    lim4_m, tan4_m, "P", pval_c_m, 
+    lim3_m, tan3_m, "P", pval_l,   
+    lim2_m, tan2_m, "P", pval_c_m, 
+    lim1_m, tan1_m:PEN=colour);
+
+! Create fire
+
+  p_rot1 := ON(lim1,1.99) + 0.5* (ON(lim5,1.99) - ON(lim1,1.99));
+  p_rot2 := ON(lim1,1.98) + 0.5* (ON(lim5,1.98) - ON(lim1,1.98));
+  p_l1   := ON(lim1,1.98) + 0.95*(ON(lim5,1.98) - ON(lim1,1.98));
+
+  LIN_FREE(#50, p_l1, p_rot2:BLANK=1);
+
+  SUR_ROT(#53, GLOBAL_REF(#50),p_rot1,p_rot2, 0, 360, 1:PEN=2);
+
+  p_rot1_m := ON(lim1_m,1.99) + 0.5* (ON(lim5_m,1.99) - ON(lim1_m,1.99));
+  p_rot2_m := ON(lim1_m,1.98) + 0.5* (ON(lim5_m,1.98) - ON(lim1_m,1.98));
+  p_l1_m   := ON(lim1_m,1.98) + 0.95*(ON(lim5_m,1.98) - ON(lim1_m,1.98));
+
+  LIN_FREE(#55, p_l1_m, p_rot2_m:BLANK=1);
+
+  SUR_ROT(#56, GLOBAL_REF(#55),p_rot1_m,p_rot2_m, 0, 360, 1:PEN=2);
+
+
+ENDMODULE

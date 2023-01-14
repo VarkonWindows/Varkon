@@ -1,0 +1,31 @@
+!********************* saabvyer ***************************************
+!
+!  Creation of four standard Saab views
+!
+!  1992-11-23   Ronny Gyllensten
+!
+!**********************************************************************
+
+GLOBAL GEOMETRY MODULE saabvyer();
+
+
+BEGINMODULE
+
+     csys_3p(#1,"XYVY",vec(0,0,0),vec(1,0,0),vec(0,-1,0):BLANK=1);
+     csys_3p(#2,"XZVY",vec(0,0,0),vec(1,0,0),vec(0,0,-1):BLANK=1);
+     csys_3p(#3,"YZVY",vec(0,0,0),vec(0,-1,0),vec(0,0,-1):BLANK=1);
+     csys_3p(#4,"XYZVY",vec(0,0,0),vec(70.711, 70.711,0),
+                                   vec(40.825,-40.825, -81.650):BLANK=1);
+
+
+     CRE_VIEW("sxy",#1);
+     CRE_VIEW("sxz",#2);
+     CRE_VIEW("syz",#3);
+     CRE_VIEW("siso",#4);
+
+     DEL(#1);
+     DEL(#2);
+     DEL(#3);
+     DEL(#4);
+
+ENDMODULE

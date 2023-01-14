@@ -1,0 +1,230 @@
+! ***************** surintplan ****************************
+!
+! +++
+! Make planar intersects in a surface 
+!
+! ---
+! Revision history
+! ________________
+!
+! 1994-05-30 Gunnar Liden
+! 1996-02-13 Prompt strings changed        Gunnar Liden
+! 1996-02-26 csysnestv0                    Gunnar Liden
+! 1996-03-09 Deletion of csys not allowed  Gunnar Liden
+!
+!************************************************************
+
+!sdesce Make planar intersects in a surface 
+!sdescs Plana X, Y eller Z snitt i en yta   
+
+
+GLOBAL GEOMETRY MODULE surintplan (
+
+REF    s_id             > "@t16 Select surface";
+REF    c_id             > "@t8192 Select coordinate system";
+STRING stat*1 := "Y"    > "Station X, Y or Z ";
+FLOAT  start  :=-200.0  > "Start station value";
+FLOAT  delta  :=  50.0  > "Delta station value";
+FLOAT  end    := 100.0  > "End   station value";
+STRING rflag*3:= "R*3"  > "@ Curve representation <CR>=R*3 Option is U,V";
+INT    graphic:= 1      > "@ Graphics <CR>=1: Show curves =0; Blank curves");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  REF    cint_id;                ! Start intersect system
+  REF    ccur_id;                ! Current intersect system
+
+  INT    i_s;                    ! Loop index intersect
+  INT    i_b;                    ! Loop index intersect branch
+
+  INT    i_l;                    ! Loop index for U,V grid
+
+  FLOAT  current;                ! Current station value
+
+  INT    no_branch;              ! No branches
+  INT    branchrepr;             ! U,V or R*3 representation
+                                 ! (1000 or 0)
+
+  INT    bflag_i;                ! Blank flag for intersects
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+! 0. Initiations and checks      
+!
+!    Graphic flag for intersects
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN          ! 
+    bflag_i := 1;                ! Blank intersects
+  ELIF graphic = 1 THEN          ! 
+    bflag_i := 0;                ! No blank of intersects
+  ELSE                           !
+    EXIT("surinplan graphic not" ! Error
+          +" OK");               !
+  ENDIF;                         !
+
+! +++
+! 1. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("surintplan "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 2. Intersect coordinate system
+!
+!  Create start coordinate system (INTPLANE) for intersects.
+! ---
+!  Calls of MODE_LOCAL, MODE_GLOBAL and CSYS_3P.
+!---
+
+  IF    rflag="R*3" OR           ! Curve representation R*3 or U,V";
+        rflag="r*3"     THEN     ! 
+    branchrepr:= 0;              !
+  ELIF  rflag="U,V" OR           !
+        rflag="u,v" OR           ! 
+        rflag="UV"  OR           !
+        rflag="uv"      THEN     ! 
+    branchrepr:= 1000;           !
+  ELSE                           !
+    EXIT("rflag "+rflag+         !
+         " not valid");          !
+  ENDIF;                         !
+
+  PART ( #4, csysnestv0 ( c_id,  ! Start intersect coord. system
+         stat, cint_id ));       !
+
+! +++
+! 3. Calculate intersects    
+!
+!  Loop for all given station values
+! ---
+
+!  Start loop all stations i_s= 1,2, ......
+!
+!       Calculate current station value
+!       Goto nomore if value is greater than end.
+!
+!       Create current intersect coordinate system
+!
+!       Calculate intersect curve (red colour)
+!       Delete current coordinate system.
+!
+!       Goto nomore if delta station value is zero
+!
+!  End   loop all stations i_s= 1,2, ......
+!
+! Label nomore: End of intersect calculation
+!---
+ 
+  FOR i_s:= 1 TO 100  DO         ! Start loop intersects
+
+    current:= start +            ! Current station value
+     (i_s-1)*delta;              !
+
+    IF current > end THEN        ! Last station
+      GOTO nomore;               !
+    ENDIF;                       !
+    PSH_PMT("Station "+          ! Message to screen
+     STR(current,-15,8));        !
+
+    MODE_LOCAL(cint_id);         ! Activate intersect system
+    CSYS_1P(#8,"CURRENT",        !
+      VEC(0,0,current),0,0,0     !
+       :BLANK=1);                !
+    MODE_GLOBAL();               !
+    ccur_id:=                    ! Current intersect system
+      GLOBAL_REF(REFC(8,i_s));   !
+
+    IF DEBUG = 2 THEN            ! Debug to screen
+     s:= INPMT("current "   +    !
+      STR(current,-12,4),        !
+      "",1);                     !
+    ENDIF;                       !
+
+    no_branch := N_CUR_INT(      ! Number of branches
+               s_id, ccur_id );  !
+    IF no_branch = 0 THEN        !
+        GOTO nointer;            !
+    ENDIF;                       !
+
+    FOR i_b:= 1 TO no_branch DO  ! Start loop branches  
+
+      SET(PEN=2);                !
+      CUR_INT(#1,s_id, ccur_id,  ! Intersect curve
+         i_b+branchrepr          !
+        :BLANK=bflag_i);         !
+      SET(PEN=1);                !
+
+    ENDFOR;                      ! End   loop branches   
+
+nointer:;                        ! Label: No intersect 
+
+    POP_PMT();                   ! Erase message to screen
+
+    IF ABS(delta) < 0.01 THEN    !
+      GOTO nomore;               !
+    ENDIF;                       !
+
+  ENDFOR;                        ! End   loop intersects
+
+  LST_INI("surintplan WARNING WARNING WARNING");
+  LST_LIN("Maximum number of intersects (=100) exceeded");
+  LST_LIN(" ");
+  LST_LIN("Limit can easely be changed in surintplan");
+  LST_LIN("Change loop:  i_s:= 1 TO 100  DO  to");
+  LST_LIN("              i_s:= 1 TO nnn  DO ");
+  LST_EXI();
+
+nomore:;                         ! Label: No more
+
+! +++
+! 4. Grid of lines for UV curve case
+!
+!   Create a grid of U,V lines corresponding to the number
+!   of patches in U and V direction for UV intersection case.
+! ---
+!   Calls of MODE_GLOBAL and LIN_FREE
+!---
+
+  MODE_GLOBAL();                 ! Activate global system
+  IF branchrepr = 1000 THEN      !
+   FOR i_l:=1 TO npatu + 1 DO    ! Start loop U lines
+    LIN_FREE(#15,                ! Create line
+    VEC(100+(i_l-1)*100,100,0),  !
+    VEC(100+(i_l-1)*100,         !
+         100*(npatv+1),0));      !
+   ENDFOR;                       ! End   loop U lines
+   FOR i_l:=1 TO npatv + 1 DO    ! Start loop V lines
+    LIN_FREE(#16,                ! Create line
+    VEC(100,100+(i_l-1)*100,0),  !
+    VEC(100*(npatu+1),           !
+         100+(i_l-1)*100,0));    !
+   ENDFOR;                       ! End   loop V lines
+  ENDIF;
+
+ENDMODULE
