@@ -1,0 +1,212 @@
+! ***************** s_nurbe    ****************************
+!
+! +++
+! Evaluation function for NURBS
+!
+! The nodes shall be registered with module s_nurbr and 
+! the knot values with s_nurbku and s_nurbkv.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Evaluation function for NURBS 
+!sdescs Evalueringsfunktion for NURBS 
+
+
+GLOBAL GEOMETRY MODULE s_nurbe    (
+
+REF    nurb_id        > "@t16384 Part that defines NURBS";
+FLOAT  u_val   := 1.1 > "U value";
+FLOAT  v_val   := 2.6 > "V value";
+INT    graphic :=  1  > "=0: Nothing =1: ...  =2: All");
+
+
+! Internal variables
+
+  VECTOR xyz;          ! Point
+  VECTOR drdu;         ! First derivative in U direction
+  VECTOR drdv;         ! First  derivative in V direction
+  VECTOR d2rdu2;       ! Second derivative in U direction
+  VECTOR d2rdv2;       ! Second derivative in V direction
+  VECTOR d2rdudv;      ! Twist
+
+                       ! For s_nurbr
+  VECTOR n_ri;         ! 1. NURBS  polygon point
+  FLOAT  n_wi;         ! 2. Weight for the point
+  INT    n_ui;         ! 3. Point number in U direction
+  INT    n_vi;         ! 4. Point number in V direction
+  FLOAT  n_ku;         ! 5. Knot value in U direction
+  FLOAT  n_kv;         ! 6. Knot value in V direction
+
+                       ! For s_nurbku
+  FLOAT  ku;           ! 1. Knot value  in U direction
+  INT    nu;           ! 2. Knot number in U direction
+
+                       ! For s_nurbkv
+  FLOAT  kv;           ! 1. Knot value  in V direction
+  INT    nv;           ! 2. Knot number in V direction
+
+  REF    prt_id;       ! Reference for GET_NEXT_GM
+
+  INT    max_uno;      ! Maximum node number number in U
+  INT    max_vno;      ! Maximum node number number in V
+  INT    max_kuno;     ! Maximum knot value  number in U
+  INT    max_kvno;     ! Maximum knot value  number in V
+
+  FLOAT  node_x(50,50);! Node X values
+  FLOAT  node_y(50,50);! Node Y values
+  FLOAT  node_z(50,50);! Node Z values
+  FLOAT  node_w(50,50);! Node W values
+  FLOAT  knot_u(50);   ! Knot U values
+  FLOAT  knot_v(50);   ! Knot V values
+
+  INT    b_val_p;      ! Blank value
+
+  INT    DEBUG;        ! For Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    b_val_p   := 1;
+  ELIF graphic = 1 THEN
+    b_val_p   := 0;
+  ELIF graphic = 2 THEN
+    b_val_p   := 0;
+  ELSE
+    EXIT("s_nurbe  graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialization of internal variables
+  max_uno  := -12345;
+  max_vno  := -12345;
+  max_kuno := -12345;
+  max_kvno := -12345;
+
+! +++
+! 2. Retrieve NURBS nodes and knot values   
+! ---
+
+  SET_ROOT_GM(nurb_id);
+
+nxt_node:; ! Label: Next NURBS node
+
+  prt_id := GET_NEXT_GM(0, 16384, "s_nurbr" );
+
+  IF  prt_id = #0 THEN
+    GOTO  all_node;
+  ENDIF;
+
+  n_ri := GETVEC(prt_id,1);   ! 1. NURBS node
+  n_wi := GETFLT(prt_id,2);   ! 2. Weight for the node
+  n_ui := GETINT(prt_id,3);   ! 3. Point number in U
+  n_vi := GETINT(prt_id,4);   ! 4. Point number in V
+  n_ku := GETFLT(prt_id,5);   ! 5. Knot value U
+  n_kv := GETFLT(prt_id,6);   ! 6. Knot value V
+
+! Update maximum node numbers ?
+  IF  n_ui > max_uno THEN
+    max_uno := n_ui;
+  ENDIF;
+  IF  n_vi > max_vno THEN
+    max_vno := n_vi;
+  ENDIF;
+
+! Node point to arrays
+  IF  n_vi <= 0 THEN
+    node_x(n_ui,1) := n_ri.x;
+    node_y(n_ui,1) := n_ri.y;
+    node_z(n_ui,1) := n_ri.z;
+    node_w(n_ui,1) := n_wi;
+  ELSE
+    node_x(n_ui,n_vi) := n_ri.x;
+    node_y(n_ui,n_vi) := n_ri.y;
+    node_z(n_ui,n_vi) := n_ri.z;
+    node_w(n_ui,n_vi) := n_wi;
+  ENDIF;
+
+! Next NURBS node
+  GOTO  nxt_node;
+
+
+all_node:; ! Label: All NURBS nodes retrieved
+
+! +++
+! 3. Retrieve NURBS U knot values   
+! ---
+
+  SET_ROOT_GM(nurb_id);
+
+nxt_uknot:; ! Label: Next U NURBS knot
+
+  prt_id := GET_NEXT_GM(0, 16384, "s_nurbku" );
+
+  IF  prt_id = #0 THEN
+    GOTO  all_uknot;
+  ENDIF;
+
+  ku   := GETFLT(prt_id,1);   ! 1. NURBS U knot value
+  nu   := GETINT(prt_id,2);   ! 2. NURBS U knot number 
+
+! Update maximum U knot value numbers ?
+  IF  nu > max_kuno THEN
+    max_kuno := nu;
+  ENDIF;
+
+! Knot value to arrays 
+  knot_u(nu) := ku;
+
+! Next NURBS U knot
+  GOTO  nxt_uknot;
+
+
+all_uknot:; ! Label: All NURBS U knots retrieved
+
+
+! +++
+! 4. Retrieve NURBS V knot values   
+! ---
+
+  SET_ROOT_GM(nurb_id);
+
+nxt_vknot:; ! Label: Next V NURBS knot
+
+  prt_id := GET_NEXT_GM(0, 16384, "s_nurbkv" );
+
+  IF  prt_id = #0 THEN
+    GOTO  all_vknot;
+  ENDIF;
+
+  kv   := GETFLT(prt_id,1);   ! 1. NURBS V knot value
+  nv   := GETINT(prt_id,2);   ! 2. NURBS V knot number 
+
+! Update maximum V knot value numbers ?
+  IF  nv > max_kvno THEN
+    max_kvno := nv;
+  ENDIF;
+
+! Knot value to arrays 
+  knot_v(nv) := kv;
+
+! Next NURBS V knot
+  GOTO  nxt_vknot;
+
+
+all_vknot:; ! Label: All NURBS V knots retrieved
+
+
+ENDMODULE

@@ -1,0 +1,100 @@
+!************************ s_odeforv0 **********************
+! +++
+! Shoot down points on the surface and calculate the 
+! objective function
+!
+! Revision History
+! ________________
+!
+! 1996-11-26 Elsa Rydman
+! 1997-02-20 Modification Elsa Rydman
+! ---
+!**********************************************************
+
+!sdesce Evaluate the closest points on the surface
+!sdescs Ta fram närmaste punkter på ytan
+
+GLOBAL MODULE s_odeforv0(
+REF    s_id              >"Surface reference";
+REF    csys_id           >"Coordinate system";
+VECTOR shoot             >"Shoot direction, (0,0,1)";
+INT    graphic :=2  >"Eq. 0: No graphics Eq. 1: Surface Eq. 2: All");
+
+! Internal variables
+
+  INT    i_pts;		! Iteration of points
+  INT    n_pts;		! Total number of points
+  VECTOR under;		! Point under surface
+  VECTOR above;		! Point abow surface
+
+  VECTOR pts(80);       ! Points in array
+  VECTOR clo_pts(80);	! Points on surface closest to data points
+
+  FLOAT  dist(80);	! Distance between points
+
+  FLOAT  sum;		! Square sum the distances
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+  MODE_LOCAL(csys_id);
+
+! +++
+! 1. Get points
+! ---
+ 
+  PART(#1,s_pdeforv0(csys_id,graphic,pts, n_pts));
+  
+! +++
+! 2. Loop over points
+! ---  
+  
+  sum:=0.0;		! Initial value for sum
+    
+  FOR i_pts:=1 TO n_pts DO
+  
+! +++
+!     Get closest point
+! ---    
+  
+    above := pts(i_pts) + shoot*100;
+    under := pts(i_pts) - shoot*100;
+    LIN_FREE(#2,above,under:BLANK=0);
+  
+    clo_pts(i_pts):=intersect(global_ref(#2),s_id,-2);
+    POI_FREE(#3,clo_pts(i_pts):PEN=4,BLANK=0);  
+    
+! +++
+!     Calculate the distance between point and surface
+! ---    
+    dist(i_pts):=vecl(clo_pts(i_pts)-pts(i_pts));
+    
+! +++
+!     Sum the distances
+! ---    
+
+    sum:=sum + dist(i_pts)*dist(i_pts); 
+   
+    DEL(global_ref(#2));
+!    DEL(global_ref(#3));
+   
+! +++
+! End loop
+! ---   
+   
+  ENDFOR;
+ 
+! +++
+! 3. Registrate objective function
+! --- 
+  
+  sum:=sqrt(sum);
+  
+  PART(#4,OPT_FUNCV0(sum));
+          
+ENDMODULE  

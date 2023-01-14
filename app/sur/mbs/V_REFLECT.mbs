@@ -1,0 +1,66 @@
+!*********************** V_REFLECT  ************************************
+!
+! Skapar en reflexionslinje (vektor).
+!
+! Algorithm:
+! ----------
+!
+! For ang > 0
+!    i. Create circle with start angle zero, end angle ang,
+!       center equal to origin in the local system REFL and
+!       with radius equal to length
+!   ii. Let tpout= end point of circle
+! For dang = 0
+!    i. Let tpout= p_c + length*t_c
+!
+! 1994-02-09 Ronny Gyllensten
+!
+!***********************************************************************
+
+!sdescs Skapar en reflexionslinje (vektor).
+!sdesce Creates a reflection line (vector).
+
+GLOBAL GEOMETRY MODULE V_REFLECT(
+
+VECTOR   p_c:=vec(0,0,0)       >"Reflexionspunkt";
+VECTOR   normal:=vec(1,1,1)    >"Normal";
+VECTOR   t_c:=vec(0,0,1)       >"Invektor";
+VAR VECTOR   tpout);            ! Utvektor
+
+! Interna variabler
+ 
+  FLOAT dot;                   ! Kryssprodukten
+  FLOAT length;                ! Cirkelns radie
+  FLOAT ang;                   ! Vinkel mellan normal och invektor
+
+BEGINMODULE
+
+   IF VECL(normal) > 0 AND VECL(t_c) > 0 THEN
+
+   length:= 10.0;
+   dot:=t_c*normal;
+   ang:=ARCCOS(dot);
+
+   ELSE
+    EXIT("V_REFLECT: Vektorlängden är 0");
+   ENDIF;
+
+ IF ABS(ang)  >=  0.02 THEN
+
+   CSYS_3P(#1,"REFL",p_c,p_c+normal,p_c+t_c:BLANK=1);
+
+   MODE_LOCAL(#1);
+
+   ARC_1POS(#2,VEC(0,0,0),length,0.0,-ang:BLANK=1);
+
+   MODE_GLOBAL();
+
+   tpout:=p_c-ON(#2,1.0);
+   tpout:=VECN(tpout);
+ ELSE
+   tpout:= p_c + length*t_c;
+ ENDIF;
+
+   tpout:=VECN(tpout);
+
+ENDMODULE

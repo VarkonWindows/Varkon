@@ -1,0 +1,45 @@
+! ***************** s_nurbr    ****************************
+!
+! +++
+! Registrate a NURBS polygon point
+!
+! Note that the knot values normally are registered
+! separetely, but for instance ACIS registrate the
+! knot value together with the point ....
+!
+! This module can be used for curve and surface 
+! NURBS polygon points. Let vi= 0 and kv= i_undef
+! for curve polygon points
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registrate NURBS polygon point
+!sdescs Registrera NURBS polygon point
+
+
+GLOBAL GEOMETRY MODULE s_nurbr    (
+VECTOR ri;        ! 1. NURBS  polygon point
+FLOAT  wi;        ! 2. Weight for the point
+INT    ui;        ! 3. Point number in U direction
+INT    vi;        ! 4. Point number in V direction
+FLOAT  ku;        ! 5. Knot value in U direction
+FLOAT  kv);       ! 6. Knot value in V direction
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! No caculation, only registration.  
+! ---
+
+ ;
+
+ENDMODULE

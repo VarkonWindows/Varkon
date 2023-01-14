@@ -1,0 +1,355 @@
+! ***************** s_sbezv0   ****************************
+!
+! +++
+! Creates a Bezier polygon points for a bicubic surface
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-02-16 Gunnar Liden
+! 1997-04-01 Close file for error Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Creates a Bezier polygon points for a bicubic surface
+!sdescs Skapar Bezier polygon för en bikubisk yta   
+
+
+GLOBAL GEOMETRY MODULE s_sbezv0   (
+
+REF    s_id           > "@t16 Select surface";
+INT    graphic :=  1  > "=0: Nothing =1: Lines =2: Add points");
+
+
+! Internal variables
+
+  STRING out_file*132;           ! Output file
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    i_pat;                  ! Patch number
+
+  INT    i_u;                    ! Loop index IU patch    
+  INT    i_v;                    ! Loop index IV patch    
+
+  STRING str_pat*132;            ! Patch address
+  INT    graphic_p;              ! Graphic s_abezv0
+
+  INT    c_pen;                  ! Pen (color) number
+
+  REF    r11_id;
+  REF    r12_id;
+  REF    r13_id;
+  REF    r14_id;
+  REF    r21_id;
+  REF    r22_id;
+  REF    r23_id;
+  REF    r24_id;
+  REF    r31_id;
+  REF    r32_id;
+  REF    r33_id;
+  REF    r34_id;
+  REF    r41_id;
+  REF    r42_id;
+  REF    r43_id;
+  REF    r44_id;
+
+  VECTOR r11,r12,r13,r14;
+  VECTOR r21,r22,r23,r24;
+  VECTOR r31,r32,r33,r34;
+  VECTOR r41,r42,r43,r44;
+
+  FILE   dat;                    ! Output data 
+
+  INT    b_val_p;                ! Blank flag for p
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    b_val_p   := 1;
+    graphic_p := 0;
+  ELIF graphic = 1 THEN
+    b_val_p   := 0;
+    graphic_p := 0;
+  ELIF graphic = 2 THEN
+    b_val_p   := 0;
+    graphic_p := 1;
+  ELSE
+    EXIT("s_sbezv0  graphic not 0, 1 or 2");
+  ENDIF;
+
+! +++
+! Full name for output file
+! --
+
+  out_file := ACT_JOBDIR()+"s_sbezv0.DAT";
+
+! +++
+! Open file
+! --
+
+  OPEN(dat,"w", out_file );
+  IF (IOSTAT(dat) <> 0  ) THEN
+    EXIT("s_sbezv0 Open file failed" ); 
+  ENDIF;
+
+! +++
+! 2. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+  IF DEBUG = 2 THEN 
+   s:= INPMT("s_sbezv0   "   +
+    " npatu "+STR(npatu,-1,0)+
+    " npatu "+STR(npatv,-1,0),
+    "",1);
+  ENDIF;
+
+! +++
+! 5. Bezier lines                 
+! ---
+
+  i_pat := 0;
+
+  FOR  i_v := 1 TO npatv   DO
+    FOR  i_u := 1 TO npatu   DO
+
+     PART(#1, s_abezv0 ( s_id, i_u, i_v, graphic_p));
+     i_pat := i_pat + 1;
+     c_pen := c_pen + 1;
+     IF  c_pen > 4 THEN
+       c_pen := 1;
+     ENDIF;
+     SET(PEN=c_pen);
+     r11_id := GLOBAL_REF(REFC(1,i_pat,11,1));
+     r12_id := GLOBAL_REF(REFC(1,i_pat,12,1));
+     r13_id := GLOBAL_REF(REFC(1,i_pat,13,1));
+     r14_id := GLOBAL_REF(REFC(1,i_pat,14,1));
+
+     r21_id := GLOBAL_REF(REFC(1,i_pat,21,1));
+     r22_id := GLOBAL_REF(REFC(1,i_pat,22,1));
+     r23_id := GLOBAL_REF(REFC(1,i_pat,23,1));
+     r24_id := GLOBAL_REF(REFC(1,i_pat,24,1));
+
+     r31_id := GLOBAL_REF(REFC(1,i_pat,31,1));
+     r32_id := GLOBAL_REF(REFC(1,i_pat,32,1));
+     r33_id := GLOBAL_REF(REFC(1,i_pat,33,1));
+     r34_id := GLOBAL_REF(REFC(1,i_pat,34,1));
+
+     r41_id := GLOBAL_REF(REFC(1,i_pat,41,1));
+     r42_id := GLOBAL_REF(REFC(1,i_pat,42,1));
+     r43_id := GLOBAL_REF(REFC(1,i_pat,43,1));
+     r44_id := GLOBAL_REF(REFC(1,i_pat,44,1));
+
+     r11 := ON(r11_id);
+     OUTFLT(dat,r11.x,12,4);
+     OUTFLT(dat,r11.y,12,4);
+     OUTFLT(dat,r11.z,12,4);
+     OUTSTR(dat,"  r11"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r12 := ON(r12_id);
+     OUTFLT(dat,r12.x,12,4);
+     OUTFLT(dat,r12.y,12,4);
+     OUTFLT(dat,r12.z,12,4);
+     OUTSTR(dat,"  r12"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r13 := ON(r13_id);
+     OUTFLT(dat,r13.x,12,4);
+     OUTFLT(dat,r13.y,12,4);
+     OUTFLT(dat,r13.z,12,4);
+     OUTSTR(dat,"  r13"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r14 := ON(r14_id);
+     OUTFLT(dat,r14.x,12,4);
+     OUTFLT(dat,r14.y,12,4);
+     OUTFLT(dat,r14.z,12,4);
+     OUTSTR(dat,"  r14"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+
+
+     r21 := ON(r21_id);
+     OUTFLT(dat,r21.x,12,4);
+     OUTFLT(dat,r21.y,12,4);
+     OUTFLT(dat,r21.z,12,4);
+     OUTSTR(dat,"  r21"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r22 := ON(r22_id);
+     OUTFLT(dat,r22.x,12,4);
+     OUTFLT(dat,r22.y,12,4);
+     OUTFLT(dat,r22.z,12,4);
+     OUTSTR(dat,"  r22"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r23 := ON(r23_id);
+     OUTFLT(dat,r23.x,12,4);
+     OUTFLT(dat,r23.y,12,4);
+     OUTFLT(dat,r23.z,12,4);
+     OUTSTR(dat,"  r23"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r24 := ON(r24_id);
+     OUTFLT(dat,r24.x,12,4);
+     OUTFLT(dat,r24.y,12,4);
+     OUTFLT(dat,r24.z,12,4);
+     OUTSTR(dat,"  r24"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+
+
+     r31 := ON(r31_id);
+     OUTFLT(dat,r31.x,12,4);
+     OUTFLT(dat,r31.y,12,4);
+     OUTFLT(dat,r31.z,12,4);
+     OUTSTR(dat,"  r31"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r32 := ON(r32_id);
+     OUTFLT(dat,r32.x,12,4);
+     OUTFLT(dat,r32.y,12,4);
+     OUTFLT(dat,r32.z,12,4);
+     OUTSTR(dat,"  r32"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r33 := ON(r33_id);
+     OUTFLT(dat,r33.x,12,4);
+     OUTFLT(dat,r33.y,12,4);
+     OUTFLT(dat,r33.z,12,4);
+     OUTSTR(dat,"  r33"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r34 := ON(r34_id);
+     OUTFLT(dat,r34.x,12,4);
+     OUTFLT(dat,r34.y,12,4);
+     OUTFLT(dat,r34.z,12,4);
+     OUTSTR(dat,"  r34"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+
+     r41 := ON(r41_id);
+     OUTFLT(dat,r41.x,12,4);
+     OUTFLT(dat,r41.y,12,4);
+     OUTFLT(dat,r41.z,12,4);
+     OUTSTR(dat,"  r41"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r42 := ON(r42_id);
+     OUTFLT(dat,r42.x,12,4);
+     OUTFLT(dat,r42.y,12,4);
+     OUTFLT(dat,r42.z,12,4);
+     OUTSTR(dat,"  r42"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r43 := ON(r43_id);
+     OUTFLT(dat,r43.x,12,4);
+     OUTFLT(dat,r43.y,12,4);
+     OUTFLT(dat,r43.z,12,4);
+     OUTSTR(dat,"  r43"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+     r44 := ON(r44_id);
+     OUTFLT(dat,r44.x,12,4);
+     OUTFLT(dat,r44.y,12,4);
+     OUTFLT(dat,r44.z,12,4);
+     OUTSTR(dat,"  r44"+" "+STR(i_u,4,0)+" "+STR(i_v,4,0));
+     OUTLIN(dat);
+
+
+     IF  VECL(ON(r11_id)-ON(r12_id)) > 0.01 THEN
+       LIN_FREE(#11, ON(r11_id), ON(r12_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r12_id)-ON(r13_id)) > 0.01 THEN
+       LIN_FREE(#12, ON(r12_id), ON(r13_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r13_id)-ON(r14_id)) > 0.01 THEN
+       LIN_FREE(#13, ON(r13_id), ON(r14_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r21_id)-ON(r22_id)) > 0.01 THEN
+       LIN_FREE(#21, ON(r21_id), ON(r22_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r22_id)-ON(r23_id)) > 0.01 THEN
+       LIN_FREE(#22, ON(r22_id), ON(r23_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r23_id)-ON(r24_id)) > 0.01 THEN
+       LIN_FREE(#23, ON(r23_id), ON(r24_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r31_id)-ON(r32_id)) > 0.01 THEN
+       LIN_FREE(#31, ON(r31_id), ON(r32_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r32_id)-ON(r33_id)) > 0.01 THEN
+       LIN_FREE(#32, ON(r32_id), ON(r33_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r33_id)-ON(r34_id)) > 0.01 THEN
+       LIN_FREE(#33, ON(r33_id), ON(r34_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r41_id)-ON(r42_id)) > 0.01 THEN
+       LIN_FREE(#41, ON(r41_id), ON(r42_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r42_id)-ON(r43_id)) > 0.01 THEN
+       LIN_FREE(#42, ON(r42_id), ON(r43_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r43_id)-ON(r44_id)) > 0.01 THEN
+       LIN_FREE(#43, ON(r43_id), ON(r44_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r11_id)-ON(r21_id)) > 0.01 THEN
+       LIN_FREE(#111, ON(r11_id), ON(r21_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r21_id)-ON(r31_id)) > 0.01 THEN
+       LIN_FREE(#121, ON(r21_id), ON(r31_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r31_id)-ON(r41_id)) > 0.01 THEN
+       LIN_FREE(#131, ON(r31_id), ON(r41_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r12_id)-ON(r22_id)) > 0.01 THEN
+       LIN_FREE(#112, ON(r12_id), ON(r22_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r22_id)-ON(r32_id)) > 0.01 THEN
+       LIN_FREE(#122, ON(r22_id), ON(r32_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r32_id)-ON(r42_id)) > 0.01 THEN
+       LIN_FREE(#132, ON(r32_id), ON(r42_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r13_id)-ON(r23_id)) > 0.01 THEN
+       LIN_FREE(#113, ON(r13_id), ON(r23_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r23_id)-ON(r33_id)) > 0.01 THEN
+       LIN_FREE(#123, ON(r23_id), ON(r33_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r33_id)-ON(r43_id)) > 0.01 THEN
+       LIN_FREE(#133, ON(r33_id), ON(r43_id):BLANK=b_val_p);  
+     ENDIF;
+
+     IF  VECL(ON(r14_id)-ON(r24_id)) > 0.01 THEN
+       LIN_FREE(#114, ON(r14_id), ON(r24_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r24_id)-ON(r34_id)) > 0.01 THEN
+       LIN_FREE(#124, ON(r24_id), ON(r34_id):BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(ON(r34_id)-ON(r44_id)) > 0.01 THEN
+       LIN_FREE(#134, ON(r34_id), ON(r44_id):BLANK=b_val_p);  
+     ENDIF;
+
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Close file
+! ---
+
+  CLOSE(dat);
+
+ENDMODULE

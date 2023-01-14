@@ -1,0 +1,255 @@
+!********************** s_vdeforv0 ********************************
+! +++ 
+!
+! Deformation of a surface with a R*3 translation function
+! in a given direction
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-02-12 Gunnar Liden
+! 1997-04-21 Bug: statement for s_typ  Gunnar Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE s_vdeforv0 (
+REF    s_id         >"@t16 Surface reference";
+REF    def_id       >"@t8  Deformation function ";
+REF    csys_id      >"     Coordinate system for deformation (X/Y plane)";
+INT    graphic := 1 >"Graphics 0: No surface 1: Surface 2: All");
+
+!sdesce Translation deformation of a surface with a function
+!sdescs Translations deformation av en yta med funktion
+
+
+! Internal variables
+
+  INT    s_type;                  ! Surface type        
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  REF    apr_id;                  ! Id. for approximate surface
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  VECTOR s_n;                     ! Current surface normal
+
+  INT    i_u;                     ! Loop index U line
+  INT    i_v;                     ! Loop index V line
+
+  REF    u_r_id;                  ! Identity for U random function
+  REF    v_r_id;                  ! Identity for V random function
+
+  VECTOR uv_sur;                  ! Parameter point on the surface
+  VECTOR pt_sur;                  ! Point on the surface
+  VECTOR tu_sur;                  ! Tangent in U direction
+  VECTOR tv_sur;                  ! Tangent in V direction
+  VECTOR u_r_poi;                 ! Deformation U point
+  VECTOR v_r_poi;                 ! Deformation V point
+  FLOAT  deform;                  ! Deformation value
+  VECTOR v_deform;                ! Deformation direction
+  VECTOR p_int;                   ! Intersect point
+  VECTOR tu_sur_d;                ! Deformed U tangent
+  VECTOR tv_sur_d;                ! Deformed V tangent
+  FLOAT  deformdx;                ! Derivative deformation
+  FLOAT  u_int;                   ! Parameter for p_int
+  VECTOR t_int;                   ! Tangent for p_int
+
+  REF    rot_id;                  ! Identity for rotation line
+  REF    i_id;                    ! Isoparameter identity
+  REF    a_id;                    ! Approx. isoparameter identity
+  REF    tra_id;                  ! Transformation identity
+  REF    c_id;                    ! Current U section curve
+
+  VECTOR poi(111);                ! Points for angle curve 
+  FLOAT  rot_ang;                 ! Current rotation angle
+  VECTOR p1_l;                    ! Start point rotation line
+  VECTOR p2_l;                    ! End   point rotation line
+
+  INT    no_ulines;               ! Number of U curves
+  INT    no_vlines;               ! Number of V curves
+  VECTOR pts(111,111);            ! Points
+  VECTOR tanu(111,111);           ! Tangents in U direction
+  VECTOR tanv(111,111);           ! Tangents in V direction
+  STRING metod*15;                ! Method for tangent length calculation 
+
+  INT    b_val_a;                 ! Blank value for all geometry
+  INT    b_val_s;                 ! Blank value for surface
+
+  STRING s*1;                     ! For Debug 
+
+! Theory
+! _______
+!
+!
+!  r_defor = r_orig + deform* v_deform
+!
+!  dr_deform/du = dr_orig/du + deform/dx*dx/du*v_deform
+!  dr_deform/dv = dr_orig/dv + deform/dx*dx/dv*v_deform
+!
+
+BEGINMODULE
+
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 0;                            ! Change to 0, 1 or 2
+
+  IF    graphic = 0 THEN                ! Check graphics
+    b_val_s := 1;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 1 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 2 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 0;                       !
+  ELSE                                  !
+    EXIT("s_vdeforv0 Graphic not OK");  !
+  ENDIF;                                !
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_INI("Debug printout from "+       !
+          "s_vdeforv0");                !
+  ENDIF;                                !
+
+  FOR  i_u := 1 TO 111 DO               !
+    FOR  i_v := 1 TO 111 DO             !
+      pts(i_u,i_v):= VEC(-0.123456789, -0.123456789, -0.123456789);
+    ENDFOR;                             !
+  ENDFOR;                               !
+
+! +++
+! 2. Approximate to cubic surface if necessary 7
+! ---
+ 
+  GETSURH(s_id,"SUR_TYPE",s_type);      ! Retrieve surface type          
+
+  IF        s_type = 1 THEN
+!   CUB_SUR
+    ;
+    apr_id := s_id;
+  ELIF      s_type = 7 THEN
+    SUR_APPROX(#4, s_id, "CUB_SUR", 1, 3, 3 :BLANK=b_val_a);
+    apr_id := GLOBAL_REF(#4);  ! Borde vara 1 Kolla !!!
+  ELSE
+    SUR_APPROX(#5, s_id, "CUB_SUR", 1, 5, 5 :BLANK=b_val_a);
+    apr_id := GLOBAL_REF(#5);
+  ENDIF;
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(apr_id,"NPATU",npatu);        ! Retrieve number of U patches
+  GETSURH(apr_id,"NPATV",npatv);        ! Retrieve number of V patches
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Input surface type        "+STR(s_type,4,0)); 
+  LST_LIN("Number of U patches npatu "+STR(npatu, 4,0)+" (Approx. surface)"); 
+  LST_LIN("Number of V patches npatv "+STR(npatv, 4,0)+" (Approx. surface)"); 
+  ENDIF;             
+  
+  
+  v_deform := VEC(0,0,0);
+  MODE_LOCAL(csys_id);
+  LIN_FREE(#8, VEC(0,0,0), VEC(0,1,0):BLANK=b_val_a);
+  MODE_GLOBAL();
+  v_deform := ON(GLOBAL_REF(#8),1.0) - ON(GLOBAL_REF(#8), 0.0);
+
+! +++
+! 5. Create points and tangents for surface        
+! ---
+
+! Start loop U lines
+  FOR    i_u  := 0 TO npatu DO
+!   Start loop V lines
+    FOR  i_v  := 0 TO npatv DO
+!     Parameter point on the surface
+      uv_sur  := VEC(i_u,i_v);
+!     Point on the surface
+      pt_sur  :=   ON(apr_id,uv_sur);
+!     Tangent in U direction
+      tu_sur  := EVAL(apr_id,"DRDU",uv_sur);
+!     Tangent in V direction
+      tv_sur  := EVAL(apr_id,"DRDV",uv_sur);
+!     Activate local system for the deformation curve
+      MODE_LOCAL(csys_id);
+!     Create line which will be used for intersect calculation
+      LIN_PROJ(#6, ON(apr_id,uv_sur), 
+                   ON(apr_id,uv_sur) + VEC(0,50,0):PEN=2);
+!     Calculate intersect (get deformation value)
+      p_int := INTERSECT(GLOBAL_REF(#6),def_id,-1);
+!     Calculate T value for the intersect point   
+      u_int := INV_ON(def_id,p_int,1);   
+!     Tangent for intersect point
+      t_int := TANG(def_id,u_int);   
+!     Activate the global system
+      MODE_GLOBAL();
+!     Deformation derivative
+      IF  ABS(t_int.x) > 0.00001  THEN
+        deformdx := t_int.y/t_int.x;
+      ELSE
+        EXIT("s_vdeforv0 Derivative deformation curve not OK");
+      ENDIF;
+!     Delete the temporarely used line
+      DEL(GLOBAL_REF(#6));
+!     Deformation (translation) value
+      deform := p_int.y;
+!     Deformed (translated) point to array
+      pts(i_u+1,i_v+1) := pt_sur + deform*v_deform;
+!     Deformed tangents
+!     dr_deform/du = dr_orig/du + deform/dx*dx/du*v_deform
+!     dr_deform/dv = dr_orig/dv + deform/dx*dx/dv*v_deform
+      tu_sur_d := tu_sur + deformdx*tu_sur.x*v_deform;
+      tv_sur_d := tv_sur + deformdx*tv_sur.x*v_deform;
+!     Deformed tangents to array
+      tanu(i_u+1,i_v+1) := VECN(tu_sur_d);
+      tanv(i_u+1,i_v+1) := VECN(tv_sur_d);
+!      tanu(i_u+1,i_v+1) := VECN(tu_sur  ); ! Tillfalligt !!!!!!!!
+!      tanv(i_u+1,i_v+1) := VECN(tv_sur  ); ! Tillfalligt !!!!!!!!
+      IF  DEBUG = 1 THEN
+      LST_LIN("u_int    " +STR(u_int  ,8,5) );
+      LST_LIN("t_int    " +STR(t_int.x,8,5) +" "
+                       +STR(t_int.y,8,5) +" "+STR(t_int.z,8,5));
+      LST_LIN("deformdx " +STR(deformdx  ,8,5) );
+      ENDIF;
+      IF  graphic >= 2 AND ABS(deform) > 0.2 AND i_u = 3 THEN
+!      LIN_FREE(#100, pt_sur, pt_sur + deform*v_deform:PEN=3);
+      LIN_FREE(#101, pt_sur + deform*v_deform,
+         pt_sur + deform*v_deform + 15*VECN(tu_sur_d):PEN=2 );
+      LIN_FREE(#102, pt_sur + deform*v_deform,
+         pt_sur + deform*v_deform + 10*VECN(tu_sur  ):PEN=4 );
+      ENDIF;
+    ENDFOR;                             ! End   loop V lines
+  ENDFOR;                               ! End   loop U lines
+
+! +++
+! 6. Create surface
+! ---
+
+!  metod := "ADINI_1";
+  metod := "ZEROTWIST_1";
+  no_ulines := npatu +1;
+  no_vlines := npatv +1;
+  SUR_SPLARR(#1,metod,
+             no_ulines,no_vlines,
+             pts, tanu, tanv
+      :BLANK=b_val_s);
+
+  IF  DEBUG = 1 THEN
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE
+

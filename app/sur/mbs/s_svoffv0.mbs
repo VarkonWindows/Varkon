@@ -1,0 +1,101 @@
+!******************** s_svoffv0 ********************
+! +++                                              *
+! Create an approximative deformation surface      *
+!                                                  *
+! ---                                              *
+! Revision history				   *
+! _________________				   *
+!						   *
+! 1996-09-16 Elsa Rydman			   *
+! 1997-01-27 bval_s added Gunnar Liden
+!						   *
+!***************************************************
+
+!sdesce Create an approximative deformation surface 
+
+!sdescs Skapa en approximativ deformationsyta
+
+
+GLOBAL GEOMETRY MODULE s_svoffv0 (
+
+REF prt_id         > "@t16384 Part which registrates deformation surface";
+INT   graphic := 1 > "Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+! Internal variables
+
+  REF     sur_id;              ! Reference to surface
+  
+  REF     u0_id;               ! Reference to U0 boundary
+  REF     u1_id;               ! Reference to U1 boundary
+  REF     v0_id;               ! Reference to V0 boundary
+  REF     v1_id;               ! Reference to V1 boundary
+
+  INT     bval_s;              ! Blank value surface
+  
+  INT     DEBUG;               ! Debug
+  
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 0. Initializations
+! ---
+
+  IF    graphic = 0 THEN
+    bval_s := 1;
+  ELIF  graphic = 1 THEN
+    bval_s := 0;
+  ELIF  graphic = 2 THEN
+    bval_s := 0;
+  ELSE
+    EXIT("s_svoffv0 graphic not 0, 1 or 2");
+  ENDIF;  
+
+! +++
+! 1. Get data (references) from the input registration part 
+! ---
+
+  sur_id := GETREF(prt_id,1);	! Get reference to surface
+  
+  u0_id  := GETREF(prt_id,2);	! Get reference to U0 boundary
+  u1_id  := GETREF(prt_id,3);	! Get reference to U1 boundary
+  v0_id  := GETREF(prt_id,4);	! Get reference to V0 boundary
+  v1_id  := GETREF(prt_id,5);	! Get reference to U1 boundary
+  
+  
+! +++
+! 2. Evaluate iso_curves in u- and v-direction
+! ---
+
+  PART(#1, coonisov0(u0_id,	! Create iso_curve in u- and v-
+    u1_id,v0_id,v1_id,0.1,0.1,	! direction with steplength 0.1
+    1,0.01,0));			! and tolerence 0.01.
+    
+  
+! +++
+! 3. Create an approximate deformation surface 
+! ---
+
+    
+  PART(#2,acubsurv1(10, 	! Create a cubic surface
+    global_ref(#1#49.1), 	! with the v-iso curves
+    global_ref(#1#49.2), 	!
+    global_ref(#1#49.3), 	!
+    global_ref(#1#49.4), 	!
+    global_ref(#1#49.5), 	!
+    global_ref(#1#49.6), 	!
+    global_ref(#1#49.7), 	!
+    global_ref(#1#49.8), 	!
+    global_ref(#1#49.9), 	!
+    global_ref(#1#49.10), 	!
+    global_ref(#1#49.11),	!
+    #0, #0, #0, #0, #0, #0, #0, 	
+    #0, #0, #0, #0, #0, #0, #0, 2)
+    :BLANK=bval_s);
+  
+
+ENDMODULE

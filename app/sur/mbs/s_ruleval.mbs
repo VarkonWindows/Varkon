@@ -1,0 +1,162 @@
+!******************** s_ruleval ********************
+! +++ 
+!
+! Evaluation of ruled surf. coordinates and derivatives
+!
+! --- 
+! Revision history
+! ________________
+!
+! 1997-04-26 Gunnar Liden
+!
+!***************************************************
+
+!sdesce Evaluation of ruled surf. coordinates and derivatives
+
+!sdescs Berakning koord.'er och derivator i regelyta
+
+
+GLOBAL GEOMETRY MODULE s_ruleval (
+
+REF v0_id                     >"@t8  Select boundary curve V0";
+REF v1_id                     >"@t8  Select boundary curve V1";
+VECTOR uv_rel := VEC(0.1,0.3) >"Relative parameter values";
+INT graphic :=1               >"=1: All ");
+
+! Internal variables
+
+  FLOAT  a_v0;                ! Arclength v0
+  FLOAT  a_v1;                ! Arclength v1
+  FLOAT  u_v0;                ! U value   v0
+  FLOAT  u_v1;                ! U value   v1
+  VECTOR p_v0;                ! Point     v0
+  VECTOR p_v1;                ! Point     v1
+  VECTOR drdt_v0;             ! Tangent   v0
+  VECTOR drdt_v1;             ! Tangent   v1
+  VECTOR d2rdt2_v0;           ! Second derivative v0
+  VECTOR d2rdt2_v1;           ! Second derivative v1
+  VECTOR p_rel;               ! Coordinates for uv_rel
+  FLOAT  as_v0;               ! Arclength current segment v0
+  FLOAT  as_v1;               ! Arclength current segment v1
+  INT    i_v0;                ! Current segment i_v0
+  INT    i_v1;                ! Current segment i_v1
+ 
+  INT    DEBUG;               ! For Debug
+  
+BEGINMODULE
+
+! +++
+! Initializations
+! ---
+
+  DEBUG := 1;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("s_ruleval Debug");
+  ENDIF;
+
+! +++
+! Arclengths
+! ---
+
+  a_v0 := ARCL(v0_id);
+  a_v1 := ARCL(v1_id);
+
+! +++
+! U values corresponding to uv_rel
+! ---
+
+  u_v0 := INV_ARCL(v0_id, uv_rel.x*a_v0);
+  u_v1 := INV_ARCL(v1_id, uv_rel.x*a_v1);
+
+! +++
+! Points on boundary curves
+! ---
+
+  p_v0 := ON(v0_id, u_v0);
+  p_v1 := ON(v1_id, u_v1);
+
+! +++
+! Tangents on boundary curves
+! ---
+
+  drdt_v0 := EVAL(v0_id, "DRDT", VEC(u_v0,0,0));
+  drdt_v1 := EVAL(v1_id, "DRDT", VEC(u_v1,0,0));
+
+! +++
+! Second derivatives on boundary curves
+! ---
+
+  d2rdt2_v0 := EVAL(v0_id, "D2RDT2", VEC(u_v0,0,0));
+  d2rdt2_v1 := EVAL(v1_id, "D2RDT2", VEC(u_v1,0,0));
+
+! +++
+! Point for uv_rel
+! ---
+
+  p_rel := (1.0-uv_rel.y)*p_v0 + uv_rel.y*p_v1;
+
+! +++
+! Current segments 
+! ---
+
+  i_v0 := TRUNC(u_v0);
+  i_v1 := TRUNC(u_v1);
+
+! +++
+! Arclength current segments 
+! ---
+
+  CUR_TRIM(#11, v0_id, i_v0+0.0000000001, i_v0 + 0.999999999999:PEN=2);
+  CUR_TRIM(#12, v1_id, i_v1+0.0000000001, i_v1 + 0.999999999999:PEN=2);
+
+  as_v0 := ARCL(GLOBAL_REF(#11));
+  as_v1 := ARCL(GLOBAL_REF(#12));
+
+! +++
+! Surface tangents
+! ---
+
+! +++
+! Debug printout
+! ---
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("a_v0=  "+STR(a_v0, 10,4)+" a_v1=  "+STR(a_v1, 10,4));
+  LST_LIN("u_v0=  "+STR(u_v0, 10,4)+" u_v1=  "+STR(u_v1, 10,4));
+  LST_LIN("i_v0=  "+STR(i_v0, 10,0)+" i_v1=  "+STR(i_v1, 10,0));
+  LST_LIN("as_v0= "+STR(as_v0,10,4)+" as_v1= "+STR(as_v1,10,4));
+  LST_LIN("drdt_v0=    "+STR(drdt_v0.x,   10,4)+
+                     " "+STR(drdt_v0.y,   10,4)+
+                     " "+STR(drdt_v0.z,   10,4));
+  LST_LIN("drdt_v1=    "+STR(drdt_v1.x,   10,4)+
+                     " "+STR(drdt_v1.y,   10,4)+
+                     " "+STR(drdt_v1.z,   10,4));
+  LST_LIN("d2rdt2_v0=  "+STR(d2rdt2_v0.x, 10,4)+
+                     " "+STR(d2rdt2_v0.y, 10,4)+
+                     " "+STR(d2rdt2_v0.z, 10,4));
+  LST_LIN("d2rdt2_v1=  "+STR(d2rdt2_v1.x, 10,4)+
+                     " "+STR(d2rdt2_v1.y, 10,4)+
+                     " "+STR(d2rdt2_v1.z, 10,4));
+  LST_LIN("p_rel=      "+STR(p_rel.x,  10,4)+" "+STR(p_rel.y,  10,4)+
+                     " "+STR(p_rel.z,  10,4));
+  ENDIF;
+
+! +++
+! Graphics
+! ---
+
+  IF  graphic >= 1 THEN
+  POI_FREE(#1, p_rel:PEN=2);
+  LIN_FREE(#9, p_v0, p_v1:PEN=3);
+  ENDIF;
+
+! +++
+! Exit
+! ---
+
+  IF  DEBUG = 1 THEN
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

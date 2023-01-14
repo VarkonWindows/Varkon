@@ -1,0 +1,37 @@
+!******************** s_rvoffv0 ********************
+! +++                                              *
+! Registrate a deformation surface                 *
+!                                                  *
+! ---                                              *
+! Revision history				   *
+! _________________				   *
+!						   *
+! 1996-09-16 Elsa Rydman			   *
+!   						   *
+!***************************************************
+
+!sdesce Registrate a deformation surface
+
+!sdescs Registrera en deformationsyta
+
+
+GLOBAL GEOMETRY MODULE s_rvoffv0 (
+
+REF sur_id > "@t16 Select surface";
+REF u0_id  > "@t8  Select boundary curve U0";
+REF u1_id  > "@t8  Select boundary curve U1";
+REF v0_id  > "@t8  Select boundary curve V0";
+REF v1_id  > "@t8  Select boundary curve V1");
+
+! Internal variables
+
+ 
+  
+BEGINMODULE
+
+! +++
+! No calculations, just registration
+! ---
+;
+
+ENDMODULE

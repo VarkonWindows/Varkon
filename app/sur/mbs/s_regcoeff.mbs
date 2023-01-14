@@ -1,0 +1,46 @@
+!********************  s_regcoeff *********************
+! +++
+! Registration of SUR_USRDEF CUB_PAT patch data
+!
+! ---
+! Revision history
+! _________________
+!
+! 1997-03-23 Gunnar Liden
+!
+!******************************************************
+!sdesce Registration of SUR_USRDEF CUB_PAT  patch data
+!sdescs Registrering av SUR_USRDEF CUB_PAT "patch" data
+
+GLOBAL GEOMETRY MODULE s_regcoeff (
+
+INT    g_case;                   ! Case geometric data
+                                 ! Eq. 1: Not yet used ...   
+INT    i_u;                      ! Patch address IU 
+INT    i_v;                      ! Patch address IV
+INT    p_typ;                    ! Patch type
+VECTOR a00;                      ! Coefficient for 1.0  * 1.0 
+VECTOR a01;                      ! Coefficient for U    * 1.0 
+VECTOR a02;                      ! Coefficient for U**2 * 1.0 
+VECTOR a03;                      ! Coefficient for U**3 * 1.0 
+VECTOR a10;                      ! Coefficient for 1.0  * V   
+VECTOR a11;                      ! Coefficient for U    * V   
+VECTOR a12;                      ! Coefficient for U**2 * V   
+VECTOR a13;                      ! Coefficient for U**3 * V   
+VECTOR a20;                      ! Coefficient for 1.0  * V**2
+VECTOR a21;                      ! Coefficient for U    * V**2
+VECTOR a22;                      ! Coefficient for U**2 * V**2
+VECTOR a23;                      ! Coefficient for U**3 * V**2
+VECTOR a30;                      ! Coefficient for 1.0  * V**3
+VECTOR a31;                      ! Coefficient for U    * V**3
+VECTOR a32;                      ! Coefficient for U**2 * V**3
+VECTOR a33;                      ! Coefficient for U**3 * V**3
+FLOAT  offset);                  ! Offset for the patch
+
+
+BEGINMODULE
+
+; ! No calculation. Just registration
+
+ENDMODULE
+

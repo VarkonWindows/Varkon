@@ -1,0 +1,25 @@
+!********************  s_reghead  *********************
+! +++
+! Registration of SUR_USRDEF surface header data
+!
+! ---
+! Revision history
+! _________________
+!
+! 1997-03-23 Gunnar Liden
+!
+!******************************************************
+!sdesce Registration of SUR_USRDEF surface header data
+!sdescs Registrering av SUR_USRDEF huvud data för yta
+
+GLOBAL GEOMETRY MODULE s_reghead (
+
+INT     n_u;                     ! Number of patches in U direction
+INT     n_v;                     ! Number of patches in V direction
+INT     sur_type);               ! Surface type
+
+BEGINMODULE
+
+; ! No calculation. Just registration
+
+ENDMODULE

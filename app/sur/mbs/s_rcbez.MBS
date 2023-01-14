@@ -1,0 +1,48 @@
+! ***************** s_rcbez    ****************************
+!
+! +++
+! Registrate Bezier polygon point for a rational cubic curve
+!
+! There is an option to registrate the Bezier polygon point
+! as a part, by inputting a name of the part and writing a
+! module with the same name. The parameters for this module
+! shall be:
+!
+! 1. Bezier polygon point   (VECTOR)
+! 2. Weight for the point   (FLOAT)
+! 3. Point number (0,1,2,3) (INT)
+! 4. Segment number         (INT)
+!
+! The user/programmer can write his own module, but
+! this module can also be used ...
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registrate Bezier polygon point (example module)
+!sdescs Registrera Bezier polygon point (exampel modul)
+
+
+GLOBAL GEOMETRY MODULE s_rcbez    (
+VECTOR ri;        ! 1. Bezier polygon point
+FLOAT  wi;        ! 2. Weight for the point
+INT    ni;        ! 3. Point number (0,1,2,3)
+INT    is);       ! 4. Segment number 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! No caculation, only registration.  
+! ---
+
+ ;
+
+ENDMODULE

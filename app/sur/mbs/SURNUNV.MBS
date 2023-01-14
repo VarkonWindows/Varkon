@@ -1,0 +1,158 @@
+!********************* surnunv   **************************************
+!
+! +++
+! Funktionen fastställer antal U och V linjer, ytans 
+! utsträckning (ytans max- och min-värden i R*3) samt
+! typ av yta.
+!
+!  1994-04-10  Gunnar Liden
+!  1996-02-13  Consurf coefficient added Gunnar Liden
+! ---
+!
+!***********************************************************************
+
+!sdesce Retrieve number of patches and surfcae type
+!sdescs Ta reda på antal patches och yt typ
+
+
+BASIC  GEOMETRY MODULE surnunv (
+
+    STRING srffil*80;              ! Ytdata (F07 fil)
+    INT    mcase;                  ! =1 Maxmin =2 Ej maxmin
+VAR STRING stype*1;                ! =c Consurf  =b Bicubic
+VAR FLOAT  minx;                   ! Minimum X värde för ytan
+VAR FLOAT  maxx;                   ! Maximum X värde för ytan
+VAR FLOAT  miny;                   ! Minimum Y värde för ytan
+VAR FLOAT  maxy;                   ! Maximum Y värde för ytan
+VAR FLOAT  minz;                   ! Minimum Z värde för ytan
+VAR FLOAT  maxz;                   ! Maximum Z värde för ytan
+
+VAR INT    n_ulines;               ! Antal U linjer i ytan       
+VAR INT    n_vlines);              ! Antal V linjer i ytan       
+
+!                           Internal variables
+!                           ==================
+
+FILE   f;                          ! Fil med ytdata (F07 file)
+
+INT   yttyp;                       ! =1001 Bicubic (=1003 Consurf)
+
+INT   ix;                          ! Slaskvariabel vid läsning
+
+STRING surname*30;                 ! Ytnamn för bikubisk yta        
+
+INT   nmg_type;                    ! 1001: Bicubic  1003: Consurf coefficient
+
+INT   idum1;                       ! Dummy integer
+
+INT   DEBUG;                       ! För Debug
+
+STRING rad*132;                    ! Slask variabel för att läsa hel
+                                   ! rad eller radslut med INLIN
+
+STRING s*1;                        ! För INPMT
+
+
+
+BEGINMODULE
+
+! +++
+!                  Algoritm
+!                  ========
+! ---
+
+!             0. Initieringar och kontroller av indata
+!             ========================================
+
+  DEBUG := 0;                      ! =0 eller 1 eller 2
+
+  OPEN(f,"r",srffil);              ! Öppna fil med yt-data      
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit med fel meddelande om
+    EXIT("Fil "+srffil+" saknas!");! filen srffil inte finns.      
+  ENDIF;
+
+
+! +++
+!    Läs första raden i filen för att fastställa yttyp        
+! ---
+
+
+  surname :=INSTR(f,30);           ! Ytnamn eller LINE
+  IF IOSTAT(f) <> 0 THEN           ! Exit vid fel i fil.         
+    EXIT("Rad 1 fel 1 i fil");     ! 
+  ENDIF;                           !
+  rad:=INLIN(f);                   ! Läs resten av första raden
+  IF IOSTAT(f) <> 0 THEN           ! Exit vid fel i fil.         
+    EXIT("Rad 1 fel 2 i fil");     ! 
+  ENDIF;                           !
+
+
+  IF SUBSTR(surname,1,4)= "LINE"   !
+                             THEN  ! Consurf
+   stype:= "c";                    !
+  ELSE                             ! Bicubic or Consurf coefficient
+   stype:= "x";                    !
+  ENDIF;                           !
+
+! +++
+!   Antal U och V linjer för en Consurf yta. Anrop av rdcons1v1.
+! ---
+
+  IF  stype = "c" THEN             !
+     CLOSE(f);                     ! Stäng fil med yt-data.
+    PART(#1,rdcons1v1(srffil,      ! Anrop av rdcons1v1
+    minx,maxx,miny,maxy,minz,maxz, ! 
+    n_ulines,n_vlines)             !
+    :SAVE=0);                      ! (sparas ej i GM)
+    GOTO  slut;                    !
+  ENDIF;                           !
+
+! +++
+!   Antal U och V linjer för en Bicubic yta. Läs antal kurvor
+!   i U resp. V riktning (rad 2 i F07 filen)
+! ---
+
+
+  IF DEBUG = 2 THEN                 ! Debug printout to screen
+  s:=INPMT("surnunv: "+             ! 
+    "Yta "+surname+" "              !
+         ,"",1);                    !
+  ENDIF;                            !
+
+  ix      :=ININT(f);               ! Alltid = 1
+  ix      :=ININT(f);               ! Antal värden per record (48 bikub)
+  ix      :=ININT(f);               ! Patch nummer i filen
+  ix      :=ININT(f);               ! Alltid = 0
+  yttyp   :=ININT(f);               ! Yttyp (=1001) NMGTYPE
+  ix      :=ININT(f);               ! 0
+  ix      :=ININT(f);               ! 0
+  n_ulines:=ININT(f);               ! Antal U kurvor i ytan
+  n_vlines:=ININT(f);               ! Antal V kurvor i ytan
+  ix      :=ININT(f);               ! 0
+  rad     :=INLIN(f);               ! Radslut till slaskvariabel
+
+  CLOSE(f);                         ! Stäng fil med yt-data.
+
+  IF     yttyp  = 1001  THEN        ! Bikubisk yta          
+    stype:= "b";                    !
+  ELIF   yttyp  = 1003  THEN        ! Consurf koefficient   
+    stype:= "n";                    !
+  ELSE                              !
+    EXIT("surnunv: NMG typ fel");   ! 
+  ENDIF;                            !
+
+  IF mcase = 1      THEN            ! Maxmin ej programmerat      
+    EXIT("surnunv: Maxmin"+         !
+      " progr. för bikubisk");      ! 
+  ENDIF;                            !
+
+slut:;                              ! Label: Consurf yta
+
+  IF DEBUG > 0 THEN                 ! Debug printout to screen
+  s:=INPMT("surnunv: "+             ! 
+    "stype "+stype+" Antal " +      !
+  STR(n_ulines,-1,0)+" "+           !
+  STR(n_vlines,-1,0)+" "            !
+         ,"",1);                    !
+  ENDIF;                            !
+ENDMODULE

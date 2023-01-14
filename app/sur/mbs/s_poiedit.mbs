@@ -1,0 +1,214 @@
+!*********************  s_poiedit *************************************
+! +++
+! The function edits a surface point file 
+!
+! Revision history
+! ________________
+!
+! 1994-06-30 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Edit point file (SUR_POINTS format)
+!sdescs Editera punkt fil (SUR_POINTS format)
+
+GLOBAL GEOMETRY MODULE  s_poiedit (
+STRING  fin1*15  := "A_MODIN49X256">"Input file";
+INT     iu_s     := 1              > "Start U point ";
+INT     iv_s     := 129            > "Start V point ";
+INT     iu_e     := 49             > "End   U point ";
+INT     iv_e     := 256            > "End   V point ";
+INT     iu_add   := 0              > "Delta to add to iu";
+INT     iv_add   := -128           > "Delta to add to iv";
+STRING  fout*15  := "MODIN49X256TB" >"Output file ";
+STRING  o_s*4    := "UNIX"         >"Operating system (UNIX or VAX)";
+INT     e_case   := 3              
+> "Case Eq. 2: Only points with normals Eq. 3: Add V line for closed surface";
+INT     graphic  := 0              >"Graphic: 0= none, 1= reduced, 2= full");
+
+! Internal variables:
+
+  STRING f_name1*132;          ! Full file name 1
+  STRING f_name2*132;          ! Full file name 2
+  FILE   pdat;                 ! File with points, normals, ...
+  STRING fout_name*132;        ! Output file name
+  FILE   pdatout;              ! 
+
+  INT    i_p;                  ! Loop index point
+
+  INT    iu_out,iv_out;        ! Output point number
+
+  VECTOR s_pt;                 ! Point on surface
+  VECTOR s_n;                  ! Normal for surface point s_pt
+  VECTOR kap1;                 ! Principal curvature direction
+  VECTOR kap2;                 ! Principal curvature direction
+  FLOAT  k1;                   ! Principal curvature
+  FLOAT  k2;                   ! Principal curvature
+
+  INT    iu,iv;                ! Point number
+  VECTOR utan;                 ! Tangent in U direction
+  VECTOR vtan;                 ! Tangent in V direction
+  VECTOR twist;                ! Twist vector           
+
+  INT    flag;                 ! End of file flag
+
+  STRING rad*132;              ! Dummy string
+
+  INT    npts;                 ! Total number of points
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initiations
+!
+!    Open input file with points, normals and curvature
+
+
+  DEBUG := 1;                 ! =0 or =1
+
+  IF    o_s = "VAX"   THEN    ! Operating system UNIX
+    f_name1:= ACT_JOBDIR() +  !
+     fin1  +".";              !
+    fout_name:= ACT_JOBDIR()+ !
+       fout;                  !
+  ELIF  o_s = "UNIX"  THEN    ! Operating system UNIX 
+    f_name1:= ACT_JOBDIR() +  ! 
+     fin1 ;                   !
+    fout_name:=ACT_JOBDIR() + ! 
+          fout;               !
+  ELSE                        !
+   EXIT("s_poiedit o_s "+     !
+        o_s);                 !
+  ENDIF;                      !
+
+  OPEN(pdat,"R",f_name1);     ! Open file 1 with data
+  IF IOSTAT(pdat) <> 0 THEN   !
+   EXIT(f_name1+"failed");    !
+  ENDIF;                      !
+
+  rad:= INLIN(pdat);          ! Read header
+
+  OPEN(pdatout,"W",fout_name);! Open file for output data
+  IF IOSTAT(pdatout) <> 0 THEN!
+   EXIT(fout_name+"failed");  !
+  ENDIF;                      !
+
+! Header to output file
+
+IF e_case = 3 THEN            !
+OUTSTR(pdatout,"total    "   +   STR( iu_e-iu_s + 1 ,-21,0 )+
+                       " "   +   STR( iv_e-iv_s  + 2,-21,0 ));
+ELSE
+OUTSTR(pdatout,"total    "   +   STR( iu_e-iu_s + 1 ,-21,0 )+
+                       " "   +   STR( iv_e-iv_s  + 1,-21,0 ));
+ENDIF;
+
+
+OUTLIN(pdatout);             
+
+  npts:= 0;                   ! Output number of points
+
+  FOR i_p := 1 TO 20000  DO   ! Start loop read pts in file 1
+
+
+!+++
+!     Read  surface point, normal, curvature, point number
+!     and tangents from input file. Call of POIGETF006.
+!---
+
+      PART(#1,POIGETF006(        ! Read  point from input file
+       pdat, iu, iv,             !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist,flag)               ! 
+       :SAVE=0);                 !
+      IF flag = -1 THEN          ! End Of File ?
+        GOTO nxtfil;             !
+      ENDIF;                     !
+
+!+++
+!     Write surface point, normal, curvature, point number
+!     and tangents to output file. Call of POIRECF006.
+!---
+
+! tangent ej riktigt normerad. Tillfällig fix
+!     IF ABS(VECL(utan)-1.0)>0.00001 THEN
+!       s:= INPMT("utan: "+
+!       STR(iu,-1,0)+" "+STR(iv,-1,0)+" l= "+STR(VECL(utan),-15,8),"",1);
+!     ENDIF;
+!     IF ABS(VECL(vtan)-1.0)>0.00001 THEN
+!       s:= INPMT("utan: "+
+!       STR(iu,-1,0)+" "+STR(iv,-1,0)+" l= "+STR(VECL(vtan),-15,8),"",1);
+!     ENDIF;
+
+      utan:= VECN(utan);         ! Normering (tillfällig fix)
+      vtan:= VECN(vtan);         ! Normering (tillfällig fix)
+
+      IF  e_case = 2 THEN        ! Normal defined ?
+        IF VECL(s_n)<0.0001 THEN !
+          GOTO undef;            !
+        ENDIF;                   !
+      ENDIF;                     !
+
+
+
+      IF iu >= iu_s AND iu <= iu_e AND iv >= iv_s AND iv <= iv_e THEN
+
+      iu_out:= iu + iu_add;      !
+      iv_out:= iv + iv_add;      !
+      PART(#2,POIRECF006(        ! Write point to output file
+       pdatout, iu_out, iv_out,  !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+
+      IF graphic = 1 THEN        ! Graphics
+        POI_FREE(#3,s_pt);       !
+      ENDIF;                     !
+
+      npts := npts + 1;          ! An additional point
+      ENDIF;                     ! End uv limit area
+
+      IF iu >= iu_s AND iu <= iu_e AND iv = 1 AND e_case = 3     THEN
+
+      iu_out:= iu + iu_add;      !
+      iv_out:= iv_e - iv_s + 2;  ! iv_add  ??????
+
+      PART(#4,POIRECF006(        ! Write point to output file
+       pdatout, iu_out, iv_out,  !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+
+      IF graphic = 1 THEN        ! Graphics
+        POI_FREE(#5,s_pt);       !
+      ENDIF;                     !
+
+      npts := npts + 1;          ! An additional point
+      ENDIF;                     ! End uv limit area
+
+
+undef:;                          ! Label: Undefined normal
+
+  ENDFOR;                        ! End   loop file 1
+
+nxtfil:;                         ! 
+
+  CLOSE(pdat);                   ! Close input  file
+
+OUTSTR(pdatout,"EOF      "   +   STR(      npts ,-21,0 ));
+OUTLIN(pdatout);
+  CLOSE(pdatout);                ! Close output file
+
+ENDMODULE

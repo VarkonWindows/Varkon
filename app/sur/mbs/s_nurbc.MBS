@@ -1,0 +1,151 @@
+! ***************** s_nurbc    ****************************
+!
+! +++
+! Convert a rational cubic curve to NURBS nodes and knots
+!
+! The nodes will be registered with module s_nurbr and 
+! evaluation module s_nurbe can be used to evaluate point 
+! and derivatives.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Convert a rational cubic curve to NURBS 
+!sdescs Omvandla rational kubisk kurva till NURBS 
+
+
+GLOBAL GEOMETRY MODULE s_nurbc    (
+
+REF    cur_id         > "@t8 Select curve";
+INT    graphic :=  1  > "=0: Nothing =1: Lines =2: Add points");
+
+
+! Internal variables
+
+  CONSTANT STRING reg_name = "s_rcbez"; ! Registrate Bezier
+
+  REF    prt_id;       ! Reference to reg_name part
+
+                       ! For s_rcbez
+  VECTOR b_ri;         ! 1. Bezier polygon point
+  FLOAT  b_wi;         ! 2. Weight for the point
+  INT    b_ni;         ! 3. Point number (0,1,2,3)
+  INT    b_is;         ! 4. Segment number 
+
+
+                       ! For s_nurbr
+  VECTOR n_ri;         ! 1. NURBS  polygon point
+  FLOAT  n_wi;         ! 2. Weight for the point
+  INT    n_ui;         ! 3. Point number in U direction
+  INT    n_vi;         ! 4. Point number in V direction
+  FLOAT  n_ku;         ! 5. Knot value in U direction
+  FLOAT  n_kv;         ! 6. Knot value in V direction
+
+  INT    max_pno;      ! Maximum polygon point number
+  FLOAT  max_nku;      ! Maximum knot value
+
+  INT    b_val_p;      ! Blank value
+  INT    graphic_p;    ! Graphic s_cbezv0
+
+  INT    DEBUG;        ! For Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    b_val_p   := 1;
+    graphic_p := 0;
+  ELIF graphic = 1 THEN
+    b_val_p   := 0;
+    graphic_p := 0;
+  ELIF graphic = 2 THEN
+    b_val_p   := 0;
+    graphic_p := 1;
+  ELSE
+    EXIT("s_nurbc  graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialization of internal variables
+  prt_id  := #0;
+  max_pno := 0;
+  max_nku := -0.123456789;
+
+! +++
+! 2. Create Bezier polygon points registered with s_rcbez
+! ---
+
+  PART(#9, s_cbezv0 ( cur_id, reg_name, graphic_p));
+
+! +++
+! 3. Retrieve Bezier poygon points and register as NURBS
+! ---
+
+  SET_ROOT_GM(GLOBAL_REF(#9));
+
+nxt_bpol:; ! Label: Next polygon point
+
+  prt_id := GET_NEXT_GM(0, 16384, reg_name );
+
+  IF  prt_id = #0 THEN
+    GOTO  all_bpol;
+  ENDIF;
+
+  b_ri := GETVEC(prt_id,1);   ! 1. Bezier polygon point
+  b_wi := GETFLT(prt_id,2);   ! 2. Weight for the point
+  b_ni := GETINT(prt_id,3);   ! 3. Point number (0,1,2,3)
+  b_is := GETINT(prt_id,4);   ! 4. Segment number 
+
+! NURBS polygon point
+  n_ri := b_ri;
+  n_wi := b_wi;
+  n_ui := (b_is - 1 )*4 + b_ni + 1;
+  n_vi := 0;
+  IF   b_ni < 2 THEN
+    n_ku := b_is;
+  ELSE
+    n_ku := b_is + 1.0;
+  ENDIF;
+  n_kv := -12345;
+
+! Registrate NURBS polygon point with s_nurbr
+  PART (#1, s_nurbr ( n_ri, n_wi, n_ui, n_vi, n_ku, n_kv));
+
+! Registrate NURBS knot vector value with s_nurbku
+  PART (#2, s_nurbku ( n_ku, n_ui + 2 ));
+  IF  n_ui = 1 THEN
+    PART (#3, s_nurbku ( n_ku, 1 ));
+    PART (#4, s_nurbku ( n_ku, 1 ));
+  ENDIF;
+
+! Update maximum polygon number ?
+  IF  n_ui > max_pno THEN
+    max_pno := n_ui;
+    max_nku := n_ku;
+  ENDIF;
+
+! Next Bezier polygon point
+  GOTO  nxt_bpol;
+
+
+all_bpol:; ! Label: All Bezier polygon points retrieved
+
+! Registrate last NURBS knot vector values with s_nurbku
+  PART (#5, s_nurbku ( max_nku, max_pno + 1 ));
+  PART (#6, s_nurbku ( max_nku, max_pno + 2 ));
+
+ENDMODULE
+

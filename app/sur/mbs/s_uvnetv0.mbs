@@ -1,0 +1,93 @@
+! ***************** s_uvnetv0  ****************************
+!
+! +++
+! Creates a UV net for UV representation of surface 
+! interrogation curves
+!
+! 1994-10-18 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce UV net for UV representation of interrogation curves
+!sdescs UV nät för UV representation av ytutvärderingskurvor
+
+
+GLOBAL GEOMETRY MODULE s_uvnetv0  (
+
+REF    s_id                      > "@t16 Select surface";
+INT    graphic:= 1               > "@ Graphical case");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    i_l;                    ! Loop index for U,V grid
+
+  INT    bflag_i;                ! Blank flag for intersects
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+! 0. Initiations and checks      
+!
+!    Graphic flag for UV net    
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF graphic = 1 THEN            ! 
+    bflag_i := 0;                ! No blank of 
+  ELSE                           !
+    bflag_i := 1;                ! Blank ...
+  ENDIF;                         !
+
+  PART(#2,G_REFSEL(s_id));       ! Add # to reference if necessary
+
+
+! +++
+! 1. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("s_uvnetv0  "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 2. Grid of lines for UV curve case
+!
+!   Create a grid of U,V lines corresponding to the number
+!   of patches in U and V direction.
+! ---
+
+  FOR i_l:=1 TO npatu + 1 DO     ! Start loop U lines
+    LIN_FREE(#15,                ! Create line
+    VEC(100+(i_l-1)*100,100,0),  !
+    VEC(100+(i_l-1)*100,         !
+         100*(npatv+1),0));      !
+  ENDFOR;                        ! End   loop U lines
+  FOR i_l:=1 TO npatv + 1 DO     ! Start loop V lines
+    LIN_FREE(#16,                ! Create line
+    VEC(100,100+(i_l-1)*100,0),  !
+    VEC(100*(npatu+1),           !
+         100+(i_l-1)*100,0));    !
+  ENDFOR;                        ! End   loop V lines
+
+ENDMODULE

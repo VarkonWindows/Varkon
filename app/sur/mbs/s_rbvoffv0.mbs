@@ -1,0 +1,273 @@
+!*************************** s_rbvoffv0 *************************
+!							      	*
+! Evaluate the deformation in a point with relative arclength	*
+!								*
+! Given is a surface and the cooresponding deformation surface.	* 
+! To find the deformation in a perticular point this module use	*
+! relative arclength. The arclengths for a point in the surface *
+! are evaluated over both the iso-curves going trough the point	*
+! in U and V directions and in two steps.			*
+!								*
+! 1. Evaluate the arclength from the iso-curves starting point 	*
+!    to the points position. Repeat for both directions.	*
+! 2. Evaluate the arclength from the iso-curves starting point	*
+!    to its end point. That is the arclength for the iso-curve 	*
+!    over the hole surface. Repeat for both directions.		*
+!								*
+! Divide the results to get the relative arclength.		*
+!								*
+! Go in with the evaluated relative arclengths and search for 	*
+! the cooresponding point in the deformation surface. Read off	*
+! the deformation and give that as out-data from this module. 	*
+!							      	*
+! Revision history					      	*
+! ----------------					      	*
+! 1996-10-18 Elsa Rydman				      	*
+! 1997-01-20 Comments    Elsa Rydman				*
+!							      	*
+!****************************************************************
+
+!sdesce Evaluate the deformation in a point with relative arclength
+
+!sdescs Hämta defomrationen i en punkt med relativa båglängder
+
+GLOBAL GEOMETRY MODULE s_rbvoffv0(
+
+    REF     sur_id;     ! Surface
+    REF     def_id;     ! Relative arclength deformation surface
+    FLOAT   u_in;       ! U value on the surface
+    FLOAT   v_in;       ! V value on the surface
+    INT     graphic;    ! Graphics 0:Nothing 1:Show def. surface 2:All
+VAR FLOAT   thickness); ! Offset (deformation) for the given U,V point
+
+
+! Internal variables
+	
+				! For the surface:
+INT    	nu_sur;   		! Number of patches in u-direction
+INT    	nv_sur;   		! Number of patches in v-direction
+
+FLOAT 	tarc_u_sur;		! Total arclength in u-direction
+FLOAT   tarc_v_sur;		! Total arclength in v-direction
+FLOAT   arc_u_sur;		! Actual arclength in u-direction
+FLOAT   arc_v_sur;		! Actual arclength in v-direction
+FLOAT   rel_u_sur;		! Relative arclength in u-direction
+FLOAT   rel_v_sur;		! Relative arclength in v-direction
+
+				! For the deformation surface:
+INT     nu_def;			! Number of patches in u-direction
+INT     nv_def;			! Number of patches in v-direction
+
+FLOAT 	tarc_u_def;		! Total arclength in u-direction
+FLOAT   tarc_v_def;		! Total arclength in v-direction
+FLOAT   arc_u_def;		! Actual arclength in u-direction
+FLOAT   arc_v_def;		! Actual arclength in v-direction
+FLOAT   rel_u_def;		! Relative arclength in u-direction
+FLOAT   rel_v_def;		! Relative arclength in v-direction
+
+FLOAT   u_out;
+FLOAT   v_out;
+
+VECTOR  p_int;
+VECTOR  uv;
+
+INT     b_val_a;	! Blank value for all geometry
+INT	b_val_s;	! Blank value for surface
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Check of input data
+! ---
+
+
+  GETSURH( sur_id, "NPATU", nu_sur);	   ! Get number of u parameters
+  GETSURH( sur_id, "NPATV", nv_sur);	   ! Get number of v parameters
+  
+  IF u_in >= 0 AND v_in >= 0 THEN          ! Check that u and v values
+     ;					   ! are located on surface
+  ELSE					   !
+     EXIT("s_rboffv0 U and V values " +    !
+         "can not be negative!");	   !
+  ENDIF;				   !
+  					   !
+  IF u_in <= nu_sur THEN                   !
+     ;					   !
+  ELSE					   !
+     EXIT("s_rboffv0 U can't be " + 	   !
+         "bigger than " + str(nu_sur));	   !
+  ENDIF;  				   !
+      					   !
+  IF v_in <= nv_sur THEN                   !
+     ;					   !
+  ELSE					   !
+     EXIT("s_rboffv0 V can't be " + 	   !
+         "bigger than " + str(nv_sur));	   !
+  ENDIF;				   !
+ 
+ 
+! +++
+! 2. Check graphics
+! ---
+
+  IF graphic=0 THEN
+     b_val_a:=1;
+     b_val_s:=1;
+  ELIF graphic=1 THEN
+     b_val_a:=1;
+     b_val_s:=0;
+  ELIF graphic=2 THEN
+     b_val_a:=0;
+     b_val_s:=0;
+  ENDIF;   
+  
+  
+! +++
+! 3. Make iso-curves through the point (u,v) in the surface
+!    and evaluation of the arclengths
+! ---
+
+  CUR_ISO(#1, sur_id,"U", u_in, 0,	! Over all patches in v-direction
+      nv_sur:PEN=1,BLANK=b_val_a);
+  CUR_ISO(#2, sur_id,"V", v_in, 0,	! Over all patches in u-direction 
+      nu_sur:PEN=1,BLANK=b_val_a);
+      
+  tarc_v_sur:=arcl(#1);		        ! Arclength of total curve, v-direction
+  tarc_u_sur:=arcl(#2);	                ! Arclength of total curve, u-direction
+    
+  IF  v_in > 0.0 THEN
+    CUR_ISO(#3, sur_id,"U", u_in, 0,	! To point in v-direction
+         v_in:PEN=3,BLANK=b_val_a);
+    arc_v_sur:=arcl(#3);		! Arclength to point in v-direction
+  ELSE
+    arc_v_sur:= 0.0;
+  ENDIF;
+  
+  IF  u_in > 0.0 THEN
+    CUR_ISO(#4, sur_id,"V", v_in, 0,	! To point in u-direction
+         u_in:PEN=3,BLANK=b_val_a);
+    arc_u_sur:=arcl(#4);		! Arclength to point in u-direction
+  ELSE
+    arc_u_sur:= 0.0;
+  ENDIF;
+  
+  
+! +++
+! 4. Evaluation of the relative arclength
+! ---
+
+  rel_u_sur:=arc_u_sur/tarc_u_sur;	! Relative arclength in u-direction
+  rel_v_sur:=arc_v_sur/tarc_v_sur;	! Relative arclength in v-direction
+  
+
+! +++
+! 5. Evaluate point in deformationsurface using relative arclengths
+! ---
+
+  GETSURH( def_id, "NPATU", nu_def);	! Get number of u parameters
+  GETSURH( def_id, "NPATV", nv_def);	! Get number of v parameters
+  
+
+! +++  
+! Search for v-value using total arclength in u-direction
+! ---
+
+  CUR_ISO(#5, def_id,"U", 0, 0,		! Create iso-curve in v-direction
+      nv_def:PEN=4,BLANK=b_val_a);	! through u=0, boundary curve.
+  
+  tarc_v_def:=arcl(#5);  		! Arclength of total curve
+  
+  arc_v_def:=rel_v_sur*tarc_v_def;	! Get arclength to point, v-direction
+  	
+  v_out:=inv_arcl(#5,arc_v_def);	! Get parameter-value, v-value
+  
+
+! +++  
+! Search for u-value using total arclength in v-direction
+! ---
+
+  CUR_ISO(#6, def_id,"V", v_out,	! Create iso-curve in u-direction
+      0, nu_def:PEN=4,BLANK=b_val_a);	! through v-value
+  
+  tarc_u_def:=arcl(#6);  		! Arclength of total curve
+  
+  arc_u_def:=rel_u_sur*tarc_u_def;	! Get arclength to point, u-direction
+  
+  u_out:=inv_arcl(#6,arc_u_def);	! Get parameter-value, u-value
+  
+
+! +++  
+! Search for v-value using total arclength in u-direction
+! ---
+  
+  CUR_ISO(#7, def_id,"U", u_out,	! Create iso-curve in v-direction
+      0, nv_def:PEN=4,BLANK=b_val_a);	! through u-value
+   
+  tarc_v_def:=arcl(#7);  		! Arclength of total curve
+  
+  arc_v_def:=rel_v_sur*tarc_v_def;	! Get arclength to point, v-direction
+  
+  v_out:=inv_arcl(#7,arc_v_def);	! Get parameter-value, v-value
+  
+
+! +++
+! 6. Evaluate the deformation in new point
+! ---
+
+  p_int:=on(def_id, vec(u_out,v_out));	! Get point (x, y, z) from (u, v)
+    
+  POI_FREE(#13,p_int:PEN=2, BLANK=b_val_a);	! Draw th point
+  
+  LIN_FREE(#14,				! Create a line through point in 
+      vec(p_int.x,p_int.y,-100),	! z-direction
+      vec(p_int.x,p_int.y,100):BLANK=b_val_a);
+ 
+  thickness:=p_int.z;			! Deformation in point (u, v)
+  
+! HÄRIFRÅN ENDAST TEST OM DE RELATIVA BÅGLÄNGDERNA ÄR LIKA
+  
+! +++
+! ?. Make iso-curves through the corresponding point in the deformationsurface
+! ---
+       
+  CUR_ISO(#8, def_id,"U", u_out, 0, nv_def:PEN=4,BLANK=b_val_a);
+  CUR_ISO(#9, def_id,"V", v_out, 0, nu_def:PEN=4,BLANK=b_val_a);
+  
+  IF  v_out > 0.0 THEN 
+    CUR_ISO(#10, def_id,"U", u_out, 0, v_out:PEN=3,BLANK=b_val_a);
+    arc_v_def:=arcl(#10);
+  ELSE
+    arc_v_def:= 0.0;
+  ENDIF;
+  
+  IF  u_out > 0.0 THEN 
+    CUR_ISO(#11, def_id,"V", v_out, 0, u_out:PEN=3,BLANK=b_val_a);
+    arc_u_def:=arcl(#11);
+  ELSE
+    arc_u_def:= 0.0;
+  ENDIF;
+     
+!  lst_ini("point in deformationsurface");
+!  lst_lin("u-value  " + str(u_out,15,8)); 
+!  lst_lin("v-value  " + str(v_out,15,8));
+!  lst_lin("thickness" + str(thickness,15,8));
+!  lst_exi();
+
+  tarc_v_def:=arcl(#8);
+  tarc_u_def:=arcl(#9);
+!Gunnar  arc_v_def:=arcl(#10);
+!Gunnar  arc_u_def:=arcl(#11);
+  rel_u_def:=arc_u_def/tarc_u_def;
+  rel_v_def:=arc_v_def/tarc_v_def;
+  
+!  lst_ini("jämför relativa båglängder");
+!  lst_lin("på grundytan       "+str(rel_u_sur,15,8)+ str(rel_v_sur,15,8));
+!  lst_lin(" ");
+!  lst_lin("på deformationsytan"+str(rel_u_def,15,8)+str(rel_v_def,15,8));
+!  lst_exi();
+ENDMODULE

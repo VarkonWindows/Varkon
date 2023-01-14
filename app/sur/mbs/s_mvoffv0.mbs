@@ -1,0 +1,40 @@
+
+!********************  s_mvoffv0  *********************
+! +++
+! Registration of bicubic patch input data
+!
+! ---
+! Revision history
+! _________________
+!
+! 1997-01-24 Gunnar Liden
+!
+!******************************************************
+!sdesce Registration of bicubic patch input data
+!sdescs Registration of bicubic patch input data
+
+GLOBAL GEOMETRY MODULE s_mvoffv0 (
+
+VECTOR  r_00;                    ! Corner point 00
+VECTOR  r_10;                    ! Corner point 10
+VECTOR  r_01;                    ! Corner point 01
+VECTOR  r_11;                    ! Corner point 11
+VECTOR  tu_00;                   ! Corner U tangent 00
+VECTOR  tu_10;                   ! Corner U tangent 10
+VECTOR  tu_01;                   ! Corner U tangent 01
+VECTOR  tu_11;                   ! Corner U tangent 11
+VECTOR  tv_00;                   ! Corner V tangent 00
+VECTOR  tv_10;                   ! Corner V tangent 10
+VECTOR  tv_01;                   ! Corner V tangent 01
+VECTOR  tv_11;                   ! Corner V tangent 11
+VECTOR  tw_00;                   ! Twist vector 00
+VECTOR  tw_10;                   ! Twist vector 10
+VECTOR  tw_01;                   ! Twist vector 01
+VECTOR  tw_11);                  ! Twist vector 11
+
+
+BEGINMODULE
+
+; ! No calculation. Just registration
+
+ENDMODULE

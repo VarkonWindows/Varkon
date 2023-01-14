@@ -1,0 +1,57 @@
+! ***************** s_wricatia ****************************
+!
+! +++
+! Write surface in NMG->Cata format to file 
+!
+! Revision history
+! ________________
+!
+! 1994-06-28 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Write surface in NMG->Cata format to file 
+!sdescs Skriv yta på NMG->Catia interface format till fil   
+
+GLOBAL GEOMETRY MODULE s_wricatia (
+
+REF    s_id                  > "@t16 Select surface";
+STRING fname*20:="ytaxd0629"     > "Outfile name (.F07 is added)";
+STRING model*50:="Odin-Huvudreflektor-ytax-940629------A73320"
+     > "Catia model name");
+
+
+! Internal variables
+
+  STRING str_in*132;             ! String for CUR_GL
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+!                  0. Initiations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+  PART(#2,G_REFSEL(s_id));       ! Add # to reference if necessary
+
+! +++
+!      Write NMG->Catia data to file. Call of CUR_GL( WCATIA).
+! ---
+
+  str_in:= "WCATIA " +              ! To CUR_GL string
+    ACT_JOBDIR()+fname+".F07 "+     !
+    model;
+
+
+  CUR_GL(#1,s_id,str_in);           ! Write surface data to file   
+
+
+ENDMODULE

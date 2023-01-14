@@ -1,0 +1,126 @@
+! ***************** s_tplanv0  ****************************
+!
+! +++
+! Creates a tangent plane to a surface  
+!
+! 1995-02-06 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Creates a tangent B_PLANE to a surface  
+!sdescs Skapar ett tangent B_PLANE till en yta
+
+
+GLOBAL GEOMETRY MODULE s_tplanv0  (
+
+REF    s_id                      > "@t16 Select surface";
+VECTOR uvpt := VEC(0,0,0)        > "U,V point for plane";
+FLOAT  offset := 0.0             > "Offset from surface";
+INT    graphic:= 1               
+> "@ Show =0: Nothing =1: B_PLANE =2: Coord. system =3: All");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  VECTOR origin;                 ! Origin for local system
+  VECTOR xaxis;                  ! X axis for local system
+  VECTOR yaxis;                  ! Y axis for local system
+
+  FLOAT  size;                   ! Size of B_PLANE
+
+  INT    bflag_i;                ! Blank flag for B_PLANE      
+  INT    bflag_c;                ! Blank flag for coord. system
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN          ! 
+    bflag_i := 1;                ! Blank B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 1 THEN          ! 
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 2 THEN          ! 
+    bflag_i := 1;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELIF graphic = 3 THEN          ! 
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELSE                           !
+    EXIT("s_tplanv0 graphic");   ! 
+  ENDIF;                         !
+
+  PART(#2,G_REFSEL(s_id):SAVE=0);! Add # to reference if necessary
+
+
+! +++
+! 2. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("s_tplanv0  "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 3. Create local coordinate system
+!
+! ---
+
+  origin:= ON(s_id,uvpt) +       ! Origin in offset
+     offset*NORM(s_id,uvpt);     !
+
+  xaxis :=  NORM(s_id,uvpt);     !
+
+  yaxis := EVAL(s_id,"DRDU",     !
+           uvpt);                !
+
+  CSYS_3P(#3,"Normal",           ! Create coordinate system
+   origin, origin+xaxis,         !
+   origin+yaxis                  !
+   :BLANK=bflag_c,PEN=3);        !
+
+
+! +++
+! 4. Create B_PLANE
+!
+! ---
+
+  size := VECL(yaxis);           ! Size !DRDU! borde även vara DRDV
+
+
+  MODE_LOCAL(#3);                ! Activate local system
+
+  B_PLANE(#1,                    ! Create tangent plane
+    VEC ( 0   , size ,-size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,-size ,-size)     !
+     :BLANK=bflag_i,PEN=3);      !
+
+  MODE_GLOBAL();                 ! Activate global system
+
+ENDMODULE

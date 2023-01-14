@@ -1,0 +1,240 @@
+!********************* s_sightv0 ***********************
+! +++
+! Beräkning av siktfält från pilotöga eller stråle från
+! röntgenrör ....
+!
+! Ändringshistorik
+! ________________
+!
+! 1995-02-09  Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs Siktfält defineirat av öga + (rutrams-) kurva + plan
+!sdesce Sight area defined by eye + curve + plane
+
+GLOBAL GEOMETRY MODULE s_sightv0 (
+
+REF    cur_id                    > "@t8  Select curve  ";
+REF    b_id                      > "@t32768 Select B_PLANE ";
+VECTOR eye      := VEC(0,0,0)    > "Pilot eye, Xray source";
+FLOAT  e_length := 20.0          > "Element storlek (noggranhet)";
+INT    graphic  := 10            
+> "Grafik =10: Visa punkter =11: Visa linjer ");
+
+! Interna variabler:
+
+  INT        DEBUG;              ! För kontroll utskrifter, etc.
+                                 ! Eq. 0 ==> Ingen     DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+                                 ! Eq. 2 ==> Begränsad DEBUG
+
+  INT        i_seg;              ! Loop index kurvsegment
+  INT        i_poi;              ! Loop index punkt i segment
+  
+  INT        ns_geo;             ! Antal geometriska segment
+  INT        ns_gra;             ! Antal grafiska   segment
+  INT        fnt;                ! Font typ,subtyp
+  FLOAT      sl;                 ! Streck längd 
+  INT        s_ns_geo;           ! Antal geometriska segment (=1)
+  INT        s_ns_gra;           ! Antal grafiska   segment
+  INT        s_fnt;              ! Font typ,subtyp
+
+  FLOAT      al;                 ! Kurvans totala båglängd
+  FLOAT      s_al;               ! Båglängd för ett segment
+
+
+  FLOAT      delta;              ! Delta parameter för element
+                                 ! (en approximering av båglängd)
+  INT        n_poi;              ! Antal element i ett segment 
+
+  FLOAT      u_cur;              ! Aktuellt parametervärde
+  VECTOR     p_cur;              ! Aktuell punkt på kurvan
+  VECTOR     p_int;              ! Punkt på plan (skärning)
+
+  INT        n_tot;              ! Totalt antal punkter 
+
+  INT        i_pt;               ! Loop variabel punkt
+
+
+  VECTOR tangent(400);           ! Tangents 
+
+  INT    n_tot_out;              ! Efter borttaging av lika punkter
+  FLOAT  dist;                   ! Distance
+
+  VECTOR poi(400);               ! Points
+  VECTOR tanpoi(400);            ! Tangent points 
+  VECTOR midpoi(400);            ! Mid     points 
+  FLOAT  pvalue(400);            ! P values
+  STRING p_flag(400)*1;          ! P value flags
+                                 ! Eq. P: P value
+                                 ! Eq. M: Mid point
+  INT    graphic_c;              ! Graphical representation
+                                 ! Eq. 0: No graphic (blanked)
+                                 ! Eq. 1: Curve 
+
+  STRING     s*1;                ! För DEBUG utskrift till skärm
+
+BEGINMODULE
+
+! +++
+!  Algoritm
+! ---
+
+! +++
+! 1. Initieringar och kontroll indata
+! ---
+
+  DEBUG := 0;                   ! Ändra till 0, 1 eller 2
+
+  PART(#2,G_REFSEL(cur_id)       ! Lägg till # om nödvändigt
+       :SAVE=0);                 !
+  PART(#3,G_REFSEL(b_id   )      ! Lägg till # om nödvändigt
+       :SAVE=0);                 !
+ 
+  
+
+! +++
+! Trimma kurva om begränsningsvolym är definierad
+! ---
+
+  IF DEBUG=1             THEN    ! För DEBUG=1 :
+   s:= INPMT("s_sightv0: cur_id "!
+   +RSTR(cur_id)+ "  "           !
+        ,"",1);                  !
+  ENDIF;                         !
+
+  GETCURH(cur_id,                ! Antal segment i kurvan
+   fnt,sl,ns_geo,ns_gra);        ! 
+
+  al := ARCL(cur_id);            ! Kurvans totala längd
+
+  IF e_length < al/1000.0 THEN   ! Max antal element 1000 
+     EXIT("s_sightv0 För kort "+ ! (rimlighetskontroll,
+         "element längd");       !  kan fritt ändras ..)
+  ENDIF;                         !
+
+
+  IF DEBUG=2             THEN    ! För DEBUG=1 :
+   s:= INPMT("s_sightv0: al "    !
+   +STR(al ,-12,3)+ " e_length " !
+   +STR(e_length ,-12,3)+ "  "   !
+        ,"",1);                  !
+  ENDIF;                         !
+
+! +++
+! 2. Beräkna punkter
+! ---
+
+  n_tot:= 0;                       ! Initiering antal punkter
+
+  FOR i_seg :=1 TO ns_geo   DO     ! Start loop alla segment i kurvan
+    CUR_TRIM(#4,cur_id,            ! Skapa delkurva för varje segmnent
+       i_seg-1.0,i_seg             ! (sammansatta kurvan kan innehålla
+       :PEN=2,BLANK=1);            !  knäckar).
+    s_al := ARCL(#4);              ! Båglängd segment
+    n_poi:= TRUNC(s_al/e_length);  ! Antal punkter i segmentet
+    IF n_poi < 4 THEN              ! (min antal är 4)
+       n_poi:= 4;                  !
+    ENDIF;                         !
+
+    delta:= 1.0 /n_poi;            ! Delta parameter (borde vara bågl.)
+
+    FOR i_poi :=1 TO n_poi DO      ! Start loop alla punkter per segment
+  
+     u_cur:= i_seg-1 + 0.5*delta + ! Aktuellt parameter värde     
+            (i_poi-1)*delta;       !
+
+     p_cur:= ON(cur_id,u_cur);     ! Aktuell punkt på kurvan
+
+     LIN_FREE(#9 ,eye, p_cur );    !
+
+     p_int:= INTERSECT(#9,b_id,-1);! Skärningspunkt plan
+
+     IF graphic = 10 THEN          !
+       POI_FREE(#10,p_int);        !
+     ENDIF;                        !
+     IF graphic = 11 THEN          !
+       LIN_FREE(#11,p_cur,p_int     !
+             :PEN=3 );             !
+     ENDIF;                        !
+
+
+     DEL(#9);                      ! Radera linje
+
+     n_tot:= n_tot + 1;            ! Ytterligare en punkt
+     IF n_tot >  400 THEN          ! Program kontroll
+       EXIT("s_sightv0 n_tot");    !
+     ENDIF;                        !
+
+     poi(n_tot):= p_int;           ! Till array med punkter
+
+    ENDFOR;                        ! Slut  loop alla punkter i segmentet
+    DEL(#4);                       ! Radera segment kurva
+  ENDFOR;                          ! Slut  loop alla segment
+
+
+! +++
+! 3. Skapa kurva    
+! ---
+
+  PART(#15, c_atangv0  (           ! Splina tangenter
+    n_tot, poi, tangent ));        ! 
+  DEL(GLOBAL_REF(#15));            ! Radera part (där skapas geometri)
+
+  n_tot_out := 0;                  !
+  FOR i_pt:= 1 TO n_tot DO         !
+    IF i_pt > 1 THEN               !
+     IF VECL(poi(i_pt)-poi(i_pt-1))!
+            < 0.1 THEN             !
+       GOTO  equal;                !
+     ENDIF;                        !
+    ENDIF;                         !
+    n_tot_out := n_tot_out + 1;    !
+    poi(n_tot_out):= poi(i_pt);    !
+    tanpoi(n_tot_out):=poi(i_pt) + !
+                   tangent(i_pt);  !
+    midpoi(n_tot_out):= VEC(0,0,0);!
+    pvalue(n_tot_out):= 0.5;       !
+    p_flag(n_tot_out):= "P";       !
+equal:;                            !
+  ENDFOR;                          !
+  graphic_c := 1;                  !
+
+  IF DEBUG = 1 THEN                ! För DEBUG=1:
+   LST_INI("s_sightv0 Punkter och tangenter");
+   FOR i_pt:= 1 TO n_tot_out DO    !
+    IF i_pt > 1 THEN               !
+     dist:= VECL(poi(i_pt  )-      !
+                 poi(i_pt-1));     !
+    ELSE                           !
+      dist:= 0.0;                  !
+    ENDIF;                         !
+   
+   LST_LIN(STR(i_pt,-1,0)+" "      !
+   +STR(poi(i_pt).x,-15,8)+" "+    !
+    STR(poi(i_pt).y,-15,8)+" "+    !
+    STR(poi(i_pt).z,-15,8)+        !
+    " Dist "+STR(dist,-15,8));       !
+   LST_LIN("  "                    !
+   +STR(tanpoi(i_pt).x,-15,8)+" "+ !
+    STR(tanpoi(i_pt).y,-15,8)+" "+ !
+    STR(tanpoi(i_pt).z,-15,8));    !
+   ENDFOR;                         !
+   LST_EXI();                      !
+  ENDIF;                           !
+  n_tot := n_tot_out;              !
+  PART(#1 , c_cconicv0 ( n_tot,    ! Skapa kurva     
+   poi, tanpoi, midpoi,            !
+   pvalue, p_flag, graphic_c));    !
+
+! 4. Exit och "utskrift om debug är på"
+
+  IF DEBUG = 2 THEN                ! För DEBUG=1:
+   s:= INPMT("s_sightv0:  al    "  !
+        +STR(al  ,-12,6)+ " n_tot "!
+        +STR(n_tot,-1,0)+ " "      !
+        ,"",1);                    !
+  ENDIF;                           !
+
+ENDMODULE

@@ -1,0 +1,33 @@
+!********************  s_regtop   *********************
+! +++
+! Registration of SUR_USRDEF topological patch data
+!
+! ---
+! Revision history
+! _________________
+!
+! 1997-03-23 Gunnar Liden
+!
+!******************************************************
+!sdesce Registration of SUR_USRDEF topological patch data
+!sdescs Registrering av SUR_USRDEF topologisk "patch" data
+
+GLOBAL GEOMETRY MODULE s_regtop  (
+
+  INT    t_case;                 ! Case topological data
+                                 ! Eq. 1: Only patch address 
+                                 ! Eq. 2: Patch type added     
+                                 ! Eq. 3: Patch limits added 
+  INT    i_u;                    ! Patch address IU 
+  INT    i_v);                   ! Patch address IV
+!  INT    p_typ;                  ! Patch type
+!  FLOAT  u1;                     ! Start U value patch
+!  FLOAT  u2;                     ! End   U value patch
+!  FLOAT  v1;                     ! Start V value patch
+!  FLOAT  v2);                    ! End   V value patch
+
+BEGINMODULE
+
+; ! No calculation. Just registration
+
+ENDMODULE

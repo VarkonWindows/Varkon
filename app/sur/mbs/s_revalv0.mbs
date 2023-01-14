@@ -1,0 +1,186 @@
+! ******************* s_revalv0 ******************************
+! +++ 
+!
+! Evaluation of coordinates and derivatives for rotation surface 
+!
+!
+! Theory
+! ______
+!
+! Reference Faux & Pratt p 92
+!
+! Derivatives are first calculated in the X/Y plane of a local system
+!
+! X(urot,phi) = Xrot(urot)
+! Y(urot,phi) = Yrot(urot)*sin(phi)
+! Z(urot,phi) = Yrot(urot)*cos(phi)
+!
+! where  Rrot = (Xrot(urot),Yrot(urot)) is a planar curve
+!
+!  dX/durot   = dXrot/durot
+!  dY/durot   = dYrot/durot*sin(phi)
+!  dZ/durot   = dYrot/durot*cos(phi)
+!
+!  dX/dphi    =   0
+!  dY/dphi    =   Yrot(urot)*cos(phi)
+!  dZ/dphi    =  -Yrot(urot)*sin(phi)
+!
+!  d2X/durot2 = d2Xrot/durot2
+!  d2Y/durot2 = d2Yrot/durot2*sin(phi)
+!  d2Z/durot2 = d2Yrot/durot2*cos(phi)
+!
+!  d2X/dphi2  =   0
+!  d2Y/dphi2  =  -Yrot(urot)*sin(phi)
+!  d2Z/dphi2  =   Yrot(urot)*cos(phi)
+!
+!  d2X/durotdphi = 0
+!  d2Y/durotdphi =  dYrot/durot*cos(phi)
+!  d2Z/durotdphi = -dYrot/durot*sin(phi)
+!
+! --- 
+!
+!
+! Revision history
+! _______________ 
+!
+! 1997-03-05 Gunnar Liden
+!
+! ************************************************************
+
+!sdesce Evaluation of coordinates and derivatives for rotation surface 
+!sdescs Evaluering av koordinater och derivator för rotationsyta
+
+GLOBAL GEOMETRY MODULE s_revalv0 (
+VECTOR  p1           >"Rotation axis start point";
+VECTOR  p2           >"Rotation axis end   point";
+REF     r_id         >"Rotated curve";
+FLOAT   u_val        >"U value";
+FLOAT   v_val        >"V value";
+INT     graphic := 1 >"=0: Show nothing =1: Show result =2: Show all");
+
+
+! Internal variables:
+
+  REF    csys_id;     ! XY plane for rotated curve and spine
+  VECTOR origin;      ! Origin  for local system
+  VECTOR xpoint;      ! X point for local system
+  VECTOR ypoint;      ! Y point for local system
+
+  VECTOR r_r;         ! Coordinates         for rotation curve
+  VECTOR drdu_r;      ! First  U derivative for rotation curve
+  VECTOR d2rdu2_r;    ! Second U derivative for rotation curve
+  
+  VECTOR drdurot;     ! First   urot derivative
+  VECTOR drdphi;      ! First   phi  derivative 
+  VECTOR d2rdurot2;   ! Second  urot derivative
+  VECTOR d2rdphi2;    ! Second  phi  derivative 
+  VECTOR d2rdurotdphi;! Twist 
+
+  FLOAT  phi;         ! Angle
+    
+  INT    b_val_a;     ! Blank value all  entities  
+  INT    b_val_e;     ! Blank value eval entities
+  
+  BEGINMODULE
+
+! +++ 
+! Algorithm
+! _________ 
+! --- 
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  IF      graphic =  0 THEN
+     b_val_e := 1;
+     b_val_a := 1;
+  ELIF    graphic =  1 THEN
+     b_val_e := 0;
+     b_val_a := 1;
+  ELIF    graphic =  2 THEN
+     b_val_e := 0;
+     b_val_a := 0;
+  ELSE
+     EXIT("s_revalv0 graphic not 0, 1 or 2");
+  ENDIF;
+  
+! +++
+! Create local coordinate system defined by the input spine and curve
+! The curve can be the start or the end limit curve of a lofting patch 
+! ---
+
+  origin := p1;
+  xpoint := p2;
+  ypoint := ON(r_id,0.5);
+  
+  CSYS_3P(#2, "C-plane",  origin, xpoint, ypoint:PEN=2,BLANK=b_val_a);
+  csys_id := GLOBAL_REF(#2);
+  
+! +++
+! 2. Calculate derivatives for the rotation curve
+! ---
+
+  MODE_LOCAL(csys_id);
+  r_r      := EVAL(r_id,"XYZ",   VEC(u_val,0.0,0.0));  
+  drdu_r   := EVAL(r_id,"DRDT",  VEC(u_val,0.0,0.0));  
+  d2rdu2_r := EVAL(r_id,"D2RDT2",VEC(u_val,0.0,0.0)); 
+  MODE_GLOBAL(); 
+
+! +++
+! 3. Calculate derivatives for the rotation surface
+! ---
+
+  phi              := 0.0;
+
+  drdurot.x        := drdu_r.x;
+  drdurot.y        := drdu_r.y*SIN(phi);
+  drdurot.z        := drdu_r.y*COS(phi);
+
+  drdphi.x         :=  0.0;
+  drdphi.y         :=  r_r.y*COS(phi);
+  drdphi.z         := -r_r.y*SIN(phi);  
+
+  d2rdurot2.x      := d2rdu2_r.x;
+  d2rdurot2.y      := d2rdu2_r.y*SIN(phi);
+  d2rdurot2.z      := d2rdu2_r.y*COS(phi);
+  
+  
+  d2rdphi2.x       :=  0.0;
+  d2rdphi2.y       := -r_r.y*SIN(phi);
+  d2rdphi2.z       :=  r_r.y*COS(phi);  
+
+  d2rdurotdphi.x   :=  0.0;
+  d2rdurotdphi.y   :=  drdu_r.y*COS(phi);
+  d2rdurotdphi.z   := -drdu_r.y*SIN(phi);
+
+
+  LST_INI("s_revalv0 Debug output");
+  LST_LIN("u_val "+STR(u_val,10,5) + " v_val "+STR(v_val,10,5));
+  LST_LIN("r_r      "+STR(r_r.x,12,5) + " "+STR(r_r.y,12,5)+
+                  " "+STR(r_r.z,12,5));
+  LST_LIN("drdu_r   "+STR(drdu_r.x,12,5) + " "+STR(drdu_r.y,12,5)+
+                  " "+STR(drdu_r.z,12,5));
+  LST_LIN("d2rdu2_r "+STR(d2rdu2_r.x,12,5) + " "+STR(d2rdu2_r.y,12,5)+
+                  " "+STR(d2rdu2_r.z,12,5));
+  LST_LIN("drdu_r   "+STR(drdu_r.x,12,5) + " "+STR(drdu_r.y,12,5)+
+                  " "+STR(drdu_r.z,12,5));
+  LST_LIN("d2rdu2_r "+STR(d2rdu2_r.x,12,5) + " "+STR(d2rdu2_r.y,12,5)+
+                  " "+STR(d2rdu2_r.z,12,5));
+
+                  
+  LST_LIN("drdurot      "+STR(drdurot.x,12,5) + " "+STR(drdurot.y,12,5)+
+                  " "+STR(drdurot.z,12,5));
+                  
+  LST_LIN("drdphi       "+STR(drdphi.x,12,5) + " "+STR(drdphi.y,12,5)+
+                  " "+STR(drdphi.z,12,5));
+                                                      
+  LST_LIN("d2rdurot2    "+STR(d2rdurot2.x,12,5) + " "+STR(d2rdurot2.y,12,5)+
+                  " "+STR(d2rdurot2.z,12,5));
+  LST_LIN("d2rdphi2     "+STR(d2rdphi2.x,12,5) + " "+STR(d2rdphi2.y,12,5)+
+                  " "+STR(d2rdphi2.z,12,5));
+  LST_LIN("d2rdurotdphi "+STR(d2rdurotdphi.x,12,5) + " "+STR(d2rdurotdphi.y,12,5)+
+                  " "+STR(d2rdurotdphi.z,12,5));
+  LST_EXI();
+
+ENDMODULE

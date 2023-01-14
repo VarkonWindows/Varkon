@@ -1,0 +1,156 @@
+! ***************** s_rcatiav0 ****************************
+!
+! +++
+! Import surface in VDA-FS format to Varkon from Catia
+!
+! Input to the function is:
+! - The Catia file name
+!   Examples: MS1/MS11/WRK01 and KD1/COPY/MILIT
+! - The Catia model name
+!   A unique part (string) in the model name is sufficient.
+!   Warning: All models containing the string will be exported
+!   if the string not is unique
+!   All surfaces in the model will be put on the VDA-FS file.
+! - Project (39, SF340, ..... )
+! - First part of surface names (names of the surfaces from Catia)
+! - Flag indication if the file shall be split
+!
+!   A file will first be created on your job directory. Then there 
+!   are three options:
+!   1. Read surfaces to Varkon only. Keep VDA-FS file on job directory
+!   2. Rename VDA-FS file and move to surface library
+!   3. Split the VDA-FS file. Move one file per surface to surface library
+!
+!  WARNING: The vdafs program will fail if there are too many patches 
+!           in the surface
+!
+!   Log files from the vdafs program on directory: /home/ultra4/axxxxx/catia
+!   (xxxxx is for instance 73320 for Gunnar)
+! ---
+! Revision history
+! ________________
+!
+! 1997-09-14 Gunnar Liden
+!
+!************************************************************
+
+!sdesce Import surface in VDA-FS format to Varkon from Catia
+!sdescs Importera yta i VDA-FS format till Varkon från Catia
+
+GLOBAL GEOMETRY MODULE s_rcatiav0 (
+
+STRING cfile*30:="MS1/MS11/WRK01" > "File name (Ex. MS1/MS11/WRK01, KD1/COPY/MILIT)";
+STRING model*80:="KROSS"          > "Unique string in Catia model name";
+STRING prj_l*30:= "39"            > "Project (39, SF340, ....)";
+STRING sname*28:="Surname"        > "First part of file/surface name";
+INT    i_case  := 1               > "Eq. 1: To Varkon Eq. 2: To one file  Eq. 3: Split");
+
+
+! Internal variables
+
+  STRING   tmpfile*132;         ! Name of temporary file
+  STRING   tmpfile_j*132;       ! Full name of temporary file on job  dir.
+  STRING   vdafile_j*132;       ! Full name of temporary file on job  dir.
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+
+  STRING model_t*20;            ! Temporary model name (to be replaced)
+
+  STRING fname*20;              ! Outfile name (.VDA is added)
+
+  STRING str_in*132;            ! String for CUR_GL
+
+  FILE   tmp;                   ! Temporary file
+  FILE   vda;                   ! Temporary file for tocatia program
+  INT    n_d;                   ! Number of data
+  INT    i_l;                   ! Loop index line in file
+  INT    i_c;                   ! Loop index character
+
+  STRING rad*132;               ! String whole line
+
+  STRING catia_str*132;         ! Input data string for Catia interface
+
+  INT    DEBUG;                 ! For Debug printout
+
+  STRING s*1;                   ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+! +++
+! Unique name for temporary files
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  tmpfile := STR(year,-1,0);
+!  IF month < 10 THEN
+!    tmpfile := tmpfile + "0"  +STR(month, -1,0);
+!  ELSE
+!    tmpfile := tmpfile        +STR(month, -1,0);
+!  ENDIF;
+  IF day   < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(day  , -1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(hour , -1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(minute,-1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(second,-1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(second,-1,0);
+  ENDIF;
+
+  tmpfile_j := ACT_JOBDIR() + tmpfile + ".VDA_TMP";
+  vdafile_j := ACT_JOBDIR() + tmpfile + ".VDA";
+
+!  DELETE_FILE(tmpfile_j);
+
+! +++
+! Start of Catia interface program
+! ---
+
+  PSH_PMT("Catia interface program vdafs is running (s_rcatiav0)");
+  !catia_str:= "/usr/catia/saab_admin/prod1/bin/vdafs "  +
+  catia_str:= "vdafs "  +
+                " 2 '" +cfile +"' " + model + "' " + tmpfile_j+" '";
+!QQQ                " 1 '" + tmpfile_j+" '"+  cfile +"' " + model + "' ";
+
+  IF  DEBUG = 1 THEN
+  LST_INI("String to interface program (s_rcatiav0)");
+  LST_LIN(catia_str);
+  LST_EXI();
+  ENDIF;
+
+ !  os("echo '"+os_cmd+"'");
+  OS("echo '"+catia_str+"'");
+  OS(catia_str);
+
+  POP_PMT();
+
+ENDMODULE

@@ -1,0 +1,195 @@
+!*********************  s_linsurv0 ************************************
+! +++
+! Intersection between line and surface with multiple surfaces as input
+!
+! Revision history
+! ________________
+!
+! 1995-11-27 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+!sdesce Intersection between line and surface with multiple surfaces as input
+!sdescs Skärning linje/yta med flera ytor som indata
+
+GLOBAL  GEOMETRY MODULE  s_linsurv0 (
+    VECTOR  p_ext;            ! External point (start of line)
+    VECTOR  v_proj;           ! Projection direction (line tangent)
+VAR INT     n_sur;            ! Number of surfaces
+VAR REF     all_sur(30);      ! References to surfaces
+    INT     i_case;           ! Intersect calculation case
+                              ! Eq. 1: No start point given
+                              ! Eq. 2: uv_int and id_int is start point
+VAR VECTOR  r3_int;           ! Intersect point in R*3
+VAR VECTOR  uv_int;           ! Intersect point in U,V
+VAR REF     id_int;           ! Identity for intersect point surface  
+VAR INT     status;           ! Error code = -1: No intersection
+    INT     graphic);         ! =0: No graphic =1: Show point =2: Show all
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  INT    i_sur;                ! Loop index surface
+  REF    sur_id;               ! Identity for current surface
+  INT    i_sol;                ! Loop index solution
+
+  INT    s_case;               ! Projection case. Refer to ALL_INT_LIN_SUR
+  VECTOR uv_near;              ! Parameter pt for start (near) pt
+
+  INT    n_sol;                ! Total number of solutions in one surface
+  VECTOR uv_sol(10);           ! Solution U,V points for current surface
+  VECTOR r3_sol(10);           ! Solution R*3 points for current surface
+  INT    n_sol_all;            ! Total number of solutions in all surface
+  VECTOR uv_sol_all(20);       ! Solution U,V points for all surfaces
+  VECTOR r3_sol_all(20);       ! Solution R*3 points for all surfaces
+  REF    id_sol_all(20);       ! Surfaces for solution points
+  FLOAT  dist;                 ! Distance from p_ext to intersect point
+
+  REF    id_start;             ! Surface for a given start point
+  INT    s_flag;               ! Start flag =1: Start pt  =2: No start pt
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+
+  DEBUG := 0;                       ! Debug =1 or 0
+
+  IF   graphic    = 0 THEN          ! Graphics
+    ;                               !
+  ELIF graphic    = 1 THEN          ! 
+    ;                               !
+  ELIF graphic    = 2 THEN          !
+    ;                               !
+  ELSE                              !
+   EXIT("s_linsurv0graphic" +       !
+         " not OK");                !
+  ENDIF;                            !
+
+  IF  i_case = 2 THEN               ! Is a start point given ?
+    uv_near := uv_int;              ! Start UV point           
+    id_start:= id_int;              !
+    s_flag  := 1;                   ! Flag: There is a start point
+  ELSE                              !
+    uv_near := VEC(-1,-1,-1);       ! Undefined UV start point
+    s_flag  := 0;                   ! Flag: There is no start point
+  ENDIF;                            !
+
+  id_int  := #0;                    ! Initialize output variables
+  r3_int  := VEC(-1,-1,-1);         ! 
+  uv_int  := VEC(-1,-1,-1);         !
+  status  := 0;                     !
+
+  n_sol_all := 0;                   !
+
+  IF graphic = 2 THEN               ! Show shooting line
+    LIN_FREE(#12,p_ext,             !
+     p_ext+  30*v_proj:PEN=2);      !
+  ENDIF;                            !
+
+! +++
+! Intersect calculation 
+! .. skärning borde försöka med alla ytor, ta hand om multipla lösningar ....
+! ---
+
+rstart:;                            ! Label: Restart for start pt given
+
+  FOR i_sur:= 1 TO n_sur   DO       ! Start loop all surfaces
+
+   sur_id := all_sur(i_sur);        ! Current surface
+
+   IF s_flag= 1 AND                 ! Start point given ?
+         sur_id <> id_start  THEN   !
+     GOTO nxtsur;                   !
+   ENDIF;                           !
+
+   s_case := 1;                     ! .. mer att programmera med materialriktingar .
+
+   ALL_INT_LIN_SUR(sur_id,          ! Intersect line/surface
+      p_ext,v_proj,s_case,uv_near,  !
+      n_sol, uv_sol, r3_sol);       !
+
+   IF DEBUG = 1 THEN                !
+     s:=INPMT("s_linsurv0 n_sol "+STR(n_sol,-1,0)+" Surface "+RSTR(sur_id),"y",1);
+     IF s <> "y" THEN
+      EXIT("s_linsurv0 User interruption");
+     ENDIF;
+   ENDIF;                           !
+     IF   n_sol= 0     THEN         ! Continue with next surface
+       ;                            !
+     ELSE                           ! There is a solution. Add to arrays
+       FOR i_sol:= 1 TO n_sol DO    !
+         n_sol_all:= n_sol_all+1;   !
+         uv_sol_all(n_sol_all):=    !
+                  uv_sol(i_sol);    !
+         r3_sol_all(n_sol_all):=    !
+                  r3_sol(i_sol);    !
+         id_sol_all(n_sol_all):=    !
+                  sur_id;           !
+       ENDFOR;                      !
+     ENDIF;                         !
+nxtsur:;                            ! Label: Next surface for start pt given
+
+  ENDFOR;                           ! End loop surfaces    
+
+! +++
+! End   loop i_sur= 1, 2,  ..... , n_sur
+! ---
+
+  IF  n_sol_all=0 AND s_flag= 1 THEN!
+    s_flag:= 0;                     !
+    uv_near := VEC(-1,-1,-1);       ! Undefined UV start point
+    GOTO rstart;                    !
+  ENDIF;
+
+  IF graphic  = 2 THEN              !
+    DEL(GLOBAL_REF(#12));           ! Delete graphical represent. line
+  ENDIF;                            !
+
+! Return with status= -1 for no solution
+
+  IF n_sol_all = 0 THEN
+    status := -1;
+    EXIT();
+  ENDIF;
+
+
+! Intersect point is calculated 
+
+   IF DEBUG = 2 THEN                !
+     s:=INPMT("s_linsurv0 n_sol_all "+STR(n_sol_all,-1,0),"y",1);
+     IF s <> "y" THEN
+      EXIT("s_linsurv0 User interruption");
+     ENDIF;
+   ENDIF;                           !
+
+  dist:= 50000.0;                   !
+  FOR i_sol:=1 TO n_sol_all DO      !
+    IF VECL(p_ext-                  !
+      r3_sol_all(i_sol))< dist THEN !
+      dist:=VECL(p_ext-             !
+               r3_sol_all(i_sol));  !     
+      uv_int := uv_sol_all(i_sol);  ! UV intersect point
+      uv_int.z := 0.0;              !
+      r3_int := r3_sol_all(i_sol);  ! R3 intersect point
+      id_int := id_sol_all(i_sol);  ! Identity for surface
+    ENDIF;                          !
+  ENDFOR;                           !
+
+  IF graphic >= 1 THEN              !
+    POI_FREE(#1, r3_int:PEN=4);     ! Show intersect point for graphic= 1
+  ENDIF;                            !
+
+ENDMODULE

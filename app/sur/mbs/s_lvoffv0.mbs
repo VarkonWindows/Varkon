@@ -1,0 +1,35 @@
+! ******************* s_lvoffv0 ******************************
+! +++ 
+!
+! The function ........ 
+!
+! --- 
+!
+!
+! Revision history
+! _______________ 
+!
+! 1996-09-24 Name of programmer
+!
+! ************************************************************
+
+!sdesce Undefined ...... 
+!sdescs Odefinierat .... 
+
+GLOBAL GEOMETRY MODULE s_lvoffv0 ();
+
+! Internal variables:
+
+
+BEGINMODULE
+
+! +++ 
+! Algorithm
+! _________ 
+! --- 
+
+
+ ; 
+
+
+ENDMODULE

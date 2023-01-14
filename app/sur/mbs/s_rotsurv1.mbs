@@ -1,0 +1,271 @@
+!***************** s_rotsurv1 ****************************
+!
+! +++
+! Creates a rotational surface
+! 
+! Revision history
+! ________________
+!
+! 1995-08-25 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Rotational surface
+!sdescs Rotationsyta
+
+GLOBAL GEOMETRY MODULE s_rotsurv1 (
+REF     lin_id                > "@t10 Rotationsaxel (linje)";
+REF     cur_id                > "@t8  Rotationskurva";
+STRING  direct*1 := "P"       > "Rotation direction P/N";
+INT     graphic  :=  1        > "=0: Visa inget =1: Yta =2: Allt");
+
+
+! Internal variables
+
+  REF    spine_id;               ! Spine curve identity
+  REF    lim1_id;                ! Maxwidth 1 curve
+  REF    lim2_id;                ! Top curve        
+  REF    lim3_id;                ! Maxwidth 2 curve
+  REF    lim4_id;                ! Bottom curve     
+  REF    tram_id;                ! Translation matrix for maxwidths
+  REF    trat_id;                ! Translation matrix for top and bottom
+  REF    trot_id;                ! Rotation matrix for limit curves
+
+  REF    tan1_id;                ! Tangent curve to maxwidth 1
+  REF    tan2_id;                ! Tangent curve to top curve        
+  REF    tan3_id;                ! Tangent curve to maxwidth 2
+  REF    tan4_id;                ! Tangent curve to bottom curve     
+
+
+  REF    lim2_t_id;              ! Temporary limit   reference       
+  REF    lim3_t_id;              ! Temporary limit   reference
+  REF    lim4_t_id;              ! Temporary limit   reference
+  REF    tan2_t_id;              ! Temporary tangent reference       
+  REF    tan3_t_id;              ! Temporary tangent reference
+  REF    tan4_t_id;              ! Temporary tangent reference
+
+
+  REF    pval_id;                ! Pvalue function
+
+  FLOAT  al_s;                   ! Spine length 
+  FLOAT  pval;                   ! P value
+
+  FLOAT  rot_ang;                ! Rotation angle +90 
+  INT    n_poi;                  ! Number of points
+  VECTOR poi(400);               ! Points
+  VECTOR tanpoi(400);            ! Tangent points 
+  VECTOR midpoi(400);            ! Mid     points 
+  FLOAT  pvalue(400);            ! P values
+  STRING p_flag(400)*1;          ! P value flags
+                                 ! Eq. P: P value
+                                 ! Eq. M: Mid point
+  INT    graphic_c;              ! Graphical representation
+                                 ! Eq. 0: No graphic (blanked)
+                                 ! Eq. 1: Curve 
+
+  INT    bflag_c;                ! Blank flag for curve
+  INT    bflag_s;                ! Blank flag for surface
+
+  INT    DEBUG;                  ! Debug
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 1;                       ! Debug printout
+
+  IF   graphic = 0 THEN             ! 
+    bflag_c := 1;                   ! Blank flag curves
+    bflag_s := 1;                   ! Blank flag surface
+  ELIF graphic = 1 THEN             ! 
+    bflag_c := 1;                   ! Blank flag curves
+    bflag_s := 0;                   ! Blank flag surface
+  ELIF graphic = 2 THEN             ! 
+    bflag_c := 0;                   ! Blank flag curves
+    bflag_s := 0;                   ! Blank flag surface
+  ELSE                              !
+    EXIT("s_rotsurv1 graphic");     !
+  ENDIF;                            !
+
+  rot_ang := +90.0;                 ! Rotation angle +90 
+
+! +++
+! 2. Create the spine curve
+! ---
+
+  CUR_COMP(#2,lin_id                ! Convert to curve
+   :PEN=2,BLANK=bflag_c);           !
+! Lägg till mer kod som trimmar spinen .... 
+  spine_id:=GLOBAL_REF(#2);         !
+  al_s:= ARCL(spine_id);            ! Spine length
+
+! +++
+! 3. Maxwidth 1 curve is the input curve
+! ---
+
+  lim1_id:= cur_id;                 !
+
+! +++
+! 4. Create transformation matrices for all limit curves
+! ---
+
+  CSYS_3P(#3,"ROTSYST",             ! Local rotation system
+   ON(lin_id,0),                    ! Origin
+   ON(lin_id,1),                    ! X point
+   ON(cur_id,0)                     ! Y point
+   :BLANK=1,PEN=3);                 !
+
+  MODE_LOCAL(GLOBAL_REF(#3));       ! Activate local system
+
+  LIN_FREE(#4,VEC(0,0,0),           ! Z translation vector
+         VEC(0,0,al_s*0.1)          !
+     :BLANK=1,PEN=1);               !
+  LIN_FREE(#5,VEC(0,0,0),           ! Y translation vector
+         VEC(0,al_s*0.1,0)          !
+     :BLANK=1,PEN=1);               !
+  MODE_GLOBAL();                    ! Activate global system
+
+  TFORM_MOVE(#6,                    ! Translation in Z
+    ON(GLOBAL_REF(#4),0.0),         !
+    ON(GLOBAL_REF(#4),1.0));        !
+  tram_id:=GLOBAL_REF(#6);          !
+  TFORM_MOVE(#7,                    ! Translation in Y
+    ON(GLOBAL_REF(#5),0.0),         !
+    ON(GLOBAL_REF(#5),1.0));        !
+  trat_id:=GLOBAL_REF(#7);          !
+  
+  TFORM_ROTL(#8,                    ! Rotation +90 or -90 degrees
+   ON(lin_id,0),                    ! Start point rotation axis
+   ON(lin_id,1),                    ! End   point rotation axis
+     rot_ang);                      !
+  trot_id:=GLOBAL_REF(#8);          !
+   
+! +++
+! 5. Create limit curves by rotation    
+! ---
+
+  TCOPY(#9 ,lim1_id,trot_id);       ! Rotate lim1_id
+  lim4_id:=GLOBAL_REF(#9);          !
+  TCOPY(#10,lim4_id,trot_id);       ! Rotate lim4_id
+  lim3_id:=GLOBAL_REF(#10);         !
+  TCOPY(#11,lim3_id,trot_id);       ! Rotate lim3_id
+  lim2_id:=GLOBAL_REF(#11);         !
+
+! +++
+! 5. Create tangent curves by translation
+! ---
+
+  TCOPY(#12,lim1_id,tram_id);       ! Translation of lim1_id 
+  tan1_id:=GLOBAL_REF(#12);         !
+  TCOPY(#13,lim4_id,trat_id);       ! Translation of lim4_id 
+  tan4_id:=GLOBAL_REF(#13);         !
+  TCOPY(#14,lim3_id,tram_id);       ! Translation of lim3_id 
+  tan3_id:=GLOBAL_REF(#14);         !
+  TCOPY(#15,lim2_id,trat_id);       ! Translation of lim2_id 
+  tan2_id:=GLOBAL_REF(#15);         !
+
+! +++
+! 9. Create P value curve for all surface strips
+! ---
+
+! +++
+! The P value curve is a scalar function (not a R*3 curve),
+! and shall not be transformed with the active coordinate 
+! system. The P value curve must therefore be defined by 
+! a BASIC module.
+! ---
+
+  pval     := SQRT(2)-1.0;          ! P value for quarter of circle
+  n_poi    := 2;                    ! Points for P value curve
+  poi(1)   := VEC(   0     ,pval,0);!
+  tanpoi(1):= VEC(1.02*al_s,pval,0);!
+  midpoi(1):= VEC(   0,      0,  0);!
+  pvalue(1):= 0.5;                  !
+  p_flag(1):= "P";                  !
+  poi(2)   := VEC(1.02*al_s,pval,0);!
+  tanpoi(2):= VEC(   0     ,pval,0);!
+  graphic_c:= 0;                    !
+
+  PART(#16 , c_cconicv0 (           ! Create P value curve
+    n_poi,poi,tanpoi,               !
+    midpoi,pvalue,p_flag,           !
+    graphic_c));                    !
+  pval_id:=GLOBAL_REF(#16#1);       !
+
+! +++
+! 10. Create the surface (identity #1)   
+! ---
+
+  IF   direct="P" OR direct="p" THEN!
+    ;                               ! 
+  ELIF direct="N" OR direct="n" THEN!
+    lim2_t_id := lim2_id;           ! Shift (reorder) references
+    lim3_t_id := lim3_id;           ! 
+    lim4_t_id := lim4_id;           ! 
+    lim2_id   := lim4_t_id;         ! 
+    lim3_id   := lim3_t_id;         ! 
+    lim4_id   := lim2_t_id;         ! 
+    tan2_t_id := tan2_id;           ! 
+    tan3_t_id := tan3_id;           ! 
+    tan4_t_id := tan4_id;           ! 
+    tan2_id   := tan4_t_id;         ! 
+    tan3_id   := tan3_t_id;         ! 
+    tan4_id   := tan2_t_id;         ! 
+  ELSE                              !
+    EXIT("s_rotsurv1 direct ");     !
+  ENDIF;                            !
+
+  SUR_CONIC(#1 , spine_id,          !
+     lim1_id,tan1_id,"P",pval_id,   !
+     lim2_id,tan2_id,"P",pval_id,   !
+     lim3_id,tan3_id,"P",pval_id,   !
+     lim4_id,tan4_id,"P",pval_id,   !
+     lim1_id,tan1_id                !
+            :BLANK=bflag_s);        !
+
+!! +++
+!! 6. Erase temporary used geometry (if graphic = 0 or =1)
+!! ---
+!
+!  MODE_GLOBAL();                    !
+!
+  IF graphic= 0 OR graphic= 1 THEN  !
+    BLANK(lim1_id);                 !
+    BLANK(lim2_id);                 !
+    BLANK(lim3_id);                 !
+    BLANK(lim4_id);                 !
+    BLANK(tan1_id);                 !
+    BLANK(tan2_id);                 !
+    BLANK(tan3_id);                 !
+    BLANK(tan4_id);                 !
+    BLANK(pval_id);                 !
+!    DEL( #2);                       !
+!    DEL( #3);                       !
+!    DEL( #4);                       !
+!    DEL( #5);                       !
+!    DEL( #6);                       !
+!    DEL( #7);                       !
+!    DEL( #8);                       !
+!    DEL( #9);                       !
+!    DEL(#10);                       !
+!    DEL(#11);                       !
+!    DEL(#12);                       !
+!    DEL(#13);                       !
+!    DEL(#14);                       !
+!    DEL(#15);                       !
+!    DEL(#16);                       !
+!    DEL(#17);                       !
+!    DEL(#20);                       !
+!    DEL(#21);                       !
+!    DEL(#30);                       !
+  ENDIF;                            !
+
+ENDMODULE

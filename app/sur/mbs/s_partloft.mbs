@@ -1,0 +1,280 @@
+! ***************** s_partloft ****************************
+!
+! +++
+! The function creates only a part of a SUR_CONIC surface.
+!
+! Input are (all) limit, tangent and mid curves for the 
+! surface, but only the part that the FANGA calculation 
+! "needs" will be created.
+! 
+! This module should be used for the FANGA optimization
+! in order to speed up calculations.
+!
+! 1994-12-03 Gunnar Liden
+! 1995-01-23 Debug  Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create FANGA optimisation part of SUR_CONIC surface
+!sdescs Skapa FANGA optimeringsdel av en SUR_CONIC yta
+
+GLOBAL GEOMETRY MODULE s_partloft (
+
+REF        spine_id;     ! Spine   curve
+VAR REF    lim(10);      ! Limit   curves
+VAR REF    tan(10);      ! Tangent curves
+VAR STRING mt(10)*1;     ! Mid curve types
+VAR REF    mid(10);      ! Mid     curves
+    INT    no_strips;    ! Number of strips
+    INT    ivstart;      ! Start strip no (start limit curve no)
+    INT    ivend;        ! End strip number (ivstart=ivend => 1 strip)
+    STRING type*1;       ! X, Y, Z or S
+    FLOAT  starts;       ! Start spine value
+    FLOAT  ends;         ! End   spine value
+VAR REF    sur_id;       ! Output surface reference
+VAR REF    outspine_id;  ! Output spine   reference
+    INT    graphic);     ! Eq. 0 No graphic Eq. 1: Show surface
+
+
+! Internal variables
+
+  INT    i_v;            ! Loop index strip
+
+                         ! Data for part of surface
+  REF    lim_p(10);      ! Limit   curves
+  REF    tan_p(10);      ! Tangent curves
+  STRING mt_p(10)*1;     ! Mid curve types
+  REF    mid_p(10);      ! Mid     curves
+  INT    no_strips_p;    ! Number of strips
+
+  VECTOR p1_s;           ! Points for B_PLANE 1
+  VECTOR p2_s;           ! 
+  VECTOR p4_s;           ! 
+  VECTOR p1_e;           ! Points for B_PLANE 2
+  VECTOR p2_e;           ! 
+  VECTOR p4_e;           ! 
+
+  VECTOR pi_s;           ! Start intersect point
+  VECTOR pi_e;           ! End   intersect point
+
+  FLOAT  u_s;            ! Start parameter for spine
+  FLOAT  u_e;            ! End   parameter for spine
+
+  INT    i_mid;          ! Loop index mid curve
+
+  FLOAT  s_part;         ! Arclength for P-value translation
+
+  INT    s_blank;        ! Blank value for surface and spine
+
+  INT    DEBUG;          ! For Debug printout
+  STRING s*1;            ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! 0. Initiations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF ivstart < 1 THEN            !
+    EXIT("s_partloft ivstart "   !
+    +STR(ivstart,-1,0)+" < 1 "); !
+  ENDIF;                         !
+  IF ivend   > no_strips THEN    !
+    EXIT("s_partloft ivend   "   !
+    +STR(ivend,-1,0)+            !
+      " > no_strips");           !
+  ENDIF;                         !
+  IF ivstart > ivend THEN        !
+    EXIT("s_partloft ivstart "   !
+    +STR(ivstart,-1,0)+">ivend " !
+    +STR(ivend  ,-1,0));         !
+  ENDIF;                         !
+
+  IF   graphic = 0  THEN         ! Blank flags
+    s_blank := 1;                !
+  ELIF graphic = 1  THEN         !
+    s_blank := 0;                !
+  ELSE                           !
+    EXIT("s_partloft graphic");  !
+  ENDIF;                         !
+
+! +++
+! 1. Curves for surface part to local arrays
+! ---
+
+  no_strips_p:=  0;              ! Initiate no strips
+  FOR i_v:=ivstart TO ivend   DO ! Start loop strips
+   no_strips_p:= no_strips_p+1;  ! An additional strip
+   lim_p(no_strips_p):=lim(i_v); ! Limit   curve
+   tan_p(no_strips_p):=tan(i_v); ! Tangent curve
+   mid_p(no_strips_p):=mid(i_v); ! Mid     curve
+   mt_p (no_strips_p):=mt (i_v); ! Mid curve type
+  ENDFOR;                        ! End   loop strips
+  lim_p(no_strips_p+1):=         ! Limit   curve
+                 lim(ivend+1);   !
+  tan_p(no_strips_p+1):=         ! Tangent curve
+                 tan(ivend+1);   !
+  IF no_strips_p < 1 THEN        !
+    EXIT("s_partloft ivend");    !
+  ENDIF;                         !
+  
+  IF DEBUG = 1 THEN              !
+    s:=INPMT("s_partloft " +     !
+         " no_strips_p "         !
+    + STR(no_strips_p,-1,0)+" "  !
+       ,"",1);                   ! 
+  ENDIF;                         !
+
+! +++
+! 2. Determine spine parameter values for surface part
+! ---
+
+  IF   type="X" OR type="x" THEN !
+    p1_s:=VEC(starts, 0 , 0 );   !
+    p2_s:=VEC(starts,100,50 );   !
+    p4_s:=VEC(starts,200, 0 );   !
+    p1_e:=VEC(ends  , 0 , 0 );   !
+    p2_e:=VEC(ends  ,100,50 );   !
+    p4_e:=VEC(ends  ,200, 0 );   !
+  ELIF type="Y" OR type="y" THEN !
+    p1_s:=VEC( 0 ,starts, 0 );   !
+    p2_s:=VEC(100,starts,50 );   !
+    p4_s:=VEC(200,starts, 0 );   !
+    p1_e:=VEC( 0 ,ends  , 0 );   !
+    p2_e:=VEC(100,ends  ,50 );   !
+    p4_e:=VEC(200,ends  , 0 );   !
+  ELIF type="Z" OR type="z" THEN !
+    EXIT("s_partloft type Z");   !
+  ELIF type="S" OR type="s" THEN !
+    EXIT("s_partloft type S");   !
+  ELSE                           !
+    EXIT("s_partloft type");     !
+  ENDIF;                         !
+
+  IF type<>"S" OR type<>"s" THEN !
+    B_PLANE(#1,p1_s,p2_s,        !
+                    p2_s,p4_s);  !
+    B_PLANE(#2,p1_e,p2_e,        !
+                    p2_e,p4_e);  !
+    pi_s:=INTERSECT              !
+            (spine_id,#1,1);     !
+    pi_e:=INTERSECT              !
+            (spine_id,#2,1);     !
+    u_s:=INV_ON(spine_id,pi_s,1);!
+    u_e:=INV_ON(spine_id,pi_e,1);!
+    CUR_TRIM(#3,spine_id,0,u_s   !
+              :PEN=3);           !
+    s_part:= ARCL(#3);           ! Arclength translation P value
+    TFORM_MOVE(#4,VEC(0,0,0),    ! Pval curve translation
+     VEC(-s_part,0,0));          !
+  ENDIF;                         !
+
+  IF DEBUG = 2 THEN              !
+    s:=INPMT("s_partloft u_s    "!
+       + STR(u_s   ,-12,4)+" "   !
+       ,"",1);                   ! 
+    s:=INPMT("s_partloft s_part "!
+       + STR(s_part,-12,4)+" "   !
+       ,"",1);                   ! 
+  ENDIF;                         !
+
+  CUR_TRIM(#10,spine_id,u_s,u_e  ! Output trimmed spine
+        :PEN=4,BLANK=s_blank);   !
+  outspine_id:=GLOBAL_REF(#10);  !
+
+  FOR i_mid:=1 TO no_strips_p DO ! Start loop mid curves
+
+    IF mt_p(i_mid) = "P" OR      ! P value curve ?
+     mt_p(i_mid) = "p"   THEN    !
+     TCOPY(#6,mid_p(i_mid),#4);  !
+     mid_p(i_mid):=              ! New translated Pval curve
+     GLOBAL_REF(REFC(6,i_mid));  !
+    ENDIF;                       !
+  ENDFOR;                        ! End   loop mid curves
+
+
+  IF   no_strips_p = 1 THEN      ! One strip surface
+    SUR_CONIC(#11, #10,          !
+      lim_p(1),tan_p(1),         !
+      mt_p(1), mid_p(1),         !
+      lim_p(2),tan_p(2)          !
+      :PEN=4,BLANK=s_blank);     !
+    sur_id:= GLOBAL_REF(#11);    !
+  ELIF no_strips_p = 2 THEN      ! Two strip surface
+    SUR_CONIC(#12, #10,          !
+      lim_p(1),tan_p(1),         !
+      mt_p(1), mid_p(1),         !
+      lim_p(2),tan_p(2),         !
+      mt_p(2), mid_p(2),         !
+      lim_p(3),tan_p(3)          !
+      :PEN=4,BLANK=s_blank);     !
+    sur_id:= GLOBAL_REF(#12);    !
+  ELIF no_strips_p = 3 THEN      ! Three strip surface
+    SUR_CONIC(#13, #10,          !
+      lim_p(1),tan_p(1),         !
+      mt_p(1), mid_p(1),         !
+      lim_p(2),tan_p(2),         !
+      mt_p(2), mid_p(2),         !
+      lim_p(3),tan_p(3),         !
+      mt_p(3), mid_p(3),         !
+      lim_p(4),tan_p(4)          !
+      :PEN=4,BLANK=s_blank);     !
+    sur_id:= GLOBAL_REF(#13);    !
+  ELIF no_strips_p = 4 THEN      ! Four strip surface
+    SUR_CONIC(#14, #10,          !
+      lim_p(1),tan_p(1),         !
+      mt_p(1), mid_p(1),         !
+      lim_p(2),tan_p(2),         !
+      mt_p(2), mid_p(2),         !
+      lim_p(3),tan_p(3),         !
+      mt_p(3), mid_p(3),         !
+      lim_p(4),tan_p(4),         !
+      mt_p(4), mid_p(4),         !
+      lim_p(5),tan_p(5)          !
+      :PEN=4,BLANK=s_blank);     !
+    sur_id:= GLOBAL_REF(#14);    !
+  ELIF no_strips_p = 5 THEN      ! Five strip surface
+    SUR_CONIC(#15, #10,          !
+      lim_p(1),tan_p(1),         !
+      mt_p(1), mid_p(1),         !
+      lim_p(2),tan_p(2),         !
+      mt_p(2), mid_p(2),         !
+      lim_p(3),tan_p(3),         !
+      mt_p(3), mid_p(3),         !
+      lim_p(4),tan_p(4),         !
+      mt_p(4), mid_p(4),         !
+      lim_p(5),tan_p(5),         !
+      mt_p(5), mid_p(5),         !
+      lim_p(6),tan_p(6)          !
+      :PEN=4,BLANK=s_blank);     !
+    sur_id:= GLOBAL_REF(#15);    !
+  ELSE                           !
+  EXIT("s_partloft no_strips_p");!
+  ENDIF;                         !
+
+
+! +++
+! 5. Delete entities
+! ---
+
+  IF DEBUG = 0 THEN              ! Erase only for No Debug
+    DEL(GLOBAL_REF(#1));         ! 
+    DEL(GLOBAL_REF(#2));         !
+    DEL(GLOBAL_REF(#3));         !
+    DEL(GLOBAL_REF(#4));         !
+    FOR i_mid:=1 TO              !
+               no_strips_p DO    ! Start loop mid curves
+      IF mt_p(i_mid) = "P" OR    ! P value curve ?
+       mt_p(i_mid) = "p"   THEN  !
+      DEL(                       ! Erase mid P value
+      GLOBAL_REF(REFC(6,i_mid)));!
+      ENDIF;                     !
+    ENDFOR;                      ! End   loop mid curves
+  ENDIF;                         ! End  Debug
+
+ENDMODULE

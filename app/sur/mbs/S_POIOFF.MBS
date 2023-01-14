@@ -1,0 +1,194 @@
+!*********************  s_poioff  *************************************
+! +++
+! The function offsets points in a point (SUR_POINTS) file
+!
+! Revision history
+! ________________
+!
+! 1994-08-18 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce The function offsets points in a point (SUR_POINTS) file
+!sdescs Flytta punkter till offset yta (fil på SUR_POINTS format)
+
+GLOBAL GEOMETRY MODULE  s_poioff  (
+STRING  fin1*15  := "SODIN49X256A" >"Input file";
+FLOAT   offset   := -3.0           >"Offset for surface";
+STRING  fout*15  := "SURFOFFSET"   >"Output file ";
+STRING  o_s*4    := "UNIX"         >"Operating system (UNIX or VAX)";
+INT     graphic  := 1              >"Graphic: 0= none, 1= reduced, 2= full");
+
+! Internal variables:
+
+!QQ  INT    iu_s;                 ! Start U point
+!QQ  INT    iv_s;                 ! Start V point
+!QQ  INT    iu_e;                 ! End   U point
+!QQ  INT    iv_e;                 ! End   V point
+  STRING f_name1*132;          ! Full file name 1
+  STRING f_name2*132;          ! Full file name 2
+  FILE   pdat;                 ! File with points, normals, ...
+  STRING fout_name*132;        ! Output file name
+  FILE   pdatout;              ! 
+
+  INT    i_p;                  ! Loop index point
+
+  INT    iu_out,iv_out;        ! Output point number
+
+  VECTOR s_pt;                 ! Point on surface
+  VECTOR s_pt_off;             ! Point on offset surface
+  VECTOR s_n;                  ! Normal for surface point s_pt
+  VECTOR kap1;                 ! Principal curvature direction
+  VECTOR kap2;                 ! Principal curvature direction
+  FLOAT  k1;                   ! Principal curvature
+  FLOAT  k2;                   ! Principal curvature
+
+  INT    iu,iv;                ! Point number
+  VECTOR utan;                 ! Tangent in U direction
+  VECTOR vtan;                 ! Tangent in V direction
+  VECTOR twist;                ! Twist vector           
+
+  INT    flag;                 ! End of file flag
+
+  STRING rowcode*10;           ! Code for row (point data)
+  STRING rad*132;              ! Dummy string
+  INT    iu_tot;               ! Total no pts in U direction
+  INT    iv_tot;               ! Total no pts in V direction
+  VECTOR s_n_off;              ! Surface normal for offset surf
+
+  INT    npts;                 ! Total number of points
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initiations
+!
+!    Open input file with points, normals and curvature
+
+
+  DEBUG := 1;                 ! =0 or =1
+
+  IF    o_s = "VAX"   THEN    ! Operating system VAX  
+    f_name1:= ACT_JOBDIR() +  !
+     fin1  +".";              !
+    fout_name:= ACT_JOBDIR()+ !
+       fout;                  !
+  ELIF  o_s = "UNIX"  THEN    ! Operating system UNIX 
+    f_name1:= ACT_JOBDIR() +  ! 
+     fin1 ;                   !
+    fout_name:=ACT_JOBDIR() + ! 
+          fout;               !
+  ELSE                        !
+   EXIT("s_poioff  o_s "+     !
+        o_s);                 !
+  ENDIF;                      !
+
+  OPEN(pdat,"R",f_name1);     ! Open input file with data
+  IF IOSTAT(pdat) <> 0 THEN   !
+   EXIT(f_name1+"failed");    !
+  ENDIF;                      !
+
+  rowcode := INSTR(pdat,9);   ! total                   
+  iu_tot  := ININT(pdat);     ! 
+  iv_tot  := ININT(pdat);     ! 
+  rad:= INLIN(pdat);          ! Read rest of line
+
+  OPEN(pdatout,"W",fout_name);! Open file for output data
+  IF IOSTAT(pdatout) <> 0 THEN!
+   EXIT(fout_name+"failed");  !
+  ENDIF;                      !
+
+! Header to output file
+
+OUTSTR(pdatout,"total    "   +   STR( iu_tot ,-21,0 )+
+                       " "   +   STR( iv_tot ,-21,0 ));
+OUTLIN(pdatout);             
+
+  npts:= 0;                   ! Output number of points
+
+  FOR i_p := 1 TO 20000  DO   ! Start loop read pts in file 1
+
+
+!+++
+!     Read  surface point, normal, curvature, point number
+!     and tangents from input file. Call of POIGETF006.
+!---
+
+      PART(#1,POIGETF006(        ! Read  point from input file
+       pdat, iu, iv,             !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist,flag)               ! 
+       :SAVE=0);                 !
+      IF flag = -1 THEN          ! End Of File ?
+        GOTO nxtfil;             !
+      ENDIF;                     !
+
+!+++
+!     Write surface point, normal, curvature, point number
+!     and tangents to output file. Call of POIRECF006.
+!---
+
+      IF ABS(utan.x-0.123456789) !
+          < 0.0001 OR            !
+         ABS(vtan.x-0.123456789) !
+          < 0.0001   THEN        !
+        ;                        ! Tangent not defined
+      ELSE                       !
+        utan:= VECN(utan);       ! Normering (tillfällig fix)
+        vtan:= VECN(vtan);       ! Normering (tillfällig fix)
+      ENDIF;                     !
+
+      IF VECL(s_n)<0.0001 THEN   ! Normal not defined ?
+       s_n_off:=VPROD(utan,vtan);!
+       s_n_off:=VECN(s_n_off);   !
+       IF VECL(s_n_off)<0.1 THEN ! Calc. normal not defined ?
+        EXIT("s_poioff: normal");!
+       ENDIF;                    !
+      ELSE                       !
+       s_n_off:= -s_n;           ! Negative direction
+       s_n_off:=VECN(s_n_off);   !
+      ENDIF;                     !
+
+
+
+      s_pt_off:= s_pt+           ! Offset point
+                 offset*s_n_off; !
+      iu_out:= iu;               !
+      iv_out:= iv;               !
+      k1 := 0.12456789;          ! Curvature !! Tillfälligt
+      k2 := 0.12456789;          ! Curvature !! Tillfälligt
+      PART(#2,POIRECF006(        ! Write point to output file
+       pdatout, iu_out, iv_out,  !
+       s_pt_off, s_n, kap1, kap2,!
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+
+      IF graphic = 1 THEN        ! Graphics
+        LIN_FREE(#3,s_pt,        !
+                    s_pt_off);   !
+      ENDIF;                     !
+
+      npts := npts + 1;          ! An additional point
+
+  ENDFOR;                        ! End   loop file   
+
+nxtfil:;                         ! 
+
+  CLOSE(pdat);                   ! Close input  file
+
+OUTSTR(pdatout,"EOF      "   +   STR(      npts ,-21,0 ));
+OUTLIN(pdatout);
+  CLOSE(pdatout);                ! Close output file
+
+ENDMODULE

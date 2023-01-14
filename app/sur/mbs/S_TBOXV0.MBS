@@ -1,0 +1,906 @@
+!********************* s_tboxv0   ******************************
+! +++
+! Create a box with triangular patches at top and bottom
+! 
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-04-02 Gunnar Liden
+!
+!***********************************************************
+
+!sdesce Create a box with triangular patches at top and bottom
+!sdescs Skapa en box från åtta punkter med triangulära patches
+
+GLOBAL GEOMETRY MODULE s_tboxv0   (
+VECTOR  p_1  := VEC(   0,   0,   0) >"@ Point 1";
+VECTOR  p_2  := VEC(-100,   0,   0) >"@ Point 2";
+VECTOR  p_3  := VEC(   0,-100,   0) >"@ Point 3";
+VECTOR  p_4  := VEC(-100,-100,   0) >"@ Point 4";
+VECTOR  p_5  := VEC(   0,   0, 300) >"@ Point 5";
+VECTOR  p_6  := VEC(-100,   0, 300) >"@ Point 6";
+VECTOR  p_7  := VEC(   0,-100, 300) >"@ Point 7";
+VECTOR  p_8  := VEC(-100,-100, 300) >"@ Point 8";
+
+INT  graphic := 2 >"=0: Show nothing =1: Show box =2: Show all");
+
+! Internal variables
+
+  VECTOR p_f;                    ! Mid forward point
+  VECTOR p_b;                    ! Mid back    point
+
+  FLOAT  eps;                    ! Epsilon= small hole
+
+  INT    npatu;                  ! Number of patches in U direction
+  INT    npatv;                  ! Number of patches in V direction
+  INT    sur_type;               ! Surface type 
+  INT    i_u;                    ! Loop index IU patch    
+  INT    i_v;                    ! Loop index IV patch    
+
+  INT    p_type;                 ! Patch type 
+
+  INT    t_case;                 ! Case topological data
+                                 ! Eq. 1: Only patch address 
+                                 ! Eq. 2: Patch type added     
+                                 ! Eq. 3: Patch limits added 
+
+  FLOAT  offset;                 ! Offset for patch
+
+  INT    g_case;                 ! Case geometric data
+                                 ! Eq. 1: Coefficient format 
+                                 ! Eq. 2: Geometric   format   
+                                 ! Eq. 3: Bezier      format   
+  VECTOR  r_00;                  ! Corner point 00
+  VECTOR  r_10;                  ! Corner point 10
+  VECTOR  r_01;                  ! Corner point 01
+  VECTOR  r_11;                  ! Corner point 11
+  VECTOR  tu_00;                 ! Corner U tangent 00
+  VECTOR  tu_10;                 ! Corner U tangent 10
+  VECTOR  tu_01;                 ! Corner U tangent 01
+  VECTOR  tu_11;                 ! Corner U tangent 11
+  VECTOR  tv_00;                 ! Corner V tangent 00
+  VECTOR  tv_10;                 ! Corner V tangent 10
+  VECTOR  tv_01;                 ! Corner V tangent 01
+  VECTOR  tv_11;                 ! Corner V tangent 11
+  VECTOR  tw_00;                 ! Twist vector 00
+  VECTOR  tw_10;                 ! Twist vector 10
+  VECTOR  tw_01;                 ! Twist vector 01
+  VECTOR  tw_11;                 ! Twist vector 11
+
+  REF     this_id;               ! Identity of this part
+  STRING  this_ids*132;          ! this_id as string
+  INT     n_this;                ! No. of characters in this_id
+
+  INT    n_pat;                  ! No. of patches in surface
+
+  INT    b_val_sur;              ! Blank value surface
+  INT    b_val_all;              ! Blank value all other entities
+
+  INT    DEBUG;                  ! Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! __________
+! ---
+
+! +++
+! Initializations and checks of input data
+! ---
+
+  eps := 0.001;
+
+! Change to 0 or 1
+  DEBUG := 2;
+
+  IF  DEBUG = 1 THEN
+    LST_INI("Debug from s_tboxv0");
+  ENDIF;
+
+! Get reference to this part
+  this_id  := GLOBAL_REF(#0);
+  this_ids := RSTR(this_id);
+  n_this   := LENGTH(this_ids);
+! Remove .#0.1 = 4 characters
+  this_ids := SUBSTR(this_ids,1,n_this-4); 
+  this_id  := RVAL(this_ids);
+
+  IF     graphic = 0 THEN
+    b_val_all := 1;
+    b_val_sur := 1;
+  ELIF   graphic = 1 THEN
+    b_val_all := 1;
+    b_val_sur := 0;
+  ELIF   graphic = 2 THEN
+    b_val_all := 0;
+    b_val_sur := 0;
+  ELSE
+    EXIT("s_tboxv0   Graphic not 0, 1 or 2");
+  ENDIF;
+
+  r_00  := VEC(0,0,0);
+  r_10  := VEC(0,0,0);
+  r_01  := VEC(0,0,0);
+  r_11  := VEC(0,0,0);
+  tu_00  := VEC(0,0,0);
+  tu_10  := VEC(0,0,0);
+  tu_01  := VEC(0,0,0);
+  tu_11  := VEC(0,0,0);
+  tv_00  := VEC(0,0,0);
+  tv_10  := VEC(0,0,0);
+  tv_01  := VEC(0,0,0);
+  tv_11  := VEC(0,0,0);
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+  p_f    := VEC(0,0,0);
+  p_b    := VEC(0,0,0);
+  offset := 0.0;
+  g_case := -12345;
+  p_type := -12345;
+
+
+! +++
+! Registration of surface header data for SUR_USRDEF
+! ---
+
+ npatu    := 3;
+ npatv    := 4;
+ sur_type := 1;
+
+ PART(#2,s_reghead ( npatu, npatv, sur_type ));
+
+! +++
+! Register topological and geometrical patch data.
+! ---
+
+! +++
+! Registration of topological data 
+! ---
+
+  t_case := 1;
+
+  FOR i_u := 1 TO npatu DO
+    FOR i_v := 1 TO npatv DO
+      PART(#3,s_regtop ( t_case, i_u, i_v ));
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Mid points p_f and p_b
+! ---
+
+  IF  VECL(p_4-p_1) >= VECL(p_2-p_3) THEN
+    p_f := p_1 + 0.5*(p_4-p_1);
+  ELIF VECL(p_2-p_3) >= 0.01  THEN
+    p_f := p_2 + 0.5*(p_3-p_2);
+  ELSE
+    EXIT("s_tboxv0  p_1=p_2=p_3=p_4");
+  ENDIF;
+
+  IF  VECL(p_8-p_5) >= VECL(p_6-p_7) THEN
+    p_b := p_5 + 0.5*(p_8-p_5);
+  ELIF VECL(p_6-p_7) >= 0.01  THEN
+    p_b := p_6 + 0.5*(p_7-p_6);
+  ELSE
+    EXIT("s_tboxv0  p_5=p_6=p_7=p_8");
+  ENDIF;
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("this_id= "+ RSTR(this_id)+
+             " GLOBAL_REF(#0) "+RSTR(GLOBAL_REF(#0)));
+    LST_LIN("n_this "+ STR(n_this,5,0) );
+    LST_LIN("p_1 "+ STR(p_1.x,15,8)+" "+ 
+                    STR(p_1.y,15,8)+" "+ 
+                    STR(p_1.z,15,8) );
+    LST_LIN("p_2 "+ STR(p_2.x,15,8)+" "+ 
+                    STR(p_2.y,15,8)+" "+ 
+                    STR(p_2.z,15,8) );
+    LST_LIN("p_3 "+ STR(p_3.x,15,8)+" "+ 
+                    STR(p_3.y,15,8)+" "+ 
+                    STR(p_3.z,15,8) );
+    LST_LIN("p_4 "+ STR(p_4.x,15,8)+" "+ 
+                    STR(p_4.y,15,8)+" "+ 
+                    STR(p_4.z,15,8) );
+    LST_LIN("p_5 "+ STR(p_5.x,15,8)+" "+ 
+                    STR(p_5.y,15,8)+" "+ 
+                    STR(p_5.z,15,8) );
+    LST_LIN("p_6 "+ STR(p_6.x,15,8)+" "+ 
+                    STR(p_6.y,15,8)+" "+ 
+                    STR(p_6.z,15,8) );
+    LST_LIN("p_7 "+ STR(p_7.x,15,8)+" "+ 
+                    STR(p_7.y,15,8)+" "+ 
+                    STR(p_7.z,15,8) );
+    LST_LIN("p_8 "+ STR(p_8.x,15,8)+" "+ 
+                    STR(p_8.y,15,8)+" "+ 
+                    STR(p_8.z,15,8) );
+    LST_LIN("p_f "+ STR(p_f.x,15,8)+" "+ 
+                    STR(p_f.y,15,8)+" "+ 
+                    STR(p_f.z,15,8) );
+    LST_LIN("p_b "+ STR(p_b.x,15,8)+" "+ 
+                    STR(p_b.y,15,8)+" "+ 
+                    STR(p_b.z,15,8) );
+  ENDIF;
+
+
+! +++
+! Calculate corner geometry data
+! ---
+
+
+! +++
+! Triangular patch
+! ---
+
+  r_00   := p_f;
+  r_01   := p_f;
+  r_10   := p_2;
+  r_11   := p_1;
+
+  r_00   := r_00 + eps*VECN(r_10-r_00);
+  r_01   := r_01 + eps*VECN(r_11-r_01);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+!Attempt 1  Theoretical OK, but Varkon must "learn" in the
+!           EVAL function when the patch is degenerated
+!           and calculate surfcae normal, only using the
+!           dR/dv vectors (and not dRduXdRdv)
+!           =============================================
+!
+!Attempt 1  r_00   := p_f;
+!Attempt 1  r_01   := p_1;
+!Attempt 1  r_10   := p_f;
+!Attempt 1  r_11   := p_3;
+
+!Attempt 1  tu_00  := VEC(0,0,0);
+!Attempt 1  tu_01  := (r_11 - r_01);
+!Attempt 1  tu_10  := VEC(0,0,0);
+!Attempt 1  tu_11  := (r_11 - r_01);
+
+!Attempt 1  tv_00  := (r_01 - r_00);
+!Attempt 1  tv_01  := (r_01 - r_00);
+!Attempt 1  tv_10  := (r_11 - r_00);
+!Attempt 1  tv_11  := (r_11 - r_00);
+
+!Attempt 1  tw_00  := r_11 - r_01;
+!Attempt 1  tw_01  := r_11 - r_01;
+!Attempt 1  tw_10  := r_11 - r_01;
+!Attempt 1  tw_11  := r_11 - r_01;
+
+  g_case  := 2;
+  i_u     := 1;
+  i_v     := 4;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#4,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+  IF  graphic = 2 THEN
+  IF  VECL(tu_00) > 0.01 THEN
+  LIN_FREE(#100, r_00, r_00 + tu_00:PEN=2);
+  ENDIF;
+  IF  VECL(tu_10) > 0.01 THEN
+  LIN_FREE(#110, r_10, r_10 + tu_10:PEN=2);
+  ENDIF;
+  IF  VECL(tu_01) > 0.01 THEN
+  LIN_FREE(#101, r_01, r_01 + tu_01:PEN=2);
+  ENDIF;
+  IF  VECL(tu_11) > 0.01 THEN
+  LIN_FREE(#111, r_11, r_11 + tu_11:PEN=2);
+  ENDIF;
+  IF  VECL(tv_00) > 0.01 THEN
+  LIN_FREE(#200, r_00, r_00 + tv_00:PEN=4);
+  ENDIF;
+  IF  VECL(tv_10) > 0.01 THEN
+  LIN_FREE(#210, r_10, r_10 + tv_10:PEN=4);
+  ENDIF;
+  IF  VECL(tv_01) > 0.01 THEN
+  LIN_FREE(#201, r_01, r_01 + tv_01:PEN=4);
+  ENDIF;
+  IF  VECL(tv_11) > 0.01 THEN
+  LIN_FREE(#211, r_11, r_11 + tv_11:PEN=4);
+  ENDIF;
+  ENDIF;
+
+
+  r_00   := p_f;
+  r_01   := p_f;
+  r_10   := p_4;
+  r_11   := p_2;
+
+  r_00   := r_00 + eps*VECN(r_10-r_00);
+  r_01   := r_01 + eps*VECN(r_11-r_01);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 1;
+  i_v     := 3;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#5,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+  r_00   := p_f;
+  r_01   := p_f;
+  r_10   := p_3;
+  r_11   := p_4;
+
+  r_00   := r_00 + eps*VECN(r_10-r_00);
+  r_01   := r_01 + eps*VECN(r_11-r_01);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 1;
+  i_v     := 2;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#6,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+  r_00   := p_f;
+  r_01   := p_f;
+  r_10   := p_1;
+  r_11   := p_3;
+
+  r_00   := r_00 + eps*VECN(r_10-r_00);
+  r_01   := r_01 + eps*VECN(r_11-r_01);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 1;
+  i_v     := 1;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#7,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+  r_00   := p_2;
+  r_01   := p_1;
+  r_10   := p_6;
+  r_11   := p_5;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 2;
+  i_v     := 4;
+
+  PART(#8,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+  r_00   := p_4;
+  r_01   := p_2;
+  r_10   := p_8;
+  r_11   := p_6;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 2;
+  i_v     := 3;
+
+  PART(#9,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+  r_00   := p_3;
+  r_01   := p_4;
+  r_10   := p_7;
+  r_11   := p_8;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 2;
+  i_v     := 2;
+
+  PART(#10,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+  r_00   := p_1;
+  r_01   := p_3;
+  r_10   := p_5;
+  r_11   := p_7;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 2;
+  i_v     := 1;
+
+  PART(#11,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+
+  r_00   := p_6;
+  r_01   := p_5;
+  r_10   := p_b;
+  r_11   := p_b;
+
+  r_10   := r_10 + eps*VECN(r_00-r_10);
+  r_11   := r_11 + eps*VECN(r_01-r_11);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 3;
+  i_v     := 4;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#12,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+            tu_00, tu_10, tu_01, tu_11, 
+            tv_00, tv_10, tv_01, tv_11, 
+            tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+
+  r_00   := p_8;
+  r_01   := p_6;
+  r_10   := p_b;
+  r_11   := p_b;
+
+  r_10   := r_10 + eps*VECN(r_00-r_10);
+  r_11   := r_11 + eps*VECN(r_01-r_11);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 3;
+  i_v     := 3;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#13,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+            tu_00, tu_10, tu_01, tu_11, 
+            tv_00, tv_10, tv_01, tv_11, 
+            tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+  r_00   := p_7;
+  r_01   := p_8;
+  r_10   := p_b;
+  r_11   := p_b;
+
+  r_10   := r_10 + eps*VECN(r_00-r_10);
+  r_11   := r_11 + eps*VECN(r_01-r_11);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 3;
+  i_v     := 2;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#14,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+            tu_00, tu_10, tu_01, tu_11, 
+            tv_00, tv_10, tv_01, tv_11, 
+            tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+  r_00   := p_5;
+  r_01   := p_7;
+  r_10   := p_b;
+  r_11   := p_b;
+
+  r_10   := r_10 + eps*VECN(r_00-r_10);
+  r_11   := r_11 + eps*VECN(r_01-r_11);
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 3;
+  i_v     := 1;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#15,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+            tu_00, tu_10, tu_01, tu_11, 
+            tv_00, tv_10, tv_01, tv_11, 
+            tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  IF  DEBUG = 1 THEN
+    LST_LIN("i_u  "+ STR(i_u,5,0)+" "+ STR(i_v,5,0) );
+    LST_LIN("r_00 "+ STR(r_00.x,15,8)+" "+ 
+                     STR(r_00.y,15,8)+" "+ 
+                     STR(r_00.z,15,8) );
+    LST_LIN("r_01 "+ STR(r_01.x,15,8)+" "+ 
+                     STR(r_01.y,15,8)+" "+ 
+                     STR(r_01.z,15,8) );
+    LST_LIN("r_10 "+ STR(r_10.x,15,8)+" "+ 
+                     STR(r_10.y,15,8)+" "+ 
+                     STR(r_10.z,15,8) );
+    LST_LIN("r_11 "+ STR(r_11.x,15,8)+" "+ 
+                     STR(r_11.y,15,8)+" "+ 
+                     STR(r_11.z,15,8) );
+  ENDIF;
+
+! +++
+! Create surface. 
+! (Scan only in this sub-tree)
+! ---
+
+  SUR_USRDEF(#1, this_id, "s_reghead", "s_regtop", "s_reggeom"
+                       :BLANK=b_val_sur,PEN=3);
+
+! +++
+! Delete temporary used parts
+! ---
+
+  DEL(GLOBAL_REF( #2));
+  n_pat := 0;
+  FOR i_u := 1 TO npatu DO
+    FOR i_v := 1 TO npatv DO
+      n_pat := n_pat + 1;
+      DEL(GLOBAL_REF(REFC(3,n_pat)));
+    ENDFOR;
+  ENDFOR;
+  DEL(GLOBAL_REF( #4));
+  DEL(GLOBAL_REF( #5));
+  DEL(GLOBAL_REF( #6));
+  DEL(GLOBAL_REF( #7));
+  DEL(GLOBAL_REF( #8));
+  DEL(GLOBAL_REF( #9));
+  DEL(GLOBAL_REF(#10));
+  DEL(GLOBAL_REF(#11));
+  DEL(GLOBAL_REF(#12));
+  DEL(GLOBAL_REF(#13));
+  DEL(GLOBAL_REF(#14));
+  DEL(GLOBAL_REF(#15));
+
+  IF  DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE

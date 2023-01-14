@@ -1,0 +1,404 @@
+!******************** s_nvoffv0   *************************************
+! +++
+! s_nvoffv0 
+! _________
+!
+! Printout of header or bicubic patch data in NMG (F07) format.           
+!
+! Output: A text file surname.DAT in the bicubic F07 (NMG) format
+!
+!  ----- Description of the data in the F07 file -------------------
+!                                                                  
+!   The order of the patches:                                     
+!   -------------------------                                    
+!                                                               
+!   IU=1,IV=NV                              IU=NU,IV=NV        
+!    -----------------------------------------                
+!    !     !      !      !      !     !      !               
+!    ! 13  ! 14   ! 15   ! 16   ! 17  ! 18   !              
+!    -----------------------------------------             
+!    !     !      !      !      !     !      !            
+!    !  7  !  8   !  9   ! 10   ! 11  ! 12   !           
+!    ----------------------------------------           
+!    !     !      !      !      !     !      !         
+!    !  1  !  2   !  3   !  4   !  5  !  6   !        
+!    ----------------------------------------        
+!                                                                  
+!   IU=1,IV=1                                IU=NU,IV=1           
+!                                                                
+!  (Loop index iu= IU-1 and iv= IV-1 in program below)          
+!                                                              
+!   Surface data header:  
+!   -------------------
+!
+! Surface name          Total_number_of_patches            (Line 1)
+! YTA/1                           594                      ( Ex. )                     
+!
+!   Patch data header:              
+!   ------------------             
+!                                                          
+!    I1   I2   I3   I4  I5    I6   I7   I8   I9   I10      (Line 2)
+!     1   48    1    0 1001    0    0   34   19    0       ( Ex. )
+!                                                                  
+!   where
+!   I1  = 1 (always one)
+!   I2  = Number of records (coefficients) = 48 for bicubic patch
+!   I3  = Patch number in file
+!   I4  = 0 (always zero)
+!   I5  = Surface type = 1001 for bicubic surface
+!   I6  = 0
+!   I7  = 0
+!   I8  = Number of U lines in the surface
+!   I9  = Number of V lines in the surface
+!   I10 = 0 (always zero)
+!
+!
+!   The order of the coefficients for a patch:                    
+!   -----------------------------------------                    
+!                                                               
+!   Line Coefficients   (    for    ) Coefficients   (    for    ) 
+!                                                                 
+!    1   a00x a00y a00z (1.0  * 1.0 ) a10x a10y a10z (U    * 1.0 ) 
+!    2   a20x a20y a20z (U**2 * 1.0 ) a30x a30y a30z (U**3 * 1.0 ) 
+!    3   a01x a01y a01z (1.0  * V   ) a11x a11y a11z (U    * V   ) 
+!    4   a21x a21y a21z (U**2 * V   ) a31x a31y a31z (U**3 * V   ) 
+!    5   a02x a02y a02z (1.0  * V**2) a12x a12y a12z (U    * V**2) 
+!    6   a22x a22y a22z (U**2 * V**2) a32x a32y a32z (U**3 * V**2) 
+!    7   a03x a03y a03z (1.0  * V**3) a13x a13y a13z (U    * V**3) 
+!    8   a23x a23y a23z (U**2 * V**3) a33x a33y a34z (U**3 * V**3) 
+!        ... empty line (no data) ...                      
+!                                                                  
+!  Order of coefficients in VARKON's GETCUBP output vector
+!  _______________________________________________________
+!
+!  data( 1) = a00x      data( 2) = a00y      data( 3) = a00z    
+!  data( 4) = a01x      data( 5) = a01y      data( 6) = a01z    
+!  data( 7) = a02x      data( 8) = a02y      data( 9) = a02z    
+!  data(10) = a03x      data(11) = a03y      data(12) = a03z    
+!
+!  data(13) = a10x      data(14) = a10y      data(15) = a10z    
+!  data(16) = a11x      data(17) = a11y      data(18) = a11z    
+!  data(19) = a12x      data(20) = a12y      data(21) = a12z    
+!  data(22) = a13x      data(23) = a13y      data(24) = a13z    
+!
+!  data(25) = a20x      data(26) = a20y      data(27) = a20z    
+!  data(28) = a21x      data(29) = a21y      data(30) = a21z    
+!  data(31) = a22x      data(32) = a22y      data(33) = a22z    
+!  data(34) = a23x      data(35) = a23y      data(36) = a23z    
+!
+!  data(37) = a30x      data(38) = a30y      data(39) = a30z    
+!  data(40) = a31x      data(41) = a31y      data(42) = a31z    
+!  data(43) = a32x      data(44) = a32y      data(45) = a32z    
+!  data(46) = a33x      data(47) = a33y      data(48) = a33z    
+!
+! The function checks that there are no NULL patches in the surface.
+! The parameterization is also checked. Global parameters shall be 
+! integers defined by the patch adress IU,IV.
+!
+! ---
+!
+! Revisions
+! ---------
+!
+! 1997-01-23 Gunnar Liden
+! 
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE s_nvoffv0   (
+
+INT    npatu    := 5       >"Total number of U patches";
+INT    npatv    := 8       >"Total number of V patches";
+STRING w_case*10:= "header">"Case: header or patch";
+REF    s_id                >"@t16 A CUB_SUR surface with one patch";
+INT    iu       := 3       >"For case patch: U address header";
+INT    iv       := 2       >"For case patch: V address header";
+INT    nopat    := 0       >"Patch number in file";
+
+STRING surname*24:="SLASK" >"Surface name (will also be file name with .DAT added)" );
+
+!sdesce Printout header or bicubic patch data in NMG (F07) format
+!sdescs Utskrift av huvud eller bikubisk patch data i NMG format
+
+
+! Internal variables:
+
+  CONSTANT INT language= 1;     ! 1: English Eq. 2: Swedish
+
+  FILE   dat;                   ! Output (F07) file
+
+  INT    typ;                   ! Type of surface
+  INT    npatu_p;               ! No patches in U direction patch surf.
+  INT    npatv_p;               ! No patches in V direction patch surf.
+
+  STRING   ermess1*40;          ! Error message
+  STRING   ermess2*40;          ! Error message
+  STRING   ermess3*40;          ! Error message
+  STRING   ermess4*40;          ! Error message
+  STRING   ermess5*50;          ! Error message
+  STRING   ermess6*50;          ! Error message
+  STRING   ermess7*50;          ! Error message
+  STRING   ermess8*50;          ! Error message
+  STRING   ermess9*50;          ! Error message
+  STRING   ermess10*50;         ! Error message
+  STRING   ermess11*50;         ! Error message
+  STRING   ermess12*50;         ! Error message
+
+  INT      no_c;                ! Number of characters
+  INT      i_c;                 ! Loop index character
+  STRING   rad*132;             ! Line
+
+  FLOAT    pdat(48);            ! Patch data
+  FLOAT    offset;              ! Offset for patch
+
+  INT      p_typ;               ! Patch type
+  INT      iu_p;                ! Patch U address input surface
+  INT      iv_p;                ! Patch V address input surface
+  FLOAT    u1;                  ! Start U value patch
+  FLOAT    u2;                  ! End   U value patch
+  FLOAT    v1;                  ! Start V value patch
+  FLOAT    v2;                  ! End   V value patch
+
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+IF   language = 1 THEN           ! English strings
+  ermess1:=surname+".DAT exists";
+  ermess2:="Open "+surname+ ".DAT failed";
+  ermess3:="Case not HEADER or PATCH";
+  ermess4:=" Number of patches not OK";
+  ermess5:="Not a CUB_PAT patch. Type= ";
+  ermess10:="Offset patch cannot be exported. Offset= ";
+  ermess11:="Not a CUB_SUR surface";
+  ermess12:="More than one one patch in input surface";
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:=surname+".DAT existerar";
+  ermess2:="Öppnandet av "+ surname+ ".DAT misslyckades";
+  ermess3:="Fall ej HEADER eller PATCH";
+  ermess4:="Antalet patchar ej OK";
+  ermess5:="Ej en CUB_PAT patch. Typ= ";
+  ermess10:="Offset patch kan inte exporteras. Offset= ";
+  ermess11:="Ej en CUB_SUR yta";
+  ermess12:="Mer än en patch i indata ytan";
+ELSE
+  EXIT("s_nvoffv0 Language error");
+ENDIF;
+
+IF     w_case = "header" OR w_case = "HEADER" THEN
+  w_case := "HEADER";
+ELIF   w_case = "patch"  OR w_case = "PATCH"  THEN
+  w_case := "PATCH"; 
+ELSE
+    EXIT("s_nvoffv0  " + ermess3 );
+ENDIF;
+
+! +++
+! Retrieve surface type and number of patches in U and V direction
+! ---
+
+IF  w_case = "PATCH"  THEN
+   GETSURH(s_id,"SUR_TYPE",typ);
+   GETSURH(s_id,"NPATU",npatu_p);
+   GETSURH(s_id,"NPATV",npatv_p);
+
+!   Not a CUB_SUR surface if typ not equal 1
+    IF  typ <> 1      THEN 
+     CLOSE(dat);
+     EXIT("s_nvoffv0 " + ermess11 ); 
+    ENDIF;
+
+!   More than one patch
+    IF  npatu_p <> 1 OR npatv_p <> 1  THEN 
+     CLOSE(dat);
+     EXIT("s_nvoffv0 " + ermess12 ); 
+    ENDIF;
+  ELSE
+    typ     := -12345;
+    npatu_p := -12345;
+    npatv_p := -12345;
+  ENDIF;
+
+! +++
+! Open file. Exit with error if file already exists on 
+! the active JOB directory and w_case = HEADER
+! ---
+
+  IF  w_case = "HEADER" THEN
+    OPEN(dat,"r",act_jobdir() +surname+".DAT");
+    IF (IOSTAT(dat) <> 0  ) THEN
+!     OK, file does not exist
+      ;
+    ELSE 
+      EXIT("s_nvoffv0  " + ermess1 ); 
+    ENDIF;
+  ENDIF;
+
+  IF    w_case = "PATCH" THEN
+    OPEN(dat,"a",act_jobdir()+ surname+".DAT");
+    IF (IOSTAT(dat) <> 0 ) THEN
+      EXIT("s_nvoffv0  " + ermess2 );
+    ENDIF;
+  ELIF  w_case = "HEADER" THEN
+    OPEN(dat,"w",act_jobdir()+ surname+".DAT");
+    IF (IOSTAT(dat) <> 0 ) THEN
+      EXIT("s_nvoffv0  " + ermess2 );
+    ENDIF;
+  ENDIF;
+
+! +++
+! Check number of patches in U and V direction
+! ---
+
+  IF  npatu <  1 OR npatv <  1 THEN
+    EXIT("s_nvoffv0  " + ermess4 ); 
+  ENDIF;
+
+! +++
+! Write header for w_case = HEADER
+! ---
+
+  IF  w_case = "HEADER" THEN
+    no_c := LENGTH(surname);
+    rad:= "  " + surname;
+    FOR i_c:= 2+no_c TO 30 DO
+      rad:= rad + " ";
+    ENDFOR;
+!   Add total number of patches
+    rad:=rad+STR(npatu*npatv,6,0);
+!   Write line 1
+    OUTSTR(dat,rad);
+!   End Of Line
+    OUTLIN(dat);
+  ENDIF;
+
+! +++
+! Write patch data for w_case= PATCH
+! ---
+
+  IF  w_case = "PATCH" THEN
+!   Patch data header     (Line 2)
+    rad:= "  ";
+    rad:= rad+STR(   1 ,5,0);
+    rad:= rad+STR(  48 ,5,0);
+    rad:= rad+STR(nopat,5,0);
+    rad:= rad+STR(   0 ,5,0);
+    rad:= rad+STR( 1001,5,0);
+    rad:= rad+STR(   0 ,5,0);
+    rad:= rad+STR(   0 ,5,0);
+    rad:= rad+STR(npatu+1,5,0);
+    rad:= rad+STR(npatv+1,5,0);
+    rad:= rad+STR(   0 ,5,0);
+    OUTSTR(dat,rad);            ! Write line 2
+    OUTLIN(dat);                ! End Of Line
+
+!   Get topological data
+    iu_p := 1;
+    iv_p := 1;
+    GETTOPP(s_id,iu_p,iv_p,p_typ, u1,u2,v1,v2);
+!   Check for NULL patch
+    IF p_typ <> 1 THEN
+      CLOSE(dat);
+      EXIT("s_nvoffv0  " + ermess5 + STR(p_typ,-1,0) );
+    ENDIF;
+
+!   Get patch data
+    GETCUBP(s_id,iu_p,iv_p,pdat, offset);
+    IF ABS(offset) >0.0001 THEN
+      CLOSE(dat);
+      EXIT("s_nvoffv0  " + ermess10 + STR(offset,-12,8)   );
+    ENDIF;
+
+    rad:=    STR(pdat( 1),12,5);! a00x                  (Line 1)
+    rad:=rad+STR(pdat( 2),12,5);! a00y
+    rad:=rad+STR(pdat( 3)   ,12,5);! a00z
+    rad:=rad+STR(pdat(13)   ,12,5);! a10x
+    rad:=rad+STR(pdat(14)   ,12,5);! a10y
+    rad:=rad+STR(pdat(15)   ,12,5);! a10z
+    OUTSTR(dat,rad);               ! Write line 
+    OUTLIN(dat);                   ! End Of Line
+
+    rad:=    STR(pdat(25),12,5);! a20x                  (Line 2)
+    rad:=rad+STR(pdat(26),12,5);! a20y
+    rad:=rad+STR(pdat(27),12,5);! a20z
+    rad:=rad+STR(pdat(37),12,5);! a30x
+    rad:=rad+STR(pdat(38),12,5);! a30y
+    rad:=rad+STR(pdat(39),12,5);! a30z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat( 4),12,5);! a01x                  (Line 3)
+    rad:=rad+STR(pdat( 5),12,5);! a01y
+    rad:=rad+STR(pdat( 6),12,5);! a01z
+    rad:=rad+STR(pdat(16),12,5);! a11x
+    rad:=rad+STR(pdat(17),12,5);! a11y
+    rad:=rad+STR(pdat(18),12,5);! a11z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat(28),12,5);! a21x                  (Line 4)
+    rad:=rad+STR(pdat(29),12,5);! a21y
+    rad:=rad+STR(pdat(30),12,5);! a21z
+    rad:=rad+STR(pdat(40),12,5);! a31x
+    rad:=rad+STR(pdat(41),12,5);! a31y
+    rad:=rad+STR(pdat(42),12,5);! a31z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat( 7),12,5);! a02x                  (Line 5)
+    rad:=rad+STR(pdat( 8),12,5);! a02y
+    rad:=rad+STR(pdat( 9),12,5);! a02z
+    rad:=rad+STR(pdat(19),12,5);! a12x
+    rad:=rad+STR(pdat(20),12,5);! a12y
+    rad:=rad+STR(pdat(21),12,5);! a12z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat(31),12,5);! a22x                  (Line 6)
+    rad:=rad+STR(pdat(32),12,5);! a22y
+    rad:=rad+STR(pdat(33),12,5);! a22z
+    rad:=rad+STR(pdat(43),12,5);! a32x
+    rad:=rad+STR(pdat(44),12,5);! a32y
+    rad:=rad+STR(pdat(45),12,5);! a32z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat(10),12,5);! a03x                  (Line 7)
+    rad:=rad+STR(pdat(11),12,5);! a03y
+    rad:=rad+STR(pdat(12),12,5);! a03z
+    rad:=rad+STR(pdat(22),12,5);! a13x
+    rad:=rad+STR(pdat(23),12,5);! a13y
+    rad:=rad+STR(pdat(24),12,5);! a13z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    rad:=    STR(pdat(34),12,5);! a23x                  (Line 8)
+    rad:=rad+STR(pdat(35),12,5);! a23y
+    rad:=rad+STR(pdat(36),12,5);! a23z
+    rad:=rad+STR(pdat(46),12,5);! a33x
+    rad:=rad+STR(pdat(47),12,5);! a33y
+    rad:=rad+STR(pdat(48),12,5);! a33z
+    OUTSTR(dat,rad);            ! Write line 
+    OUTLIN(dat);                ! End Of Line
+
+    OUTLIN(dat);                ! Empty  Line           
+
+  ENDIF;
+
+
+! +++
+! Close output file
+! ---
+
+  CLOSE(dat);                   ! Close F07 file
+
+
+ENDMODULE

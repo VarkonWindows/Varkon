@@ -1,0 +1,35 @@
+! ***************** s_nurbkv   ****************************
+!
+! +++
+! Registrate a NURBS knot value in V direction 
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registrate NURBS knot value in V direction 
+!sdescs Registrera NURBS knut varde i V riktningen
+
+
+GLOBAL GEOMETRY MODULE s_nurbkv   (
+FLOAT  kv;         ! 1. Knot value  in V direction
+INT    nv);        ! 2. Knot number in V direction
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! No calculation, only registration.  
+! ---
+
+ ;
+
+ENDMODULE
+

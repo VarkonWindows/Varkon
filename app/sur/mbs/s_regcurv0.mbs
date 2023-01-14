@@ -1,0 +1,52 @@
+! ******************** s_regcurv0 *********************
+! +++
+! Registration of a curve which shall be used for 
+! the definition of a conic lofting surface (LFT_SUR).
+!
+! If curve number is defined can a MBS function automatically
+! retrieve all limit, tangent, mid, P-value curves and the
+! spine.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-10-23 Gunnar Liden
+!
+! 
+! ***************************************************
+
+!sdesce Register relation between curve name and # identity  
+!sdescs Ihopkoppling av kurvnamn och # identitet   
+
+
+BASIC GEOMETRY MODULE s_regcurv0 (
+ 
+REF       cur_id;            ! Global reference for the curve
+                             ! ( the ## identity)
+STRING    cur_name*60;       ! Name of curve 
+STRING    cur_type*20;       ! Type of curve 
+                             ! Eq. SPINE     Spine curve
+                             ! Eq. LIMIT     Directrix
+                             ! Eq. TANGENT   Tangent def. curve
+                             ! Eq. MID       Mid R*3 curve    
+                             ! Eq. PVALUE    P-value curve
+STRING    cur_desc*132;      ! Free description of the curve
+INT       cur_no);           ! Curve number in surface      
+                             ! > 0: Defined              
+                             ! = 0: Undefined
+
+BEGINMODULE
+
+; 
+
+! +++
+!                 Algorithm
+!                 =========
+!
+! No calculation in this module and no graphical representation. 
+! Just registration of relation between curve name and reference.
+! ---
+
+
+ENDMODULE

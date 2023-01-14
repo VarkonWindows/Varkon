@@ -1,0 +1,34 @@
+! ***************** s_nurbku   ****************************
+!
+! +++
+! Registrate a NURBS knot value in U direction 
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registrate NURBS knot value in U direction 
+!sdescs Registrera NURBS knut varde i U riktningen
+
+
+GLOBAL GEOMETRY MODULE s_nurbku   (
+FLOAT  ku;         ! 1. Knot value  in U direction
+INT    nu);        ! 2. Knot number in U direction
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! No calculation, only registration.  
+! ---
+
+ ;
+
+ENDMODULE

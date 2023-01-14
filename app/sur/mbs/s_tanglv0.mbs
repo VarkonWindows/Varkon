@@ -1,0 +1,209 @@
+! ***************** s_tanglv0  ****************************
+!
+! +++
+! Tangent and twist vector length analysis of surfaces
+!
+! 1994-05-30 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Tangent and twist vector length analysis of surfaces
+!sdescs Analys av tangent och twist vektor längder i ytor
+
+
+GLOBAL GEOMETRY MODULE s_tanglv0  (
+
+REF    s_id                     >"@t16 Select surface";
+REF    c_id                     >"@t8192 Select coordinate system for diagram";
+STRING kcase*10:="utan"         >"Case: utan vtan twist ";
+FLOAT  rleng  :=  1.0           >"@ Scale factor length of lines in R*3 space";
+FLOAT  dleng  := 30.0           >"@ Scale factor for diagram";
+INT    kpen   :=  2             >"@ Pen (colour) for tangent lines";
+INT    graphic:= 1              >"@ Graphic Eq 1: Lines Eq 2: No R*3 lines");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    i_l;                    ! Loop index for U,V grid
+
+  INT    iu;                     ! Loop index U points 
+  INT    iv;                     ! Loop index V points 
+
+  FLOAT  ustep;                  ! U step within patch  
+  FLOAT  vstep;                  ! V step within patch  
+
+  FLOAT  uglob;                  ! U surface global parameter
+  FLOAT  vglob;                  ! V surface global parameter
+
+  VECTOR uv;                     ! Vector for EVAL function
+  VECTOR d_a;                    ! Vector for EVAL function
+  VECTOR d_b;                    ! Vector for EVAL function
+  VECTOR d_c;                    ! Vector for EVAL function
+  VECTOR d_d;                    ! Vector for EVAL function
+  VECTOR d_e;                    ! Vector for EVAL function
+  VECTOR s_p;                    ! Surface point
+  VECTOR s_e;                    ! End patch point
+  VECTOR s_e2;                   ! End patch point 2
+  VECTOR s_n;                    ! Surface normal
+  STRING ecase1*10;              ! Case 1 for EVAL
+  STRING ecase2*10;              ! Case 2 for EVAL
+  STRING ecase3*10;              ! Case 3 for EVAL
+
+  FLOAT  ch_l;                   ! Chord length
+  FLOAT  v_l;                    ! Vector length
+  FLOAT  ratio;                  ! v_l/ch_l
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+! ---
+! 0. Initiations and checks      
+!
+
+  DEBUG := 0;                    ! Debug printout
+
+  PART(#2,G_REFSEL(s_id));       ! Add # to reference if necessary
+  PART(#3,G_REFSEL(c_id));       ! Add # to reference if necessary
+
+  IF   kcase="utan" THEN         ! EVAL cases
+     ecase1:= "DRDU";            !
+     ecase2:= "UNDEF";           !
+     ecase3:= "UNDEF";           !
+  ELIF kcase="vtan" THEN         !
+     ecase1:= "DRDV";            !
+     ecase2:= "UNDEF";           !
+     ecase3:= "UNDEF";           !
+  ELIF kcase="twist" THEN        !
+     ecase1:= "D2RDUDV";         !
+     ecase2:= "UNDEF";           !
+     ecase3:= "UNDEF";           !
+  ELSE                           !
+    EXIT("s_tanglv0: kcase "+    !
+          kcase);                !
+  ENDIF;                         !
+
+!+++
+! Retrieve number of patches. Calls of GETSURH.
+!---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("s_tanglv0  "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+!+++
+! Create reference lines ratio= 0, 1, 2          
+!---
+  MODE_LOCAL(c_id);              ! Activate diagram system
+  LIN_FREE(#4,VEC(0,0*dleng,0),  ! Ratio = 0
+     VEC(npatu*100,0*dleng,0));  ! 
+  LIN_FREE(#5,VEC(0,1*dleng,0),  ! Ratio = 1
+     VEC(npatu*100,1*dleng,0));  ! 
+  LIN_FREE(#6,VEC(0,1*dleng,0),  ! Ratio = 1 Z line
+     VEC(0,1*dleng,npatv*100));  ! 
+  MODE_GLOBAL();                 ! Activate global system
+
+! +++
+! 2. Tangent   calculation
+!
+!    Calculate tangents/twist vectors and create geometry (lines) 
+! ---
+
+ustep := 1.0;                      ! U parameter step
+vstep := 1.0;                      ! V parameter step
+
+SET(PEN=kpen);                     ! Pen (colour)
+
+IF DEBUG = 1  THEN                 ! Debug to screen
+     s:= INPMT("s_tanglv0  "   +   !
+      " ustep "+STR(ustep,-12,6)+  !
+      " ustep "+STR(vstep,-12,6),  !
+      "",1);                       !
+ENDIF;                             !
+
+FOR iu:=1 TO npatu        DO       ! Start loop U points
+  FOR iv:=1 TO npatv        DO     ! Start loop V points
+    uglob:= (iu-1)*ustep;          ! U global parameter
+    vglob:= (iv-1)*vstep;          ! V global parameter
+    uv := VEC(uglob,vglob,0);      !
+
+    d_a:= EVAL(s_id,ecase1,uv);    ! Calculate tangent or twist vector
+    s_p:= EVAL(s_id,"XYZ",uv);     ! Surface point       
+
+    IF graphic = 1 THEN            !
+      LIN_FREE( #7, s_p, s_p +     ! Create line
+                     rleng*d_a);   !
+    ENDIF;                         !
+      
+    IF   kcase="utan" THEN         ! EVAL cases
+      s_e:= EVAL(s_id,"XYZ",uv+    ! End patch point     
+            VEC(0.999999,0.0));    !
+    ELIF kcase="vtan" THEN         !
+      s_e:= EVAL(s_id,"XYZ",uv+    ! End patch point     
+            VEC(0.0,0.999999));    !
+    ELIF kcase="twist" THEN        !
+      s_e:= EVAL(s_id,"XYZ",uv+    ! End patch point     
+      VEC(0.999999,0.0      ));    !
+      s_e2:= EVAL(s_id,"XYZ",uv+   ! End patch point 2   
+      VEC(0.0     ,0.9999999));    !
+      d_b:= EVAL(s_id,"DRDU",uv);  ! Calculate tangent
+      d_c:= EVAL(s_id,"DRDU",uv +  ! Calculate tangent
+        VEC(0.999999,0.0      ));  !
+      d_d:= EVAL(s_id,"DRDV",uv);  ! Calculate tangent
+      d_e:= EVAL(s_id,"DRDV",uv +  ! Calculate tangent
+      VEC(0.0     ,0.9999999));    !
+    ELSE                           !
+      ;                            !
+    ENDIF;                         !
+
+   IF iu<=8 AND iv<= 2 THEN        !
+       s:= INPMT("Diff U "+        !
+     STR(VECL(d_b-d_c),-15,8) +    !
+       " Diff V " +                !
+     STR(VECL(d_e-d_d),-15,8) +    !
+       " d_a " +                   !
+     STR(VECL(d_a    ),-15,8) +    !
+     " ","",1);                    !
+    ENDIF;                         !
+    IF   kcase="twist" THEN        !
+      ch_l:= VECL(d_b-d_c);        !
+!            VECL(d_d-d_e))/2.0;   !
+!     ch_l:=(VECL(s_p-s_e) +       !
+!            VECL(s_p-s_e2))/2.0;  !
+    ELSE                           !
+      ch_l:=VECL(s_p-s_e);         !
+    ENDIF;                         !
+                                   !
+    v_l :=VECL(d_a);               !
+    IF ch_l > 0.000001 THEN        !
+       ratio:= v_l/ch_l*dleng;     !
+    ELSE                           !
+       ratio:= 0.0;                !
+    ENDIF;                         !
+
+    MODE_LOCAL(c_id);              ! Activate diagram system
+    POI_FREE(#8,VEC(uglob*100,     ! Create ratio point
+         ratio,vglob*100));        !
+    MODE_GLOBAL();                 ! Activate global system
+
+  ENDFOR;                          ! End   loop V points
+ENDFOR;                            ! End   loop U points
+
+SET(PEN= 1  );                     ! Pen (colour)
+ENDMODULE

@@ -1,0 +1,556 @@
+!********************* s_scintv0 *****************************************
+! +++
+! Intersect surface and set of isoparameter curves 
+! The result is a set of points, a set of points and tangents
+! defined as lines or a curve.
+!
+! ---
+! Revision history 
+! ________________
+!
+! 1996-08-21  Gunnar Liden
+! 1996-09-30  UV curve output      Gunnar Liden
+! 1996-10-12  Debug n_fail added   Gunnar Liden
+! 1996-10-24  Analytyc UV tangents Gunnar Liden
+! 1996-10-25  UV tangent points    Gunnar Liden
+! 1996-11-01  Kompletterad med DEBUG-utskrifter   Karl-Erik Eklund
+!
+!***********************************************************************
+
+!sdesce Intersect surface and set of isoparameter curves
+!sdescs Skärning yta och knippe isoparameter kurvor
+
+GLOBAL GEOMETRY MODULE s_scintv0 (
+REF    s1_id                      > "Peka på yta 1";
+FLOAT  ustart1    := -1.0         > " ustart yta 1 (< 0.0 ==> Hela ytan)";
+FLOAT  uend1      := -1.0         > " uend   yta 1"; 
+FLOAT  vstart1    := -1.0         > " vstart yta 1";
+FLOAT  vend1      := -1.0         > " vend   yta 1";
+REF    s2_id                      > "Peka på yta 2 som definierar iso-kurvor";
+FLOAT  ustart2    := -1.0         > " ustart yta 2 (< 0.0 ==> Hela ytan)";
+FLOAT  uend2      := -1.0         > " uend   yta 2"; 
+FLOAT  vstart2    := -1.0         > " vstart yta 2";
+FLOAT  vend2      := -1.0         > " vend   yta 2";
+STRING d_iso*1    :=  "U"         > "Typ av isoparameterkurvor (U eller V)";
+INT    n_iso      :=  2           > "Number of isoparameters =1, 2, 3, "; 
+INT    i_case     :=  1  
+> "=1: Punkter =2: Linjer =3: Kurva =4: Kurva tang. =5: UV pts =6: UV crvs";
+INT    grafik     :=  1           > "=0: None =1: Curve or pts =2: All");
+
+! Interna variabler
+
+  FLOAT  delta_i;                 ! Delta parameter value surface 2
+  REF    s1_t_id;                 ! Reference to trimmed surface 1
+  REF    s2_t_id;                 ! Reference to trimmed surface 2
+  INT    i_iso;                   ! Loop index isoparameter curve
+  INT    m_iso;                   ! Maximum number of iso-parameters
+  FLOAT  iso_v;                   ! Current value isoparameter curve
+  FLOAT  iso_l;                   ! Lower limit   isoparameter curve
+  FLOAT  iso_u;                   ! Upper limit   isoparameter curve
+  FLOAT  e_iso;                   ! Epsilon parameter value
+  INT    npatu1;                  ! No patches in U direction surface 1
+  INT    npatv1;                  ! No patches in V direction surface 1
+  INT    npatu2;                  ! No patches in U direction surface 2
+  INT    npatv2;                  ! No patches in V direction surface 2
+  REF    i_id;                    ! Reference to current isoparameter
+  INT    n_int;                   ! Number of intersect points
+  VECTOR p_int;                   ! Intersect surface/iso-curve
+  VECTOR uvu_int;                 ! Intersect UV surface and U curve
+  
+  VECTOR uv1_int;                 ! Intersect U,V point  surface 1      
+  VECTOR p1_int;                  ! Intersect R*3 point  surface 1      
+  VECTOR s1_int;                  ! Intersect normal     surface 1      
+  VECTOR uv2_int;                 ! Intersect U,V point  surface 2      
+  VECTOR p2_int;                  ! Intersect R*3 point  surface 2      
+  VECTOR s2_int;                  ! Intersect normal     surface 2      
+  REF    sur2_id;                 ! Surface identity 
+
+  INT    n_poi;                   ! Number of intersect points
+  VECTOR poi(100);                ! All intersect points
+  VECTOR poi2(100);               ! All UV 2 intersect points
+  VECTOR tanpoi(100);             ! All intersect tangent points
+  VECTOR tanpoi2(100);            ! All intersect tangent points
+  STRING mf(100)*1;               ! Flagga för "P" eller "M"
+  FLOAT  pval(100);               ! P värden
+  VECTOR pm(100);                 ! Mellanliggande punkt
+
+  STRING g_name*10;               ! Groupname= type of output
+                                  ! SURCUR_POI for i_case= 1
+                                  ! SURCUR_LIN for i_case= 2
+                                  ! SURCUR_PTS for i_case= 3
+                                  ! SURCUR_CUR for i_case= 4 
+                                  ! SURCUR_UV1 for i_case= 5 and 6 
+  STRING g_name2*10;              ! SURCUR_UV2 for i_case= 5 and 6                                                                                                     
+                                  
+                                  
+  
+  INT    i_poi;                   ! Loop index point
+  VECTOR chord;                   ! Chord consecutive points
+
+  VECTOR uv_tang1;                ! UV vector surface 1
+  VECTOR uv_tang2;                ! UV vector surface 2
+  VECTOR r3tang;                  ! R3 vector
+  STRING s_r3tang*132;            ! r3tang as string
+
+  INT    bval_out;                ! Blank value for output curve, points
+  INT    bval_all;                ! Blank value for all other entities
+
+  INT    n_fail;                  ! Number of intersect failures
+  
+  STRING s_t_cuv1*132;            ! t_cuv1 as string  
+  STRING s_t_cuv2*132;            ! t_cuv2 as string  
+  VECTOR t_c1;                    ! Tangent on curve surface 1
+  VECTOR t_c2;                    ! Tangent on curve surface 1
+  VECTOR drdu_s1;                 ! Derivative surface 1
+  VECTOR drdv_s1;                 ! Derivative surface 1
+  VECTOR drdu_s2;                 ! Derivative surface 2
+  VECTOR drdv_s2;                 ! Derivative surface 2
+  VECTOR tber_s1;                 ! Calculated tangent surface 1      
+  VECTOR tber_s2;                 ! Calculated tangent surface 2      
+  
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+     PSH_PMT("Processing: s_scintv0");
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 0;                        ! Change to 0, 1 or 2
+
+
+  m_iso := 100;                     ! Maximum number of isoparameter crvs
+  e_iso := 0.0005;                  ! Epsilon isoparameter value
+  
+  IF    grafik = 0     THEN         ! Graphic parameter
+    bval_out := 1;                  !
+    bval_all := 1;                  !
+  ELIF  grafik = 1     THEN         !
+    bval_out := 0;                  !
+    bval_all := 1;                  !
+  ELIF  grafik = 2     THEN         !
+    bval_out := 0;                  !
+    bval_all := 0;                  !
+  ELSE                              !
+    EXIT("s_scintv0 grafik "+       !
+         "value not OK");           !
+  ENDIF;
+                                                                                 
+  
+  IF    i_case = 1 THEN             ! Check output case
+    g_name := "SURCUR_POI";         !
+    g_name2:= "Undefined";          !    
+  ELIF  i_case = 2 THEN             ! 
+    g_name := "SURCUR_LIN";         !
+    g_name2:= "Undefined";          !   
+  ELIF  i_case = 3 THEN             !
+    g_name := "SURCUR_PTS";         ! 
+    g_name2:= "Undefined";          !   
+  ELIF  i_case = 4 THEN             !
+    g_name := "SURCUR_CUR";         !
+    g_name2:= "Undefined";          !    
+  ELIF  i_case = 5 THEN             !
+    g_name := "SURCUR_UV1";         !
+    g_name2:= "SURCUR_UV2";         !        
+  ELIF  i_case = 6 THEN             !
+    g_name := "SURCUR_UV1";         !
+    g_name2:= "SURCUR_UV2";         !       
+  ELSE                              !
+    EXIT("s_scintv0 Case not "+     !
+         "yet implemented");        !
+  ENDIF;                            !
+
+  IF   d_iso="U" OR d_iso="u"  THEN ! Check isoparameter type
+    d_iso := "U";                   !
+  ELIF d_iso="V" OR d_iso="v"  THEN !
+    d_iso := "V";                   !
+  ELSE                              !
+    EXIT("s_scintv0 Iso case "+     !
+         d_iso + " not OK");        !
+  ENDIF;                            !
+
+  IF  n_iso  < 1 THEN               !
+    EXIT("s_scintv0 n_iso "+        !
+         " < 1"        );           !
+  ENDIF;                            !
+  IF  n_iso  > 100  THEN            !
+    EXIT("s_scintv0 n_iso "+        !
+         " > 100"      );           !
+  ENDIF;                            !
+
+  delta_i := 1.0/n_iso;             !
+
+
+! +++
+! 2. Trim surface 1 and/or surface 2 ?
+! ---
+
+  IF ustart1 >= 0  THEN
+  SUR_TRIM(#12, s1_id, ustart1, uend1, vstart1, vend1, 11:BLANK=bval_all);
+    s1_t_id := GLOBAL_REF(#12);
+  ELSE
+    s1_t_id := s1_id;
+  ENDIF;
+  IF ustart2 >= 0  THEN
+  SUR_TRIM(#14, s2_id, ustart2, uend2, vstart2, vend2, 11:BLANK=bval_all);
+    s2_t_id := GLOBAL_REF(#14);
+  ELSE
+    s2_t_id := s2_id;
+  ENDIF;
+  
+! +++
+! 3. Retrieve number of U and V lines in surface 2
+! ---
+
+  GETSURH(s1_t_id,"NPATU",npatu1);   ! Retrieve number of U patches
+  GETSURH(s1_t_id,"NPATV",npatv1);   ! Retrieve number of V patches
+  GETSURH(s2_t_id,"NPATU",npatu2);   ! Retrieve number of U patches
+  GETSURH(s2_t_id,"NPATV",npatv2);   ! Retrieve number of V patches
+
+! +++
+! 4. Calculate points, optionally with tangents
+! ---
+
+! +++
+! Loop for all isoparameter curves (max m_iso)
+! ---
+
+  n_fail := 0;
+  
+  n_poi := 0; 
+  IF    d_iso = "U" THEN
+    iso_l := 0.0;
+    iso_u := npatv2;
+  ELSE
+    iso_l := 0.0;
+    iso_u := npatu2;
+  ENDIF;
+
+  IF DEBUG = 1 THEN 
+  LST_INI("s_scintv0 Debug printout");
+  ENDIF;
+
+  FOR i_iso := 1 TO m_iso DO        ! Start loop isoparameter curves
+
+    iso_v := (i_iso-1)*delta_i;     ! Current isoparameter value
+    IF  ABS(iso_v-npatu2) < e_iso AND!
+          d_iso = "U" THEN          !
+      iso_v := npatu2;    
+    ELIF  iso_v > npatu2 AND        ! End of calculation ?
+          d_iso = "U" THEN          !
+      GOTO slut;
+    ENDIF;  
+    IF  ABS(iso_v-npatv2) < e_iso AND!
+          d_iso = "V" THEN          !
+      iso_v := npatv2;    
+    ELIF  iso_v > npatv2 AND        !
+          d_iso = "V" THEN          !
+      GOTO slut;
+    ENDIF;
+    CUR_ISO(#5,s2_t_id,d_iso,iso_v, ! Create isoparameter
+               iso_l, iso_u         !
+      :BLANK=bval_all,PEN=2);       !
+    i_id:=GLOBAL_REF(REFC(5,i_iso));! Isoparameter identity
+
+    uvu_int := INTERSECT( s1_t_id,  ! UV_INTERSECT
+                 i_id,1+1000);      !
+    IF  uvu_int.x < 0.0 THEN        ! Intersection failed ?
+      n_fail :=  n_fail + 1;        
+      IF  n_fail < 5  THEN
+      LST_INI("WARNING WARNING WARNING WARNING from s_scintv0");
+      LST_LIN("Intersection failed for "+d_iso+ "= "+STR(iso_v,8,4));
+      LST_LIN("Isoparameter start value "+STR(iso_l,8,4)+" end value "
+                                         +STR(iso_u,8,4));
+      LST_LIN("Isoparameter curve "+RSTR(i_id)+" on surface "+RSTR(s2_t_id));
+      LST_LIN("Intersect curve/surface where the surface is "+RSTR(s1_t_id));
+      LST_EXI();
+      ELIF  n_fail = 5 THEN
+      LST_INI("WARNING WARNING WARNING WARNING from s_scintv0");
+      LST_LIN("There are 5 or more iso-curve/surface intersection failures");
+      LST_EXI();
+      ELSE
+        ;
+      ENDIF;
+      GOTO  noint;                  !
+    ENDIF;                          !
+    uv1_int.x := uvu_int.x;         ! U,V surface 1
+    uv1_int.y := uvu_int.y;         !
+    uv1_int.z := 0.0;               ! 
+    p1_int := ON(s1_t_id, uv1_int); ! R*3 surface 1
+!   Get UV coordinates on surface for the current point
+    PART(#10,eval_utouv(i_id, uvu_int.z, sur2_id, uv2_int):SAVE=0);
+    p2_int := ON(s2_t_id, uv2_int); ! R*3 surface 2
+
+
+    p_int := p1_int;
+    n_poi := n_poi + 1;
+    IF  i_case =  6  THEN
+      poi(n_poi)  := VEC(100,100,0)+100.0*uv1_int;
+      poi2(n_poi) := VEC(100,100,0)+100.0*uv2_int;
+    ELSE
+      poi(n_poi) := p_int;
+    ENDIF;
+    
+    IF  i_case = 1 THEN
+      POI_FREE(#1,p_int:BLANK=bval_out);
+      GROUP(#21,g_name,GLOBAL_REF(REFC(1,n_poi)));
+    ENDIF;
+    IF  i_case = 5 THEN
+       POI_FREE(#31,VEC(100,100,0)+100.0*uv1_int:BLANK=bval_out);
+       GROUP(#41,g_name,GLOBAL_REF(REFC(31,n_poi)));
+       POI_FREE(#32,VEC(100,100,0)+100.0*uv2_int:BLANK=bval_out);
+       GROUP(#42,g_name2,GLOBAL_REF(REFC(32,n_poi)));
+    ENDIF;
+
+    IF  i_case = 2 OR i_case = 4 OR i_case = 6 THEN
+      ; ! Continue
+    ELSE
+      GOTO  notang;
+    ENDIF;
+
+    s1_int := NORM (s1_t_id, uv1_int); ! Normal surface 1
+    s2_int := NORM (s2_t_id, uv2_int); ! Normal surface 2
+    r3tang := VECN(VPROD(s1_int,s2_int));
+    s_r3tang := STR(r3tang.x,12,10)+" "+
+                STR(r3tang.y,12,10)+" "+
+                STR(r3tang.z,12,10);
+
+    IF DEBUG = 1 THEN 
+
+      uv_tang1 := EVAL(s1_t_id,"D3TODUV "+ s_r3tang,uv1_int);
+      uv_tang2 := EVAL(s2_t_id,"D3TODUV "+ s_r3tang,uv2_int);
+
+    LST_LIN("uv1_int:"+STR(uv1_int.x,12,8)+" "+STR(uv1_int.y,12,8)+" "
+              +STR(uv1_int.z,12,8));
+              
+    LST_LIN("uv2_int:"+STR(uv2_int.x,12,8)+" "+STR(uv2_int.y,12,8)+" "
+              +STR(uv2_int.z,12,8));
+              
+      drdu_s1 := VEC(0.0,0.0,0.0);
+      drdv_s1 := VEC(0.0,0.0,0.0);
+      drdu_s2 := VEC(0.0,0.0,0.0);
+      drdv_s2 := VEC(0.0,0.0,0.0);
+
+      drdu_s1 := EVAL(s1_t_id, "DRDU", uv1_int);
+      drdv_s1 := EVAL(s1_t_id, "DRDV", uv1_int);
+
+      drdu_s2 := EVAL(s2_t_id, "DRDU", uv2_int);
+      drdv_s2 := EVAL(s2_t_id, "DRDV", uv2_int);
+
+    s_t_cuv1 := STR(uv_tang1.x,15,12)+ " " + STR(uv_tang1.y,15,12);
+    t_c1 := EVAL(s1_t_id,"DUVTOD3 "+s_t_cuv1,uv1_int);
+
+    s_t_cuv2 := STR(uv_tang2.x,15,12)+ " " + STR(uv_tang2.y,15,12);
+    t_c2 := EVAL(s2_t_id,"DUVTOD3 "+s_t_cuv2,uv2_int);
+
+    LST_LIN("Skärningspunkt:"+STR(p_int.x,12,5)+" "+STR(p_int.y,12,5)+" "
+              +STR(p_int.z,12,5));
+    LST_LIN("Normal yta 1:"+STR(s1_int.x,12,10)+" "+STR(s1_int.y,12,10)+" "
+              +STR(s1_int.z,12,9));
+    LST_LIN("Normal yta 2:"+STR(s2_int.x,12,10)+" "+STR(s2_int.y,12,10)+" "
+              +STR(s2_int.z,12,9));
+    LST_LIN("Tangent skärningskurva:"+s_r3tang);
+
+    LST_LIN("Tangent UV-planet yta 1:"+STR(uv_tang1.x,12,10)+" "
+              +STR(uv_tang1.y,12,10)+" "+STR(uv_tang1.z,12,10));
+    LST_LIN("Tangent UV-planet yta 2:"+STR(uv_tang2.x,12,10)+" "
+              +STR(uv_tang2.y,12,10)+" "+STR(uv_tang2.z,12,10));
+ 
+    LST_LIN("drdu yta 1:"+STR(drdu_s1.x,12,10)+" "
+              +STR(drdu_s1.y,12,10)+" "+STR(drdu_s1.z,12,10));
+    LST_LIN("drdv yta 1:"+STR(drdv_s1.x,12,10)+" "
+              +STR(drdv_s1.y,12,10)+" "+STR(drdv_s1.z,12,10));
+ 
+    LST_LIN("drdu yta 2:"+STR(drdu_s2.x,12,10)+" "
+              +STR(drdu_s2.y,12,10)+" "+STR(drdu_s2.z,12,10));
+    LST_LIN("drdv yta 2:"+STR(drdv_s2.x,12,9)+" "
+              +STR(drdv_s2.y,12,10)+" "+STR(drdv_s2.z,12,10));
+ 
+    tber_s1:= drdu_s1*uv_tang1.x + drdv_s1*uv_tang1.y;
+    
+    tber_s2:= drdu_s2*uv_tang2.x + drdv_s2*uv_tang2.y;
+    
+    LST_LIN("drdu*duds + drdv*dvds yta 1:"+STR(tber_s1.x,15,10)+" "
+              +STR(tber_s1.y,15,10)+" "+STR(tber_s1.z,15,10));
+
+    LST_LIN("drdu*duds + drdv*dvds yta 2:"+STR(tber_s2.x,15,10)+" "
+              +STR(tber_s2.y,15,10)+" "+STR(tber_s2.z,15,10));
+
+    LST_LIN("Tangent R3 yta 1:"+STR(t_c1.x,15,10)+" "
+              +STR(t_c1.y,15,10)+" "+STR(t_c1.z,15,10));
+              
+    LST_LIN("Tangent R3 yta 2:"+STR(t_c2.x,15,10)+" "
+              +STR(t_c2.y,15,10)+" "+STR(t_c2.z,15,10));
+              
+    LST_LIN("drdu*duds + drdv*dvds yta 1 normerad:"+STR(tber_s1.x/VECL(tber_s1)
+           ,12,10)+" "+STR(tber_s1.y/VECL(tber_s1),12,10)+" "+
+           STR(tber_s1.z/VECL(tber_s1),12,10));
+
+    LST_LIN("drdu*duds + drdv*dvds yta 2 normerad:"+STR(tber_s2.x/VECL(tber_s2)
+           ,12,10)+" "+STR(tber_s2.y/VECL(tber_s2),12,10)+" "+
+           STR(tber_s2.z/VECL(tber_s2),12,10));
+
+    LST_LIN("Tangent R3 yta 1 normerad:"+STR(t_c1.x/VECL(t_c1),12,10)+" "
+              +STR(t_c1.y/VECL(t_c1),12,10)+" "+STR(t_c1.z/VECL(t_c1),12,10));
+              
+    LST_LIN("Tangent R3 yta 2 normerad:"+STR(t_c2.x/VECL(t_c2),12,10)+" "
+              +STR(t_c2.y/VECL(t_c2),12,10)+" "+STR(t_c2.z/VECL(t_c2),12,10));
+              
+    LST_LIN(" ");
+   ENDIF;
+
+    IF  i_case  =  6  THEN
+      uv_tang1 := EVAL(s1_t_id,"D3TODUV "+ s_r3tang,uv1_int);
+      uv_tang2 := EVAL(s2_t_id,"D3TODUV "+ s_r3tang,uv2_int);
+      tanpoi(n_poi)  := uv_tang1;
+      tanpoi2(n_poi) := uv_tang2;
+    ELSE
+      tanpoi(n_poi) := r3tang;
+    ENDIF;
+
+    IF  grafik = 2 THEN
+      LIN_FREE(#16,p1_int,p_int+tanpoi(n_poi):PEN=2);
+    ENDIF;
+
+
+
+notang:; ! Label: No calculation of tangent
+noint:;  ! Label: No intersect    
+  ENDFOR;                           ! End   loop isoparameter curves
+
+  IF DEBUG = 1 THEN 
+    LST_EXI();
+  ENDIF;
+
+
+EXIT("s_scintv0 No of isocurves > "+STR(m_iso,-1,0));
+
+slut:; ! Label: All isoparameters
+
+! +++
+! Check number of points
+! ---
+
+  IF  ( i_case = 1 OR  i_case = 2 OR i_case = 5 ) AND  n_poi = 0 THEN
+    LST_INI("WARNING WARNING WARNING WARNING from s_scintv0");
+    LST_LIN("Number of surface/isoparameter intersects is zero (0)");
+    LST_EXI();
+    GOTO  nopoi;
+  ENDIF;
+  IF  ( i_case = 1 OR  i_case = 2 OR i_case = 5 ) AND  n_poi = 1 THEN
+    LST_INI("WARNING WARNING WARNING WARNING from s_scintv0");
+    LST_LIN("Number of surface/isoparameter intersects is one (1)");
+    LST_EXI();
+  ENDIF;
+  IF  ( i_case = 3 OR  i_case = 4 OR i_case = 6 ) AND  n_poi <= 1 THEN
+    EXIT("s_scintv0 No curve created! No of points "+STR(n_poi,-1,0));
+  ENDIF;
+
+! +++
+! 5. Direction for tangents for i_case = 2, icase = 4 and i_case = 6
+! ---
+
+  IF  i_case = 2  AND  n_poi = 1 THEN
+    tanpoi( 1 ) := poi( 1 ) + tanpoi( 1 );
+    GOTO  onepoi;
+  ENDIF; 
+
+  IF   (i_case = 2 OR  i_case = 4 OR i_case = 6 ) AND n_poi >= 2  THEN
+   FOR  i_poi := 1 TO n_poi DO
+     IF   i_poi <  n_poi  THEN
+       chord := poi(i_poi+1)-poi(i_poi);
+     ELSE
+       chord := poi(i_poi)-poi(i_poi-1);
+     ENDIF;
+     IF  chord*tanpoi(i_poi) > 0.0  THEN
+       tanpoi(i_poi) := poi(i_poi) + 0.3*VECL(chord)*tanpoi(i_poi);
+       IF  i_case = 6 THEN
+         tanpoi2(i_poi) := poi2(i_poi) + 0.3*VECL(chord)*tanpoi2(i_poi);
+       ENDIF;
+     ELSE
+       tanpoi(i_poi) := poi(i_poi) - 0.3*VECL(chord)*tanpoi(i_poi);
+       IF  i_case = 6 THEN
+         tanpoi2(i_poi) := poi2(i_poi) - 0.3*VECL(chord)*tanpoi2(i_poi);
+       ENDIF;
+     ENDIF;
+   ENDFOR;
+  ENDIF;
+
+! +++
+! 6. Create curve for i_case = 3
+! ---
+
+   IF  n_poi >= 2 AND i_case = 3  THEN
+    CUR_SPLARR(#3, "FREE",n_poi, poi:BLANK=bval_out);
+    GROUP(#23,g_name,GLOBAL_REF(#3));    
+   ENDIF;
+
+! +++
+! 7. Create lines for i_case = 2
+! ---
+
+onepoi:;  ! Label: One point i_case= 2
+
+   IF   i_case = 2 AND n_poi >= 1 THEN
+   FOR  i_poi := 1 TO n_poi DO
+      LIN_FREE(#2,poi(i_poi),tanpoi(i_poi):BLANK=bval_out);
+      GROUP(#22,g_name,GLOBAL_REF(REFC(2,i_poi)));      
+   ENDFOR;
+   ENDIF;
+
+! +++
+! 7. Create curve for i_case = 4
+! ---
+
+   IF   i_case = 4 AND n_poi >= 2  THEN
+     FOR  i_poi := 1 TO n_poi DO
+       mf(i_poi)  := "P";     
+       pval(i_poi):= 0.5;    
+       pm(i_poi)  := VEC(0,0,0);
+     ENDFOR;
+     CUR_CONARR(#4,"FREE",n_poi, poi,tanpoi,mf,pval,pm 
+     :BLANK=bval_out);  
+     GROUP(#24,g_name,GLOBAL_REF(#4));         
+   ENDIF;
+
+
+! +++
+! 8. Create curves for i_case = 6
+! ---
+
+   IF   i_case = 6 AND n_poi >= 2  THEN
+     FOR  i_poi := 1 TO n_poi DO
+       mf(i_poi)  := "P";     
+       pval(i_poi):= 0.5; 
+       pm(i_poi)  := VEC(0,0,0);
+       IF  grafik  = 2 THEN
+         LIN_FREE(#144, poi(i_poi),tanpoi(i_poi):PEN=2);
+         LIN_FREE(#145, poi2(i_poi),tanpoi2(i_poi):PEN=3);
+       ENDIF;
+     ENDFOR;
+    CUR_CONARR(#44,"FREE",n_poi, poi,tanpoi,mf,pval,pm 
+    :BLANK=bval_out);  
+    GROUP(#54,g_name,GLOBAL_REF(#44));   
+    CUR_CONARR(#45,"FREE",n_poi, poi2,tanpoi2,mf,pval,pm 
+    :BLANK=bval_out);  
+    GROUP(#55,g_name2,GLOBAL_REF(#45));       
+   ENDIF;
+
+
+
+nopoi:; ! Label: The number of intersect points is zero
+
+   POP_PMT();
+
+ENDMODULE
+ 
