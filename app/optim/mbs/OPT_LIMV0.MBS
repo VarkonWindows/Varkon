@@ -1,0 +1,28 @@
+! ***************** OPT_LIMV0   ****************************
+!
+! +++
+
+! This module "registrates" optimization variable limits
+!
+! Revision history
+! ________________
+!
+! 1995-06-08 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Registrates limits for an optimization variable
+
+GLOBAL GEOMETRY MODULE OPT_LIMV0   (
+REF      prt_id  := #0             
+>"@ @t16384 Part with optimization variables  <CR>= #0 if called by the part";
+INT      l_flag  := 12             
+>"Limit flag: =1: Only lower limit =2: Only upper limit =12: Both limits";
+                                   ! Eq. -1: Not defined
+FLOAT    l_limit := -100000.0      >"Lower limit";
+FLOAT    u_limit :=  100000.0      >"Upper limit";
+INT      p_numb  :=  1             >"Parameter number");
+
+BEGINMODULE
+; ! No calculations
+ENDMODULE

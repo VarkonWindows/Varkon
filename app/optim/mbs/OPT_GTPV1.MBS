@@ -1,0 +1,74 @@
+!******************** OPT_GTPV1 **********************
+! +++
+! The function retrieves current values of the optimization
+! variables.
+! 
+! This module can only be called by another module
+! since there are VAR variables as arguments.                   
+!
+! Revision history
+! ________________
+!
+! 1995-05-31 Gunnar Liden
+! ---
+!****************************************************
+
+!sdesce Retrieve current values of the optimization variables
+!sdescs Hämta aktuella värden på optimeringsvariablerna.      
+
+BASIC GEOMETRY MODULE OPT_GTPV1  (
+                                   ! Input arguments:
+    INT    no_tot;                 ! Total number of parameters
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+                                   ! Output argument:
+VAR FLOAT  opt_val(20));           ! Parameter value for opt_pno 
+
+! Internal variables:
+
+  INT    i_p;                      ! Loop index parameter
+  STRING s*1;                      ! String for DEBUG (INPMT)
+  INT    DEBUG;                    ! Debug flag
+
+BEGINMODULE
+
+!+++
+! Algorithm
+!---
+
+! 0. Initializations and checks
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2        
+
+  IF DEBUG = 1 THEN            ! Debug
+    s:=INPMT("OPT_GTPV1  "     !
+    +"no_tot "+                !
+      STR(no_tot,-1,0)         !
+     ,"", 1);                  !
+  ENDIF;                       !
+
+  FOR i_p  := 1 TO  20   DO    ! Initialize output parameters
+    opt_val(i_p):= 0.123456789;! 
+  ENDFOR;                      !
+
+  IF no_tot <=  0  THEN        ! Check no_tot
+    EXIT("OPT_GTPV1 no_tot "+  !
+         " <= 0");             !
+  ENDIF;                       !
+
+  IF no_tot >  20  THEN        !
+    EXIT("OPT_GTPV1 no_tot "+  !
+         " > 20");             !
+  ENDIF;                       !
+
+! 1. Get parameter values
+
+  FOR i_p  :=1 TO  no_tot  DO  ! Start loop all parameters
+    opt_val(i_p) :=            ! Variable value
+    GETFLT(opt_pid(i_p),       !
+           opt_pno(i_p));      !
+  ENDFOR;                      ! End   loop all parameters
+
+
+ENDMODULE
+

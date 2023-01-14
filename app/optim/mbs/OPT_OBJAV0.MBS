@@ -1,0 +1,147 @@
+!****************************************************
+! +++
+! Calculate curves which have a constant objective function value  
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! ---
+!
+!****************************************************
+
+MACRO  MODULE OPT_OBJAV0 (
+    INT    i_start     :=   0   >"Start iteration number";
+    INT    i_delta     :=   1   >"Delta iteration ";
+    INT    i_end       :=  30   >"End   iteration number";
+    INT    n_step      :=  10   >"Number of steps along objective fctn curve";
+    STRING optdata*15  := "attempt_01" >"Optimization history file");
+
+!sdesce Calculate curves with a constant objective function value  
+!sdescs Beräkna kurvor med konstant värde på målfunktionen
+
+
+! +++
+! Internal variables
+! _________________
+
+   INT    i_rec;                ! Loop index record in input file
+! ---
+                                ! For OPT_READV0:
+   INT    r_iteration;          ! Requested iteration
+                                ! Output data will be the last iteration
+                                ! if r_iteration is too big
+                                ! 
+                                ! Output data:
+   INT    i_iteration;          ! Iteration number
+   INT    w_case;               ! Write case:
+                                ! Eq. 1: Param's 
+                                ! Eq. 2: Param's+limits
+                                ! Eq. 3: Param's+limits+constraints
+                                ! Eq. 4: Param's+limits+constraints+gradient
+                                ! Eq. 5: Param's+gradient+limits
+                                ! Eq. 6: Param's+gradient+constraints
+                                ! Eq. 7: Param's+gradient
+   INT    no_var ;              ! Number of optimization variables
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+   FLOAT  objfunc;              ! Objective function valu
+   FLOAT  gradient(20);         ! Gradient vector
+   FLOAT  l_lim(20);            ! Lower limit for variables
+   FLOAT  u_lim(20);            ! Upper limit for variables
+   INT    v_flag(20);           ! Flags       for variables
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+
+
+
+   STRING ermess1*50;           ! Error message
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+
+
+   DEBUG:= 1;
+
+
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_OBJAV0 optdata " +         !
+               optdata                        !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+
+
+   language := "e";                           !
+   IF   language = "s" THEN                   !
+     ermess1 :="i_start = i_end ";            ! Error 
+   ELIF language = "e" THEN                   !
+     ermess1 :="i_start = i_end";             ! Error 
+   ENDIF;                                     !
+
+
+
+   IF i_start = i_end   THEN                  ! Check input iteration numbers
+     EXIT("OPT_OBJAV0 " + ermess1);           !
+   ENDIF;                                    !
+
+
+
+  IF DEBUG = 1 THEN                           ! Debug
+    LST_INI("OPT_OBJAV0 Debug data");         !
+  ENDIF;                                      !
+
+
+
+  FOR i_rec:=i_start TO i_end STEP i_delta DO ! Start loop record in file
+
+! +++
+! Retrieve data from file. Call of OPT_READV0     
+! ---
+
+   r_iteration := i_rec;                      !
+
+   PART(#2, OPT_READV0 (                      ! Retrieve data
+            optdata, r_iteration,             !
+            i_iteration, w_case,              !
+          no_var, opt_pid , opt_pno, opt_val, !
+    objfunc, gradient, l_lim, u_lim, v_flag,  !
+    no_cst, cst_val, pen_val, cst_str));      !
+    IF  r_iteration <> i_iteration THEN       ! End Of File ?
+      GOTO  eof;                             !
+    ENDIF;                                    !
+
+
+
+    IF DEBUG = 1 THEN                         ! Debug
+      LST_LIN("Record number i_rec "+         !
+                STR(i_rec,-1,0));             !
+    ENDIF;                                    !
+
+  ENDFOR;                                     ! End   loop record in file
+
+eof:;                                         ! Label: EOF
+
+  IF DEBUG = 1 THEN                           ! Debug
+    LST_EXI();                                !
+  ENDIF;                                      !
+
+
+
+ENDMODULE
+

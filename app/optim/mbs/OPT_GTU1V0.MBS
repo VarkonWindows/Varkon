@@ -1,0 +1,925 @@
+!****************************************************
+
+! +++
+! User input data (module names) for an optimization calculation
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-26  Gunnar Liden
+!  1996-01-29  AIX (opsys=4) Gunnar Liden
+!  2006-01-27  var_modules(4)*10 to var_modules(4)*50 Gunnar Liden
+!  2009-01-04  flag_advanced added. opsys deleted Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_GTU1V0 (
+    INT flag_advanced;        ! Eq. 1: Advanced settings
+VAR STRING c_flag*3;          ! Eq NO: No (cancel) calculation
+VAR INT    n_iter;            ! Requested (maximum) no iterations
+VAR STRING opt_case*10;       ! Calculation case:
+                              ! Eq. gradient: Only gradient calulation
+                              ! Eq. xxxxxxxx: Optimize        
+VAR STRING var_modules(4)*50; ! Names of modules with optimization
+                              ! variables
+VAR STRING obj_name*10;       ! Name of objective fctn module      
+VAR STRING grad_name*10;      ! Name of gradient module
+VAR STRING hess_name*10;      ! Name of Hessian  module
+VAR STRING lim_name*10;       ! Name of variable limit module
+VAR STRING constr_name*10);   ! Name of constraint module
+
+!sdesce User input data (module names) for an optimization calculation
+!sdescs Inmatning av data (modulnamn) för en optimeringsberäkning
+
+! +++
+! Internal variables
+! __________________
+!
+
+   VECTOR main_pos;             ! Main window position
+   FLOAT  main_dx;              ! Main window dimension 
+   FLOAT  main_dy;              !
+   FLOAT  col1_dx;              ! Column 1 delta x     
+   FLOAT  col2_dx;              ! Column 2 delta x     
+   FLOAT  col_w;                ! Column width         
+! ---
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Space loop index
+
+   STRING var_name1*50;         ! Name of module (no 1) with variables
+   STRING var_name2*50;         ! Name of module (no 2) with variables
+   STRING var_name3*50;         ! Name of module (no 3) with variables
+
+   FILE   idat;                 ! Input data file
+   STRING f_name*132;           ! Full input filename
+   STRING rad*132;              ! Dummy string
+
+   INT    n_lin;                ! Number of lines (data) 
+   FLOAT  n_d;                  ! Delta  pixel
+   FLOAT  n_h;                  ! Height pixel
+
+   INT    main_id;              ! Main window identity   
+
+   STRING header*80;            ! String for main window
+   STRING s_edit1*50;           ! String for edit1 
+   STRING s_edit2*50;           ! String for edit2 
+   STRING s_edit3*50;           ! String for edit3 
+   STRING s_edit4*50;           ! String for edit4 
+   STRING s_edit5*50;           ! String for edit5 
+   STRING s_edit6*50;           ! String for edit6 
+   STRING s_edit7*50;           ! String for edit7 
+   STRING s_edit8*50;           ! String for edit8 
+   STRING s_edit9*50;           ! String for edit9 
+   STRING s_edit10*50;          ! String for edit10
+   STRING s_bid1*50;            ! String for bid1  
+   STRING s_bid2*50;            ! String for bid2  
+
+   INT    rubr1,rubr2,rubr3;    ! Id's for edit headers
+   INT    rubr4,rubr5,rubr6;    !
+   INT    rubr7,rubr8,rubr9;    !
+   INT    rubr10;               !
+   INT    bid1  ;               ! Id. window OK
+   INT    bid2;                 ! Id. button AVBRYT/CANCEL
+   INT    bid3;                 ! Id. button HJÄLP/HELP
+   INT    edit1,edit2,edit3;    ! Id.'s for edit windows
+   INT    edit4,edit5,edit6;    ! 
+   INT    edit7;                ! 
+   INT    edit8;                !
+   INT    edit9;                !
+   INT    edit10;               !
+
+   INT    bidx;                 ! Identity of event  
+
+
+   STRING ermess1*50;           ! Error message
+   STRING ermess2*50;           ! Error message 
+   STRING ermess3*50;           ! Error message 
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+   INT    n_opclo;              ! For file checking
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+!  0. Initializations
+! ---
+
+!  Don't use non-initialized variables in if statements !!!
+!  (It will result in strange errors ... )
+
+   main_id := -1;
+
+   rubr1 := -1; rubr2 := -1; 
+   rubr3 := -1; rubr4 := -1; 
+   rubr5 := -1; rubr6 := -1; 
+   rubr7 := -1; rubr8 := -1;
+   rubr9 := -1; rubr10:= -1;
+   bid1  := -1;  bid2 := -1; 
+   bid3  := -1;  bidx := -1;
+
+   edit1 := -1; edit2 := -1; 
+   edit3 := -1; edit4 := -1; 
+   edit5 := -1; edit6 := -1; 
+   edit7 := -1; edit8 := -1; 
+   edit9 := -1; edit10:= -1;
+
+   n_opclo := 0;                                ! For file checking
+
+   language := "e";                             ! Change to s or e
+   IF   language = "s" THEN                     !
+     ermess1 :=" ....                         ";! Error 
+     ermess2 :="Gradient modul ej implementer.";! Error grad_name
+     ermess3 :="Hessian modul  ej implementer.";! Error hess_name
+   ELIF language = "e" THEN                     !
+     ermess1 :=" .....                      ";  ! Error 
+     ermess2 :="Gradient module not implemen."; ! Error grad_name
+     ermess3 :="Hessian module not implemented";! Error hess_name
+   ENDIF;                                       !
+
+   var_modules(1) := " ";                     ! Initialize     
+   var_modules(2) := " ";                     !
+   var_modules(3) := " ";                     !
+   var_modules(4) := " ";                     !
+
+   c_flag:= "YES";                            ! Calculation flag
+
+! +++
+!  1. Retrieve input data from previous input
+!  
+!  Data is on file OPT_GTU1V0.MENY on the active job directory
+!  A file will be created if not existent.
+! ---
+
+   DEBUG:= 1;
+
+   f_name:= ACT_JOBDIR()                      ! Full filename
+             +"OPT_GTU1V0.MENUE";            ! 
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("f_name "+f_name,"n",1);        !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+newfile:;                                     ! New file
+
+   OPEN(idat,"R",f_name);                     ! Open input file R 
+   n_opclo := n_opclo + 1;                    ! For file checking
+   IF IOSTAT(idat) <> 0 THEN                  !
+     n_opclo := n_opclo - 1;                  ! For file checking
+     OPEN(idat,"W",f_name);                   ! Open input file W 
+     n_opclo := n_opclo + 1;                  ! For file checking
+
+     n_iter      := 50;                       ! Requested no iterations
+     opt_case    := "optimize";               ! Calculation case:
+     var_name1   := "my_module_1";            ! Name of variable  module 1
+     var_name2   := "my_module_2";            ! Name of variable module 2
+     var_name3   := " ";                      ! Name of variable module 3
+     obj_name    := "OPT_FUNCV0";             ! Name of objective module
+     grad_name   := " ";                      ! Name of gradient module
+     hess_name   := " ";                      ! Name of Hessian  module
+     lim_name    := "OPT_LIMV0";              ! Name of variable limit module
+     constr_name := "OPT_CSTV0";              ! Name of constraint  module
+     w_leng:= LENGTH(opt_case);               !
+     FOR i_s:= w_leng TO 12 DO                !
+       opt_case:= opt_case + " ";             !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(var_name1);              !
+     FOR i_s:= w_leng TO 52 DO                !
+       var_name1:= var_name1 + " ";           !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(var_name2);              !
+     FOR i_s:= w_leng TO 52 DO                !
+       var_name2:= var_name2 + " ";           !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(var_name3);              !
+     FOR i_s:= w_leng TO 52 DO                !
+       var_name3:= var_name3 + " ";           !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(obj_name);               
+     FOR i_s:= w_leng TO 12 DO                !
+       obj_name:= obj_name + " ";             !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(grad_name);              !
+     FOR i_s:= w_leng TO 12 DO                !
+       grad_name:= grad_name + " "; 
+     ENDFOR;                                  
+     w_leng:= LENGTH(hess_name);              !
+     FOR i_s:= w_leng TO 12 DO                !
+       hess_name:= hess_name + " ";           !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(lim_name );              !
+     FOR i_s:= w_leng TO 12 DO                !
+       lim_name := lim_name  + " ";           !
+     ENDFOR;                                  !
+     w_leng:= LENGTH(constr_name);            !
+     FOR i_s:= w_leng TO 12 DO                !
+       constr_name:= constr_name + " ";       !
+     ENDFOR;                                  !
+
+     OUTINT(idat, n_iter);                    !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, opt_case);                  !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, var_name1);                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, var_name2);                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, var_name3);                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, obj_name);                  !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, grad_name);                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, hess_name);                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, lim_name );                 !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, constr_name);               !
+     OUTLIN(idat);                            !
+     CLOSE(idat);                             !
+     n_opclo := n_opclo - 1;                  ! For file checking
+     GOTO  newfile;                           ! Goto newfile
+   ENDIF;                                     !
+
+   n_iter  := ININT(idat);                    ! Requested no iterations
+   rad:=   INLIN(idat);                       ! Rest of line
+   opt_case:= INSTR(idat,10);                 ! Objective fctn type
+   rad:=   INLIN(idat);                       ! Rest of line
+   var_name1:= INSTR(idat,50);                ! Name of variable  module
+   rad:=   INLIN(idat);                       ! Rest of line
+   var_name2:= INSTR(idat,50);                ! Name of variable  module 2
+   rad:=   INLIN(idat);                       ! Rest of line
+   var_name3:= INSTR(idat,50);                ! Name of variable  module 3
+   rad:=   INLIN(idat);                       ! Rest of line
+   obj_name:= INSTR(idat,10);                 ! Name of objective module
+   rad:=   INLIN(idat);                       ! Rest of line
+   grad_name:= INSTR(idat,10);                ! Name of gradient module
+   rad:=   INLIN(idat);                       ! Rest of line
+   hess_name:= INSTR(idat,10);                ! Name of Hessian  module
+   rad:=   INLIN(idat);                       ! Rest of line
+   lim_name := INSTR(idat,10);                ! Name of limit module
+   rad:=   INLIN(idat);                       ! Rest of line
+   constr_name:= INSTR(idat,10);              ! Name of constraint module
+   rad:=   INLIN(idat);                       ! Rest of line
+   CLOSE(idat);                               ! Close file
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("var_name1 "+var_name1," ",1);  !
+     s:=INPMT("obj_name "+obj_name," ",1);    !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+
+! +++
+!  2. Create start window with all buttons and edit windows
+!
+!     The distance main_dx defines all other dimensions and positions
+!     of buttons, etc. 
+! ---
+
+
+   main_pos:= VEC(125,10);                    ! Main window position
+   main_dx := 500;                            ! Main window dimension 
+ 
+
+   n_d     := 0.060*main_dx;                  ! Delta  pixel
+   n_h     := 0.056*main_dx;                  ! Height pixel
+   n_lin   :=  9;                             ! Number of lines
+   main_dy := 0.060*main_dx + (n_lin+3)*n_d;  !
+
+   col1_dx := 0.01*main_dx;                   ! Column 1 delta x     
+   col2_dx := 0.51*main_dx;                   ! Column 2 delta x     
+   col_w   := 0.34*main_dx;                   ! Column width         
+
+! +++
+!  Headers for main window, all edit fields and buttons
+! ---
+
+   IF   language = "s" THEN                     !
+     header:=  "INMATNING AV MODULNAMN "+       ! String for main window
+               "FÖR EN OPTIMERINGSBERÄKNING";   !
+     s_edit1:= "Önskat antal iterationer";      ! String for edit1 
+     s_edit2:= "Fall gradient eller optimera";  ! String for edit2 
+     s_edit3:= "Modul 1 med variabler";         ! String for edit3 
+     s_edit4:= "Modul 2 med variabler";         ! String for edit4 
+     s_edit5:= "Modul 3 med variabler";         ! String for edit5 
+     s_edit6:= "Målfunktions modul";            ! String for edit6 
+     s_edit7:= "Variabel limit modul";          ! String for edit7 
+     s_edit8 :="Gradient modul ";               ! String for edit8 
+     s_edit9 :="Hessian modul";                 ! String for edit9 
+     s_edit10:="Villkors modul";                ! String for edit10
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "AVBRYT";                        ! String for bid2  
+   ELIF language = "e" THEN                     !
+     IF flag_advanced = 1 THEN                  !
+       header:=  "MODULE NAMES FOR "+           ! String for main window
+               "AN OPTIMIZATION CALCULATION";   !
+     ELSE		                                !
+       header:=  "MODULE NAMES";                !	 
+     ENDIF;			   
+     s_edit1:= "Number of iterations";          ! String for edit1 
+     s_edit2:= "Case: gradient or optimize";    ! String for edit2 
+     s_edit3:= "Module 1           ";           ! String for edit3 
+     s_edit4:= "Module 2 (optional)";           ! String for edit4 
+     s_edit5:= "Module 3 (optional)";           ! String for edit5 
+     s_edit6:= "Objective function module";     ! String for edit6 
+     s_edit7:= "Variable limit module";         ! String for edit7 
+     s_edit8 :="Gradient module";               ! String for edit8 
+     s_edit9 :="Hessian module";                ! String for edit9 
+     s_edit10:="Constraint module";             ! String for edit10
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "CANCEL";                        ! String for bid2  
+   ENDIF;                                       !
+
+
+! +++
+!  Create main window
+! ---
+
+   IF flag_advanced = 1 THEN
+      main_id:=CRE_WIN(main_pos,main_dx,       ! Create advanced main window
+                      main_dy, header );       !
+   ELSE					  
+      main_id:=CRE_WIN(main_pos,main_dx/2,     ! Create main window
+                      main_dy, header );       !					  
+   ENDIF;
+   
+
+
+   rubr1:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col1_dx, n_d*0.2),                 ! Position
+             0.6*col_w,                         ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit1,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr2:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,n_d*1.2+n_d*1 ),            !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit2,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr3:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,n_d*1.2+n_d*3 ),            !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit3,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr4:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,n_d*1.2+n_d*5 ),            !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit4,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr5:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,n_d*1.2+n_d*7 ),                      !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit5,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr6:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col2_dx, n_d*0.2),                        ! Position
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit6,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr7:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col2_dx,n_d*1.2+n_d*1 ),                  !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit7,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+   rubr8 :=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,n_d*1.2+n_d*3 ),                  !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit8 ,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr9 :=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,n_d*1.2+n_d*5 ),                  !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit9 ,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr10:=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,n_d*1.2+n_d*7 ),            !
+             col_w,                             ! Width  in pixels
+            n_h,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit10,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+! +++
+!  Button for OK and CANCEL
+! ---
+
+   bid1:=CRE_BUTTON(main_id,                  ! Button OK    
+     VEC(0.02*main_dx,main_dy-0.11*main_dx ), ! 
+       0.09*main_dx,                          ! Width in pixels
+       0.08*main_dx,                          ! Height in pixels
+        5,                                    ! Frame thickness in pixels
+     s_bid1,                                  ! Text for status = på
+     s_bid1,                                  ! Text for status = av
+      "",                                     ! Text font    (optional) 
+       6);                                    ! Text colour  (optional) 
+   bid2:=CRE_BUTTON(main_id,                  ! Button AVBRYT/CANCEL
+     VEC(0.24*main_dx,main_dy-0.09*main_dx ), ! 
+       0.10*main_dx,                          ! 
+       0.07*main_dx,                          ! 
+        1,                                    ! 
+     s_bid2,                                  ! 
+     s_bid2,                                  ! 
+      "",                                     ! 
+       6);                                    ! 
+
+! +++
+!  Input of file names, module names and type of optimization fctn
+! ---
+
+   edit1:=CRE_EDIT(main_id,                   ! Create edit subwindow 
+        VEC(col1_dx,n_d),                     ! Position
+        0.6*col_w,n_h,4,                      ! Size, thickness
+        " "+STR(n_iter,1,0) ,                 ! Text
+          80);                                ! Max. no of characters
+   edit2:=CRE_EDIT(main_id,                   ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+      col_w,n_h,4,                            ! 
+         opt_case,                            !
+          10);                                !
+   edit3:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+      col_w,n_h,4,                            ! 
+        var_name1       ,                     !
+          51);                                !
+   edit4:=CRE_EDIT(main_id,                   ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+      col_w,n_h,4,                            
+        var_name2,                            !
+          51);                                ! 
+   edit5:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx,n_d+n_d*8 ),              !
+      col_w,n_h,4,                            !
+        var_name3,                            !
+          51);                                !
+   edit6:=CRE_EDIT(main_id,                   ! 
+        VEC(col2_dx,n_d),                     !
+      col_w,n_h,4,                            !
+        obj_name ,                            !
+          11);                                !
+   edit7:=CRE_EDIT(main_id,                   ! 
+        VEC(col2_dx,n_d+n_d*2 ),              !
+      col_w,n_h,4,                            ! 
+          lim_name,                           !
+          11);                                !
+   edit8 :=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*4 ),              !
+      col_w,n_h,4,                            ! 
+        grad_name,                            !
+          11);                                !
+   edit9 :=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*6 ),              !
+      col_w,n_h,4,                            ! 
+       hess_name ,                            !
+          11);                                !
+   edit10:=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*8 ),              !
+      col_w,n_h,4,                            ! 
+       constr_name ,                          !
+          12);                                !
+          
+! +++
+!  Show result on the screen. 
+! ---
+
+   SHOW_WIN(main_id);                         ! Show start window 
+
+! +++
+!  3. Input of (modifications of) data in the X window
+! ---
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("rubr1  "+STR(rubr1,-1,0)+ " "  !
+             +"rubr2  "+STR(rubr2,-1,0)+ " "  !
+             +"rubr3  "+STR(rubr3,-1,0)+ " "  !
+             +"rubr4  "+STR(rubr4,-1,0)+ " "  !
+             +"rubr5  "+STR(rubr5,-1,0)+ " "  !
+             +"rubr6  "+STR(rubr6,-1,0)+ " "  !
+         ,"",1);                              !
+
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  
+         ,"",1);                              !
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+! +++
+loop:     ! Label: Continue input (change) of data 
+! ---
+
+   bidx:=WAIT_WIN(main_id);                   ! Wait for an event
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  !
+         ,"",1);                              !
+
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+
+
+! +++
+!  Button AVBRYT/CANCEL: End (with EXIT). Input data not saved.
+! ---
+
+   IF bidx = bid2 THEN                        ! Event in bid2  
+     c_flag:= "NO";                           ! Flag: No calculation 
+     DEL_WIN(main_id);                        ! Erase main window  
+     EXIT();                                  ! Exit ("No error")
+
+! +++
+!  Edit-fält 
+! ---
+
+   ELIF bidx = edit1 THEN                     ! Event in edit 1
+     rad    := GET_EDIT(main_id,edit1);       ! Get input data    
+     n_iter:= ROUND (VAL(rad));               !
+     DEL_WIN(main_id,edit1);                  ! Erase subwindow  
+     edit1:=CRE_EDIT(main_id,                 ! Create edit subwindow 
+        VEC(col1_dx,n_d),                     ! Position
+        0.6*col_w,n_h,4,                      ! Size, thickness
+        " "+STR(n_iter,1,0) ,                 ! Text
+          80);                                ! Max. no of characters
+     GOTO loop;                               ! Back to loop
+
+   ELIF bidx = edit2 THEN                     ! Event in edit 2
+     opt_case:= GET_EDIT(main_id,edit2);      ! 
+     DEL_WIN(main_id,edit2);                  ! 
+     edit2:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+      col_w,n_h,4,                            ! 
+         opt_case,                            !
+          10);                                !
+     GOTO loop;                               !
+
+
+
+   ELIF bidx = edit3 THEN                     ! Event in edit 3
+     var_name1:= GET_EDIT(main_id,edit3);     ! 
+     DEL_WIN(main_id,edit3);                  !
+     edit3:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+      col_w,n_h,4,                            ! 
+        var_name1       ,                     !
+          51);                                !
+     GOTO loop;                               !
+   ELIF bidx = edit4 THEN                     !
+     var_name2:= GET_EDIT(main_id,edit4);     ! 
+     DEL_WIN(main_id,edit4);                  ! 
+     edit4:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+      col_w,n_h,4,                            !
+        var_name2,                            !
+          51);                                !
+     GOTO loop;                               ! 
+   ELIF bidx = edit5 THEN                     ! 
+     var_name3:=GET_EDIT(main_id,edit5);      ! 
+     DEL_WIN(main_id,edit5);                  ! 
+     edit5:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx,n_d+n_d*8 ),              !
+      col_w,n_h,4,                            !
+        var_name3,                            !
+          51);                                !
+     GOTO loop;                               !
+   ELIF bidx = edit6 THEN                     ! Event in edit 8
+     obj_name := GET_EDIT(main_id,edit6);     ! 
+     DEL_WIN(main_id,edit6);                  !
+     edit6:=CRE_EDIT(main_id,                 ! 
+        VEC(col2_dx,n_d),                      !
+      col_w,n_h,4,                            !
+        obj_name ,                            !
+          11);                                !
+     GOTO loop;                               !
+   ELIF bidx = edit7 THEN                     ! Event in edit 7
+      lim_name:= GET_EDIT(main_id,edit7);     ! 
+     DEL_WIN(main_id,edit7);                  !
+     edit7:=CRE_EDIT(main_id,                 ! 
+        VEC(col2_dx,n_d+n_d*2 ),              !
+      col_w,n_h,4,                            !
+         lim_name,                            !
+          11);                                !
+     GOTO loop;                               !
+   ELIF bidx = edit8  THEN                    ! Event in edit 8
+     grad_name:= GET_EDIT(main_id,edit8 );    ! 
+     DEL_WIN(main_id,edit8 );                 !
+     edit8 :=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*4 ),              !
+      col_w,n_h,4,                            !
+        grad_name,                            !
+          11);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit9  THEN                    ! Event in edit 9 
+    hess_name := GET_EDIT(main_id,edit9 );    ! 
+     DEL_WIN(main_id,edit9 );                 !
+     edit9 :=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*6 ),              !
+      col_w,n_h,4,                            !
+       hess_name ,                            !
+          11);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit10 THEN                    ! Event in edit 10
+    constr_name := GET_EDIT(main_id,edit10);  ! 
+     DEL_WIN(main_id,edit10);                 !
+     edit10:=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*8 ),              !
+      col_w,n_h,4,                            !
+       constr_name ,                          !
+          12);                                !
+     GOTO loop;                               !
+
+
+! +++
+!  Button OK
+! ---
+
+
+   elif bidx = bid1   THEN                    ! Event in bid1    
+     rad         := GET_EDIT(main_id,edit1);  ! Get input data    
+     n_iter      := ROUND (VAL(rad));         !
+     opt_case    := GET_EDIT(main_id,edit2);  ! 
+     var_name1   := GET_EDIT(main_id,edit3);  ! 
+     var_name2   := GET_EDIT(main_id,edit4);  ! 
+     var_name3   := GET_EDIT(main_id,edit5);  ! 
+     obj_name    := GET_EDIT(main_id,edit6);  ! 
+     lim_name    := GET_EDIT(main_id,edit7);  ! 
+     grad_name   := GET_EDIT(main_id,edit8 ); ! 
+     hess_name   := GET_EDIT(main_id,edit9 ); ! 
+     constr_name := GET_EDIT(main_id,edit10); ! 
+     DEL_WIN(main_id);                        ! Erase main window  
+     GOTO slut;                               ! End of data input
+   ELSE
+     GOTO loop;                               ! Back to loop
+   ENDIF;
+
+
+! +++
+slut:;                                        ! Label: Input finished
+! ---
+
+
+! ++
+!  4. Write data to file .MENUE
+! ---
+
+   OPEN(idat,"W",f_name);                     ! Open MENUE file  W
+   n_opclo := n_opclo + 1;                    ! For file checking
+
+   w_leng:= LENGTH(opt_case);                 !
+   FOR i_s:= w_leng TO 12 DO                  !
+     opt_case:= opt_case + " ";               !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(var_name1);                !
+   FOR i_s:= w_leng TO 52 DO                  !
+     var_name1:= var_name1 + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(obj_name);                 !
+   FOR i_s:= w_leng TO 12 DO                  !
+     obj_name:= obj_name + " ";               !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(var_name2);                !
+   FOR i_s:= w_leng TO 52 DO                  !
+     var_name2:= var_name2 + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(var_name3);                !
+   FOR i_s:= w_leng TO 52 DO                  !
+     var_name3:= var_name3 + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(grad_name);                !
+   FOR i_s:= w_leng TO 12 DO                  !
+     grad_name:= grad_name + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(hess_name);                !
+   FOR i_s:= w_leng TO 12 DO                  !
+     hess_name:= hess_name + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(lim_name );                !
+   FOR i_s:= w_leng TO 12 DO                  !
+     lim_name := lim_name  + " ";             !
+   ENDFOR;                                    !
+   w_leng:= LENGTH(constr_name);              !
+   FOR i_s:= w_leng TO 12 DO                  !
+     constr_name:= constr_name + " ";         !
+   ENDFOR;                                    !
+
+   OUTINT(idat, n_iter);                      !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, opt_case);                    !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, var_name1);                    !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, var_name2);                   !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, var_name3);                   !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, obj_name);                    !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, grad_name);                   !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, hess_name);                   !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, lim_name );                   !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, constr_name);                 !
+   OUTLIN(idat);                              !
+
+   CLOSE(idat);                               ! Close MENUE file
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+! Remove spaces in names and check names       
+
+   i_s     := FINDS(var_name1," ");            ! Variable module name
+   w_leng  := LENGTH(var_name1);               !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     var_name1:= SUBSTR(var_name1,1,i_s-1);     !
+   ELSE                                       !
+     EXIT("OPT_GTU1V0 " + ermess1);          !
+   ENDIF;                                     !
+
+   i_s     := FINDS(obj_name," ");            ! Objective module name
+   w_leng  := LENGTH(obj_name);               !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     obj_name:= SUBSTR(obj_name,1,i_s-1);     !
+   ELSE                                       !
+     EXIT("OPT_GTU1V0 " + ermess2);           !
+   ENDIF;                                     !
+
+   i_s     := FINDS(opt_case," ");            ! 
+   w_leng  := LENGTH(opt_case );              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     opt_case:= SUBSTR(opt_case,1,i_s-1);     !
+   ELSE                                       !
+     opt_case := " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(var_name2," ");           ! Variable module 2 name
+   w_leng  := LENGTH(var_name2);              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     var_name2:= SUBSTR(var_name2,1,i_s-1);   !
+   ELSE                                       !
+     var_name2:= " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(var_name3," ");           ! Variable module 3 name
+   w_leng  := LENGTH(var_name3);              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     var_name3:= SUBSTR(var_name3,1,i_s-1);   !
+   ELSE                                       !
+     var_name3:= " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(grad_name," ");           ! Gradient module name
+   w_leng  := LENGTH(grad_name);              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     grad_name:= SUBSTR(grad_name,1,i_s-1);   !
+   ELSE                                       !
+     grad_name:= " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(hess_name," ");           ! Hessian  module name
+   w_leng  := LENGTH(hess_name);              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     hess_name:= SUBSTR(hess_name,1,i_s-1);   !
+   ELSE                                       !
+     hess_name:= " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(lim_name ," ");           ! Limit module name
+   w_leng  := LENGTH(lim_name );              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     lim_name:= SUBSTR(lim_name ,1,i_s-1);    !
+   ELSE                                       !
+     lim_name:= " ";                          !
+   ENDIF;                                     !
+
+   i_s     := FINDS(constr_name," ");         ! Constraint module name
+   w_leng  := LENGTH(constr_name);            !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     constr_name:=SUBSTR(constr_name,1,i_s-1);!
+   ELSE                                       !
+     constr_name:= " ";                       !
+   ENDIF;                                     !
+
+! +++
+! Variable module names to array var_modules
+! ---
+
+   var_modules(1) := var_name1;               ! 
+   var_modules(2) := var_name2;               !
+   var_modules(3) := var_name3;               !
+   var_modules(4) := " ";                     ! Only 3 modules
+
+! +++
+! Check that not yet implemented options have been used
+! ---
+
+   IF grad_name <> " "  THEN                  ! grad_name check
+     EXIT("OPT_GTU1V0 "+                      !
+           ermess2);                          !        
+   ENDIF;                                     !
+   IF hess_name  <> " "  THEN                 ! hess_name  check
+     EXIT("OPT_GTU1V0 "+                      !
+           ermess3);                          !        
+   ENDIF;                                     !
+   IF   n_opclo <> 0  THEN                    ! For file checking
+     EXIT("OPT_GTU1V0 Open/Close error");     !
+   ENDIF;                                     !
+
+ENDMODULE

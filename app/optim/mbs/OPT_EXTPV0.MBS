@@ -1,0 +1,498 @@
+! *************** OPT_EXTPV0 ****************
+!
+! +++
+! Extract parameter names and prompt strings from source code
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! ---
+! ********************************************
+
+!sdesce Extract parameter names and prompt strings from MBS source code
+!sdescs Extrahere parameter namn med strängar från MBS källkod
+
+BASIC  DRAWING MODULE OPT_EXTPV0(  
+    STRING  infile*132;         ! Full name of input file
+VAR STRING  param(50)*132;      ! Parameters and prompt strings
+VAR INT     n_param);           ! Number of parameters in param
+
+
+! Internal variables
+
+  STRING  m_type*132;           ! Module type and name
+  INT      i_line;              ! Loop index line in file
+  FILE     tmp;                 ! Input  (MBS)   file
+  STRING   eflag*1;             ! Extract flag M: Module 
+                                ! Extract flag P: Parameter
+                                ! Extract flag U: Undefined
+  STRING   rad*132;             ! Whole line from file
+  INT      n_c;                 ! Number of char's in rad
+  INT      s_c;                 ! Char no for word INT, ...
+  INT      s_c2;                ! Char no for ! (comment)
+  INT      e_c;                 ! End   loop value
+  INT      i_c;                 ! Loop index for string rad   
+  INT      s_c3;                ! Char no for space 
+  STRING   blanks*132;          ! Blanks
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+  INT     DEBUG;                ! Eq. 1: Debug to screen
+
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;
+
+! +++
+! 1. Open MBS source file. Call of OPEN.
+! ---
+
+   IF   infile <> " " THEN     ! Open file
+     OPEN(tmp,"r",infile );    ! Open input (.MBS) file
+     IF (IOSTAT(tmp)<>0 ) THEN ! Check that file exists
+      EXIT("OPT_EXTPV0 Open "  !
+      + infile+" failed");     !
+     ENDIF;                    !
+   ENDIF;                      !
+
+! +++
+! 2. Scanning of the MBS source file
+!
+!  Start loop all lines in the MBS source file
+!
+!      Read whole line to STRING variable rad.
+!      Goto cfile if End Of File
+!
+!      If line starts with STRING INT FLOAT VECTOR VAR REF:
+!         i. Extract parameter information from rad
+!        ii. Let eflag= P
+!
+!      Let eflag= E for last parameter and goto cfile.
+! ---
+
+eflag:= "U";                   ! Flag undefined
+n_param:= 0;                   ! Initiate no parameters
+
+FOR i_line:= 1   TO 1000  DO   ! Start loop all lines    
+ rad:= INLIN(tmp);             ! Read the whole line
+ IF (IOSTAT(tmp)<>0 ) THEN     ! End of file ?          
+   GOTO cfile;                 ! Goto cfile
+ ENDIF;                        !
+
+ n_c  := LENGTH(rad);          ! Length of input line
+
+ IF n_c = 0 THEN               ! Goto empty for an empty line
+   GOTO empty;                 !
+ ENDIF;                        !
+
+ IF eflag = "M" OR             ! 
+    eflag = "P"     THEN       !
+    GOTO  l_s;                 ! Goto search parameter
+ ENDIF;                        !
+
+l_s:;                          ! Label: Search parameter
+
+ s_c2 := FINDS(rad,"!");       ! Character ! (comment)
+ s_c  := FINDS(rad,"VAR ");    ! VAR (Note that VAR must be first)
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word VAR is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+    ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"var ");    ! var (Note that var must be first)
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word var is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"STRING "); ! STRING                   
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word STRING is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"FLOAT ");  ! FLOAT                    
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word FLOAT is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"INT ");    ! INT                      
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word INT is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+ s_c  := FINDS(rad,"VECTOR "); ! VECTOR                   
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word VECTOR is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+
+ s_c  := FINDS(rad,"REF ");    ! REF                      
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word REF is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+
+
+ s_c  := FINDS(rad,"string "); ! string                   
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word string is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"float ");  ! float                    
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word float is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"int ");    ! int                      
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word int is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"vector "); ! vector                   
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word vector is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+ s_c  := FINDS(rad,"ref ");    ! ref                      
+ IF s_c2 <> 0 AND s_c <> 0 THEN!
+   IF s_c2 <      s_c      THEN!
+     s_c:= 0;                  ! Word ref is a comment
+   ENDIF;                      !
+ ENDIF;                        !
+ IF s_c > 2 THEN               ! Check that all characters
+   blanks:= "";                ! are spaces 
+   FOR i_c:= 1 TO s_c-1 DO     !
+     blanks:=blanks+" ";       !
+   ENDFOR;                     !
+   s_c3:=FINDS(rad,blanks);    !
+ IF DEBUG = 8 THEN             ! Debug
+   s:= INPMT( rad +            !
+   " s_c "+STR(s_c,-1,0),"",1);!
+   s:= INPMT( blanks+          !
+ " s_c3 "+STR(s_c3,-1,0),"",1);!
+ ENDIF;                        !
+   IF s_c3=1 OR s_c3>s_c+3 THEN!
+     ;                         !
+   ELSE                        !
+     s_c:= 0;                  !
+   ENDIF;                      !
+ ENDIF;                        !
+ IF  s_c <> 0 THEN             !
+   eflag:= "P";                !
+   goto l_p;                   !
+ ENDIF;                        !
+
+l_p:;                          ! Label: Parameter
+
+ IF  eflag = "P"  THEN         ! Start Parameter
+   n_param:= n_param+1;        ! An additional parameter
+   IF n_param > 50 THEN        !
+     EXIT("n_param>50");       !
+   ENDIF;                      
+   IF  s_c = 0 THEN            !
+    s_c  := 1;                 !
+   ENDIF;                      !
+
+   e_c  := FINDS(rad,");");    ! Find );                  
+   IF e_c = 0 THEN             !
+     e_c  := n_c+1;            !
+   ELSE                        !
+     e_c  := n_c+1;            !
+     eflag:= "E";              !
+   ENDIF;                      !
+
+   param(n_param):=            ! Parameters and prompt strings
+    SUBSTR(rad,s_c,e_c -s_c); !
+
+   IF eflag = "E" THEN         !
+     GOTO cfile;               ! Goto cfile
+   ENDIF;                      !
+ ENDIF;                        ! End eflag = P
+
+empty:;                        ! Label: Empty line
+
+ENDFOR;                        ! End   loop all lines    
+
+
+! +++
+cfile:  ! Label: End Of File
+!
+!                  4. Close MBS source file                 
+! ---
+
+  CLOSE(tmp);                  ! Close file
+
+
+ENDMODULE
+

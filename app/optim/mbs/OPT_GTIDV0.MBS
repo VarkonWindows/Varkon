@@ -1,0 +1,167 @@
+!******************** OPT_GTIDV0 *********************
+! +++
+! The function retrieves the reference to a given part.  
+! 
+! This module can only be called by another module
+! since there are output VAR variables.                   
+!
+! Revision history
+! ________________
+!
+! 1995-05-31 Gunnar Liden
+! ---
+!****************************************************
+
+!sdesce Retrieve reference (# id) to a given part
+!sdescs Hämta refererens (# id) till en given part.  
+
+BASIC GEOMETRY MODULE OPT_GTIDV0 (
+    STRING part_name*10;           ! Name of part
+VAR REF    part_id;                ! Identity for part
+VAR INT    n_param    );           ! Number of parameters in part
+
+
+! Internal variables:
+  INT    no_parts;        ! Number of part_name parts
+                          ! (shall be one)
+
+  INT    i_r;             ! Loop index references 
+  REF    id;              ! Reference (# id)
+
+  INT    i_var;           ! Loop index variable    
+
+                          ! For function GETHDR:
+  INT    typ;             ! Type of entity
+  INT    nref;            ! Version number
+  INT    blank;           ! Eq. 0: Unblanked  Eq. 1: Blanked
+  INT    nivå;            ! Layer for entity
+  INT    penna;           ! Pen number for entity
+  REF    grupp_id(3);     ! Global identities for GROUP's
+                          ! which the entity is s part of
+
+                          ! For function GETPRT:
+  STRING namn*10;         ! Name of part
+  INT    mtyp;            ! Module type
+                          ! Eq. 2: DRAWING
+                          ! Eq. 3: GEOMETRY
+  INT    mattr;           ! Module attribute
+                          ! Eq. 1: LOCAL
+                          ! Eq. 2: GLOBAL
+                          ! Eq. 3: BASIC
+  REF    kid;             ! Global identity for the
+                          ! coordinate system which has 
+                          ! been used to position a
+                          ! module of type LOCAL
+  INT    np;              ! Number of parameters in the part
+  INT    mant;            ! Number of entities in the part
+  REF    idm(500);        ! Array with global identities to
+                          ! all entities in the part (if 
+                          ! (there is space for all of them)
+                          ! För function GETID: 
+  STRING code*1;          ! Eq. F: First entity in GM      
+                          ! Eq. N: Next entity 
+                          ! Eq. n: Next entity same level
+                          ! Eq. P: Next part   
+
+  STRING s*1;             ! String for DEBUG (INPMT)
+  INT    DEBUG;           ! Controls Debug
+
+BEGINMODULE
+
+!+++
+! Algorithm
+!---
+
+! 0. Initializations and checks
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2        
+
+  IF DEBUG = 1 THEN            ! Debug
+    s:=INPMT("OPT_GTIDV0 "     !
+    +"part_name "+ part_name   !
+     ,"", 1);                  !
+  ENDIF;                       !
+
+
+  IF  part_name = ""   OR      ! Check part_name
+      part_name = " "    THEN  !
+    EXIT("OPT_GTIDV0 No "+     !
+           "part_name");       !
+  ENDIF;                       !
+
+  no_parts := 0;               ! Number of parts part_name
+  part_id  := #0;              ! Identity
+  n_param  := -1;              ! Number of parameters       
+
+!+++
+! 1. Retrieve reference to the given part
+!---
+
+  code := "F";                 ! Point to first entity in GM
+
+  id := GETID(code);           ! Retrieve first entity       
+
+  GETHDR(id,typ,nref,          ! Header data for entity    
+  blank,nivå,penna,grupp_id);  ! 
+
+!  IF DEBUG = 1 THEN            ! Debug
+!    s:=INPMT("OPT_GTIDV0 typ " !
+!     + str(typ ,-1,0) + " "    !
+!     ,"", 1);                  !
+!  ENDIF;                       !
+
+
+  code := "P";                 ! Retrieve only parts
+
+  FOR i_r := 1 TO 3000  DO     ! Start loop all references
+
+    IF i_r=1 AND typ=16384 THEN! First entity was a part     
+      ;                        ! do not step in GM         
+    ELSE                       !
+      id := GETID(code);       ! Reference to next part  
+    ENDIF;                     ! 
+
+    IF id = #0 THEN            ! Go to   Label calc if
+      GOTO calc;               ! there are no more parts 
+    ENDIF;                     ! in the active module
+
+
+
+    GETPRT(id,namn,mtyp,       ! Retrieve data for the part
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN          ! Debug
+      s:=INPMT("OPT_GTIDV0 "   !
+      +"part_name "+ part_name !
+      +" Part name "+ namn     !
+       ,"", 1);                !
+    ENDIF;                     !
+
+    IF namn <> part_name  THEN ! Next entity if not part_name   
+      GOTO next;               ! (goto next in this case)
+    ENDIF;                     !
+
+    no_parts := no_parts + 1;  ! An additional instance of
+    IF no_parts >  1  THEN     ! part_name (max is 1)         
+      EXIT("OPT_GTIDV0 Max. "+ !
+      "no part_name is 1");    !
+    ENDIF;                     !
+
+    part_id  := id;            ! Identity
+    n_param  := np;            ! Number of parameters       
+
+next:;                         ! Label: Next entity  
+
+  ENDFOR;                      ! End   loop all references 
+
+  EXIT("OPT_GTIDV0 Max. "+     !
+   "number of parts is 3000"); !
+
+calc:;                         ! Label: Whole active module scanned  
+
+  IF no_parts = 0  THEN        ! Check that part_name is found
+    EXIT("OPT_GTIDV0 No "+     !
+    part_name+ " in GM");      !
+  ENDIF;                       !
+
+ENDMODULE

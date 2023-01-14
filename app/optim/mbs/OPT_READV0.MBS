@@ -1,0 +1,265 @@
+!****************************************************
+! +++
+! Read  optimization history data from text file.  
+! 
+! Revision history
+! ________________
+!
+! 1995-06-11  Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_READV0   (
+    STRING optdata*15;             ! Optim. history data file
+    INT    r_iteration;            ! Requested iteration number Eq. 0, 1, ...   
+                                   ! Output data will be the last iteration
+                                   ! if r_iteration is too big
+                                   ! 
+                                   ! Output data:
+VAR INT    i_iteration;            ! Iteration number
+VAR INT    w_case;                 ! Write case:
+                                   ! Eq. 1: Param's 
+                                   ! Eq. 2: Param's+limits
+                                   ! Eq. 3: Param's+limits+constraints
+                                   ! Eq. 4: Param's+limits+constraints+gradient
+                                   ! Eq. 5: Param's+gradient+limits
+                                   ! Eq. 6: Param's+gradient+constraints
+                                   ! Eq. 7: Param's+gradient
+VAR INT    no_var ;                ! Number of optimization variables
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+VAR FLOAT  opt_val(20);            ! Parameter value for opt_pno
+VAR FLOAT  objfunc;                ! Objective function value
+VAR FLOAT  gradient(20);           ! Gradient vector
+VAR FLOAT  l_lim(20);              ! Lower limit for variables
+VAR FLOAT  u_lim(20);              ! Upper limit for variables
+VAR INT    v_flag(20);             ! Flags       for variables
+VAR INT    no_cst ;                ! Total number of constraints
+VAR FLOAT  cst_val(20);            ! Value of constraint function
+VAR FLOAT  pen_val(20);            ! Penalty                     
+VAR STRING cst_str(20)*30 );       ! Description of constraint 
+
+!sdesce Read optimization history data from text file   
+!sdescs Läs optimeringshistorik data från text fil 
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_v;                  ! Loop index 
+   INT    i_c;                  ! Loop index constraint
+! ---
+
+   INT    i_a;                  ! Loop index array initialization
+   INT    n_a;                  ! Number of elements in arrays
+
+   STRING keyword*132;          ! Keyword              
+   STRING rad*132;              ! Dummy string         
+   FILE   odat;                 ! Output data file
+   STRING f_name*132;           ! Full input filename
+   STRING o_code*1;             ! Open code
+   STRING id_s*25;              ! Reference as string    
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Loop index spaces in string
+   STRING descr*30;             ! Constraint description
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+
+
+   DEBUG:= 0;
+
+
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_READV0 " +                 !
+          "Requested iteration "+             !
+          STR(r_iteration ,-1,0)              !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+   IF optdata = "" OR optdata = " " THEN      !
+     EXIT("OPT_READV0 No file name");         ! Error if opdata not defined
+   ENDIF;                                     !
+
+   IF r_iteration < 0               THEN      !
+     EXIT("OPT_READV0 r_iteration < 0");      ! Error r_iteration
+   ENDIF;                                     !
+
+   n_a := 20;
+   i_iteration := -12345;                     !
+   w_case      := -12345;                     !
+   no_var      := -12345;                     !
+   objfunc     := -0.123456789;               !
+   no_cst      :=  0;                         !
+   FOR   i_a:= 1  TO  n_a   DO                ! Start loop initalization
+     opt_pid(i_a)  := #0;                     ! 
+     opt_pno(i_a)  := -12345;                 ! 
+     opt_val(i_a)  := -0.123456789;           !
+     gradient(i_a) := -0.123456789;           !
+     l_lim(i_a)    := -0.123456789;           !
+     u_lim(i_a)    := -0.123456789;           !
+     v_flag(i_a)   := -12345;                 !
+     cst_val(i_a)  := -0.123456789;           !
+     pen_val(i_a)  := -0.123456789;           !
+     cst_str(i_a)  := "undefined";            ! 
+   ENDFOR;                                    ! End   loop initalization
+
+
+! +++
+! Open file
+! ---
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+              ".OPTDATA";                     ! 
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_READV0 f_name "+f_name+    !
+              " cont ?",                      !
+          "y",1);                             !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+   o_code:= "R";                              !
+
+   OPEN(odat,o_code,f_name);                  ! Open input file
+   IF IOSTAT(odat) <> 0 THEN                  !
+     EXIT("OPT_READV0 No file "+optdata+      !
+              ".OPTDATA");                    !
+   ENDIF;                                     !
+
+
+! +++
+nxtiter:;                                     ! Label: Next iteration
+! Line 1: iteration  no  objfunc  case
+! ---
+
+   keyword    :=  INSTR(odat,13);             ! Iteration
+   IF DEBUG = 2 THEN                          ! Debug 2
+     s:=INPMT("iteration   "+keyword," ",1);  !
+   ENDIF;                                     !
+   IF IOSTAT(odat) <> 0 THEN                  ! Error
+     GOTO found;                              ! Assume End Of File
+   ENDIF;                                     !
+
+   i_iteration:=  ININT(odat);                ! Iteration number
+   objfunc    :=  INFLT(odat);                ! Objective fctn value
+   w_case     :=  ININT(odat);                ! Case  
+   no_var     :=  ININT(odat);                ! Number of variables
+   rad        :=  INLIN(odat);                ! Rest of line
+
+   IF DEBUG = 2 THEN                          ! Debug 2
+     s:=INPMT(
+     "i_iteration "+STR(i_iteration,-1,0)+    !
+     " no_var "    +STR(no_var     ,-1,0)+    !
+        " w_case " +STR(w_case,-1,0)," ",1);  !
+   ENDIF;                                     !
+
+   FOR i_v := 1 TO no_var DO                  ! Start loop variable values 
+     id_s         :=  INSTR(odat,26);         ! Reference to part
+     opt_pid(i_v) :=  RVAL(id_s);             ! 
+     opt_pno(i_v) :=  ININT(odat);            ! Parameter number     
+     opt_val(i_v) :=  INFLT(odat);            ! Parameter value       
+     IF w_case = 3  OR w_case = 4  OR         !
+        w_case = 7                   THEN     !
+     gradient(i_v):=  INFLT(odat);            ! Gradient              
+     ENDIF;                                   !
+     rad          :=  INLIN(odat);            ! Rest of line
+   ENDFOR;                                   !
+
+   IF DEBUG = 2 THEN                          ! Debug 2
+
+   s:=INPMT(
+   "opt_pid(no_var) "+RSTR(opt_pid(no_var))+ !
+   " opt_pno(..) "+ STR(opt_pno(no_var),-1,0) +
+   " w_case "+STR( w_case ,-1,0)," ",1);  !
+   ENDIF;                                     !
+
+   IF w_case = 2  OR w_case = 3  OR           !
+      w_case = 4  OR w_case = 5      THEN     !
+     keyword    :=  INSTR(odat,13);           ! Limits
+     rad        :=  INLIN(odat);              ! Rest of line
+     IF DEBUG = 2 THEN                        ! Debug 2
+     s:=INPMT("limits      "+keyword," ",1);  
+     ENDIF;                                   !
+     FOR i_v := 1 TO no_var DO                ! Start loop limits
+       id_s         :=  INSTR(odat,26);       ! Reference to part
+       opt_pno(i_v) :=  ININT(odat);          ! Parameter number     
+       l_lim(i_v)   :=  INFLT(odat);          ! Lower limit
+       u_lim(i_v)   :=  INFLT(odat);          ! Upper limit
+       v_flag(i_v)  :=  ININT(odat);          ! Limit flag           
+       rad          :=  INLIN(odat);          ! Rest of line
+     ENDFOR;                                  ! End   loop limits
+   ENDIF;                                     !
+
+   IF DEBUG = 2 THEN                          ! Debug 2
+   s:=INPMT(
+   "  id_s  "+ id_s +                !
+   " opt_pno(no_var) "+STR(opt_pno(no_var),-1,0) +
+   " w_case "+STR( w_case ,-1,0)," ",1);  !
+   ENDIF;                                     !
+
+
+   IF w_case = 3  OR w_case = 4 OR            !
+      w_case = 6                     THEN     !
+     keyword    :=  INSTR(odat,14);           ! Constraints
+     IF IOSTAT(odat) <> 0 THEN                ! Error
+       CLOSE(odat);                           ! 
+       EXIT("OPT_READV0 Error c1");           !
+     ENDIF;                                   !
+
+     no_cst     :=  ININT(odat);              ! Number of constraints
+     IF IOSTAT(odat) <> 0 THEN                ! Error
+       CLOSE(odat);                           ! 
+       EXIT("OPT_READV0 Error c2");           !
+     ENDIF;                                   !
+     rad        :=  INLIN(odat);              ! Rest of line
+     IF IOSTAT(odat) <> 0 THEN                ! Error
+       CLOSE(odat);                           ! 
+       EXIT("OPT_READV0 Error c3");           !
+     ENDIF;                                   !
+     IF DEBUG = 2 THEN                        ! Debug 2
+     s:=INPMT("constraints "+keyword+         !
+        " no_cst " +STR(no_cst,-1,0)," ",1);  !
+     ENDIF;                                   !
+     FOR i_c := 1 TO no_cst DO                ! Start loop limits
+       cst_str(i_c) :=  INSTR(odat,30);       ! Description
+       cst_val(i_c) :=  INFLT(odat);          ! Constraint value
+       pen_val(i_c) :=  INFLT(odat);          ! Penalty value
+       rad          :=  INLIN(odat);          ! Rest of line
+     ENDFOR;                                  ! End   loop limits
+     IF DEBUG = 2 THEN                          ! Debug 2
+     s:=INPMT(
+     "cst_str(no_cst) "+ cst_str(no_cst) +     !
+     "cst_val(no_cst)"+STR(cst_val(no_cst),-15,8)," ",1);  !
+     ENDIF;                                     !
+   ENDIF;                                     !
+
+! +++
+! Requested iteration ?                       
+! ---
+
+  IF  r_iteration = i_iteration THEN          !
+    GOTO found;                               !
+  ELSE                                        !
+    GOTO nxtiter;                             !
+  ENDIF;                                      !
+
+found:;                                       ! Label: r_iteration=i_iteration
+
+
+  CLOSE(odat);                                !
+
+ENDMODULE
+

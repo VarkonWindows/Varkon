@@ -1,0 +1,16 @@
+opt_ram                   var_modules(1)
+                   var_modules(2)
+t_cykana                   var_modules(3)
+jul                   var_modules(4)
+OPT_FUNCV0                   obj_name      
+                    grad_name     
+                    hess_name     
+OPT_LIMV0                   lim_name      
+OPT_CSTV0                   constr_name   
+standard                   c_method      
+standard                   s_method      
+arrays                   f_method      
+standard                   g_method      
+standard                   l_method      
+standard                   v_method      
+standard                   h_method      

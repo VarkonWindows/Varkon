@@ -1,0 +1,159 @@
+!****************************************************
+! +++
+! Back (undo) optimization calculation
+!
+! Revision history
+! ________________
+!
+! 1995-06-10  Gunnar Liden
+! ---
+!
+!****************************************************
+
+
+
+MACRO MODULE OPT_BACKV0 (
+    INT    r_iteration := 0 >"Requested iteration";
+    STRING optdata*15  := "attempt_01" >"Optimization history file");
+
+!sdesce Back (undo) optimization calculation
+
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_ovar;               ! Loop index optimization variable
+! ---
+
+                                ! For OPT_READV0:
+                                ! Requested iteration number Eq. 0, 1, ...   
+                                ! Output data will be the last iteration
+                                ! if r_iteration is too big
+                                ! 
+                                ! Output data:
+   INT    i_iteration;          ! Iteration number
+   INT    w_case;               ! Write case:
+                                ! Eq. 1: Param's 
+                                ! Eq. 2: Param's+limits
+                                ! Eq. 3: Param's+limits+constraints
+                                ! Eq. 4: Param's+limits+constraints+gradient
+                                ! Eq. 5: Param's+gradient+limits
+                                ! Eq. 6: Param's+gradient+constraints
+                                ! Eq. 7: Param's+gradient
+   INT    no_var ;              ! Number of optimization variables
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+   FLOAT  objfunc;              ! Objective function value
+   FLOAT  gradient(20);         ! Gradient vector
+   FLOAT  l_lim(20);            ! Lower limit for variables
+   FLOAT  u_lim(20);            ! Upper limit for variables
+   INT    v_flag(20);           ! Flags       for variables
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+
+   REF    var_id;               ! Reference to variable module
+   INT    var_pno;              ! Parameter number
+   FLOAT  var_val;              ! Current variable value
+
+   INT    mode;                 ! Mode for UPDPP_PP
+                                ! Eq. 2: Change the parameter only
+                                ! Eq. 1: Change and update part   
+                                ! Eq. 0: Change and update whole active 
+                                !        module if part is referenced
+
+   REF    a_id;                 ! Reference for ADD_MBS
+
+   STRING ermess1*50;           ! Error   message no_var =  0
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   STRING var_id_s*30;          ! Reference to var_name as string
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+   DEBUG:= 0;                                 ! Change to 0, 1 or 2
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_BACKV0 optdata " +         !
+               optdata                        !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+   language := "e";                           !
+   IF   language = "s" THEN                   !
+     ermess1 :="Önskad iteration < 0";        ! Error 
+   ELIF language = "e" THEN                   !
+     ermess1 :="Requested iteration < 0";     ! Error 
+   ENDIF;                                     !
+
+   IF r_iteration  < 0 THEN                   ! Check r_iteration
+     EXIT("OPT_BACKV0 " + ermess1);           !
+   ENDIF;                                     !
+
+! +++
+! Retrieve data from file. Call of OPT_READV0     
+! ---
+
+   PART(#1, OPT_READV0 (                       !
+            optdata, r_iteration,              !
+            i_iteration, w_case,               !
+          no_var, opt_pid , opt_pno, opt_val,  !
+    objfunc, gradient, l_lim, u_lim, v_flag,   !
+    no_cst, cst_val, pen_val, cst_str));       !
+
+   IF DEBUG = 2 THEN  
+   LST_INI("OPT_BACKV0 Retrieved parameter values");
+   FOR  i_ovar:= 1 TO no_var DO 
+   LST_LIN(STR(i_ovar,3,0)+" opt_pid " + RSTR(opt_pid(i_ovar)) + " opt_pno " +
+           STR(opt_pno(i_ovar),3,0));
+   ENDFOR;
+   LST_EXI();
+   ENDIF;            
+
+! +++
+!  Change all variable values
+! ---
+
+   mode := 2;                                 ! Change only param. value
+   FOR  i_ovar:= 1 TO no_var DO               ! Start loop all variables
+      var_id := opt_pid(i_ovar);              ! Reference to module
+      var_pno:= opt_pno(i_ovar);              ! Parameter number
+      var_val:= opt_val(i_ovar);              ! Current variable value
+
+      var_id_s := RSTR(var_id);               ! Temporary fix of UPDPP_MBS bug
+      IF SUBSTR(var_id_s,1,2) = "##" THEN     !
+         var_id_s := SUBSTR(var_id_s,2);      !
+         var_id   := RVAL(var_id_s);          !
+      ENDIF;                                  !
+
+      IF DEBUG = 1 THEN                       !
+        s:=INPMT("OPT_BACKV0 i_ovar " +       !
+          STR(i_ovar,-1,0) + " var_id " +     !
+              RSTR(var_id) + " var_pno "+     !
+               STR(var_pno,-1,0)," ",1);      !
+        s:=INPMT("OPT_BACKV0 mode   " +       !
+          STR(mode  ,-1,0) + " var_val " +    !
+               STR(var_val,-15,10)," ",1);    !
+      ENDIF;                                  !
+
+      UPDPP_MBS(var_id, var_pno,              !
+                STR(var_val,-15,10), mode);   !
+
+   ENDFOR;                                    ! End   all loop variables
+
+   RUN_MBS();                                 ! Run active module
+
+ENDMODULE
+

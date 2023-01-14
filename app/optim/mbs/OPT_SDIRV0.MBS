@@ -1,0 +1,244 @@
+!*********************** OPT_SDIRV0 *****************************
+! +++
+! Calculation of search direction for the optimization calculation.
+!
+! Revision history
+! ________________
+!
+! 1995-06-03  Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_SDIRV0 (
+    INT    n_grad;               ! No of calculated gradients
+    STRING c_method*15;          ! Requested calculation method
+                                 ! Eq. standard: gradient
+                                 ! Eq. DFP: David Fletcher Powell
+    INT    no_var ;              ! Total number of parameters
+VAR FLOAT  gradient(20);         ! Gradient vector
+VAR FLOAT  grad_pre(20);         ! Gradient vector, previous
+    FLOAT  grad_len;             ! Gradient vector length
+VAR FLOAT  opt_val(20);          ! Parameter values
+VAR FLOAT  opt_val_pre(20);      ! Parameter values, previous
+VAR FLOAT  l_lim(20);            ! Lower limit for variables
+VAR FLOAT  u_lim(20);            ! Upper limit for variables
+VAR INT    v_flag(20);           ! Flags       for variables
+VAR FLOAT  hessian(20,20);       ! Approx. inv. Hessian
+VAR FLOAT  hessian_pre(20,20);   ! Approx. inv. Hessian, previous
+VAR FLOAT  s_direct(20);         ! Search direction
+VAR FLOAT  sdir_len;             ! Search direction length
+    FLOAT  o_step_input;         ! Input step for line search calculation
+VAR FLOAT  o_step;               ! Step for line search changed for DFP
+    INT    h_flag);              ! Direction (Hessian) output to screen
+
+!sdesce Search direction for the optimization calculation.
+!sdescs Sökriktning för en optimeringsberäkning.
+
+! +++
+! Internal variables
+! __________________
+!
+
+   FLOAT  lambda;               ! Step size
+                                ! For module OPT_GTP1V1:
+   INT    i_v;                  ! Loop index variable 
+   INT    j_v;                  ! Loop index variable 
+
+! ---
+
+   STRING ermess1*50;           ! Error message c_method 
+   STRING ermess2*50;           ! Error message h_flag   
+
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+
+
+BEGINMODULE
+
+! +++
+!  1. Initializations (for n_grad=1) and checks of input data
+! ---
+
+   DEBUG:= 0;
+
+   language := "e";                           !
+   IF   language = "s" THEN                   !
+     ermess1 :="Ej implementerad metod ";     ! Error c_method 
+     ermess2 :="Ogiltig flagga för utskrift"; ! Error h_flag   
+   ELIF language = "e" THEN                   !
+     ermess1 :="Not implemented method ";     ! Error c_method 
+     ermess2 :="Not a valid print flag";      ! Error h_flag   
+   ENDIF;                                     !
+
+   IF   n_grad = 1        THEN                ! Initialize output
+     FOR i_v:= 1 TO 20 DO                     !
+       FOR j_v:= 1 TO 20 DO                   !
+         hessian_pre(i_v,j_v):= 0.123456789;  !
+         hessian(i_v,j_v)    := 0.123456789;  !
+       ENDFOR;                                !
+     ENDFOR;                                  !
+   ENDIF;                                     !
+
+   FOR i_v:= 1 TO 20 DO                       !
+     s_direct(i_v) := 0.123456789;            ! Search direction
+   ENDFOR;                                    !
+
+   sdir_len := -0.123456789;                  ! Search direction length
+
+   IF h_flag = 0 OR h_flag = 1 THEN           ! Check h_flag
+      ;                                      !
+   ELSE                                       !
+     EXIT("OPT_SDIRV0 "+                      !
+           ermess2+STR(h_flag,-1,0));         !                      
+   ENDIF;                                     !
+
+! +++
+! 2. Method for calculation of search direction 
+! ---
+
+
+! +++
+! Goto c_grad if c_method is standard (or gradient or undefined)
+! Goto c_dfp  if c_method is DFP                     
+! ---
+
+
+   IF     c_method = "standard"  OR           ! Gradient method
+          c_method = "STANDARD"  OR           !
+          c_method = "gradient"  OR           !
+          c_method = "GRADIENT"  OR           !
+          c_method = ""          OR           !
+          c_method = " "              THEN    !
+     GOTO c_grad;                             !
+   ELIF   c_method = "DFP"       OR           ! Quasi-Newton DFP
+          c_method = "dfp"            THEN    !
+     GOTO c_dfp;                              !
+   ELSE                                       !
+     EXIT("OPT_SDIRV0 "+                      !
+           ermess1+c_method);                 !                      
+   ENDIF;                                     !
+
+
+! +++
+!
+c_grad:                                       ! Label: gradient direction
+!
+! 3. Search direction equal to the gradient
+! ---
+
+  FOR i_v := 1 TO    20    DO                 ! Search direction equal
+    s_direct (i_v) := gradient (i_v);         ! to gradient
+  ENDFOR;                                     !
+  sdir_len := grad_len;                       ! Search direction length
+
+  GOTO e_calc;
+
+! +++
+!
+c_dfp:                                        ! Label: DFP direction
+!
+! 4. David-Fletcher-Powell Quasi-Newton direction
+! ---
+
+
+
+! +++
+! Initialize for DFP when there is no previous gradient and hessian
+! Output search direction is the gradient
+! ---
+
+
+   IF   n_grad = 1                      THEN  ! Initialise for DFP
+     IF DEBUG = 2 THEN                        !
+       s:=INPMT("OPT_SDIRV0"+                 !
+        " c_method "+ c_method +" n_grad = 1" !
+             ," ",1);                         !
+     ENDIF;                                   !
+
+     FOR i_v:= 1 TO 20 DO                     ! Hessian unit matrix
+         FOR j_v:= 1 TO 20 DO                 !
+            IF i_v = j_v    THEN              !
+               hessian(i_v,j_v):= 1.0;        !
+            ELSE                              !
+               hessian(i_v,j_v):= 0.0;        !
+            ENDIF;                            !
+         ENDFOR;                              !
+     ENDFOR;                                  !
+     FOR i_v := 1 TO    20    DO              ! Search direction
+       s_direct (i_v) := gradient (i_v);      !
+     ENDFOR;                                  !
+
+! +++
+! Calculate search direction when a previous gradient exists
+! Step length o_step will be changed in this case
+! ---
+
+   ELIF n_grad > 1                      THEN  ! Previous gradient exist
+     IF DEBUG = 2 THEN                        !
+       s:=INPMT("OPT_SDIRV0"+                 !
+        " c_method "+ c_method +" n_grad > 1" !
+             ," ",1);                         !
+     ENDIF;                                   !
+
+     FOR i_v:= 1 TO 20 DO                     ! Hessian unit matrix
+         FOR j_v:= 1 TO 20 DO                 !
+            IF i_v = j_v    THEN              !
+               hessian_pre(i_v,j_v):= 1.0;    !
+            ELSE                              !
+               hessian_pre(i_v,j_v):= 0.0;    !
+            ENDIF;                            !
+         ENDFOR;                              !
+     ENDFOR;                                  !
+     lambda := 0.0;                           !
+     FOR i_v:= 1 TO no_var  DO                !
+       lambda := lambda +                     !
+         (opt_val_pre(i_v)-opt_val(i_v))*     !
+         (opt_val_pre(i_v)-opt_val(i_v));     !
+     ENDFOR;                                  !
+     lambda := SQRT(lambda);                  !
+
+     PART(#7,  OPT_HDFPV2 (                   ! Hessian DFP    
+      grad_pre, gradient, hessian_pre,        !
+               hessian, lambda,               !
+                  no_var ,h_flag));           !
+
+     FOR  i_v := 1 TO no_var  DO              ! Search direction
+       s_direct(i_v):= 0.0;                   !
+       FOR  j_v := 1 TO no_var  DO            !
+         s_direct(i_v):= s_direct(i_v) +      !
+           gradient(i_v)*hessian(i_v,j_v);    !
+       ENDFOR;                                !
+     ENDFOR;                                  !
+
+     sdir_len:= 0.0;                          !
+     FOR  i_v := 1 TO no_var  DO              ! Search direction length
+       sdir_len:= sdir_len +                  !
+           s_direct(i_v)*s_direct(i_v);       !
+     ENDFOR;                                  !
+     sdir_len:= SQRT(sdir_len);               !
+
+   
+     IF sdir_len > 0.00000000001 THEN         !
+       o_step := o_step_input/sdir_len;       ! Step length
+     ENDIF;                                   !
+
+
+   ENDIF;                                     !
+
+  GOTO e_calc;
+
+
+! +++
+e_calc:;                                      ! Label: End of calculation
+!
+! 4. Exit
+! ---
+
+ENDMODULE
+

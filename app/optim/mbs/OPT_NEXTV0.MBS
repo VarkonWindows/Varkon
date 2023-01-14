@@ -1,0 +1,312 @@
+!****************************************************
+! +++
+! Calculate next point opt_val within limits l_lim and
+! u_lim for a given search direction and a given step.
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-04  Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_NEXTV0 (
+    INT    n_iter_opt;             ! Current no of iterations to optimum
+    STRING l_method*15;            ! Limit method:                    
+                                   ! Eq. standard: Respect limits      
+                                   ! Eq. error:    Stop optimization   
+                                   ! Eq. warning:  Show variables      
+VAR FLOAT  opt_val_in(20);         ! Input parameter values
+    INT    no_var ;                ! Number of optimization variables
+VAR FLOAT  s_direct(20);           ! Search direction vector
+    FLOAT  o_step;                 ! Step for the one-dimensional search
+VAR FLOAT  l_lim(20);              ! Lower limit for variables
+VAR FLOAT  u_lim(20);              ! Upper limit for variables
+VAR INT    v_flag(20);             ! Flags       for variables
+                                   ! Eq. -1: No limit defined
+                                   ! Eq.  1: Only lower limit defined
+                                   ! Eq.  2: Only upper limit defined
+                                   ! Eq. 12: Both limits are defined
+VAR FLOAT  opt_val_out(20);        ! Output parameter values
+VAR INT    status);                ! Error/warning code
+                                   ! Eq.  0: All parameters within limits
+                                   ! Eq.  1: Steps have been changed
+                                   ! Eq.  2: Warning point outside limits
+                                   ! Eq. -1: Stop calculation, pts outside
+                                   ! Eq. -2: User stop of calculation      
+
+
+!sdesce Next optimization variable vector within limits
+!sdescs Nästa optimeringspunkt inom givna begränsningar
+
+
+! +++
+! Internal variables
+! __________________
+! ---
+
+
+
+   INT    i_v;                  ! Loop index variable number
+
+
+
+   FLOAT  var_val;              ! Current variable value
+
+
+
+   STRING ermessl*50;           ! Warning point outside lower limit
+   STRING ermessu*50;           ! Warning point outside upper limit
+   STRING ermess2*50;           ! Error no_var            
+   STRING ermess3*50;           ! Error no_iter_opt       
+   STRING ermess4*50;           ! Error l_method          
+   STRING ermess5*50;           ! Error limit values      
+
+   STRING prompt1*50;           ! Prompt string point outside warning
+   STRING prompt2*50;           ! Prompt string point outside error
+
+   STRING s_yes*1;              ! String y (= Yes)        
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+!  0. Initializations and checks
+
+   DEBUG:= 0;
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+
+     ermessl :="utanför undre gräns ";        ! Warning
+     ermessu :="utanför övre  gräns ";        ! Warning
+     prompt1 :=" Fortsätt j/n/l";             ! Prompt string
+     prompt2 :=" <CR>";                       ! Prompt string
+     ermess2 :="no_var ej  OK";               ! Error  
+     ermess3 :="n_iter_opt ej  OK";           ! Error  
+     ermess4 :="l_method ej  OK";             ! Error  
+     s_yes   :="j";                           ! Yes string
+     ermess5 :=" gränser ej  OK";             ! Error  
+   ELIF language = "e" THEN                   !
+     ermessl :="outside lower limit ";        ! Warning
+     ermessu :="outside upper limit ";        ! Warning
+     prompt1 :=" Continue y/n/l";             ! Prompt string
+     prompt2 :=" <CR>";                       ! Prompt string
+     ermess2 :="no_var not OK";               ! Error  
+     ermess3 :="n_iter_opt not OK";           ! Error  
+     ermess4 :="l_method not OK";             ! Error  
+     s_yes   :="y";                           ! Yes string
+     ermess5 :=" limits not  OK";             ! Error  
+   ENDIF;                                     !
+
+
+
+   IF  no_var  <  1  THEN                     ! Check no_var
+     EXIT("OPT_NEXTV0 "+ermess2);             !
+   ENDIF;                                     !
+   IF  no_var  >  20 THEN                     !
+     EXIT("OPT_NEXTV0 "+ermess2);             !
+   ENDIF;                                     !
+
+
+
+   IF  n_iter_opt  <  1  THEN                 ! Check n_iter_opt
+     EXIT("OPT_NEXTV0 "+ermess3);             !
+   ENDIF;                                     !
+
+
+
+   IF  l_method = "standard"  OR              ! Check l_method
+       l_method = "warning"   OR              ! 
+       l_method = "error"          THEN       ! 
+     ;                                       !
+
+   ELSE                                       !
+     EXIT("OPT_NEXTV0 "+ermess4);             !
+   ENDIF;                                     !
+
+
+
+   IF n_iter_opt = 1 THEN                     ! Check limits for n_iter_opt=1
+     FOR  i_v   := 1 TO 20       DO           !
+       IF v_flag(i_v) = 12 THEN               ! Both limits defined
+         IF l_lim(i_v) >= u_lim(i_v) THEN     !
+           EXIT("OPT_NEXTV0 " +               !
+                      STR(l_lim(i_v),-12,4) + !
+            " "     + STR(u_lim(i_v),-12,4) + !
+                   ermess5);
+         ENDIF;                               !
+       ENDIF;                                !
+     ENDFOR;                                  !
+   ENDIF;                                     !
+
+   FOR  i_v   := 1 TO 20       DO             ! Initialize output   
+     opt_val_out(i_v) := 0.123456789;         ! 
+   ENDFOR;                                    !
+
+! +++
+!  1. Calculate output opt_val_out                    
+! ---
+
+   status := 0;                               ! Initialize error code
+
+   FOR  i_v   := 1 TO no_var   DO             ! Start loop variables
+     var_val:= opt_val_in(i_v) -              ! Current parameter value
+               o_step*s_direct(i_v);          !
+
+     opt_val_out(i_v) := var_val;             ! Initialize to within limits
+
+     IF  DEBUG = 2 AND v_flag(i_v) > 0 THEN   ! Debug                  (Start)
+         s := INPMT(STR(var_val,-12,4) +" "+  ! 
+        l_method+" "+ STR(l_lim(i_v),-12,4) + !
+            " "     + STR(u_lim(i_v),-12,4) + !
+            " "     + STR(v_flag(i_v),-1,0),  !
+                      s_yes,1);               !
+           IF s="y" OR s="j" OR s="Y"  THEN   ! Continue calculation   (Start)
+             ;                                !
+           ELSE                               !
+             status := -2;                    !
+             EXIT();                          !
+           ENDIF;
+     ENDIF;                                   ! Debug                  (End)
+
+
+     IF v_flag(i_v)=1 OR v_flag(i_v)=12 THEN  ! Lower limit is defined (Start)
+
+       IF var_val < l_lim(i_v) THEN           ! Value outside limit    (Start)
+
+         IF  DEBUG = 1 THEN                   ! Debug                  (Start)
+           s := INPMT(STR(var_val,-12,4)+" "+ ! 
+            l_method+ " "+                    !
+                      STR(l_lim(i_v),-6,1) +  !
+            " "     + STR(u_lim(i_v),-6,1) +  !
+            " Outside lower",
+                      s_yes,1);               !
+           IF s="y" OR s="j" OR s="Y"  THEN   ! Continue calculation   (Start)
+             ;                                !
+           ELSE                               !
+             status := -2;                    !
+             EXIT();                          !
+           ENDIF;
+         ENDIF;                               ! Debug                  (End)
+
+
+
+         IF    l_method = "standard"  THEN    ! Change step            (Start)
+           status := 1;                       ! Error code
+           opt_val_out(i_v):= l_lim (i_v);    ! Step to limit value     
+!          s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+!           ermessl + STR(l_lim(i_v),  8,1) + !
+!           " "     + STR(u_lim(i_v),  8,1) + !
+!                     prompt1,                !
+!                     "c"  ,1);               !
+         ENDIF;                               ! Change step            (End)
+
+         IF    l_method = "warning"   THEN    ! Warning                (Start)
+           status := 2;                      ! Error code
+           s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+            ermessl + STR(l_lim(i_v),  8,1) + !
+            " "     + STR(u_lim(i_v),  8,1) + !
+                      prompt1,                !
+                      s_yes,1);               !
+           IF   s="y" OR s="j" OR s="Y" THEN  ! Continue calculation   (Start)
+             ;                                !
+           ELIF s="l" OR s="L"          THEN  ! Change parameter to limit      
+             opt_val_out(i_v):= l_lim (i_v);  ! Step to limit value     
+           ELSE                               !
+             status := -2;                    !
+             EXIT();                          !
+           ENDIF;                             ! Continue calculation   (End)
+         ENDIF;                               ! Warning                (End)
+
+
+
+         IF    l_method = "error"     THEN    ! Stop calulation        (Start)
+           status := -1;                      ! Error code
+           s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+            ermessl + STR(l_lim(i_v),  8,1) + !
+            " "     + STR(u_lim(i_v),  8,1) + !
+                      prompt2,                !
+                      " "  ,1);               !
+           EXIT();                            !
+         ENDIF;                               ! Stop calulation        (End)
+
+       ENDIF;                                 ! Value outside limit    (End)
+     ENDIF;                                   ! Lower limit is defined (End)
+
+
+
+     IF v_flag(i_v)=2 OR v_flag(i_v)=12 THEN  ! Upper limit is defined (Start)
+
+       IF var_val > u_lim(i_v) THEN           ! Value outside limit    (Start)
+
+         IF  DEBUG = 1 THEN                   ! Debug                  (Start)
+           s := INPMT(STR(var_val,-12,4)+" "+ ! 
+            l_method+ " "+                   !
+                      STR(l_lim(i_v),-6,1) +  !
+            " "     + STR(u_lim(i_v),-6,1) +  !
+            " Outside upper",
+                      s_yes,1);               !
+           IF s="y" OR s="j" OR s="Y"  THEN   ! Continue calculation   (Start)
+             ;                                !
+           ELSE                               !
+             status := -2;                    !
+             EXIT();                          !
+           ENDIF;
+         ENDIF;                               ! Debug                  (End)
+
+
+
+         IF    l_method = "standard"  THEN    ! Change step            (Start)
+           status := 1;                       ! Error code
+           opt_val_out(i_v):= u_lim (i_v);    ! Step to limit value     
+!          s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+!           ermessu + STR(l_lim(i_v),  8,1) + !
+!           " "     + STR(u_lim(i_v),  8,1) + !
+!                     prompt1,                !
+!                     "c"  ,1);               !
+         ENDIF;                               ! Change step            (End)
+
+         IF    l_method = "warning"   THEN    ! Warning                (Start)
+           status := 2;                       ! Error code
+           s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+            ermessu + STR(l_lim(i_v),  8,1) + !
+            " "     + STR(u_lim(i_v),  8,1) + !
+                      prompt1,                !
+                      s_yes,1);               !
+           IF   s="y" OR s="j" OR s="Y" THEN  ! Continue calculation   (Start)
+             ;                                !
+           ELIF s="l" OR s="L"          THEN  ! Change parameter to limit      
+             opt_val_out(i_v):= u_lim (i_v);  ! Step to limit value     
+           ELSE                               !
+             status := -2;                    !
+             EXIT();                          !
+           ENDIF;                             ! Continue calculation   (End)
+         ENDIF;                               ! Warning                (End)
+
+
+         IF    l_method = "error"     THEN    ! Stop calulation        (Start)
+           status := -1;                      ! Error code
+           s := INPMT(STR(var_val,-12,4) +    ! Warning to screen
+            ermessu + STR(l_lim(i_v),  8,1) + !
+            " "     + STR(u_lim(i_v),  8,1) + !
+                      prompt2,                !
+                      " "  ,1);               !
+           EXIT();                            !
+         ENDIF;                               ! Stop calulation        (End)
+
+       ENDIF;                                 ! Value outside limit    (End)
+     ENDIF;                                   ! Upper limit is defined (End)
+
+   ENDFOR;                                    ! End   loop variables
+
+
+ENDMODULE
+

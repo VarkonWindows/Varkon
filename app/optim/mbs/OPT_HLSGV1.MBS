@@ -1,0 +1,326 @@
+!***************************************************************************
+! +++
+! Retrieve data from optimization history file and 
+! list gradient vector values    
+!
+!  Revision history
+!  ________________
+!
+!  1995-11-25  Gunnar Liden
+!
+! ---
+!
+!***************************************************************************
+
+ BASIC GEOMETRY MODULE OPT_HLSGV1 (
+    STRING optdata*15  := "attempt_01" >"Optimization history file");
+
+!sdesce List gradient vector values from optimization history file
+!sdescs Lista gradient vektor data från optimeringshistorik fil
+
+
+! +++
+! Internal variables
+! __________________
+
+
+   INT    i_gra;                ! Loop index constraint
+
+! ---
+
+   FILE   odat;                 ! Optimization data file
+   STRING f_name*132;           ! Full input filename
+   STRING o_code*1;             ! Open code
+
+   INT     r_iteration;         ! Loop index iteration
+
+                                ! For OPT_RDOPV0:
+   INT    i_iteration;          ! Iteration number
+   INT    w_case;               ! Write case:
+                                ! Eq. 1: Param's 
+                                ! Eq. 2: Param's+limits
+                                ! Eq. 3: Param's+limits+constraints
+                                ! Eq. 4: Param's+limits+constraints+gradient
+                                ! Eq. 5: Param's+gradient+limits
+                                ! Eq. 6: Param's+gradient+constraints
+                                ! Eq. 7: Param's+gradient
+
+   INT    no_var ;              ! Number of optimization variables
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+   FLOAT  objfunc;              ! Objective function value
+   FLOAT  gradient(20);         ! Gradient vector
+   FLOAT  l_lim(20);            ! Lower limit for variables
+   FLOAT  u_lim(20);            ! Upper limit for variables
+   INT    v_flag(20);           ! Flags       for variables
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+
+   FLOAT  grad_len;             ! Gradient length
+
+
+
+   STRING head_s*50;            ! Header printout
+   STRING ermess1*50;           ! Error 
+   STRING ermess2*50;           ! Error
+   STRING ermess3*50;           ! Error
+
+   STRING ite_s*50;             ! Iteration number
+   STRING val_s*50;             ! Parameter value    
+   STRING gra_s*50;             ! Gradient           
+   STRING pno_s*50;             ! Parameter number   
+   STRING grl_s*50;             ! Gradient length    
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+!  0. Initializations and checks
+
+   DEBUG:= 0;
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+     head_s  :="GRADIENT VEKTORER FRÅN"+      ! Header printout
+               " FIL:  ";                     !
+     ermess1 :="Filnamn måste anges";         ! Error 
+     ermess2 :="Programfel mer än 200 ";      ! Error 
+     ermess3 :="     Inga variabler ";        ! Error 
+     ite_s   :=" Iteration ";                 ! Iteration number
+     pno_s   :=" Variable ";                  ! Variable number    
+     val_s   :=" Värde ";                     ! Value of variable  
+     gra_s   :=" Gradient ";                  ! Gradient           
+     grl_s   :=" Gradient längd ";            ! Gradient length    
+   ELIF language = "e" THEN                   !
+     head_s  :="GRADIENT VECTORS "+           ! Header printout
+               " FROM FILE:  ";               !
+     ermess1 :="No file name given";          ! Error 
+     ermess2 :="Program error: 200 exceeded"; ! Error 
+     ermess3 :="  No variables ";             ! Error 
+     ite_s   :=" Iteration ";                 ! Parameter number
+     pno_s   :=" Variable ";                  ! Variable number    
+     val_s   :=" Value ";                     ! Value of variable  
+     gra_s   :=" Gradient ";                  ! Gradient           
+     grl_s   :=" Gradient length ";           ! Gradient length    
+   ENDIF;                                     !
+
+
+
+!+++
+! 0. Initializations and checks of input data           
+!---
+
+
+
+   IF optdata = "" OR optdata = " " THEN      !
+     EXIT("OPT_HLSGV1 " +ermess1);            ! Error if opdata not defined
+   ENDIF;                                     !
+
+! +++
+! 1. Constraint function valuse to screen (Xwindow)     
+! ---
+
+
+! +++
+! Open list Xwindow
+! ---
+
+   LST_INI( head_s  + optdata + ".OPTIM");
+   LST_LIN (" ");
+   LST_LIN(" ");
+
+! +++
+! Open file
+! ---
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+              ".OPTDATA";                     ! 
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_HLSGV1 f_name "+f_name+    !
+              " cont ?",                      !
+          "y",1);                             !
+     IF s = "n" THEN                          !
+        LST_EXI();                            !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+
+   o_code:= "R";                              !
+
+   OPEN(odat,o_code,f_name);                  ! Open input file
+   IF IOSTAT(odat) <> 0 THEN                  !
+     LST_EXI();                               !
+     EXIT("OPT_HLSGV1 No file "+optdata+      !
+              ".OPTDATA");                    !
+   ENDIF;                                     !
+
+
+! +++
+! Start loop iterations (records in file) i= 1,2,3, ..... ,200
+! ---
+
+  FOR  r_iteration := 0 TO  200  DO            ! Start loop iteration
+
+! +++
+!   Retrieve data from file. Call of OPT_RDOPV0     
+! ---
+
+     PART(#1, OPT_RDOPV0 ( odat,               !
+            i_iteration, w_case,               !
+          no_var, opt_pid , opt_pno, opt_val,  !
+    objfunc, gradient, l_lim, u_lim, v_flag,   !
+    no_cst, cst_val, pen_val, cst_str));       !
+
+! +++
+!   Goto eof for End Of File
+! ---
+
+    IF  r_iteration <> i_iteration THEN        ! End Of File ?
+
+      IF DEBUG = 1 THEN                        ! Debug
+
+       LST_LIN("r_it.. "+STR(r_iteration,4,0)+ !
+
+         " <>  i_it. "+STR(i_iteration,4,0));  !
+
+      ENDIF;                                   !
+
+      GOTO  eof;                               !
+
+    ENDIF;                                     !
+
+
+
+    IF  no_var = 0                 THEN        ! No variables   ?
+
+      LST_LIN(ermess3);                        !
+
+      LST_EXI();                               !
+
+      CLOSE(odat);                             !
+
+      EXIT("OPT_HLSGV1 " + ermess3 );          !
+
+    ENDIF;                                     !
+
+
+
+    IF  no_var < 0                 THEN        ! Programming check  
+
+      LST_LIN(ite_s+STR(r_iteration,4,0)+      ! 
+
+           " no_var= "+STR(no_var,-1,0));      !
+
+      LST_EXI();                               !
+
+      CLOSE(odat);                             !
+
+      EXIT("OPT_HLSGV1 Programming error");    !
+
+    ENDIF;                                     !
+
+
+
+
+
+! +++
+!   List gradient data to screen i_gra= 1, 2, .. , no_var
+! ---
+
+
+
+
+
+
+
+    IF DEBUG = 1 THEN                          ! Debug
+
+    LST_LIN("r_iterat. "+STR(r_iteration,4,0)+ !
+
+            " no_var " +STR(no_var ,4,0));     ! 
+
+    ENDIF;                                     !
+
+
+
+    LST_LIN(" ");                              !
+
+    grad_len := 0.0;                           ! Initiate gradient length
+
+
+
+    FOR  i_gra := 1 TO no_var  DO              ! Start loop gradient
+
+
+
+      LST_LIN(ite_s+STR(r_iteration,4,0)+      ! List gradient values
+
+             pno_s+STR(opt_pno (i_gra), 3,0)+  !
+
+             val_s+STR(opt_val (i_gra),12,4)+  !
+
+             gra_s+STR(gradient(i_gra),15,8)+  !
+
+             " "  + RSTR(opt_pid(i_gra)));     !
+
+      grad_len:= grad_len+gradient(i_gra)**2;  ! Gradient length
+
+    ENDFOR;                                    ! End   loop gradient
+
+
+
+    grad_len := SQRT(grad_len);                !
+
+
+
+    LST_LIN(ite_s+STR(r_iteration,4,0)+        ! List gradient length value
+
+             grl_s+STR(grad_len ,25,10));      !
+
+  ENDFOR;                                      ! End   loop iteration
+
+
+
+
+
+  LST_LIN(ermess2);                            !
+
+  LST_EXI();                                   !
+
+  CLOSE(odat);                                 !
+
+  EXIT("OPT_HLSGV1 "+ ermess2);                ! 
+
+
+
+! +++
+eof:;                                          ! Label: EOF
+!
+! Close list Xwindow
+! ---
+
+
+
+   LST_LIN (" ");
+
+   LST_EXI();
+
+
+
+  CLOSE(odat);                                ! Close optimization data file
+
+
+
+
+
+ENDMODULE
+

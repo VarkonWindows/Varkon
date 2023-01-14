@@ -1,0 +1,28 @@
+! ***************** OPT_CSTV0   ****************************
+!
+! +++
+! This module "registrates" a constraint function value 
+!
+! Revision history
+! ________________
+!
+! 1995-06-08 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Registrates an optimization constraint function value
+!sdescs Registrerar ett värde på ett villkor i en optimeringsberäkning
+
+GLOBAL GEOMETRY MODULE OPT_CSTV0   (
+FLOAT    cst_val;                  ! Constraint function value
+FLOAT    penalty;                  ! Penalty, start radius parabola
+STRING   descr*10  );              ! Description (name) of constraint
+
+
+
+BEGINMODULE
+
+; ! No calculations
+
+ENDMODULE
+

@@ -1,0 +1,144 @@
+!****************************************************
+! +++
+! Write header to history data from optimization
+! 
+! Return if file name not is defined ..
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! ---
+!
+!****************************************************
+
+
+BASIC GEOMETRY MODULE OPT_WRIHV0 (
+    STRING optdata*15;           ! Optim. history data file
+VAR STRING var_modules(4)*10;    ! Names of modules with optimization
+                                 ! variables
+    STRING obj_name*10;          ! Name of objective function module      
+    STRING grad_name*10;         ! Name of gradient module
+    STRING hess_name*10;         ! Name of Hessian  module
+    STRING lim_name*10;          ! Name of variable limit module
+    STRING constr_name*10;       ! Name of constraint module
+    STRING c_method*15;          ! Requested calculation method
+    STRING s_method*15;          ! Requested search method
+    STRING f_method*15;          ! File method
+    STRING g_method*15;          ! Gradient calculation method
+    STRING l_method*15;          ! Limit method:                    
+                                 ! Eq. standard: Respect limits      
+                                 ! Eq. error:    Stop optimization   
+                                 ! Eq. warning:  Show variables      
+    STRING v_method*15;          ! Constraint handling method     
+    STRING h_method*15);         ! Handling of history
+
+
+!sdesce Write module names and method data from optimization to text file
+!sdescs Skriv metoder och moduldata från optimering till text fil 
+
+
+! +++
+! Internal variables
+! __________________
+
+! ---
+
+
+
+   FILE   odat;                 ! Output data file
+   STRING f_name*132;           ! Full input filename
+   STRING o_code*1;             ! Open code
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Loop index spaces in string
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+
+
+! +++
+! Algorithm
+! _________
+! ---
+
+!  0. Initializations and checks
+   DEBUG:= 0;
+
+   IF optdata = "" OR optdata = " " THEN      !
+     EXIT();                                  ! Return if optdata not defined
+   ENDIF;                                     !
+
+! +++
+! Open file
+! ---
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+              ".OPTHEAD";                     ! 
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_WRIHV0 f_name "+f_name,    !
+          "n",1);                             !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+
+
+   o_code:= "W";                              !
+   OPEN(odat,o_code,f_name);                  ! Open input file
+   IF IOSTAT(odat) <> 0 THEN                  !
+     EXIT("OPT_WRIHV0 Open failed");          !
+   ENDIF;                                     !
+
+! +++
+! Write data                               
+! ---
+
+   OUTSTR(odat, var_modules(1) +"                   var_modules(1)"); 
+   OUTLIN(odat);    
+   OUTSTR(odat, var_modules(2) +"                   var_modules(2)"); 
+   OUTLIN(odat);    
+   OUTSTR(odat, var_modules(3) +"                   var_modules(3)"); 
+   OUTLIN(odat);    
+   OUTSTR(odat, var_modules(4) +"                   var_modules(4)"); 
+   OUTLIN(odat);    
+   OUTSTR(odat, obj_name       +"                   obj_name      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, grad_name      +"                   grad_name     "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, hess_name      +"                   hess_name     "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, lim_name       +"                   lim_name      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, constr_name    +"                   constr_name   "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, c_method       +"                   c_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, s_method       +"                   s_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, f_method       +"                   f_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, g_method       +"                   g_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, l_method       +"                   l_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, v_method       +"                   v_method      "); 
+   OUTLIN(odat);    
+   OUTSTR(odat, h_method       +"                   h_method      "); 
+   OUTLIN(odat);    
+
+! +++
+! Close file
+! ---
+
+  CLOSE(odat);                                !
+
+
+
+ENDMODULE
+

@@ -1,0 +1,473 @@
+! ******************* OPT_EXTNV0 ******************************
+! +++ 
+!
+! Extract parameter names and prompt strings from lines 
+!
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! ---
+! *************************************************************
+
+!sdesce Extract parameter names and prompt strings from lines 
+!sdescs Hämta parameter namn och prompt strängar från textrader
+
+BASIC DRAWING MODULE OPT_EXTNV0 (
+VAR STRING  param(50)*132;      ! Lines with parameters, defaults, prompts
+    INT     n_param;            ! Number of parameter lines in param
+VAR INT     par_type(50);       ! Type of parameter (2=FLOAT)
+                                ! Eq. 1: INT
+                                ! Eq. 2: FLOAT
+                                ! Eq. 3: STRING
+                                ! Eq. 4: VECTOR
+                                ! Eq. 5: REF
+                                ! +100 : VAR variable       
+VAR STRING  par_name(50)*25;    ! Float parameter names
+VAR STRING  par_prompt(50)*132);! Float parameter prompt strings
+
+! Internal variables
+
+  INT      i_p;                 ! Loop index parameter    
+  INT      i_o;                 ! Index for output arrays 
+  INT      i_b;                 ! Loop index for blanks (spaces)
+  STRING   rad*132;             ! Whole parameter line from array
+  STRING   rad_p*132;           ! Part of parameter line from array
+  INT      n_c;                 ! Number of char's in rad
+  INT      c_c;                 ! Current (next FIND) char. number
+  INT      v_c;                 ! Number of characters to VAR
+  INT      f_c;                 ! Number of characters to FLOAT
+  INT      i_c;                 ! Number of characters to INT
+  INT      s_c;                 ! Number of characters to STRING
+  INT      r_c;                 ! Number of characters to REF
+  INT      e_c;                 ! Number of characters to VECTOR
+  INT      k_c;                 ! Temporary used character number
+  INT      j_c;                 ! Temporary used character number
+  INT      ps_c;                ! Number of characters to prompt start
+  INT      pe_c;                ! Number of characters to prompt end  
+  INT      vs_c;                ! Start number for type search from VAR
+  INT      n_int;               ! Number of INT    parameters
+  INT      n_float;             ! Number of FLOAT  parameters
+  INT      n_string;            ! Number of STRING parameters
+  INT      n_vector;            ! Number of VECTOR parameters
+  INT      n_ref;               ! Number of REF    parameters
+  INT      n_all;               ! Number of all    parameters
+
+  INT      DEBUG;               ! Debug flag
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations of output variables
+! ---
+
+  DEBUG := 0;                            ! Change to 0 or 1
+
+  FOR  i_p := 1 TO 50 DO                 !
+    par_type(i_p)  := -1;                !
+    par_name(i_p)  := "undefined" +      ! Parameter name
+     "_OPT_EXTNV0";                      ! 
+    par_prompt(i_p):= "No prompt string"+! Parameter prompt strings
+     " OPT_EXTNV0";                      ! 
+  ENDFOR;                                !
+
+  n_int   := 0;                          ! Number of INT    parameters
+  n_float := 0;                          ! Number of FLOAT  parameters
+  n_string:= 0;                          ! Number of STRING parameters
+  n_vector:= 0;                          ! Number of VECTOR parameters
+  n_ref   := 0;                          ! Number of REF    parameters
+
+! +++
+! 2. Retrieve parameter name and prompt strings       
+! ---
+
+  FOR  i_p := 1 TO n_param DO            ! Start loop parameter lines
+    i_o := i_p ;                         ! Index for output arrays
+    n_c:= -123456789;                    ! Initialize
+    v_c:= -123456789;                    ! 
+    k_c:= -123456789;                    ! 
+    j_c:= -123456789;                    ! 
+    f_c:= -123456789;                    ! 
+    i_c:= -123456789;                    ! 
+    s_c:= -123456789;                    ! 
+    r_c:= -123456789;                    ! 
+    e_c:= -123456789;                    ! 
+    c_c:= -123456789;                    ! 
+    rad:= param(i_p);                    ! Whole line to rad
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 i_p "           !
+               +STR(i_p,-1,0)            !
+    +" "+ rad         , " ",1);          !
+    ENDIF;                               !
+
+    n_c:= LENGTH(rad);                   ! No of characters in line
+    k_c  := FINDS(rad,"VAR ");           ! No characters to first VAR
+    j_c  := FINDS(rad,"var ");           ! No characters to first var
+
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not a VAR variable
+      rad_p := rad;                      !
+      par_type(i_o) := 0;                !
+      v_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      rad_p := SUBSTR(rad,k_c+4);        !
+      par_type(i_o) := 100;              !
+      v_c := k_c;                        !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      rad_p := SUBSTR(rad,k_c+4);        !
+      par_type(i_o) := 100;              !
+      v_c := j_c;                        !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error v_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_p,-1,0) !
+    +" v_c "+STR(v_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    k_c  := FINDS(rad_p,"FLOAT ");       ! No characters to first FLOAT
+    j_c  := FINDS(rad_p,"float ");       ! 
+
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" k_c "+STR(k_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not a FLOAT variable
+      f_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 2; !
+      f_c := k_c;                        !
+      c_c := k_c + 6;                    !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 2; !
+      f_c := j_c;                        !
+      c_c := k_c + 6;                    !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error f_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" f_c "+STR(f_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    k_c  := FINDS(rad_p,"INT ");         ! No characters to first INT  
+    j_c  := FINDS(rad_p,"int ");         ! 
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not an INT variable
+      i_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 1; !
+      i_c := k_c;                        !
+      c_c := k_c + 4;                    !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 1; !
+      i_c := j_c;                        !
+      c_c := k_c + 4;                    !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error i_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" i_c "+STR(i_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    k_c  := FINDS(rad_p,"REF ");         ! No characters to first REF  
+    j_c  := FINDS(rad_p,"ref ");         ! 
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not an REF variable
+      r_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 5; !
+      r_c := k_c;                        !
+      c_c := k_c + 4;                    !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 5; !
+      r_c := j_c;                        !
+      c_c := k_c + 4;                    !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error r_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" r_c "+STR(r_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    k_c  := FINDS(rad_p,"VECTOR ");      ! No characters to first VECTOR
+    j_c  := FINDS(rad_p,"vector ");      ! 
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not a VECTOR variable
+      e_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 4; !
+      e_c := k_c;                        !
+      c_c := k_c + 7;                    !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 4; !
+      e_c := j_c;                        !
+      c_c := k_c + 7;                    !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error e_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" e_c "+STR(e_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+    k_c  := FINDS(rad_p,"STRING ");      ! No characters to first STRING
+    j_c  := FINDS(rad_p,"string ");      ! 
+    FOR i_b := 2 TO k_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        k_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    FOR i_b := 2 TO j_c  DO              ! Check that all are spaces
+      IF  SUBSTR(rad,i_b) <> " " THEN    !
+        j_c := 0;                        ! Not a space <==> not a type
+      ENDIF;                             !
+    ENDFOR;                              !
+
+    IF    k_c = 0  AND j_c = 0 THEN      ! Not a STRING variable
+      s_c := 0;                          !
+    ELIF  j_c = 0 AND k_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 3; !
+      s_c := k_c;                        !
+      c_c := k_c + 7;                    !
+    ELIF  k_c = 0 AND j_c <> 0   THEN    !
+      par_type(i_o):= par_type(i_o) + 3; !
+      s_c := j_c;                        !
+      c_c := k_c + 7;                    !
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error e_c");      !
+    ENDIF;                               !
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 "+STR(i_o,-1,0) !
+    +" s_c "+STR(s_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+
+
+    IF DEBUG = 1 THEN                    ! Debug  (start)
+    IF   par_type(i_o) = 1  THEN         !
+      s:=INPMT("OPT_EXTNV0 Type INT "    !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELIF par_type(i_o) = 2  THEN         !
+      s:=INPMT("OPT_EXTNV0 Type FLOAT "  !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELIF par_type(i_o) = 3  THEN         !
+      s:=INPMT("OPT_EXTNV0 Type STRING " !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELIF par_type(i_o) = 4  THEN         !
+      s:=INPMT("OPT_EXTNV0 Type VECTOR " !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELIF par_type(i_o) = 5  THEN         !
+      s:=INPMT("OPT_EXTNV0 Type REF "    !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELIF par_type(i_o) = 101  OR         !
+         par_type(i_o) = 102  OR         !
+         par_type(i_o) = 103  OR         !
+         par_type(i_o) = 104  OR         !
+         par_type(i_o) = 105     THEN    !
+      s:=INPMT("OPT_EXTNV0 Type VAR    " !
+      +" par. no "+STR(i_o,-1,0)         !
+      +" c_c "+STR(c_c,-1,0), " ",1);    !
+    ELSE                                 !
+      s:=INPMT("OPT_EXTNV0 Unknown type "!
+      +" par. no "+STR(i_o,-1,0)         !
+      +" par_type(i_o) "                 !
+      +STR(par_type(i_o),-1,0), " ",1);  !
+    ENDIF;                               !
+    ENDIF;                               ! Debug   (end)
+
+    IF   par_type(i_o) = 1  THEN         !
+      n_int   := n_int + 1;              ! Number of INT    parameters
+    ELIF par_type(i_o) = 2  THEN         !
+      n_float := n_float + 1;            ! Number of FLOAT  parameters
+    ELIF par_type(i_o) = 3  THEN         !
+      n_string:= n_string + 1;           ! Number of STRING parameters
+    ELIF par_type(i_o) = 4  THEN         !
+      n_vector:= n_vector + 1;           ! Number of VECTOR parameters
+    ELIF par_type(i_o) = 5  THEN         !
+      n_ref   := n_ref    + 1;           ! Number of REF    parameters
+    ELIF par_type(i_o) = 101  THEN       !
+      n_int   := n_int + 1;              ! Number of INT    parameters
+    ELIF par_type(i_o) = 102  THEN       !
+      n_float := n_float + 1;            ! Number of FLOAT  parameters
+    ELIF par_type(i_o) = 103  THEN       !
+      n_string:= n_string + 1;           ! Number of STRING parameters
+    ELIF par_type(i_o) = 104  THEN       !
+      n_vector:= n_vector + 1;           ! Number of VECTOR parameters
+    ELIF par_type(i_o) = 105  THEN       !
+      n_ref   := n_ref    + 1;           ! Number of REF    parameters
+    ELSE                                 !
+      EXIT("OPT_EXTNV0 Error par_type"); !
+    ENDIF;                               !
+
+    FOR  i_b:= c_c  TO  n_c  DO          ! Start loop find parameter name
+      IF SUBSTR(rad_p,i_b,1) <> " " THEN ! Start 
+        GOTO start;                      !
+      ENDIF;                             !
+    ENDFOR;                              !
+    EXIT("OPT_EXTNV0 Error i_b");        !
+start:;                                  ! Label: Parameter name found
+
+    k_c:= FINDS(SUBSTR(rad_p,i_b),":="); ! Find end of parameter name  
+    j_c:= FINDS(SUBSTR(rad_p,i_b)," ");  ! 
+    IF    k_c = 0 AND j_c = 0 THEN       !
+      EXIT("OPT_EXTNV0 Error end param");!
+    ELIF  k_c = 0 THEN                   !
+      c_c := j_c-1;                      !
+    ELIF  j_c = 0 THEN                   !
+      c_c := k_c-1;                      !
+    ELIF  k_c  < j_c  THEN               !
+      c_c := k_c-1;                      !
+    ELIF  j_c  < k_c  THEN               !
+      c_c := j_c-1;                      !
+    ENDIF;                               !
+
+    par_name(i_o)  :=                    ! Parameter name to output array
+      SUBSTR(rad_p,i_b,c_c);             ! 
+
+    IF DEBUG = 2 THEN                    ! Debug
+    s:=INPMT("OPT_EXTNV0 i_b "           !
+              +STR(i_b,-1,0) +           !
+      " c_c " +STR(c_c,-1,0)             !
+    +" n_c "+STR(n_c,-1,0), " ",1);      !
+    ENDIF;                               !
+
+!?? s:= CHR(34);
+    s:= ">";       
+    ps_c:= FINDS(SUBSTR(rad_p, c_c), s );  ! Find start of prompt string
+    IF ps_c = 0 THEN                     !
+      IF DEBUG = 2 THEN                  ! Debug
+        s:=INPMT("OPT_EXTNV0 ps_c "      !
+                +STR(ps_c,-1,0) +        !
+        " No prompt string " , " ",1);   !
+      ENDIF;                             !
+      GOTO noprom;                       !
+    ENDIF;                               !
+    ps_c:= c_c + ps_c + 2;               !
+    s:= ";";       
+    pe_c:= FINDS(SUBSTR(rad_p,ps_c), s );  ! Find end   of prompt string
+    IF pe_c = 0 THEN                     !
+      IF DEBUG = 2 THEN                  ! Debug
+        s:=INPMT("OPT_EXTNV0 ps_c "      !
+                +STR(ps_c,-1,0) +        !
+        " No end of prompt " , " ",1);   !
+      ENDIF;                             !
+      pe_c := n_c - ps_c;                !
+    ENDIF;                               !
+
+    pe_c:= pe_c - 2;                     !
+
+    par_prompt(i_o)  :=                  ! Parameter prompt to output array
+      SUBSTR(rad_p,ps_c,pe_c);   
+
+noprom:;
+
+  ENDFOR;                                ! End   loop parameter lines
+
+
+  n_all    := n_int+n_float+n_string+    !
+              n_vector+n_ref;            !
+
+  IF DEBUG = 1 THEN                      ! Debug
+    s:=INPMT("OPT_EXTNV0" +              !
+    " n_int "   +STR(n_int   ,-1,0) +    !
+    " n_float " +STR(n_float ,-1,0) +    !
+    " n_string "+STR(n_string,-1,0) +    !
+    " n_vector "+STR(n_vector,-1,0) +    !
+    " n_ref "   +STR(n_ref   ,-1,0)      !
+                          , " ",1);      !
+
+    s:=INPMT("OPT_EXTNV0" +              !
+    " n_param " +STR(n_param ,-1,0) +    !
+    " compared with sum i_int+i_float+."+!
+    ".. = "+
+     STR(n_all    , -1,0) , " ",1);      !
+  ENDIF;                                 !
+
+
+
+  IF n_param <> n_all      THEN          !
+    s:=INPMT("OPT_EXTNV0" +              !
+    " Failure number of parameters"      !
+                          , " ",1);      !
+  ENDIF;                                 !
+
+
+ENDMODULE

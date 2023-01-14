@@ -1,0 +1,164 @@
+! ******************* OPT_NAMEV0 ******************************
+! +++ 
+!
+! Get (optimization) parameter names and prompt strings.
+!
+! This is a temporary solution, based on extraction of text 
+! from MBS code, until Johan has implemented GET functions for 
+! parameter names and prompt strings in VARKON.
+!
+! 1995-06-16  Gunnar Liden
+! 2006-01-27  fname 10->50 characters
+! ---
+! *************************************************************
+
+!sdesce Get parameter names and prompt strings from MBS source code
+!sdescs Hämta parametrar med sina strängar från MBS källkod
+
+
+BASIC DRAWING MODULE OPT_NAMEV0 (
+    STRING fname*50;            ! Module (file) name, i.e fname.MBS
+    INT    n_float;             ! Number of float parameters
+                                ! Output data:
+VAR STRING par_name(20)*25;     ! Float parameter names
+VAR STRING par_prompt(20)*132;  ! Float parameter prompt strings
+VAR INT    status);             ! Eq. 0: OK Eq. -1: Failure
+
+
+! Internal variables
+
+  STRING   mbsdir*50;           ! Directory with fname.MBS
+  STRING   infile*132;          ! Full name of input  file
+  STRING   param(50)*132;       ! Parameters and prompt strings
+  INT      n_param;             ! Number of parameters in param
+  INT     all_type(50);         ! Type of parameter (2=FLOAT)
+  STRING  all_name(50)*25;      ! Float parameter names
+  STRING  all_prompt(50)*132;   ! Float parameter prompt strings
+  INT      i_p;                 ! Loop index parameter
+  INT      i_a;                 ! Loop index all parameters
+  INT      w_leng;              ! Length of word
+  INT      i_s;                 ! Space loop index
+  INT      n_check;             ! Number of floats 
+  INT      DEBUG;               ! Debug flag
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+BEGINMODULE
+
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations of output variables
+! ---
+
+  DEBUG := 0;                          ! Change to 0 or 1
+
+  status := 0;                         !
+
+  FOR  i_p := 1 TO 20 DO               !
+    par_prompt(i_p):="__failure_extra"+! Parameter prompt strings
+    "cting_prompt_string_____________"+!
+    "________________________________";!
+  ENDFOR;                              !
+
+
+! +++
+! 2. Retrieve name of directory with MBS source code
+! ---
+
+   
+   PART(#1,OPT_DMBSV0 (fname,mbsdir)); ! Retrieve name of directory
+
+!   LST_INI("OPT_NAMEV0");
+!   LST_LIN("fname= " + fname);
+!   LST_LIN("mbsdir= " + mbsdir);   
+!   LST_EXI();
+
+
+   IF mbsdir="Undefined" THEN          ! Return status= -1 for failure
+     status := -1;                     !
+     EXIT();                           !
+   ENDIF;                              !
+
+! +++
+! 3. Extract whole lines with parameter names, default values and prompt strings
+! ---
+
+   infile:= mbsdir+fname+              ! Full input file name
+            ".MBS";                    !
+
+   PART(#2,OPT_EXTPV0(infile,          ! Retrieve parameter lines   
+       param,n_param));                !
+
+   IF DEBUG = 2 THEN                   ! Debug
+   FOR i_p:= 2 TO n_param DO           !
+   s:= INPMT("OPT_NAMEV0 "+            !
+       param(i_p),"",1);               !
+   ENDFOR;                             !
+   ENDIF;                              !
+
+! +++
+! 4. Extract all parameter names and prompt strings
+! ---
+
+   PART(#3,OPT_EXTNV0 (                ! Retrieve parameter names and prompts
+       param,n_param,                  !
+     all_type, all_name, all_prompt)); !
+
+   i_p := 0;                           !
+   n_check := 0;                       !
+   FOR i_a := 1 TO n_param   DO        ! Start loop all parameters
+
+     IF all_type(i_a) = 2  THEN        ! FLOAT ?
+      i_p:= i_p + 1;                   !
+      n_check := n_check + 1;          !
+      par_name(i_p):= all_name(i_a);   ! Float parameter name
+      par_prompt(i_p):=all_prompt(i_a);! Float prompt string  
+     ENDIF;                            !
+   ENDFOR;                             !
+
+   IF  n_float <> n_check THEN         !
+      IF DEBUG = 1 THEN                ! Debug
+        s:= INPMT("OPT_NAMEV0 "+       !
+        " n_float "+STR(n_float,-1,0)  !
+                + " <> "               !
+        + "n_check "+                  !
+        STR(n_check        , -1,0)     !
+        ,"",1);                        !
+      ENDIF;                           !
+      status := -1;                    !
+      GOTO failed;                     !
+   ENDIF;                              !
+
+failed:;                               ! Label: Failed extracting text
+
+   FOR i_p := 1 TO n_float   DO        ! Start loop all float parameters
+     par_name(i_p):= par_name(i_p)     !
+                         + " ";        !
+     w_leng:= LENGTH(par_name(i_p));   !
+     FOR i_s:= w_leng TO 25 DO         !
+       par_name(i_p):= par_name(i_p)   !
+                         + "_";        !
+     ENDFOR;                           !
+     w_leng:= LENGTH(par_prompt(i_p)); !
+     par_prompt(i_p):=par_prompt(i_p)  !
+                         + " ";        !
+     FOR i_s:= w_leng TO 60 DO         !
+       par_prompt(i_p):=par_prompt(i_p)!
+                         + "_";        !
+     ENDFOR;                           !
+   ENDFOR;                             !
+
+
+   IF DEBUG = 1 THEN                   ! Debug
+   FOR i_p:= 1 TO n_check DO           !
+   s:= INPMT("OPT_NAMEV0 "+            !
+       par_prompt(i_p),"",1);          !
+   ENDFOR;                             !
+   ENDIF;                              !
+
+
+ENDMODULE

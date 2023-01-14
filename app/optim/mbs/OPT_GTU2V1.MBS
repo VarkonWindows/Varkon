@@ -1,0 +1,1849 @@
+!****************************************************
+! +++
+! Definition of variables for an optimization calculation.
+!
+! All parameters of type FLOAT can be used as optimization
+! variables. All FLOAT variables will be shown to the user 
+! in a panel (Xwindow). Selection of variables is made in
+! the panel.
+!
+!  Revision history
+!  ________________
+!
+!  1995-12-10  Gunnar Liden
+!  1996-01-29  AIX (opsys= 4) added Gunnar Liden
+!  1998-01-20  Debug Windows NT Gunnar Liden
+!  2006-01-27  var_name 10->50 characters
+!  2008-12-30  opsys hardcoded Gunnar Liden
+!
+! ---
+!
+!****************************************************
+
+
+BASIC GEOMETRY MODULE OPT_GTU2V1 (
+    STRING var_name*50;       ! Module with optimization variables
+    REF    var_id;            ! Identities for a var_modules instance
+    INT    i_start;           ! Start output number in arrays opt_pid 
+                              ! and opt_pno
+VAR STRING c_flag*3;          ! Eq NO: No (cancel) calculation
+VAR INT    i_end;             ! End   output number in arrays opt_pid
+                              ! and opt_pno
+VAR REF    opt_pid(20);       ! References to parts with opt. variables 
+VAR INT    opt_pno(20) );     ! Parameter number in opt_pid
+
+
+
+!sdesce Definition of variables for an optimization calculation
+!sdescs Definition av variabler för en optimeringsberäkning
+
+!+++
+! Internal variables
+! __________________
+!
+!---
+
+   VECTOR main_pos;             ! Main window position
+   FLOAT  main_dx;              ! Main window dimension 
+   FLOAT  main_dy;              !
+   FLOAT  col1_dx;              ! Columne 1 position
+   FLOAT  col2_dx;              ! Columne 2 position
+   FLOAT  col_w;                ! Columne width       
+   FLOAT  d_y;                  ! Delta y             
+
+
+   INT    opsys;                ! Operating system
+                                ! Eq. 1: VMS           (VAX)
+                                ! Eq. 2: SCO UNIX      (PC)
+                                ! Eq. 3: SGI UNIX      (X server)
+
+
+
+                                ! For function GETPRT:
+  STRING namn*10;               ! Name of part
+  INT    mtyp;                  ! Module type
+                                ! Eq. 2: DRAWING
+                                ! Eq. 3: GEOMETRY
+  INT    mattr;                 ! Module attribute
+                                ! Eq. 1: LOCAL
+                                ! Eq. 2: GLOBAL
+                                ! Eq. 3: BASIC
+  REF    kid;                   ! Global identity for the
+                                ! coordinate system which has 
+                                ! been used to position a
+                                ! module of type LOCAL
+  INT    n_param;               ! Number of parameters in the part
+  INT    mant;                  ! Number of entities in the part
+  REF    idm(2);                ! Array with global identities to
+                                ! all entities in the part (if 
+                                ! (there is space for all of them)
+
+
+
+   INT    n_param_f;            ! Number of parameters from file
+   INT    n_float_f;            ! Number of float parameters from file
+
+
+
+   INT    n_float;              ! Number of float parameters
+   STRING par_name(20)*25;      ! All parameter names
+   STRING par_flag(20)*3;       ! All parameter flags 
+   INT    par_float(20);        ! Parameter no for float
+   FLOAT  par_value(20);        ! Parameter value       
+
+
+
+   STRING par_prompt(20)*132;   ! Parameter prompt strings
+   INT    stat_name;            ! Eq. 0: OK Eq. -1: Failure
+
+
+   INT    par_type;             ! Parameter type
+                                ! Eq. 1: INT
+                                ! Eq. 2: FLOAT
+                                ! Eq. 3: STRING
+                                ! Eq. 4: VECTOR
+                                ! Eq. 5: REF 
+                                !  >  5: Other type
+
+   INT    i_p;                  ! Loop index parameter
+
+   FILE   idat;                 ! Input data file
+   STRING f_name*132;           ! Full input filename
+   STRING rad*132;              ! Dummy string
+
+   INT    n_lin;                ! Number of lines (data) 
+   FLOAT  n_d;                  ! Delta  pixel
+   FLOAT  n_h;                  ! Height pixel
+
+
+
+   INT    main_id;              ! Main window identity   
+
+
+
+   STRING header*80;            ! String for main window
+   STRING s_edit1*50;           ! String for rubr1 
+   STRING s_edit2*50;           ! String for rubr1 
+   STRING s_edit3*50;           ! String for rubr1 
+   STRING s_edit4*50;           ! String for rubr1 
+   STRING s_bid1*50;            ! String for bid1  
+   STRING s_bid2*50;            ! String for bid2  
+
+
+
+   STRING s_on*3;               ! Strings for flagi, i=1,2,3,4,...
+   STRING s_off*3;              ! 
+   STRING s_yes*3;              !
+   STRING s_no*3;               !
+
+
+
+   INT    rubr1;                ! Id's for parameter header
+   INT    parm1,parm2,parm3;    ! Id's for parameters
+   INT    parm4,parm5,parm6;    !
+   INT    parm7,parm8,parm9;    !
+   INT    parm10,parm11,parm12; !
+   INT    parm13,parm14,parm15; !
+   INT    parm16,parm17,parm18; !
+   INT    parm19,parm20;        !
+   INT    flag1,flag2,flag3;    ! Id's for parameter flags
+   INT    flag4,flag5,flag6;    !
+   INT    flag7,flag8,flag9;    !
+   INT    flag10,flag11,flag12; !
+   INT    flag13,flag14,flag15; !
+   INT    flag16,flag17,flag18; !
+   INT    flag19,flag20;        !
+
+   INT    bid1  ;               ! Id. window OK
+   INT    bid2;                 ! Id. button AVBRYT/CANCEL
+   INT    bid3;                 ! Id. button HJÄLP/HELP
+
+   INT    edit1,edit2,edit3;    ! Id.'s for edit windows
+   INT    edit4,edit5,edit6;    ! 
+   INT    edit7;                ! 
+   INT    edit8;                !
+   INT    edit9;                !
+
+
+
+   INT    bidx;                 ! Identity of event  
+
+
+
+   STRING ermess1*50;           ! Error message
+   STRING ermess2*50;           ! Error message 
+   STRING ermess3*50;           ! Error message 
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    n_opclo;              ! For file checking
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+!  0. Initializations and checks
+! ---
+
+   DEBUG:= 0;
+
+!  Don't use non-initialized variables in if statements !!!´
+!  (It will result in strange errors ... )
+
+
+   rubr1 := -1;                 ! Id's 
+   parm1 := -1; parm2 := -1; 
+   parm3 := -1; parm4 := -1;
+   parm5 := -1; parm6 := -1; 
+   parm7 := -1; parm8 := -1; 
+   parm9 := -1; parm10:= -1; 
+   parm11:= -1; parm12:= -1; 
+   parm13:= -1; parm14:= -1; 
+   parm15:= -1; parm16:= -1; 
+   parm17:= -1; parm18:= -1; 
+   parm19:= -1; parm20:= -1; 
+
+
+
+   flag1 := -1; flag2 := -1; 
+   flag3 := -1; flag4 := -1; 
+   flag5 := -1; flag6 := -1; 
+   flag7 := -1; flag8 := -1; 
+   flag9 := -1; flag10:= -1; 
+   flag11:= -1; flag12:= -1; 
+   flag13:= -1; flag14:= -1; 
+   flag15:= -1; flag16:= -1; 
+   flag17:= -1; flag18:= -1; 
+   flag19:= -1; flag20:= -1; 
+
+   bid1  := -1;  bid2 := -1; 
+   bid3  := -1;  bidx := -1;
+
+   edit1 := -1; edit2 := -1; 
+   edit3 := -1; edit4 := -1; 
+   edit5 := -1; edit6 := -1; 
+   edit7 := -1; edit8 := -1; 
+   edit9 := -1; 
+
+
+
+   n_opclo := 0;                                ! For file checking
+
+
+   language := "e";                             ! Change to s or e
+
+   IF   language = "s" THEN                     !
+     ermess1 :="Limit    modul ej implementer.";! Error lim_name
+     ermess2 :="Gradient modul ej implementer.";! Error grad_name
+     ermess3 :="Hessian modul  ej implementer.";! Error hess_name
+   ELIF language = "e" THEN                     !
+     ermess1 :="Limit module not implemented";  ! Error  lim_name
+     ermess2 :="Gradient module not implemen."; ! Error grad_name
+     ermess3 :="Hessian module not implemented";! Error hess_name
+   ENDIF;                                       !
+
+
+
+   FOR i_p := 1 TO 20      DO                   !
+
+     par_name(i_p) := "Parameter_"+             ! Parameter name
+      STR(i_p,-1,0)+" ________________________";!
+     par_prompt(i_p):="_______________________"+! Prompt string 
+      "_______________________________________"+!
+      "_______________________________________";!
+     par_flag(i_p) := "No ";                    !
+     par_float(i_p) := -1;                      ! Parameter number
+     par_value(i_p) := 0.123456789;             ! Parameter value  
+   ENDFOR;                                      !
+
+
+   i_end := -1;                                 ! End output number
+   c_flag:= "YES";                              ! Calculation flag
+   IF i_start < 1 THEN                          ! Check i_start
+     EXIT("OPT_GTU2V1 i_start < 1");            !
+   ENDIF;                                       !
+   IF i_start > 20  THEN                        ! 
+     EXIT("OPT_GTU2V1 i_start > 20");           !
+   ENDIF;                                       !
+   FOR i_p := i_start TO 20      DO             !
+     opt_pid(i_p) := #0;                        ! Id's to parts
+     opt_pno(i_p) := -1;                        ! Parameter number in opt_pid
+   ENDFOR;                                      !
+
+
+! +++
+!  1. Get all float parameters for the part
+! ---
+
+! +++
+!  Retrieve number of parameters for the input reference var_id
+! ---
+
+   GETPRT(var_id,namn,mtyp,                     ! Retrieve data for the part
+     mattr,kid,n_param,mant,idm);               !
+
+   n_float   := 0;                              ! Start no of float parameters
+
+   FOR i_p := 1 TO n_param DO                   !
+     par_type := GETTYP( var_id,i_p);           !
+     IF par_type = 2 THEN                       ! Float parameter ?
+       n_float := n_float + 1;                  ! An additional float
+       IF n_float > 20 THEN                     !
+         EXIT("OPT_GTU2V1 n_float > 20");       !
+       ENDIF;                                   !
+       par_float(n_float):=i_p;                 ! Parameter number
+       par_value(n_float):=GETFLT( var_id,i_p); ! Parameter value  
+     ENDIF;                                     !
+   ENDFOR;                                      !
+
+
+   IF n_float =  0 THEN                         !
+     EXIT("OPT_GTU2V1 No FLOAT parameters in "+ !
+             RSTR(var_id) );                    !
+   ENDIF;                                       !
+
+! +++
+!  Retrieve parameter names and prompt strings
+! ---
+
+   PART(#21, OPT_NAMEV0 (var_name,              ! Get names and prompts
+             n_float,                           !
+             par_name, par_prompt, stat_name)); ! 
+   IF stat_name = -1 THEN                       ! Do nothing for the moment ..
+     ;                                          !
+   ENDIF;                                       !
+
+! +++
+!  2. Retrieve input data from previous input
+!  
+!  Data is on file OPT_GTU2V1.var_name on the active job directory
+!  A file will be created if not existent.
+! ---
+
+
+   f_name:= ACT_JOBDIR()                      ! Full filename
+             +"OPT_GTU2V1."+var_name;         ! 
+
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("f_name "+f_name,"n",1);        !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+
+
+
+
+
+
+newfile:;                                     ! New file
+
+
+
+   OPEN(idat,"R",f_name);                     ! Open input file R 
+   n_opclo := n_opclo + 1;                    ! For file checking
+   IF IOSTAT(idat) <> 0 THEN                  !
+     n_opclo := n_opclo - 1;                  ! For file checking
+     GOTO crenew;                             !
+   ELSE                                       !
+     GOTO oldfile;                            !
+   ENDIF;                                     !
+
+
+
+crenew:;                                      ! Label: Part is changed
+
+
+
+   OPEN(idat,"W",f_name);                     ! Open input file W 
+   n_opclo := n_opclo + 1;                    ! For file checking
+
+
+
+   OUTINT(idat, n_param);                     !
+   OUTSTR(idat," Total no of parameters");    !
+   OUTLIN(idat);                              !
+   OUTINT(idat, n_float);                     !
+   OUTSTR(idat," No of FLOAT parameters");    !
+   OUTLIN(idat);                              !
+
+
+
+   FOR i_p := 1 TO  20 DO                     !
+     OUTSTR(idat,par_flag(i_p)+" ");          ! Parameter flag
+     OUTINT(idat, par_float(i_p));            ! Float parameter number
+     OUTLIN(idat);                            !
+   ENDFOR;                                    !
+
+
+
+   CLOSE(idat);                               !
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+   GOTO  newfile;                             ! Goto newfile
+
+oldfile:;                                     ! Label: Use existing file
+
+
+
+   n_param_f := ININT(idat);                  ! Total no of parameters 
+   rad:=   INLIN(idat);                       ! Rest of line
+   n_float_f := ININT(idat);                  ! Total no of parameters 
+   rad:=   INLIN(idat);                       ! Rest of line
+
+
+
+   IF n_param_f = n_param  AND                ! Check no parameters
+      n_float_f = n_float      THEN           !
+      ;                                       !
+   ELSE                                       ! Part has been changed
+     CLOSE(idat);                             !
+     n_opclo := n_opclo - 1;                  ! For file checking
+     GOTO crenew;                             ! Create new file
+   ENDIF;                                     !
+
+
+
+
+
+   FOR i_p := 1 TO  20 DO                     !
+     par_flag(i_p):=  INSTR(idat,4);          ! Parameter flag
+     par_float(i_p):= ININT(idat);            ! Float parameter number
+     rad :=  INLIN(idat);                     ! Rest of line
+   ENDFOR;                                    !
+
+
+
+
+
+   CLOSE(idat);                               ! Close file
+
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+
+
+
+
+! +++
+!  2. Create start window with all buttons and edit windows
+!
+!     The distance main_dx defines all other dimensions and positions
+!     of buttocks, etc. 
+!     main_dx =  500.0  for PC
+!     main_dx =  800.0  for SGI
+! ---
+
+
+
+   main_pos:= VEC(125,10);                    ! Main window position
+
+
+
+                                              ! Main window dimension 
+
+   ! PART(#2, getopsys ( opsys ):SAVE=0);       ! Operating system
+
+   opsys := 5;
+   
+   IF    opsys = 1 THEN                       ! VMS (VAX)
+     main_dx := 500;                          ! 
+   ELIF  opsys = 2 THEN                       ! SCO UNIX (PC) 
+     main_dx := 500;                          ! 
+   ELIF  opsys = 3 THEN                       ! SGI UNIX (X server) 
+     main_dx := 800;                          ! 
+   ELIF  opsys = 4 THEN                       ! AIX UNIX
+     main_dx := 800;                          ! 
+   ELSE                                       !
+     main_dx := 500;                          ! 
+   ENDIF;                                     ! 
+
+
+
+   n_d     := 0.040*main_dx;                  ! Delta  pixel
+   n_h     := 0.056*main_dx;                  ! Height pixel
+   n_lin   := n_float;                        ! Number of lines
+   main_dy := 0.060*main_dx + (n_lin+3)*n_d;  !
+
+
+
+   col1_dx := 0.01*main_dx;                   ! Columne 1 delta x     
+   col2_dx := 0.88*main_dx;                   ! Columne 2 delta x     
+   col_w   := 0.87*main_dx;                   ! Columne width         
+   d_y     := 0.024*main_dx;                  ! Delta y               
+
+
+
+! +++
+!  Headers for main window, all edit fields and buttocks
+! ---
+
+
+
+   IF   language = "s" THEN                     !
+
+     header:=  "DEFINIERA PARAMETRAR I "+       ! String for main window
+                var_name + " "+RSTR(var_id)+    !
+               " FÖR EN OPTIMERINGSBERÄKNING";  !
+     s_edit1:= "Parameter";                     ! String for edit1 
+     s_edit2:= "Värde";                         ! String for edit2 
+     s_edit3:= "Beskrivning";                   ! String for edit2 
+     s_edit4:= "Optimerings variabel?";         ! String for edit3 
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "AVBRYT";                        ! String for bid2  
+     s_yes  := "Ja ";                           ! String for s_on and s_off
+     s_no   := "Nej";                           !
+   ELIF language = "e" THEN                     !
+     header:=  "DEFINE PARAMETERS IN "+         ! String for main window
+                var_name + " "+RSTR(var_id)+    !
+          " FOR AN OPTIMIZATION CALCULATION";   !
+     s_edit1:= "Parameter";                     ! String for edit1 
+     s_edit2:= "Value";                         ! String for edit2 
+     s_edit3:= "Description";                   ! String for edit2 
+     s_edit4:= "Select";                        ! String for edit3 
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "CANCEL";                        ! String for bid2  
+     s_yes  := "Yes";                           ! String for s_on and s_off
+     s_no   := "No ";                           !
+   ENDIF;                                       !
+
+
+
+! +++
+!  Create main window
+! ---
+
+
+
+   main_id:=CRE_WIN(main_pos,main_dx,main_dy,   ! Create main window
+                      header );                 !
+
+
+
+
+
+   rubr1:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(0.004*main_dx, 0.01*main_dx),      ! Position
+         0.96*main_dx,                          ! Width  in pixels
+           n_d ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+     s_edit1 + "           "  +                 ! Text for status = on
+     s_edit2 + "     "  +                       !
+     s_edit3 + "                             "+ !
+     s_edit4,                                   !
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+
+
+! +++
+!  Button for OK and CANCEL
+! ---
+
+
+
+   bid1:=CRE_BUTTON(main_id,                  ! Button OK    
+     VEC(0.02*main_dx,main_dy-2.75*n_d),      ! 
+       2.25*n_d,                              ! Width  in pixels
+       2.00*n_d,                              ! Height in pixels
+       0.25*n_d,                              ! Frame thickness in pixels
+     s_bid1,                                  ! Text for status = on
+     s_bid1,                                  ! Text for status = off
+      "",                                     ! Text font    (optional) 
+       6);                                    ! Text colour  (optional) 
+
+
+
+   bid2:=CRE_BUTTON(main_id,                  ! Button AVBRYT/CANCEL
+     VEC(0.24*main_dx,main_dy-2.25*n_d ),     ! 
+       2.50*n_d,                              ! 
+       1.75*n_d,                              ! 
+       0.05*n_d,                              ! 
+     s_bid2,                                  ! 
+     s_bid2,                                  ! 
+      "",                                     ! 
+       6);                                    ! 
+
+
+
+
+
+! +++
+!  Input of parameter flags
+! ---
+
+
+
+   parm1:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col1_dx,d_y+n_d*1),                     ! Position
+         col_w              ,                   ! Width  in pixels
+            n_d,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            SUBSTR(par_name( 1),1,15) +         !
+          " "+STR(par_value( 1),10,4)           !
+   +"   "+SUBSTR(par_prompt( 1),1,40),          ! 
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   IF  par_flag( 1) = "Yes" THEN                ! Parameter flag 
+     s_on  := s_yes;                            !
+     s_off := s_no;                             !
+   ELSE                                         !
+     s_on  := s_no;                             !
+     s_off := s_yes;                            !
+   ENDIF;                                       !
+
+   flag1:=CRE_BUTTON(main_id,                   ! Create flag button 1
+     VEC(col2_dx    ,d_y+n_d*1  ),              ! Position upper left corner
+      1.5*n_d,                                  ! Width  in pixels
+      n_d,                                      ! Height in pixels
+        2,                                      ! Frame thickness in pixels
+     s_on  ,                                    ! Text for status = on 
+     s_off ,                                    ! Text for status = off
+      "",                                       ! Text font    (optional) 
+       6);                                      ! Text colour  (optional) 
+
+   IF n_float =  1  THEN                        !
+     GOTO allpar;                               !
+   ENDIF;                                       !
+
+
+
+   parm2:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*2 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 2),1,15) +         !
+
+          " "+STR(par_value( 2),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 2),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 2) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag2:=CRE_BUTTON(main_id,                   ! Create flag button 2
+
+     VEC(col2_dx    ,d_y+n_d*2  ),              ! 
+
+   1.5*n_d,n_d, 2, s_on, s_off, "", 6);         !
+
+   IF n_float =  2  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm3:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*3 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 3),1,15) +         !
+
+          " "+STR(par_value( 3),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 3),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 3) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag3:=CRE_BUTTON(main_id,                   ! Create flag button 3
+
+     VEC(col2_dx    ,d_y+n_d*3  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  3  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm4:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*4 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 4),1,15) +         !
+
+          " "+STR(par_value( 4),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 4),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 4) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag4:=CRE_BUTTON(main_id,                   ! Create flag button 4
+
+     VEC(col2_dx    ,d_y+n_d*4  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  4  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm5:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*5 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 5),1,15) +         !
+
+          " "+STR(par_value( 5),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 5),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 5) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag5:=CRE_BUTTON(main_id,                   ! Create flag button 5
+
+     VEC(col2_dx    ,d_y+n_d*5  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  5  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm6:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*6 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 6),1,15) +         !
+
+          " "+STR(par_value( 6),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 6),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 6) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag6:=CRE_BUTTON(main_id,                   ! Create flag button 6
+
+     VEC(col2_dx    ,d_y+n_d*6  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  6  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm7:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*7 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 7),1,15) +         !
+
+          " "+STR(par_value( 7),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 7),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 7) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag7:=CRE_BUTTON(main_id,                   ! Create flag button 7
+
+     VEC(col2_dx    ,d_y+n_d*7  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  7  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm8:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*8 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 8),1,15) +         !
+
+          " "+STR(par_value( 8),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 8),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 8) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag8:=CRE_BUTTON(main_id,                   ! Create flag button 8
+
+     VEC(col2_dx    ,d_y+n_d*8  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  8  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm9:=CRE_BUTTON(main_id, VEC(col1_dx,12+n_d*9 ),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name( 9),1,15) +         !
+
+          " "+STR(par_value( 9),10,4)           !
+
+   +"   "+SUBSTR(par_prompt( 9),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag( 9) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag9:=CRE_BUTTON(main_id,                   ! Create flag button 9
+
+     VEC(col2_dx    ,d_y+n_d*9  ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float =  9  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm10:=CRE_BUTTON(main_id, VEC(5,12+n_d*10),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(10),1,15) +         !
+
+          " "+STR(par_value(10),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(10),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(10) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag10:=CRE_BUTTON(main_id,                  ! Create flag button 10
+
+     VEC(col2_dx    ,d_y+n_d*10 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 10  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm11:=CRE_BUTTON(main_id, VEC(5,12+n_d*11),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(11),1,15) +         !
+
+          " "+STR(par_value(11),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(11),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(11) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag11:=CRE_BUTTON(main_id,                  ! Create flag button 11
+
+     VEC(col2_dx    ,d_y+n_d*11 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 11  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm12:=CRE_BUTTON(main_id, VEC(5,12+n_d*12),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(12),1,15) +         !
+
+          " "+STR(par_value(12),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(12),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(12) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag12:=CRE_BUTTON(main_id,                  ! Create flag button 12
+
+     VEC(col2_dx    , 12+n_d*12 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 12  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm13:=CRE_BUTTON(main_id, VEC(5,12+n_d*13),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(13),1,15) +         !
+
+          " "+STR(par_value(13),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(13),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(13) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag13:=CRE_BUTTON(main_id,                  ! Create flag button 13
+
+     VEC(col2_dx    ,d_y+n_d*13 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 13  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm14:=CRE_BUTTON(main_id, VEC(5,12+n_d*14),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(14),1,15) +         !
+
+          " "+STR(par_value(14),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(14),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(14) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag14:=CRE_BUTTON(main_id,                  ! Create flag button 14
+
+     VEC(col2_dx    ,d_y+n_d*14 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 14  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm15:=CRE_BUTTON(main_id, VEC(5,12+n_d*15),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(15),1,15) +         !
+
+          " "+STR(par_value(15),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(15),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(15) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag15:=CRE_BUTTON(main_id,                  ! Create flag button 15
+
+     VEC(col2_dx    ,d_y+n_d*15 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 15  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm16:=CRE_BUTTON(main_id, VEC(5,12+n_d*16),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(16),1,15) +         !
+
+          " "+STR(par_value(16),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(16),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(16) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag16:=CRE_BUTTON(main_id,                  ! Create flag button 16
+
+     VEC(col2_dx    ,d_y+n_d*16 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 16  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm17:=CRE_BUTTON(main_id, VEC(5,12+n_d*17),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(17),1,15) +         !
+
+          " "+STR(par_value(17),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(17),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(17) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag17:=CRE_BUTTON(main_id,                  ! Create flag button 17
+
+     VEC(col2_dx    ,d_y+n_d*17 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 17  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm18:=CRE_BUTTON(main_id, VEC(5,12+n_d*18),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(18),1,15) +         !
+
+          " "+STR(par_value(18),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(18),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(18) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag18:=CRE_BUTTON(main_id,                  ! Create flag button 18
+
+     VEC(col2_dx    ,d_y+n_d*18 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 18  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm19:=CRE_BUTTON(main_id, VEC(5,12+n_d*19),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(19),1,15) +         !
+
+          " "+STR(par_value(19),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(19),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(19) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag19:=CRE_BUTTON(main_id,                  ! Create flag button 19
+
+     VEC(col2_dx    ,d_y+n_d*19 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+   IF n_float = 19  THEN                        !
+
+     GOTO allpar;                               !
+
+   ENDIF;                                       !
+
+
+
+   parm20:=CRE_BUTTON(main_id, VEC(5,12+n_d*20),!
+
+        col_w              ,n_d, 0,             !
+
+            SUBSTR(par_name(20),1,15) +         !
+
+          " "+STR(par_value(20),10,4)           !
+
+   +"   "+SUBSTR(par_prompt(20),1,40),          ! 
+
+             "", "", 6);                        !
+
+   IF  par_flag(20) = "Yes" THEN                ! Parameter flag 
+
+     s_on  := s_yes;                            !
+
+     s_off := s_no;                             !
+
+   ELSE                                         !
+
+     s_on  := s_no;                             !
+
+     s_off := s_yes;                            !
+
+   ENDIF;                                       !
+
+   flag20:=CRE_BUTTON(main_id,                  ! Create flag button 20
+
+     VEC(col2_dx    ,d_y+n_d*20 ),              ! 
+
+  1.5*n_d,n_d, 2, s_on, s_off, "", 6);          !
+
+
+
+allpar:;
+
+
+
+! +++
+!  Show result on the screen. 
+! ---
+
+
+
+   SHOW_WIN(main_id);                         ! Show start window 
+
+
+
+! +++
+!  3. Input of (modifications of) data in the X window
+! ---
+
+
+
+! +++
+loop:     ! Label: Continue input (change) of data 
+! ---
+
+
+
+   bidx:=WAIT_WIN(main_id);                   ! Wait for an event
+
+
+
+
+
+! +++
+!  Button AVBRYT/CANCEL: End (with EXIT). Input (changed) data is not saved.
+! ---
+
+
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("flag1 "+STR(flag1,3,0)+        !
+              " bidx "+STR( bidx,3,0)+        !
+              " par_flag( 1) "+par_flag( 1)   !
+                ,"",1);                       !
+     s:=INPMT("flag2 "+STR(flag2,3,0)+        !
+              " bidx "+STR( bidx,3,0)+        !
+              " par_flag( 2) "+par_flag( 2)   !
+                ,"",1);                       !
+     s:=INPMT("bid1  "+STR(bid1 ,3,0)+        !
+              " bidx "+STR( bidx,3,0)         !
+                ,"",1);                       !
+   ENDIF;                                     !
+
+
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("bid1  "+STR(bid1 ,3,0)+        !
+              " bidx "+STR( bidx,3,0)+        !
+              " bid1 is OK button "
+                ,"",1);                       !
+   ENDIF;                                     !
+
+
+
+   IF bidx = bid2 THEN                        ! Event in bid2  
+     c_flag:= "NO";                           ! Flag: No calculation 
+     DEL_WIN(main_id);                        ! Erase main window  
+     EXIT();                                  ! Exit ("No error")
+
+
+
+! +++
+!  Buttons for parameter flags
+! ---
+
+
+
+   elif bidx = flag1  THEN                    ! Event in flag1   
+     IF  par_flag( 1) = "Yes" THEN            ! 
+       par_flag( 1) := "No ";                 !
+     ELSE                                     !
+       par_flag( 1) := "Yes";                 !
+     ENDIF;                                   !
+     GOTO loop;                               !
+   elif bidx = flag2  THEN                    ! Event in flag2   
+     IF  par_flag( 2) = "Yes" THEN            ! 
+       par_flag( 2) := "No ";                 !
+     ELSE                                     !
+       par_flag( 2) := "Yes";                 !
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag3  THEN                    ! Event in flag3   
+
+     IF  par_flag( 3) = "Yes" THEN            ! 
+
+       par_flag( 3) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 3) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag4  THEN                    ! Event in flag4   
+
+     IF  par_flag( 4) = "Yes" THEN            ! 
+
+       par_flag( 4) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 4) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag5  THEN                    ! Event in flag5   
+
+     IF  par_flag( 5) = "Yes" THEN            ! 
+
+       par_flag( 5) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 5) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag6  THEN                    ! Event in flag6   
+
+     IF  par_flag( 6) = "Yes" THEN            ! 
+
+       par_flag( 6) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 6) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag7  THEN                    ! Event in flag7   
+
+     IF  par_flag( 7) = "Yes" THEN            ! 
+
+       par_flag( 7) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 7) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag8  THEN                    ! Event in flag8   
+
+     IF  par_flag( 8) = "Yes" THEN            ! 
+
+       par_flag( 8) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 8) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag9  THEN                    ! Event in flag9   
+
+     IF  par_flag( 9) = "Yes" THEN            ! 
+
+       par_flag( 9) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag( 9) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag10 THEN                    ! Event in flag10  
+
+     IF  par_flag(10) = "Yes" THEN            ! 
+
+       par_flag(10) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(10) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag11 THEN                    ! Event in flag11  
+
+     IF  par_flag(11) = "Yes" THEN            ! 
+
+       par_flag(11) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(11) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag12 THEN                    ! Event in flag12  
+
+     IF  par_flag(12) = "Yes" THEN            ! 
+
+       par_flag(12) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(12) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag13 THEN                    ! Event in flag13  
+
+     IF  par_flag(13) = "Yes" THEN            ! 
+
+       par_flag(13) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(13) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag14 THEN                    ! Event in flag14  
+
+     IF  par_flag(14) = "Yes" THEN            ! 
+
+       par_flag(14) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(14) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag15 THEN                    ! Event in flag15  
+
+     IF  par_flag(15) = "Yes" THEN            ! 
+
+       par_flag(15) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(15) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag16 THEN                    ! Event in flag16  
+
+     IF  par_flag(16) = "Yes" THEN            ! 
+
+       par_flag(16) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(16) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag17 THEN                    ! Event in flag17  
+
+     IF  par_flag(17) = "Yes" THEN            ! 
+
+       par_flag(17) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(17) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag18 THEN                    ! Event in flag18  
+
+     IF  par_flag(18) = "Yes" THEN            ! 
+
+       par_flag(18) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(18) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag19 THEN                    ! Event in flag19  
+
+     IF  par_flag(19) = "Yes" THEN            ! 
+
+       par_flag(19) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(19) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+   elif bidx = flag20 THEN                    ! Event in flag20  
+
+     IF  par_flag(20) = "Yes" THEN            ! 
+
+       par_flag(20) := "No ";                 !
+
+     ELSE                                     !
+
+       par_flag(20) := "Yes";                 !
+
+     ENDIF;                                   !
+
+     GOTO loop;                               !
+
+
+
+
+
+
+
+! +++
+
+!  Edit window OK
+
+! ---
+
+
+
+   elif bidx = bid1   THEN                    ! Event in bid1    
+
+   IF DEBUG = 1 THEN                          !
+
+     s:=INPMT("bid1  "+STR(bid1 ,3,0)+        !
+
+              " bidx "+STR( bidx,3,0)+        !
+
+              " Delete main window"
+
+                ,"",1);                       !
+
+   ENDIF;                                     !
+
+
+
+     DEL_WIN(main_id);                        ! Erase main window  
+
+     GOTO slut;                               ! End of data input
+
+
+
+   ELSE
+
+     GOTO loop;                               ! Back to loop
+
+   ENDIF;
+
+
+
+! +++
+
+slut:;                                        ! Label: Input finished
+
+! ---
+
+
+
+! +++
+
+!  4. Write data to file .MENUE
+
+! ---
+
+
+
+   OPEN(idat,"W",f_name);                     ! Open MENUE file  W
+
+   n_opclo := n_opclo + 1;                    ! For file checking
+
+
+
+
+
+   OUTINT(idat, n_param);                     !
+
+   OUTSTR(idat," Total no of parameters");    !
+
+   OUTLIN(idat);                              !
+
+   OUTINT(idat, n_float);                     !
+
+   OUTSTR(idat," No of FLOAT parameters");    !
+
+   OUTLIN(idat);                              !
+
+
+
+   FOR i_p := 1 TO  20 DO                     !
+     OUTSTR(idat,par_flag(i_p)+" ");          ! Parameter flag
+     OUTINT(idat, par_float(i_p));            ! Float parameter number
+     OUTLIN(idat);                            !
+   ENDFOR;                                    !
+
+
+
+
+
+
+
+   CLOSE(idat);                               ! Close MENUE file
+
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+
+
+! +++
+!  5. Data to output parameters
+! ---
+
+
+
+   i_end := i_start - 1;
+
+   FOR i_p := 1 TO n_float DO                   !
+     IF par_flag(i_p) = "Yes"  THEN             !
+       i_end := i_end + 1;                      !
+       IF i_end > 20 THEN                       !
+         EXIT("OPT_GTU2V1 No opt. variables "+  !
+               "> 20");                         !
+       ENDIF;                                   !
+       opt_pid(i_end) :=  var_id;               ! Id's to parts
+       opt_pno(i_end) := par_float(i_p);        ! Parameter number in opt_pid
+     ENDIF;                                     !
+   ENDFOR;                                      !
+
+   IF   n_opclo <> 0  THEN                      ! For file checking
+     EXIT("OPT_GTU2V1 Open/Close error");       !
+   ENDIF;                                       !
+
+ENDMODULE
+
+
+

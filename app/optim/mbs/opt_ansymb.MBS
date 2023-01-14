@@ -1,0 +1,178 @@
+!*************************** opt_ansymb *************************************
+! +++
+! Create a scaled symbol for an analysis (objective) function
+!
+! Revision history
+! ________________
+!
+! 1995-11-25   Gunnar Liden
+!
+! ---
+!****************************************************************************
+
+!sdesce Create a scaled symbol for an analysis (objective) function
+
+GLOBAL GEOMETRY MODULE opt_ansymb   (
+ VECTOR    tp       := VEC(0,0,0) >"Position of the symbol";
+ FLOAT     l_s      := 10.0       >"Size of the symbol";
+ INT       graphic  := 1                
+>"=1: 3D and input l_s (no scale) =2: Scaled =3: Scaled and in XY plane");
+
+! Internal variables
+
+  INT    colour1;                ! Colour for symbol
+  INT    case;                   !=1: Repaint screen (y/n) =2: Temporary 
+
+  INT    save_flag;              ! For SAVE=0 or SAVE=1
+
+  STRING vynamn*20;              ! View name
+  INT    win_id;                 ! Identity for window
+  FLOAT  skala;                  ! Scale
+  FLOAT  xmin,ymin,xmax,ymax;    ! Window limits
+  FLOAT  trf(4,4);               !
+  FLOAT  kmat(4,4);              !
+  FLOAT  persp;                  ! Perspective distance
+  VECTOR origin;                 ! Origo  for view system
+  VECTOR xaxis;                  ! X axis for view system
+  VECTOR yaxis;                  ! Y axis for view system
+  STRING knamn*20;               ! Coordinate system name
+
+  VECTOR tp_l;                   ! symbol in local coordinate system
+  FLOAT  scale;                  ! Current scale
+  FLOAT  d_cg;                   ! Scaled l_s value
+
+  VECTOR p1;                     ! Start point for x-line
+  VECTOR p2;                     ! End point for x-line
+  VECTOR p3;                     ! Start point for y-line
+  VECTOR p4;                     ! End point for y-line
+  VECTOR p5;                     ! Start point for z-line
+  VECTOR p6;                     ! End point for z-line
+
+  STRING s*1;
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---------
+! ---
+
+! +++
+! 1.Initializations and checks.
+! ---
+
+ case    := 3;                   ! Case 
+ colour1 := 3;                   ! Colour for symbol
+
+ SET(PEN=colour1);               ! Pen number
+
+ IF case=1 or case=2 THEN        ! Save case
+    save_flag:=0;                !
+ ELIF case=3 THEN                !
+    save_flag:=1;                !
+ ELSE                            !
+    save_flag:=0;                !
+ ENDIF;                          !
+
+! +++
+! 2. Get current view data
+! ---
+
+! +++
+! Scaled size for the symbol.
+! ---
+
+ scale:= ACT_SCL();              ! Get screen scale
+
+ IF graphic = 1 THEN             ! No scaling of input length
+   d_cg := l_s;                  !
+ ELSE                            ! Scale with current scale
+   IF ABS(scale)> 0.000001 THEN  ! Scaled size for the symbol
+      d_cg:= l_s/scale;          !
+   ELSE                          !
+      d_cg:=200.0;               !
+   ENDIF;                        !
+ ENDIF;                          !
+
+! +++
+! Transformation matrix for the current view in main window
+! ---
+
+   win_id := 0;                  ! Main window
+   GET_VIEW(win_id,vynamn,skala, ! Get data
+     xmin,ymin,xmax,ymax,        !
+     trf,persp);                 !
+
+! +++
+! Create view coordinate system
+! ---
+
+  xaxis.x := trf(1,1);
+  xaxis.y := trf(1,2);
+  xaxis.z := trf(1,3);
+  yaxis.x := trf(2,1);
+  yaxis.y := trf(2,2);
+  yaxis.z := trf(2,3);
+!  origin.x:= trf(4,1);
+!  origin.y:= trf(4,1);
+!  origin.z:= trf(4,1);
+
+  origin := tp;                 ! Origin = position for the symbol
+  CSYS_3P(#30,"VIEW",origin ,   ! Create view system
+   origin +xaxis,               !
+   origin +yaxis                !
+   :BLANK=1);                   !
+
+! +++
+! 3. Create local coord.system.
+! ---
+
+ CSYS_3P(#2,"A-symbol",          ! Create coord.system
+         tp,tp+VEC(0,1,0),       !
+         tp+VEC(0,0,1):BLANK=1); !
+
+
+! +++
+! 4. Create start and stop points for the cross in the symbol.
+! ---
+
+  IF graphic = 3 THEN            ! In current picture XY plane
+    MODE_LOCAL(#30);             ! Activate local system
+  ELSE
+    MODE_LOCAL(#2);              ! Activate local system
+  ENDIF;
+
+  p1:=VEC(d_cg,0,0);             ! Start point for x-line
+  p2:=VEC(-d_cg,0,0);            ! End point for x_line
+  p3:=VEC(0,d_cg,0);             ! Start point for y-line
+  p4:=VEC(0,-d_cg,0);            ! End point for y-line
+  p5:=VEC(0,0,d_cg);             ! Start point for z-line
+  p6:=VEC(0,0,-d_cg);            ! End point for z_line
+
+! +++
+! 5.Create the symbol
+! ---
+
+  tp_l := VEC(0,0,0);                                  ! Symbol in local system
+  ARC_1POS(#6,tp_l,d_cg*.50,0,359.99:SAVE=save_flag);  ! Circle for the symbol
+  ARC_1POS(#7,tp_l,d_cg*.45,0,359.999:SAVE=save_flag); !
+  LIN_FREE(#3, ON(GLOBAL_REF(#7),0.25),
+               ON(GLOBAL_REF(#7),0.85));
+  LIN_FREE(#4, ON(GLOBAL_REF(#7),0.25),
+               ON(GLOBAL_REF(#7),0.65));
+  LIN_FREE(#5, ON(GLOBAL_REF(#3),0.70),
+               ON(GLOBAL_REF(#4),0.70));
+
+   MODE_GLOBAL();                  ! Activate global coord.system
+
+  IF case = 1 THEN                ! Repaint screen for case=1
+    s:= INPMT("Repaint screen"    !
+       +" (y/n)"                  !
+      ,"y",1);                    !
+   IF s="Y" OR  s="y" THEN        ! The symbol will disappear
+     REP_VIEW();                  !
+   ENDIF;                         !
+  ENDIF;                          !
+
+ENDMODULE
+

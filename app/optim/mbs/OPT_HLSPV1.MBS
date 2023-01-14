@@ -1,0 +1,499 @@
+!***************************************************************************
+! +++
+! Retrieve data from optimization history file and 
+! list optimization variables and limit values    
+!
+!  Revision history
+!  ________________
+!
+!  1995-11-25  Gunnar Liden
+!
+! ---
+!
+!***************************************************************************
+
+
+
+ BASIC GEOMETRY MODULE OPT_HLSPV1 (
+    STRING optdata*15  := "attempt_01" >"Optimization history file");
+
+!sdesce List variable and limit values from optimization history file
+!sdescs Lista variabler med sina gränser från optimeringshistorik fil
+
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_var;                ! Loop index variable  
+
+! ---
+
+
+
+   FILE   odat;                 ! Optimization data file
+
+   STRING f_name*132;           ! Full input filename
+
+   STRING o_code*1;             ! Open code
+
+
+
+   INT     r_iteration;         ! Loop index iteration
+
+
+
+                                ! For OPT_RDOPV0:
+
+   INT    i_iteration;          ! Iteration number
+
+   INT    w_case;               ! Write case:
+
+                                ! Eq. 1: Param's 
+
+                                ! Eq. 2: Param's+limits
+
+                                ! Eq. 3: Param's+limits+constraints
+
+                                ! Eq. 4: Param's+limits+constraints+gradient
+
+                                ! Eq. 5: Param's+gradient+limits
+
+                                ! Eq. 6: Param's+gradient+constraints
+
+                                ! Eq. 7: Param's+gradient
+
+   INT    no_var ;              ! Number of optimization variables
+
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+
+   FLOAT  objfunc;              ! Objective function value
+
+   FLOAT  gradient(20);         ! Gradient vector
+
+   FLOAT  l_lim(20);            ! Lower limit for variables
+
+   FLOAT  u_lim(20);            ! Upper limit for variables
+
+   INT    v_flag(20);           ! Flags       for variables
+
+   INT    no_cst ;              ! Total number of constraints
+
+   FLOAT  cst_val(20);          ! Value of constraint function
+
+   FLOAT  pen_val(20);          ! Penalty                     
+
+   STRING cst_str(20)*30;       ! Description of constraint 
+
+
+
+
+
+   STRING head_s*50;            ! Header printout
+
+   STRING ermess1*50;           ! Error 
+
+   STRING ermess2*50;           ! Error
+
+   STRING ermess3*50;           ! Error
+
+   STRING ermess4*50;           ! Error
+
+
+
+   STRING ite_s*50;             ! Iteration number
+
+   STRING val_s*50;             ! Parameter value    
+
+   STRING lli_s*50;             ! Upper limit
+
+   STRING uli_s*50;             ! Upper limit
+
+   STRING nli_s*50;             ! No    limits
+
+   STRING pno_s*50;             ! Parameter number
+
+
+
+   STRING language*1;           ! Eq. e: English   
+
+                                ! Eq. s: Swedish   
+
+
+
+   INT    DEBUG;                ! Debug
+
+   STRING s*1;                  ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+
+
+   DEBUG:= 0;
+
+
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+
+     head_s  :="VARIABLER MED SINA GRÄNSER"+  ! Header printout
+
+               " FRÅN FIL:  ";                !
+
+     ermess1 :="Filnamn måste anges";         ! Error 
+
+     ermess2 :="Programfel mer än 200 ";      ! Error 
+
+     ermess3 :="     Inga variabler ";        ! Error 
+
+     ermess4 :="  Okänd flagga för gräns ";   ! Error 
+
+     ite_s   :=" I ";                         ! Iteration number
+
+     pno_s   :=" V ";                         ! Variable number    
+
+     val_s   :=" Värde ";                     ! Value of variable  
+
+     lli_s   :=" Nedre ";               ! Lower limit        
+
+     uli_s   :=" Övre ";                ! Upper limit        
+
+     nli_s   :=" Inga gränser ";              ! No    limits       
+
+   ELIF language = "e" THEN                   !
+
+     head_s  :="OPTIMIZATION VARIABLES AND "+ ! Header printout
+
+               " LIMITS FROM FILE:  ";        !
+
+     ermess1 :="No file name given";          ! Error 
+
+     ermess2 :="Program error: 200 exceeded"; ! Error 
+
+     ermess3 :="  No variables ";             ! Error 
+
+     ermess4 :="  Not a valid limit flag ";   ! Error 
+
+     ite_s   :=" I ";                         ! Parameter number
+
+     pno_s   :=" V ";                         ! Variable number    
+
+     val_s   :=" Value ";                     ! Value of variable  
+
+     uli_s   :=" Gradient ";                  ! Gradient           
+
+     lli_s   :=" Lower ";                     ! Lower limit        
+
+     uli_s   :=" Upper ";                     ! Upper limit        
+
+     nli_s   :=" No limits ";                 ! No    limits       
+
+   ENDIF;                                     !
+
+
+
+!+++
+! 0. Initializations and checks of input data           
+!---
+
+
+
+   IF optdata = "" OR optdata = " " THEN      !
+
+     EXIT("OPT_HLSPV1 " +ermess1);            ! Error if opdata not defined
+
+   ENDIF;                                     !
+
+
+
+
+
+! +++
+! 1. Constraint function valuse to screen (Xwindow)     
+! ---
+
+
+
+! +++
+! Open list Xwindow
+! ---
+
+
+
+   LST_INI( head_s  + optdata + ".OPTIM");
+
+   LST_LIN (" ");
+
+   LST_LIN(" ");
+
+
+
+! +++
+! Open file
+! ---
+
+
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+
+              ".OPTDATA";                     ! 
+
+
+
+   IF DEBUG = 1 THEN                          !
+
+     s:=INPMT("OPT_HLSPV1 f_name "+f_name+    !
+
+              " cont ?",                      !
+
+          "y",1);                             !
+
+     IF s = "n" THEN                          !
+
+        LST_EXI();                            !
+
+        EXIT();                               !
+
+     ENDIF;                                   !
+
+   ENDIF;                                     !
+
+
+
+   o_code:= "R";                              !
+
+
+
+   OPEN(odat,o_code,f_name);                  ! Open input file
+
+   IF IOSTAT(odat) <> 0 THEN                  !
+
+     LST_EXI();                               !
+
+     EXIT("OPT_HLSPV1 No file "+optdata+      !
+
+              ".OPTDATA");                    !
+
+   ENDIF;                                     !
+
+
+
+! +++
+! Start loop iterations (records in file) i= 1,2,3, ..... ,200
+! ---
+
+
+
+  FOR  r_iteration := 0 TO  200  DO            ! Start loop iteration
+
+
+
+! +++
+!   Retrieve data from file. Call of OPT_RDOPV0     
+! ---
+
+
+
+     PART(#1, OPT_RDOPV0 ( odat,               !
+
+            i_iteration, w_case,               !
+
+          no_var, opt_pid , opt_pno, opt_val,  !
+
+    objfunc, gradient, l_lim, u_lim, v_flag,   !
+
+    no_cst, cst_val, pen_val, cst_str));       !
+
+
+
+! +++
+!   Goto eof for End Of File
+! ---
+
+
+
+    IF  r_iteration <> i_iteration THEN        ! End Of File ?
+
+      IF DEBUG = 1 THEN                        ! Debug
+
+       LST_LIN("r_it.. "+STR(r_iteration,4,0)+ !
+
+         " <>  i_it. "+STR(i_iteration,4,0));  !
+
+      ENDIF;                                   !
+
+      GOTO  eof;                               !
+
+    ENDIF;                                     !
+
+
+
+    IF  no_var = 0                 THEN        ! No variables   ?
+
+      LST_LIN(ermess3);                        !
+
+      LST_EXI();                               !
+
+      CLOSE(odat);                             !
+
+      EXIT("OPT_HLSPV1 " + ermess3 );          !
+
+    ENDIF;                                     !
+
+
+
+    IF  no_var < 0                 THEN        ! Programming check  
+
+      LST_LIN(ite_s+STR(r_iteration,4,0)+      ! 
+
+           " no_var= "+STR(no_var,-1,0));      !
+
+      LST_EXI();                               !
+
+      CLOSE(odat);                             !
+
+      EXIT("OPT_HLSPV1 Programming error");    !
+
+    ENDIF;                                     !
+
+
+
+
+
+! +++
+!   List variable and limit data to screen i_var= 1, 2, .. , no_var
+! ---
+
+
+
+
+
+
+
+    IF DEBUG = 1 THEN                          ! Debug
+
+    LST_LIN("r_iterat. "+STR(r_iteration,4,0)+ !
+
+            " no_var " +STR(no_var ,4,0));     ! 
+
+    ENDIF;                                     !
+
+
+
+    LST_LIN(" ");                              !
+
+    FOR  i_var := 1 TO no_var  DO              ! Start loop variables  
+
+
+
+      IF     v_flag(i_var) = 12  THEN          !
+
+        LST_LIN(ite_s+STR(r_iteration,3,0)+    ! List variable  values
+
+             pno_s+STR(opt_pno (i_var), 2,0)+  !
+
+             val_s+STR(opt_val (i_var),12,4)+  !
+
+             lli_s+STR(l_lim(i_var),12,4)+     !
+
+             uli_s+STR(u_lim(i_var),12,4));    !
+
+      ELIF   v_flag(i_var) = 1   THEN          !
+
+        LST_LIN(ite_s+STR(r_iteration,3,0)+    !
+
+             pno_s+STR(opt_pno (i_var), 2,0)+  !
+
+             val_s+STR(opt_val (i_var),12,4)+  !
+
+             lli_s+STR(l_lim(i_var),12,4));    !
+
+      ELIF   v_flag(i_var) =  2  THEN          !
+
+        LST_LIN(ite_s+STR(r_iteration,3,0)+    !
+
+             pno_s+STR(opt_pno (i_var), 2,0)+  !
+
+             val_s+STR(opt_val (i_var),12,4)+  !
+
+             "                              "+ !
+
+             uli_s+STR(u_lim(i_var),12,4));    !
+
+      ELIF   v_flag(i_var) <  0  THEN          !
+
+        LST_LIN(ite_s+STR(r_iteration,3,0)+    !
+
+             pno_s+STR(opt_pno (i_var), 2,0)+  !
+
+             val_s+STR(opt_val (i_var),12,4)+  !
+
+             nli_s);                           !
+
+      ELSE                                     !
+
+        LST_LIN(ite_s+STR(r_iteration,3,0)+    ! 
+
+             pno_s+STR(opt_pno (i_var), 2,0)+  !
+
+             val_s+STR(opt_val (i_var),12,4)+  !
+
+            ermess4+STR(v_flag(i_var),-1,0));  !
+
+      ENDIF;                                   !
+
+
+
+    ENDFOR;                                    ! End   loop variables  
+
+
+
+  ENDFOR;                                      ! End   loop iteration
+
+
+
+
+
+  LST_LIN (ermess2);
+
+  LST_EXI();
+
+  CLOSE(odat);                                 ! Close optimization data file
+
+  EXIT("OPT_HLSPV1 "+ ermess2);                ! 
+
+
+
+! +++
+eof:;                                          ! Label: EOF
+!
+! Close list Xwindow
+! ---
+
+
+
+   LST_LIN (" ");
+
+   LST_EXI();
+
+
+
+  CLOSE(odat);                                ! Close optimization data file
+
+
+
+
+
+ENDMODULE
+

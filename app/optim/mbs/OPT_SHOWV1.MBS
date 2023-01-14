@@ -1,0 +1,292 @@
+!****************************************************
+! +++
+! Show optimization data graphically  
+!
+! Revision history
+! ________________
+!
+! 1995-11-25  Gunnar Liden
+!
+! ---
+!
+!****************************************************
+
+LOCAL GEOMETRY MODULE OPT_SHOWV1 (
+    INT    var_i       :=   1   >"Requested optimization variable 1";
+    INT    var_j       :=   3   >"Requested optimization variable 2";
+    FLOAT  scale_i     := 100.0 >"Scale factor variable 1";
+    FLOAT  scale_j     := 100.0 >"Scale factor variable 2";
+    FLOAT  scale_o     :=  10.0 >"Scale factor objetive function";
+    STRING optdata*15  := "attempt_01" >"Optimization history file");
+
+
+!sdesce Show optimization data graphically  
+!sdescs Visa optimeringsdata grafiskt        
+
+! +++
+! Internal variables
+! __________________
+
+! ---
+
+
+   FILE   odat;                 ! Optimization data file
+
+   STRING f_name*132;           ! Full input filename
+
+   STRING o_code*1;             ! Open code
+
+
+
+   INT     r_iteration;         ! Loop index iteration
+
+
+
+
+
+                                ! For OPT_RDOPV0:
+
+   INT    i_iteration;          ! Iteration number
+
+   INT    w_case;               ! Write case:
+
+                                ! Eq. 1: Param's 
+
+                                ! Eq. 2: Param's+limits
+
+                                ! Eq. 3: Param's+limits+constraints
+
+                                ! Eq. 4: Param's+limits+constraints+gradient
+
+                                ! Eq. 5: Param's+gradient+limits
+
+                                ! Eq. 6: Param's+gradient+constraints
+
+                                ! Eq. 7: Param's+gradient
+
+   INT    no_var ;              ! Number of optimization variables
+
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+
+   FLOAT  objfunc;              ! Objective function value
+
+   FLOAT  gradient(20);         ! Gradient vector
+
+   FLOAT  l_lim(20);            ! Lower limit for variables
+
+   FLOAT  u_lim(20);            ! Upper limit for variables
+
+   INT    v_flag(20);           ! Flags       for variables
+
+   INT    no_cst ;              ! Total number of constraints
+
+   FLOAT  cst_val(20);          ! Value of constraint function
+
+   FLOAT  pen_val(20);          ! Penalty                     
+
+   STRING cst_str(20)*30;       ! Description of constraint 
+
+
+
+
+
+
+
+   VECTOR p_pre;                ! Previous point
+
+   VECTOR p_cur;                ! Current  point
+
+
+
+   STRING ermess1*50;           ! Error message
+
+
+
+   STRING language*1;           ! Eq. e: English   
+
+                                ! Eq. s: Swedish   
+
+   INT    DEBUG;                ! Debug
+
+   STRING s*1;                  ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+
+
+   DEBUG:= 0;
+
+
+
+   IF DEBUG = 1 THEN                          !
+
+     s:=INPMT("OPT_SHOWV1 optdata " +         !
+
+               optdata                        !
+
+             ," ",1);                         !
+
+   ENDIF;                                     !
+
+
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+
+     ermess1 :="Samma variabel !";            ! Error 
+
+   ELIF language = "e" THEN                   !
+
+     ermess1 :="Same variable !";             ! Error 
+
+   ENDIF;                                     !
+
+
+
+   IF var_i = var_j    THEN                   ! Check variable numbers
+
+     EXIT("OPT_SHOWV1 " + ermess1);           !
+
+   ENDIF;                                     !
+
+
+
+! +++
+! Open file
+! ---
+
+
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+
+              ".OPTDATA";                     ! 
+
+
+
+   IF DEBUG = 1 THEN                          !
+
+     s:=INPMT("OPT_SHOWV1 f_name "+f_name+    !
+
+              " cont ?",                      !
+
+          "y",1);                             !
+
+     IF s = "n" THEN                          !
+
+        EXIT();                               !
+
+     ENDIF;                                   !
+
+   ENDIF;                                     !
+
+
+
+   o_code:= "R";                              !
+
+
+
+   OPEN(odat,o_code,f_name);                  ! Open input file
+
+   IF IOSTAT(odat) <> 0 THEN                  !
+
+     EXIT("OPT_SHOWV1 No file "+optdata+      !
+
+              ".OPTDATA");                    !
+
+   ENDIF;                                     !
+
+
+
+  FOR  r_iteration := 0 TO  200  DO           ! Start loop iteration
+
+
+
+! +++
+! Retrieve data from file. Call of OPT_RDOPV0     
+! ---
+
+
+
+   PART(#2, OPT_RDOPV0 ( odat,                ! Retrieve data
+
+            i_iteration, w_case,              !
+
+          no_var, opt_pid , opt_pno, opt_val, !
+
+    objfunc, gradient, l_lim, u_lim, v_flag,  !
+
+    no_cst, cst_val, pen_val, cst_str));      !
+
+    IF  r_iteration <> i_iteration THEN       ! End Of File ?
+
+      GOTO  eof;                              !
+
+    ENDIF;                                    !
+
+
+
+    IF r_iteration = 0 THEN                   !
+
+      p_pre:= VEC(scale_i*opt_val(var_i),     !
+
+                  scale_j*opt_val(var_j),     !
+
+                  scale_o*objfunc        );   !
+
+    ELSE                                      !
+
+      p_cur:= VEC(scale_i*opt_val(var_i),     !
+
+                  scale_j*opt_val(var_j),     !
+
+                  scale_o*objfunc        );   !
+
+      IF VECL(p_pre-p_cur) < 0.02 THEN        !
+
+        GOTO samept;                          !
+
+      ENDIF;                                  !
+
+      LIN_FREE(#1, p_pre, p_cur :PEN=2);      !
+
+samept:;                                      !
+
+      p_pre := p_cur;                         !
+
+    ENDIF;                                    !
+
+
+
+  ENDFOR;                                     ! End   loop iteration
+
+
+
+  CLOSE(odat);                                ! Close optimization data file
+
+  EXIT("OPT_SHOWV1 200 exceeded");            !
+
+
+
+eof:;                                         ! Label: EOF
+
+
+
+  CLOSE(odat);                                ! Close optimization data file
+
+
+
+
+
+ENDMODULE
+

@@ -1,0 +1,390 @@
+!******************** OPT_GETCV0**********************
+! +++
+! The function retrieves constraint (function) values. 
+! Constraints must be defined as a constraint function,
+! in such a way that the function value is negative if 
+! the constraint is fulfilled(?).
+!
+! This is no limitation! All constraints can be converted
+! to constraint functions.  
+!
+! Example 1
+! The volume of a bottle must not exceed one liter: volume < 1.0
+! Constraint function: F_VOL_U =  volume - 1.0
+! (F_VOL_L = -0.1 for volume= 0.9, i.e F_VOL_L < 0)
+!
+! Example 2
+! The volume of a bottle must not be less than 0.8 liter: volume > 0.8
+! Constraint function:  F_VOL_L = -volume + 0.8
+! (F_VOL_L = 0.2 for volume= 0.6, i.e F_VOL_L > 0)
+! 
+! Output arrays will be initialized if constraint_name not is defined.
+!
+! This module can only be called by another module
+! since there are output VAR variables.                   
+!
+! Revision history
+! ________________
+!
+! 1995-06-08 Gunnar Liden
+! ---
+!****************************************************
+
+!sdesce Retrieve constraint function values
+!sdescs Hämta värden på begränsningsfunktioner   
+
+BASIC GEOMETRY MODULE OPT_GETCV0 (
+    STRING constraint_name*10;   ! Name of constraint module
+    STRING v_method*10;          ! Handling of constraint
+VAR INT    no_cst ;              ! Total number of constraints
+VAR FLOAT  cst_val(20);          ! Value of constraint function
+VAR FLOAT  pen_val(20);          ! Penalty                     
+VAR STRING cst_str(20)*30;       ! Description of constraint 
+VAR INT    status);              ! Error code:
+                                 ! Eq.  0: No constraints
+                                 ! Eq.  1: Within all contraints
+                                 ! Eq.  2: Outside, continue calculation
+                                 ! Eq. -1: Outside, stop calculation      
+
+! +++
+!
+! Internal variables:
+!
+! ---
+
+  FLOAT  penalty;         ! Radius for penalty function Y= X**2
+  INT    i_c;             ! Loop index constraint
+  INT    i_p;             ! Loop index (constraint_name) parts
+
+  INT    no_part;         ! Number of constraint_name parts
+
+  INT    i_r;             ! Loop index references 
+  REF    id;              ! Reference (# id)
+                          ! For function GETHDR:
+
+  INT    typ;             ! Type of entity
+  INT    nref;            ! Version number
+  INT    blank;           ! Eq. 0: Unblanked  Eq. 1: Blanked
+  INT    nivå;            ! Layer for entity
+  INT    penna;           ! Pen number for entity
+  REF    grupp_id(3);     ! Global identities for GROUP's
+                          ! which the entity is s part of
+
+                          ! For function GETPRT:
+  STRING namn*10;         ! Name of part
+  INT    mtyp;            ! Module type
+                          ! Eq. 2: DRAWING
+                          ! Eq. 3: GEOMETRY
+  INT    mattr;           ! Module attribute
+                          ! Eq. 1: LOCAL
+                          ! Eq. 2: GLOBAL
+                          ! Eq. 3: BASIC
+
+  REF    kid;             ! Global identity for the
+                          ! coordinate system which has 
+                          ! been used to position a
+                          ! module of type LOCAL
+  INT    np;              ! Number of parameters in the part
+  INT    mant;            ! Number of entities in the part
+  REF    idm(500);        ! Array with global identities to
+                          ! all entities in the part (if 
+                          ! (there is space for all of them)
+                          ! För function GETID: 
+  STRING code*1;          ! Eq. F: First entity in GM      
+                          ! Eq. N: Next entity 
+                          ! Eq. n: Next entity same level
+                          ! Eq. P: Next part   
+
+  STRING ermess1*50;      ! Warning outside constraint (1) 
+  STRING ermess2*50;      ! Warning outside constraint (2) 
+  STRING ermess3*50;      ! Error v_method
+  STRING ermess4*50;      ! Penalty function value
+  STRING prompt1*50;      ! Prompt string cst outside warning
+  STRING prompt2*50;      ! Prompt string cst outside error
+  STRING s_yes*1;         ! String y (= Yes)        
+
+  STRING language*1;      ! Eq. e: English   
+                          ! Eq. s: Swedish   
+
+  STRING s*1;             ! String for DEBUG (INPMT)
+  INT    DEBUG;           ! Controls Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 0. Initializations and checks of input data
+! ---
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2        
+
+  IF DEBUG = 2 THEN            ! Debug
+    s:=INPMT("OPT_GETCV0 "     !
+    +"constraint_name "+       !
+      constraint_name          !
+     ,"", 1);                  !
+  ENDIF;                       !
+
+! +++
+! Initialize output variables cst_val, pen_val, cst_str, no_cst and status= 0
+! ---
+
+  FOR i_c := 1 TO 20 DO        ! Output variables
+   cst_val(i_c):= -0.123456789;! Value of constraint function
+   pen_val(i_c):= -0.123456789;! Value of constraint function
+   cst_str(i_c):= "undefined"; ! Description of constraint 
+  ENDFOR;                      !
+
+  no_cst := 0;                 ! Number of constraints
+  status := 0;                 ! Code: No constraints
+
+! +++
+! Return if constraint_name not is defined.
+! ---
+
+  IF constraint_name= ""  OR   ! Is constraint_name defined ?
+     constraint_name= " " THEN !
+    EXIT();                    !
+  ENDIF;                       !
+
+  language := "e";                           !
+  IF   language = "s" THEN                   !
+     ermess1 :="Villkor ";                   ! Warning
+     ermess2 :=" Funktionsvärde ";           ! Warning
+     ermess4 :=" Straff-funktionsvärde ";    ! Warning
+     prompt1 :=" Fortsätt j/n";              ! Prompt string
+     prompt2 :=" <CR>";                      ! Prompt string
+     ermess3 :="v_method ej  OK";            ! Error  
+     s_yes   :="j";                          ! Yes string
+  ELIF language = "e" THEN                   !
+     ermess1 :="Constraint ";                ! Warning
+     ermess2 :=" Function value ";           ! Warning
+     prompt1 :=" Continue y/n";              ! Prompt string
+     prompt2 :=" <CR>";                      ! Prompt string
+     ermess3 :="v_method not OK";            ! Error  
+     s_yes   :="y";                          ! Yes string
+     ermess4 :=" Penalty function value ";   ! Warning penalty
+  ENDIF;                                     !
+
+! +++
+! 1. Retrieve data from all instances of constraint_name 
+! ---
+
+  no_part  := 0;               ! Number of parts constraint_name
+
+  code := "F";                 ! Point to first entity in GM
+
+  id := GETID(code);           ! Retrieve first entity       
+
+  IF DEBUG = 2 THEN            ! Debug
+    s:=INPMT("OPT_GETCV0 id "  !
+     + RSTR(id) + " First "    !
+     ,"", 1);                  !
+  ENDIF;                       !
+
+  GETHDR(id,typ,nref,          ! Header data for entity    
+  blank,nivå,penna,grupp_id);  ! 
+
+  IF DEBUG = 2 THEN            ! Debug
+    s:=INPMT("OPT_GETCV0 typ  "!
+     + str(typ ,-1,0) + " "    !
+     ,"", 1);                  !
+  ENDIF;                       !
+
+  code := "P";                 ! Retrieve only parts
+
+! +++
+! Loop all parts in the active module (max 3000)
+! ---
+
+  FOR i_r := 1 TO 3000  DO     ! Start loop all references
+
+    IF i_r=1 AND typ=16384 THEN! First entity was a part     
+     ;                        ! do not step in GM         
+    ELSE                       !
+      id := GETID(code);       ! Reference to next part  
+    ENDIF;                     ! 
+
+    IF DEBUG = 2 THEN          ! Debug
+     s:=INPMT("OPT_GETCV0 i_r "!
+       + STR(i_r ,-1,0) +      !
+           " id " + RSTR(id)   !
+       ,"", 1);                !
+    ENDIF;                     !
+
+    IF id = #0 THEN            ! Go to   Label calc if
+      GOTO calc;               ! there are no more parts 
+    ENDIF;                     ! in the active module
+
+    GETPRT(id,namn,mtyp,       ! Retrieve data for the part
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 2 THEN          ! Debug
+      s:=INPMT("OPT_GETCV0 "   !
+      +"constraint_name "+     !
+        constraint_name        !
+      +" Part name "+ namn     !
+       ,"", 1);                !
+    ENDIF;                     !
+
+    IF namn <>                 ! Next entity if not constraint_name   
+         constraint_name THEN  !
+      GOTO next;               ! (goto next in this case)
+    ENDIF;                     !
+
+    no_part  := no_part  + 1;  ! An additional instance of
+    IF no_part  >  20  THEN    ! constraint_name (max is 20)         
+      EXIT("OPT_GETCV0 Max. "+ !
+     "no constraint_name"+    !
+      " is 20");               !
+    ENDIF;                     !
+
+! +++
+!   Data to cst_val, pen_val and csr_str if the part name is equal to 
+!   constraint_name. 
+!
+!   The value pen_val is calculated with the parabola
+!   Y= C0*X**2 defined by the start radius penalty.
+! 
+!   Y= C0*X**2 ==> dY/dX= 2*C0*X ==> d2Y/d2X2= 2*C0
+!
+!           (1+dY/dx**2)**1.5 
+!   Radius= -----------------  
+!             !d2Y/dX2!      
+!
+!   Conditions for the penalty parabola:
+!
+!   For X= 0 is Y= 0, dY/dX = 0  and Radius= penalty
+!
+!
+!                   1                           1
+!   penalty = -----------------  <===> C0= ------------
+!                  2*C0                     2*penalty
+!
+!
+!   pen_val(i) = C0 * cst_val(i)**2 if cst_val(i) >  0 
+!   pen_val(i) =   0.0              if cst_val(i) <= 0 
+! ---
+  
+    cst_val(no_part):=         ! Value of constraint function
+              GETFLT(id,1);    !
+    penalty         :=         ! Penalty, radius for parabola function
+              GETFLT(id,2);    !
+    cst_str(no_part):=         ! Description of constraint 
+              GETSTR(id,3);    !
+
+    IF cst_val(no_part) > 0.0  !
+               AND             !
+       penalty  >  0.0    THEN !
+      pen_val(no_part):=       !
+      1.0/2.0/penalty*         !
+        cst_val(no_part)**2;   !
+    ELSE                       !
+      pen_val(no_part):= 0.0;  !
+    ENDIF;                     !
+
+next:;                         ! Label: Next entity  
+
+  ENDFOR;                      ! End   loop all references 
+
+  EXIT("OPT_GETCV0 Max. "+     !
+   "number of parts is 3000"); !
+
+calc:;                         ! Label: Whole active module scanned  
+
+! +++
+! 2. Data to output arrays
+! ---
+
+! +++
+! Return if no constraint_name instances were found
+! ---
+
+  IF no_part  = 0  THEN                ! Return if no constraint_name is found
+    EXIT();                            !
+  ENDIF;                               !
+
+! +++
+! Check all constraints. 
+! Let error code status= -1 for v_method= error   (Stop     calculation)
+! Let error code status= -1 for v_method= warning (Continue calculation)
+! ---
+
+  no_cst := no_part;                   ! Number of constraints
+
+  status := 1;                         ! Code: Within all constraints
+                                       ! (initialization to this value)
+
+  FOR  i_c := 1 to no_cst DO           ! Loop constraints         (Start)
+    IF cst_val(i_c) > 0     THEN       ! Value outside constraint (Start)
+      IF  v_method = "warning" OR      ! Warning                  (Start)
+          v_method = "standard" THEN   ! 
+         s := INPMT( ermess1      +    ! Warning to screen
+                 cst_str(i_c) + " " +  !
+                 ermess2 +
+             STR(cst_val(i_c),-15,8) + ! 
+                    prompt1, s_yes,1); !
+        IF   s="y" OR s="j" OR         ! Continue calculation     (Start)
+             s="Y" OR s="J"    THEN    !
+          status :=  2;                ! Code: Outside, continue
+        ELSE                           !
+          status := -1;                ! Code: Outside, stop
+          EXIT();                      !
+        ENDIF;                         ! Continue calculation     (End)
+      ENDIF;                           ! Warning                  (End)
+      IF  v_method = "warning" OR      ! Warning penalty          (Start)
+          v_method = "standard" THEN   ! 
+       IF pen_val(i_c) > 0.0 THEN      ! Penalty value > 0        (Start)
+         s := INPMT( ermess1      +    ! Warning to screen
+                 cst_str(i_c) + " " +  !
+                 ermess4 +
+             STR(pen_val(i_c),-15,8) + ! 
+                    prompt1, s_yes,1); !
+        IF   s="y" OR s="j" OR         ! Continue calculation     (Start)
+             s="Y" OR s="J"    THEN    !
+          status :=  2;                ! Code: Outside, continue
+        ELSE                           !
+          status := -1;                ! Code: Outside, stop
+          EXIT();                      !
+        ENDIF;                         ! Continue calculation     (End)
+       ENDIF;                          ! Penalty value > 0        (End)
+      ENDIF;                           ! Warning penalty          (End)
+
+
+      IF  v_method = "error"    THEN   ! Error                    (Start)
+        status := -1;                  ! Code: Outside, stop
+       
+         s := INPMT( Ermess1      +    ! Error message to screen
+                 cst_str(i_c) + " " +  !
+                 ermess2 +
+             STR(cst_val(i_c),-15,8) + ! 
+                    prompt2,  " " ,1); !
+      ENDIF;                           ! Error                    (End)
+    ENDIF;                             ! Value outside constraint (End)
+  ENDFOR;                              ! Loop constraints         (End)
+
+
+  IF  DEBUG = 1  THEN                  ! Debug
+    LST_INI("OPT_GETCV0 Constraints"); !
+    FOR i_c:= 1 TO no_cst DO           !
+    LST_LIN(STR(i_c,4,0)+              !
+      " Constraint function value " +  !
+        STR(cst_val(i_c),15,8) +       !
+            " Description "+           !
+            cst_str(i_c));             !
+    LST_LIN(STR(i_c,4,0)+              !
+      " Penalty value             " +  !
+        STR(pen_val(i_c),15,8) +       !
+            " Description "+           !
+            cst_str(i_c));             !
+    ENDFOR;                            !
+    LST_LIN(" ");                      !
+    LST_LIN("Error code " +            !
+             STR(status,3,0));         !
+    LST_EXI();                         !
+  ENDIF;                               !
+
+ENDMODULE

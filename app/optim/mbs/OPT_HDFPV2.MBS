@@ -1,0 +1,201 @@
+!****************************************************
+! +++
+!
+! Approximation of the inverse to the hessian matrix
+! with the Davidon-Fletcher-Powell (DFP) formula   
+!
+! Revision history
+! ________________
+!
+! 1995-06-03  Gunnar Liden
+! ---
+!
+!****************************************************
+
+
+MACRO MODULE OPT_HDFPV2 (
+VAR   FLOAT  GRAD_OLD(20);         ! Gradient  (previous)
+VAR   FLOAT  GRAD(20);             ! Gradient
+VAR   FLOAT  H_OLD(20,20);         ! Approx. inv. Hessian (previous)
+VAR   FLOAT  H(20,20);             ! Approx. inv. Hessian
+      FLOAT  LAMBDA;               ! Step size
+      INT    NUMVAR;               ! Total number of variables
+      INT    s_flag);              ! Flag for output to screen
+                                   ! Eq. 0: No output
+                                   ! Eq. 1: Output
+
+
+!sdesce Hessian matrix with Davidon-Fletcher-Powell (DFP) formula   
+!sdescs Hessian matris med  Davidon-Fletcher-Powell (DFP) formeln   
+
+
+! +++
+! Internal variables
+! __________________
+
+! ---
+
+
+
+   STRING ermess1*50;           ! Error message 
+
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    i_v;                  ! Loop index variable
+   INT    j_v;                  ! Loop index variable
+
+
+   FLOAT  E1(20);               !
+   FLOAT  E2;                   !
+   FLOAT  E (20,20);            !
+   FLOAT  F1(20);               !
+   FLOAT  F2;                   !
+   FLOAT  F (20,20);            !
+
+    
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+   DEBUG:= 1;
+
+
+   language := "e";                           !
+   IF   language = "s" THEN                   !
+     ermess1 :="Antal variabler 0 (modul 1)"; ! Error 
+   ELIF language = "e" THEN                   !
+     ermess1 :="No variables is 0 (module 1)";! Error 
+   ENDIF;                                     !
+
+
+!     The approximation to the inverse hessian is computed as
+!
+!     - k  - k-1  - k-1  - k-1
+!     H  = H    + E    - F
+!
+!
+!                          k-1  - k-1 - k-1  - k-1 - k-1  T
+!                         l    (H     g    )(H     g     )
+!  1/ compute E-term; E = ---------------------------------
+!                          - k-1 - k-1 T - k   - k-1
+!                         (H     g    ) (g   - g    )
+!
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      E1(i_v ):=0.0;
+      FOR  j_v :=1  TO  NUMVAR  DO
+         E1(i_v):=E1(i_v)+H_OLD(i_v,j_v)*GRAD_OLD(j_v);
+      ENDFOR; 
+   ENDFOR; 
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      FOR  j_v :=1  TO  NUMVAR  DO
+         E(i_v,j_v):=E1(i_v)*E1(j_v);
+      ENDFOR; 
+   ENDFOR; 
+
+   E2:=0;
+   FOR  i_v :=1  TO  NUMVAR  DO
+      E2:=E2+E1(i_v)*(GRAD(i_v)-GRAD_OLD(i_v));
+   ENDFOR; 
+
+   IF E2  =   0.0 THEN
+      E2:= 0.0000000001;
+   ENDIF;
+
+   FOR i_v :=1  TO  NUMVAR  DO
+      FOR j_v :=1  TO  NUMVAR  DO
+         E(i_v,j_v):=-LAMBDA*E(i_v,j_v)/E2;
+      ENDFOR; 
+   ENDFOR; 
+
+
+!                         - k-1 - k  - k-1  - k  - k-1 T - k-1
+!                         H    (g  - g    )(g  - g    )  H
+!  2/ compute F-term; F = ------------------------------------
+!                          - k  - k-1 T - k-1  - k  - k-1
+!                         (g  - g    )  H     (g  - g    )
+! 
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      F1(i_v ):=0.0;
+      FOR  j_v :=1  TO  NUMVAR  DO
+         F1(i_v):=F1(i_v)+H_OLD(i_v,j_v)*(GRAD(j_v)-GRAD_OLD(j_v));
+      ENDFOR; 
+   ENDFOR; 
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      FOR  j_v :=1  TO  NUMVAR  DO
+         F(i_v,j_v):=F1(i_v)*F1(j_v);
+      ENDFOR; 
+   ENDFOR; 
+
+!
+
+   F2:=0.0;
+   FOR  i_v :=1  TO  NUMVAR  DO
+     F2:=F2+F1(i_v)*(GRAD(i_v)-GRAD_OLD(i_v));
+   ENDFOR; 
+
+   IF F2  =   0.0 THEN
+      F2:= 0.0000000001;
+   ENDIF;
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      FOR  j_v   :=1  TO  NUMVAR  DO
+         F(i_v,j_v):=F(i_v,j_v)/F2;
+      ENDFOR; 
+   ENDFOR; 
+
+
+!  3/ compute new approximation to the inverse hessian
+
+
+   FOR  i_v :=1  TO  NUMVAR  DO
+      FOR  j_v   :=1  TO  NUMVAR  DO
+         H(i_v,j_v) := H_OLD(i_v,j_v) + E(i_v,j_v) - F(i_v,j_v);
+      ENDFOR; 
+   ENDFOR;  
+
+
+
+! +++
+! n. Inverted hessian to screen                
+! ---
+
+
+   IF s_flag = 0 THEN
+     GOTO  noprin;
+   ENDIF;
+
+   LST_INI("OPT_HDFPV2: INVERTED HESSIAN MATRIX CALCULATED WITH DFP");
+
+   FOR i_v := 1 TO NUMVAR DO
+     LST_LIN(STR(i_v,-1,0)+" GRAD "+STR(GRAD(i_v),25,10)
+                  +" GRAD_OLD "+STR(GRAD_OLD(i_v),25,10));
+
+   ENDFOR;
+
+
+   FOR i_v := 1 TO NUMVAR DO
+     LST_LIN( "Hi1 "+STR(H(i_v,1),12,6)+
+             " Hi2 "+STR(H(i_v,2),12,6)+
+             " Hi3 "+STR(H(i_v,3),12,6)+
+             " Hi4 "+STR(H(i_v,4),12,6));
+   ENDFOR;
+
+   LST_LIN("LAMBDA "+STR(LAMBDA,25,10));
+   LST_EXI();
+
+noprin:; ! No printout to screen
+
+
+ENDMODULE
+

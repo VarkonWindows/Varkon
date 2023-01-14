@@ -1,0 +1,109 @@
+! *************** OPT_PATHV0 ***************************
+! +++ 
+! Definition of (search) path for the extraction of text 
+! from MBS source code
+! 
+! A User of optimization routines shall replace (add) all 
+! directory names defined below ....
+!
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! 1997-11-18  New paths      Gunnar Liden
+! 1998-03-03  Prosolvia path Gunnar Liden
+! 1998-08-19  D: -> C:       Gunnar Liden
+! 2006-01-27  New paths      Gunnar Liden
+! 2006-04-23  Johns boat NGB Gunnar Liden
+! 2008-12-30  optim_bike     Gunnar Liden
+! 2009-01-05  optim_ samples Gunnar Liden
+! --- 
+! ****************************************************
+
+!sdesce Defines search path for extraction of text 
+!sdescs Definierar sökväg för extrahering av text  
+
+BASIC  DRAWING MODULE OPT_PATHV0    (
+VAR STRING  path(20)*50;            ! Output directories
+VAR INT     n_path);                ! Number of directories
+
+
+BEGINMODULE
+
+! +++
+! 1. Initializations
+! ---
+
+  n_path:= 0;                       ! Initiate n_path
+
+! +++
+! 2. Definition of search path, i.e all directories with MBS code
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= ACT_JOBDIR();
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\optim\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\lek\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\BlendStl\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\BlendStlTemp\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\NGB\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\optim_bike\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+
+! +++
+   path(n_path):= "C:\varkon\app\optim_curve\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+   
+! +++
+   path(n_path):= "C:\varkon\app\optim_bottle\mbs\";
+! ---
+
+   n_path:= n_path + 1; 
+   
+! +++
+   path(n_path):= "C:\varkon\app\optim_surface\mbs\";
+! ---
+
+ENDMODULE
+
+
+
+
+
+

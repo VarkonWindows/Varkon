@@ -1,0 +1,703 @@
+!*********************** OPT_CONTV2 *****************************
+
+!+++
+! This module controls a non-linear optimization calculation.
+!
+! It is a general module, which can be used without modifications,
+! in any VARKON application. But an application will normally be 
+! easier to maintain and further developed if all modules are 
+! customized to a specific task. It is therefore recommended that
+! this module and many of the called modules are copied and that
+! not-used options for data storage, calculation methods, etc are
+! deleted.
+!
+! The modules have been programmed for small-scale problems with
+! a maximum of 20 variables. 
+!
+! Module and attributes for optimization variables
+! ________________________________________________
+!
+! Any parameter of type FLOAT in a module (part) can be defined as
+! an optimization variable. The definition is made in two pop-up
+! windows (panels). In the first panel (OPT_GTU1V0) are the module
+! names defined and in the second panel (OPT_GTU2V1) are the 
+! optimization variables (FLOAT's) selected.
+!
+!
+!
+! Module and attribute for the objective function
+! _______________________________________________
+!
+! The requirements on the module which "registrates" the objective
+! function value are defined in the GET-routine OPT_GETOV1.
+!
+! The only requirement is that the first parameter must be the 
+! objective function value, i.e. an attribute of type FLOAT.                  
+!
+! The name of the module is defined by the user in OPT_GTU1V0.
+! Only one (1) part (instance) of the module is allowed in the 
+! active module.
+!
+! There can be additional attributes in the module.
+!
+! Example: Refer to module OPT_FUNCV0
+!
+!
+! Module and attribute for limits to the optimization variables
+! _____________________________________________________________
+!
+! The requirements on the module which "registrates" limits for the
+! optimization variables are defined in the GET-routine OPT_GETLV0.
+!
+! The definition of limits for the optimization variables is optional.
+!
+! The name of the module is defined by the user in the first pop-up
+! window (OPT_GTU1V0).
+!
+! The first five attributes must be:
+! REF   prt_id    Reference to part with the variable
+!                 Eq. #0: Parameter is "not in another module"
+! INT   l_flag    Limit flag
+!                 Eq.  1: Only lower limit defined
+!                 Eq.  2: Only upper limit defined
+!                 Eq. 12: Both limits defined
+!                 Eq. -1: Not defined
+! FLOAT l_limit   Lower limit
+! FLOAT u_limit   Upper limit
+! INT   p_numb    Parameter number      
+!
+! Example: Refer to module OPT_LIMV0
+!
+!
+! Module and attributes for constraints
+! _____________________________________
+!
+! The name of the module is defined by the user in the first pop-up
+! window (OPT_GTU1V0).
+!
+! The first three attributes of the "constraint registration module" 
+! must be:
+! FLOAT  c_value   Contraint function value
+! FLOAT  penalty   Start radius for penalty function Y= X**2
+! STRING c_desc    Constraint description
+!
+! Example: Refer to module OPT_CSTV0
+!
+!
+! Revision history
+! ________________
+!
+! 1995-06-21  Gunnar Liden
+! 1995-12-12  Many instances of one module added Gunnar Liden
+! 2006-01-27  part name and file name 10 to 50 chars Gunnar Liden
+! 2009-01-04  flag_advanced added. Comments changed Gunnar Liden
+!
+!---
+!
+!****************************************************
+
+
+MACRO MODULE OPT_CONTV2 ();
+
+!sdesce Controls a non-linear optimization calculation.
+!sdescs Styrprogram för en optimeringsberäkning.
+
+! +++
+! Principal flow diagram
+! _______________________
+!
+!                                                 ______________
+!                                                !              !
+!                                                !  OPT_CONTV2  !
+!                                                !              !
+!                                                !  Control of  !
+!                                                ! optimization !
+!                                                ! calculation  !
+!                                                !______________!
+!            ____________________________________________!___________
+!     ______!______  _____!______  _____!______  _____!______  _____!____
+!    !             !!            !!            !!            !!        * !
+!    ! OPT_GTU1V0  !! OPT_GETPV1 !! OPT_GETLV0 !! OPT_GETOV1 !! Optimize !
+!    ! OPT_GTINV0  !!            !!            !!            !!          !
+!    ! OPT_GTU2V1  !!            !!            !!            !!          !
+!    ! OPT_GTU3V0  !!            !!            !!            !!          !
+!    !             !!            !!            !!            !!          !
+!    !  Input of   !!Get current !! Get limit  !! Get start  !!__________!
+!    !  data for   !! values of  !! values for !! objective  !      !
+!    !optimization !!optimization!!optimization!! function   !      !
+!    !calculation  !! variables  !! variables  !!  value     !      !
+!    !_____________!!____________!!____________!!____________!      !
+!                           ________________________________________! 
+!                    ______!_____  ______!_____  ______!_____  _____!____
+!                   !          * !!          o !!          * !!        o !
+!                   ! OPT_GRADV2 !! OPT_SDIRV0 !! OPT_SEARV2 !! Optimum  !
+!                   !            !!            !!            !!    ?     !
+!                   !  Calculate !!  Search    !!    One -   !!__________!
+!                   !or retrieve !! direction  !! dimensional!
+!                   ! gradient   !!            !!  optimum   !
+!                   !            !!            !!   search   !
+!                   !____________!!____________!!____________!
+!                          !             !              !
+!                          !       ______!______        !
+!                          !  ____!_____   _____!_____  !
+!                          ! !          ! !           ! !
+!                          ! ! gradient ! !   DFP     ! !
+!                          ! !          ! !           ! !
+!                          ! !__________! !___________! !
+!                          !                            !
+!       ___________________!__               ___________!_____________
+!  ____!___  ____!____  ______!_____   _____!_____   ___!____   ______!_____
+! !        !!         !!            ! !           ! !        ! !            !
+! !   Add  !!   Run   !! OPT_GETOV1 ! !  Change   ! !  Run   ! ! OPT_GETOV1 !
+! !epsilon !! VARKON  !!            ! !   all     ! ! VARKON ! !            !
+! !   to   !! active  !!Get current ! ! variables ! ! active ! !Get current !
+! !variable!! madule  !! objective  ! !with delta ! ! module ! ! objective  !
+! !   i    !!(RUN_MBS)!!  function  ! ! in search ! !        ! !  function  !
+! !        !!         !!   value    ! ! direction ! !        ! !   value    !
+! !________!!_________!!____________! !___________! !________! !____________!
+!
+! 
+!
+! 
+!
+! ---
+! 
+! Internal variables
+! __________________
+!
+!                Calculation input data from user
+!
+                                ! From module OPT_GTU1V0:
+   STRING c_flag*3;             ! Eq NO: No (cancel) calculation
+   INT    n_iter;               ! Requested (maximum) no iterations
+   STRING opt_case*10;          ! Calculation case:
+                                ! Eq. gradient: Only gradient calulation
+                                ! Eq. xxxxxxxx: Optimize        
+   STRING var_modules(4)*50;    ! Names of modules with optimization
+                                ! variables
+   STRING obj_name*10;          ! Name of objective function module      
+   STRING grad_name*10;         ! Name of gradient module
+   STRING hess_name*10;         ! Name of Hessian  module
+   STRING lim_name*10;          ! Name of variable limit module
+   STRING constr_name*10;       ! Name of constraint module
+                                ! From module OPT_GTU2V1:
+   REF    opt_pid(20);          ! References to parts with opt. variables 
+   INT    opt_pno(20);          ! Parameter number in opt_pid
+   INT    i_start;              ! Start output number in arrays opt_pid 
+                                ! and opt_pno
+   INT    i_end;                ! End   output number in arrays opt_pid
+                                ! and opt_pno
+                                ! From module OPT_GTU3V0:
+   STRING c_method*15;          ! Requested calculation method
+   STRING s_method*15;          ! Requested search method
+   STRING f_method*15;          ! File method
+   STRING g_method*15;          ! Gradient calculation method
+   STRING l_method*15;          ! Limit method:                    
+                                ! Eq. standard: Respect limits      
+                                ! Eq. error:    Stop optimization   
+                                ! Eq. warning:  Show variables      
+   STRING v_method*15;          ! Constraint handling method     
+   STRING optdata*15;           ! Optim. history data file
+   STRING h_method*15;          ! Handling of history
+   FLOAT  g_eps_start;          ! Start epsilon for gradient calculation
+   FLOAT  o_step_input;         ! Input step for line search calculation
+   FLOAT  obj_end;              ! Objective function end criterion
+   FLOAT  grad_zero;            ! Criterion for zero length gradient 
+
+
+                                ! For module OPT_GTP1V1:
+   INT    no_var ;              ! Total number of parameters
+   FLOAT  opt_val(20);          ! Parameter value for opt_pno
+
+                                ! For module OPT_GTINV0:
+   REF    var_references(20);   ! Identities for var_modules instances
+   STRING var_name_all(20)*50;  ! All names corresp. to var_references
+   INT    n_references;         ! Number of references
+
+   STRING var_name*50;          ! Name of variable  module      
+   FLOAT  g_eps;                ! Epsilon for gradient 
+   FLOAT  o_step;               ! Step for line (one-dimensional) search
+   FLOAT  o_step_scale;         ! Delta value for line search calculation
+                                ! scaled with search direction vector length
+   INT    i_iter;               ! Current iteration number
+   INT    n_iter_opt;           ! No iterations for one-dim. search
+   INT    n_iter_tot;           ! Total number of iterations
+
+   INT    i_v;                  ! Loop index variable 
+   INT    j_v;                  ! Loop index variable 
+   INT    i_grad;               ! Loop index gradient 
+
+
+   FLOAT  l_lim(20);            ! Lower limit for variables
+   FLOAT  u_lim(20);            ! Upper limit for variables
+   INT    v_flag(20);           ! Flags       for variables
+
+   FLOAT  opt_val_out(20);      ! Parameter values   from OPT_NEXTV0
+   INT    stat_next;            ! Error/warning code from OPT_NEXTV0
+                                ! Eq.  0: All parameters within limits
+                                ! Eq.  1: Steps have been changed
+                                ! Eq.  2: Warning point outside limits
+                                ! Eq. -1: Stop calculation, pts outside
+                                ! Eq. -2: User stop of calculation      
+
+
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+   INT    stat_cst;             ! Error code OPT_GETCV0:
+                                ! Eq.  0: No constraints
+                                ! Eq.  1: Within all contraints
+                                ! Eq.  2: Outside, continue calculation
+                                ! Eq. -1: Outside, stop calculation      
+   INT    i_cst ;               ! Loop index constraint
+
+   FLOAT  obj_start;            ! Start value objective fctn
+
+   INT    g_flag;               ! Gradient output to screen
+   FLOAT  gradient(20);         ! Gradient vector
+   FLOAT  grad_len;             ! Gradient vector length
+
+   FLOAT  var_val;              ! Current variable value
+
+   INT    n_grad;               ! No calculated gradients
+
+   FLOAT  grad_pre(20);         ! Gradient vector, previous
+   FLOAT  opt_val_pre(20);      ! Parameter values, previous
+   FLOAT  hessian(20,20);       ! Approx. inv. Hessian
+   FLOAT  hessian_pre(20,20);   ! Approx. inv. Hessian, previous
+   FLOAT  s_direct(20);         ! Search direction
+   FLOAT  sdir_len;             ! Search direction length
+   INT    h_flag;               ! Search direction (Hessian) output to screen
+
+   INT    s_flag;               ! Search output to screen
+   FLOAT  obj_min;              ! Minimum objective function value
+
+   STRING ermess1*50;           ! Error message c_method 
+   STRING ermess2*50;           ! Error message var_name3
+   STRING ermess3*50;           ! Error message gradient zero
+   STRING ermess4*50;           ! Error message instances    
+   STRING s_undo*50;            ! Undo string
+   STRING s_iter*50;            ! Number of iterations
+   STRING s_yes*1;              ! Yes/Ja string
+   STRING s_endcrit*50;         ! End criterion stop  
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    stat_sear;            ! Error code OPT_SEARV2
+
+   INT    i_ref ;               ! Loop index instance of variable module
+
+   INT    w_case;               ! Write case:
+                                ! Eq. 1: Parameters 
+                                ! Eq. 2: Parameters + gradient
+                                ! Eq. 3: Parameters + gradient + Hessian
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+CONSTANT INT flag_advanced = 0; ! Eq. 1: Additional settings
+
+BEGINMODULE
+
+!  0. Initializations
+
+   DEBUG:= 0;
+
+   n_iter_tot := -1;                            ! For case outside limits ..
+
+   n_grad := 0;                                 ! No calculated gradients
+
+   language := "e";                             !
+
+   IF   language = "s" THEN                     !
+     ermess1 :="Start variabler ej inom "+      ! Error limits
+               " definerade gränser";           ! 
+     ermess2 :="Givna restriktioner är ej"+     ! Error constraints
+               " uppfyllda för startvärden";    !
+     ermess3 :="Gradienten har längden noll";   ! Error gradient
+     ermess4 :="Inga instanser av de givna"+    ! Error instances
+               " variabelmodulerna";            ! 
+     s_undo  :=" Ångra optimeringen j/n";       !
+     s_iter  :=" Antal iterationer ";           !
+     s_yes   :="n";                             !
+     s_endcrit:="Delta målfunktionsvärde < ";   ! End criterion  
+   ELIF language = "e" THEN                     !
+     ermess1 :="Start optimization "+           !
+               "variables outside limits";      !
+     ermess2 :="Outside constraints for start "+!
+               "variables";                     !
+     ermess3 :="Gradient has zero length";      ! Error gradient
+     ermess4 :="No instances of the given "+    ! Error instances
+               "variable modules";              ! 
+     s_undo  :=" Undo optimization  y/n";       !
+     s_iter  :="Number of iterations ";         !
+     s_yes   :="n";                             !
+     s_endcrit:="Delta objective fctn value < ";! End criterion  
+   ENDIF;                                       !
+
+! +++
+!  1. Retrieve input data from the user for the optimization calculation
+! ---
+
+! +++
+!  Max. number of iterations, case (gradient or optimize), names of
+!  variable modules, objective function module, gradient module,
+!  Hessian module and the name of the variable limit module.
+!  Some of the options are not yet implemented (checks are made
+!  in OPT_GTU1V0).
+! ---
+
+   PART(#1, OPT_GTU1V0 (                        ! Input of module names
+     flag_advanced,                             !
+     c_flag,n_iter,                             !
+     opt_case,                                  !
+     var_modules,                               !
+     obj_name,                                  !
+     grad_name,hess_name,                       !
+     lim_name,constr_name));                    !
+
+
+   IF c_flag = "NO"  THEN                       !
+     EXIT();                                    ! Cancel (no) calculation
+   ENDIF;                                       !
+
+!   LST_INI("OPT_CONTV2  1");
+!   LST_LIN("var_modules(1)" + var_modules(1));
+!   LST_LIN("var_modules(2)" + var_modules(2));   
+!   LST_LIN("var_modules(3)" + var_modules(3));    
+!   LST_LIN("var_modules(4)" + var_modules(4));           
+!   LST_LIN("var_name_all(1)" + var_name_all(1));
+!   LST_LIN("var_name_all(2)" + var_name_all(2));   
+!   LST_LIN("var_name_all(3)" + var_name_all(3));    
+!   LST_LIN("var_name_all(4)" + var_name_all(4));        
+!   LST_EXI();
+   
+   PART(#6, OPT_GTINV0 (                        ! Get instances
+      var_modules,                              !
+      var_references, var_name_all,             !
+      n_references):SAVE=0);                    !
+
+   IF n_references = 0 THEN                     !
+     EXIT("OPT_CONTV2 "+                        !
+           ermess4);                            !                      
+   ENDIF;                                       !
+
+!   s:= INPMT("n_references "+STR(n_references,-1,0)," ",1);
+
+! +++
+!  Define optimization variables
+! ---
+
+!   LST_INI("OPT_CONTV2  2");
+!   LST_LIN("var_name_all(1)" + var_name_all(1));
+!   LST_LIN("var_name_all(2)" + var_name_all(2));   
+!   LST_LIN("var_name_all(3)" + var_name_all(3));    
+!   LST_LIN("var_name_all(4)" + var_name_all(4));        
+!   LST_EXI();
+
+   i_start := 1;                                !
+   FOR i_ref  := 1 TO  n_references  DO         ! Start loop all instances
+       PART(#10, OPT_GTU2V1 (                   ! Define parameters
+         var_name_all(i_ref),                   !
+         var_references(i_ref),                 !
+         i_start,                               !
+         c_flag,                                !
+         i_end,                                 !
+         opt_pid,                               !
+         opt_pno ));                            !
+
+       IF c_flag = "NO"  THEN                   !
+         EXIT();                                ! Cancel (no) calculation
+       ENDIF;                                   !
+
+       i_start := i_end + 1;                    ! New i_start
+
+   ENDFOR;                                      ! End  loop all parts
+
+   IF  i_end  <= 0                 THEN         ! Check parameters
+     EXIT("OPT_CONTV2 No optimization "+        !
+          "variables are defined");             !
+   ENDIF;                                       !
+
+! +++
+!  Retrieve current values for the optimization variables.
+! ---
+
+   no_var := i_end;                             ! Total number of opt. variables
+
+   PART(#2, OPT_GTPV1  ( no_var,                ! Retrieve values
+         opt_pid, opt_pno, opt_val ):SAVE=0);   !
+
+! +++
+!  Retrieve epsilon values and methods
+! ---
+
+   PART(#11, OPT_GTU3V0 (                       ! Input of epsilons/methods
+     flag_advanced,                             !
+     c_flag,                                    !
+     c_method, s_method, f_method, g_method,    !
+     l_method, v_method, optdata,  h_method,    !
+     g_eps_start, o_step_input,                 !
+     obj_end, grad_zero ));                     !
+
+   IF c_flag = "NO"  THEN                       !
+     EXIT();                                    ! Cancel (no) calculation
+   ENDIF;                                       !
+
+! +++
+!  Write header data (module names and methods) to history file  
+! ---
+
+   PART(#39, OPT_WRIHV0 (                       ! Write header
+    optdata,var_modules,obj_name,grad_name,     !
+    hess_name,lim_name,constr_name,             !
+    c_method,s_method,f_method,g_method,        !
+    l_method,v_method,h_method ));              !
+
+
+! +++
+!  Retrieve limit values for the optimization variables. 
+! ---
+
+   PART(#12, OPT_GETLV0 (                       ! Retrieve limits
+     lim_name, no_var, opt_pid, opt_pno,        ! 
+     v_flag, l_lim, u_lim ));                   !
+
+! +++
+!  Retrieve start objective function value            
+! ---
+
+   PART(#3, OPT_GETOV1 ( obj_name,              ! Objective fctn value
+              obj_start ) :SAVE=0);             !   
+
+! +++
+! Get penalty values and add to objective function for v_method= penalty.
+! At the same time check constraints prior to optimization. 
+! Call of OPT_GETCV0 
+! ---
+
+   PART(#25,OPT_GETCV0 ( constr_name,         ! Check constraints
+        "warning" , no_cst, cst_val, pen_val, !
+           cst_str, stat_cst) :SAVE=0);       ! 
+   IF  stat_cst  <  0  THEN                   !
+         s:=INPMT(ermess2 ," ",1);            !
+         GOTO l_break;                        ! End of calc. if stat_next < 0
+   ENDIF;                                     !
+   IF  v_method = "penalty" OR                !
+       v_method = "PENALTY"    THEN           !
+     FOR i_cst:= 1 TO no_cst DO               !
+       obj_start:= obj_start+pen_val(i_cst);  !
+     ENDFOR;                                  !
+   ENDIF;                                     !
+
+! +++
+! Check that start parameter values are within limits
+! Call of OPT_NEXTV0 with steplength zero (o_step=0)
+! ---
+
+   FOR  i_v := 1 TO 20 DO                     !
+     s_direct(i_v):= 0.123456789;             !
+   ENDFOR;                                    !
+   PART(#16,OPT_NEXTV0 (  1        ,          ! Check current parameter 
+              "error" , opt_val, no_var,      ! values (o_step= 0.0)
+              s_direct, 0.0   ,               !
+              l_lim, u_lim, v_flag,           !
+              opt_val_out,                    !
+              stat_next ) :SAVE=0);           ! 
+
+   IF  stat_next <  0  THEN                   !
+         s:=INPMT(ermess1 ," ",1);            !
+       GOTO l_break;                          ! End of calc. if stat_next < 0
+   ENDIF;                                     !
+
+! +++
+!  3. Calculate gradient                              
+! ---
+
+   n_iter_tot := 0;                           ! Total no of iterations
+
+rgrad:;                                       ! Restart from gradient
+
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_CONTV2 obj_start " +       !
+        STR(obj_start,-15,8) + " n_iter_tot "+!
+        STR(n_iter_tot,-1,0) + " "            !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+   IF  DEBUG = 0 THEN
+     g_flag := 0;                             ! Gradient print flag
+   ELSE                                       !
+     g_flag := 1;                             !
+   ENDIF;                                     !
+
+
+! +++
+! Previous gradient and variables if n_grad > 0
+! ---
+
+   IF   n_grad > 0                      THEN  ! 
+     FOR i_v := 1 TO  no_var  DO              !
+       grad_pre(i_v):= gradient(i_v);         !
+       opt_val_pre(i_v):= opt_val(i_v);       !
+     ENDFOR;                                  !
+   ENDIF;                                     !
+   IF   n_grad = 0                      THEN  ! 
+     FOR i_v := 1 TO  no_var  DO              ! 
+       grad_pre(i_v)         := 0.123456789;  !
+       opt_val_pre(i_v)      := 0.123456789;  !
+     ENDFOR;                                  !
+   ENDIF;                                     !
+
+   PART(#4,  OPT_GRADV2 ( g_eps_start,        ! Calculate gradient
+    obj_name,g_method,                        !
+    constr_name, v_method, obj_start,         !
+    opt_pid, opt_pno, opt_val, no_var,        !
+    gradient, grad_len,                       !
+    g_eps, g_flag):SAVE=0);                   !
+
+   n_grad := n_grad + 1;                      ! No of calculated gradients
+
+! +++
+!  End of calculation if gradient lenght is less grad_zero
+! ---
+
+   IF grad_len < grad_zero  THEN              ! Zero gradient
+     EXIT("OPT_CONTV2 "+                      !
+           ermess3);                          !                      
+   ENDIF;                                     !
+
+! +++
+!  Show gradient and then end of calculation if opt_case = gradient          
+! ---
+
+   IF opt_case = "gradient" OR                ! Only gradient calculation ?
+      opt_case = "GRADIENT" OR                !
+      opt_case = "Gradient"   THEN            !
+     PART(#40, OPT_LISGV0 ( g_eps,            ! List gradient
+      obj_name,g_method,obj_start,            !
+      opt_pid, opt_pno, opt_val, no_var,      !
+      gradient, grad_len ):SAVE=0);           !
+
+      EXIT();                                 ! Return
+   ENDIF; 
+
+! +++
+!  Write to optimization history file
+! ---
+
+   w_case := 7;                               !
+   PART(#24, OPT_WRITV0 ( optdata,            ! Write history data
+             n_iter_tot, w_case,              !
+         no_var, opt_pid, opt_pno, opt_val,   !
+         obj_start, gradient ,                !
+         l_lim, u_lim, v_flag,                !
+         no_cst,cst_val,pen_val,cst_str ));   !
+
+! +++
+! 4. Search direction
+! ---
+
+   IF  DEBUG = 0 THEN
+     h_flag := 0;                             ! Hessian  print flag
+   ELSE                                       !
+     h_flag := 1;                             !
+   ENDIF;                                     !
+
+   PART(#15, OPT_SDIRV0 (                     ! Search direction
+             n_grad, c_method, no_var,        !
+             gradient, grad_pre, grad_len,    !
+             opt_val, opt_val_pre,            !
+             l_lim, u_lim, v_flag,            !
+             hessian, hessian_pre,            !
+             s_direct, sdir_len,              !
+             o_step_input, o_step,            !
+             h_flag):SAVE=0);                 !
+
+! +++
+!  5. Line (one-dimensional) search                          
+! ---
+
+   IF DEBUG = 0 THEN                          !
+     s_flag := 0;                             ! Search print flag
+   ELSE                                       !
+     s_flag := 1;                             ! 
+   ENDIF;                                     !
+
+   IF grad_len > 0.00000001    AND            !
+      n_iter_tot = 0                 THEN     !
+      o_step_scale := o_step_input/grad_len;  !
+   ELSE                                       !
+      o_step_scale := o_step;                 !
+   ENDIF;                                     !
+
+
+! Search for minimum point in a given direction
+
+   PART(#5,  OPT_SEARV2 (                     ! One-dim. search
+    n_iter-n_iter_tot, n_iter_tot,            !
+    optdata, o_step_scale,                    !
+    obj_name,s_method,l_method,               !
+    constr_name, v_method,                    !
+    obj_start,obj_end,                        !
+    opt_pid, opt_pno, opt_val, no_var,        !
+    s_direct,                                 !
+    l_lim,  u_lim,  v_flag,                   !
+    gradient, grad_len,                       !
+    o_step, obj_min, n_iter_opt, s_flag,      !
+    stat_sear )                               !
+    :SAVE=0);                                 !
+
+   IF    stat_sear < 0 THEN                   !
+     n_iter_tot := n_iter_tot + n_iter_opt;   ! 
+     s:= INPMT("OPT_CONTV2 Stop from " +      !
+      "OPT_SEARV2 status= "                   !
+       +STR(stat_sear,-1,0)                   !
+                     ," "  , 1);              !
+     GOTO s_break;                            !
+   ELIF  stat_sear = 1 THEN                   !
+     n_iter_tot := n_iter_tot + n_iter_opt;   ! 
+     s:= INPMT("OPT_CONTV2 "+s_endcrit        !
+             +STR(obj_end,-15,10)+" <CR>"     !
+                     ," "  , 1);              !
+     GOTO o_break;                            !
+   ENDIF;                                     !
+
+   n_iter_tot := n_iter_tot + n_iter_opt;     ! Total no of iterations
+
+!1995-06-15   IF n_iter_tot < n_iter AND                 !
+!1995-06-15      obj_min    > obj_end         THEN       !
+   IF n_iter_tot < n_iter     THEN            !
+     obj_start := obj_min;                    !
+     GOTO rgrad;                              !
+   ENDIF;                                     !
+
+
+
+s_break:;                                     ! Label: User break of optimization
+o_break:;                                     ! Label: Optimum obj_end reached   
+l_break:;                                     ! Label: Error in limit values      
+
+! +++
+! Undo optimization ? Call of OPT_BACKV0.
+! ---
+
+  IF optdata = "" OR optdata = " " THEN       ! Not possible 
+    ;
+  ELSE                                        !
+    s:= INPMT(s_iter+STR(n_iter_tot,-1,0)+    !
+              s_undo ,s_yes, 1);              !
+
+    IF s = "j" OR s = "J" OR                  !
+       s = "y" OR s = "Y"      THEN           !
+      PART(#31, OPT_BACKV0 (0, optdata ));    !
+    ENDIF;                                    !
+  ENDIF;                                      !
+
+
+ENDMODULE
+
+

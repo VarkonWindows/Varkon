@@ -1,0 +1,105 @@
+!****************************************************
+! +++
+! Get references to all instances for all given var_modules()
+!
+!  Revision history
+!  ________________
+!
+!  1995-12-10  Gunnar Liden
+!  2006-01-27  var_modules(4)*10 to var_modules(4)*50
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_GTINV0 (
+VAR STRING var_modules(4)*50;   ! Names of modules with optimization
+                                ! variables
+VAR REF    var_references(20);  ! Identities for var_modules instances
+VAR STRING var_name_all(20)*50; ! All names corresp. to var_references
+VAR INT    n_references);       ! Number of references
+
+!sdesce Get references to all instances for all given var_modules()
+!sdescs Hämta referenser för alla moduler definierade i var_modules()
+
+!+++
+! Internal variables
+! __________________
+!
+!---
+
+   STRING var_name*50;          ! Module with optimization variables
+
+   STRING s_string*50;          ! Search string (name)
+   STRING s_case*5;             ! Search case GROUP or PART
+   INT    no_ent;               ! Number of entities
+   REF    ent_id(3000);         ! References (# id's)
+
+   INT    i_ref;                ! Loop index reference
+   INT    i_name;               ! Loop index variable module name
+   INT    i_ent;                ! Loop index entity
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+!  0. Initializations and checks
+! ---
+
+   DEBUG:= 0;
+
+   FOR  i_ref := 1 TO 20 DO
+     var_references(i_ref):= #0; ! Identities for var_modules instances
+     var_name_all(i_ref):= "";   ! All names corresp. to var_references
+   ENDFOR;
+
+   n_references := 0;
+
+
+! +++
+!  1. Get references to all instances of all var_modules()
+! ---
+
+  FOR i_name := 1 TO 4 DO
+    var_name:= var_modules(i_name);
+    IF var_name = "" OR var_name = " " THEN
+      GOTO nxtname;
+    ENDIF;
+
+    s_string:= var_name;                 ! Current part  name
+    s_case  := "PART";                   !
+    PART (#1, getid_gm   (               !
+    s_string, s_case, no_ent, ent_id )   !
+    :SAVE=0);                            !
+    FOR  i_ent:= 1 TO no_ent DO          !
+      n_references:= n_references + 1;   !
+      var_references(n_references):=     ! 
+                 ent_id(i_ent);          !
+      var_name_all(n_references):=       !
+                 var_name;               !
+    ENDFOR;                              !
+
+nxtname:;
+
+  ENDFOR;
+
+!   LST_INI("OPT_GTINV0");
+!   LST_LIN("var_modules(1)" + var_modules(1));
+!   LST_LIN("var_modules(2)" + var_modules(2));   
+!   LST_LIN("var_modules(3)" + var_modules(3));    
+!   LST_LIN("var_modules(4)" + var_modules(4));           
+!   LST_LIN("var_name_all(1)" + var_name_all(1));
+!   LST_LIN("var_name_all(2)" + var_name_all(2));   
+!   LST_LIN("var_name_all(3)" + var_name_all(3));    
+!   LST_LIN("var_name_all(4)" + var_name_all(4));        
+!   LST_EXI();
+
+ENDMODULE
+

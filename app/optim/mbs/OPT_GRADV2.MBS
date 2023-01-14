@@ -1,0 +1,249 @@
+!****************************************************
+! +++
+! Numeric calculation of a gradient 
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-16  Gunnar Liden
+! ---
+!
+!****************************************************
+
+MACRO MODULE OPT_GRADV2 (
+    FLOAT  g_eps_start;            ! Start epsilon for gradient 
+    STRING obj_name*10;            ! Name of objective fctn module      
+    STRING g_method*15;            ! Gradient calculation method        
+                                   ! Eq. standard: .. not yet used ...
+    STRING constr_name*10;         ! Name of constraint module
+    STRING v_method*10;            ! Handling of constraint
+    FLOAT  obj_start;              ! Start value objective function
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+VAR FLOAT  opt_val(20);            ! Parameter value for opt_pno
+    INT    no_var ;                ! Number of optimization variables
+VAR FLOAT  gradient(20);           ! Gradient vector
+VAR FLOAT  grad_len;               ! Gradient vector length
+VAR FLOAT  g_eps;                  ! End   epsilon for gradient 
+    INT    g_flag);                ! Flag for output to screen
+                                   ! Eq. 0: No output
+                                   ! Eq. 1: Output
+
+
+!sdesce Numeric calculation of a gradient 
+!sdescs Numerisk beräkning av gradient
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_grad;               ! Loop index gradient
+! ---
+
+   FLOAT  objfunc;              ! Current  value objective fctn
+
+   REF    var_id;               ! Reference to variable module
+   INT    var_pno;              ! Parameter number
+   FLOAT  var_val;              ! Current variable value
+
+   INT    mode;                 ! Mode for UPDPP_PP
+                                ! Eq. 2: Change the parameter only
+                                ! Eq. 1: Change and update part   
+                                ! Eq. 0: Change and update whole active 
+                                !        module if part is referenced
+
+
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+   INT    stat_cst;             ! Error code OPT_GETCV0:
+                                ! Eq.  0: No constraints
+                                ! Eq.  1: Within all contraints
+                                ! Eq.  2: Outside, continue calculation
+                                ! Eq. -1: Outside, stop calculation      
+   INT    i_cst ;               ! Loop index constraint
+
+   REF    a_id;                 ! Reference for ADD_MBS
+
+   STRING head_s*50;            ! Header printout
+   STRING ermess1*50;           ! Error   message no_var =  0
+   STRING ermess2*50;           ! Error   message no_var > 20
+   STRING ermess3*50;           ! Error   message g_flag  
+   STRING ermess4*50;           ! Warning message zero gradient
+   STRING ermess5*50;           ! Error   message g_method
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   STRING var_id_s*30;          ! Reference to var_name as string
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+!  0. Initializations and checks
+
+   DEBUG:= 0;
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_GRADV2 obj_start " +       !
+          STR(obj_start,-15,8) + " "          !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+
+   FOR i_grad:= 1 TO 20 DO                    ! Initialize output variables
+     gradient(i_grad)  := 0.123456789;        !
+   ENDFOR;                                    !
+   grad_len  := 0.123456789;                  !
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+     head_s  :="AKTUELLA VÄRDEN PÅ VARIABLER"+! Header printout
+               " OCH GRADIENT";               !
+     ermess1 :="Antal variabler 0";           ! Error 
+     ermess2 :="Antal variabler > 20";        ! Error 
+     ermess3 :="Skärm utskriftsflagga ej OK"; ! Error 
+     ermess4 :="Observera att gradienten "+   !
+               "är noll !  ";                 ! Error 
+     ermess5 :="Gradientberäkningsfall ej OK";! Error 
+   ELIF language = "e" THEN                   !
+     head_s  :="CURRENT VARIABLE VALUES "+    ! Header printout
+               " AND GRADIENT";               !
+     ermess1 :="Number of variables is 0 ";   ! Error 
+     ermess2 :="Number of variables > 20";    ! Error 
+     ermess3 :="Screen output flag not OK  "; ! Error 
+     ermess4 :="Note that the gradient is"+   !
+               " zero !";                     ! Error 
+     ermess5 :="Gradient calcul. case not OK";! Error 
+   ENDIF;                                     !
+
+
+   IF  no_var  <  1  THEN                     ! Check no_var
+     EXIT("OPT_GRADV2 "+ermess1);             !
+   ENDIF;                                     !
+
+   IF  no_var  > 20  THEN                     ! Check no_var
+     EXIT("OPT_GRADV2 "+ermess2);             !
+   ENDIF;                                     !
+
+   IF g_method = "standard" OR                ! Check g_method
+      g_method = " "        OR                !
+      g_method = ""                  THEN     !
+     ;                                        !
+   ELSE                                       !
+     EXIT("OPT_GRADV2 "+ermess5);             !
+   ENDIF;                                     !
+
+! +++
+!  1. Calculate gradient                              
+! ---
+
+   g_eps := g_eps_start;
+
+! +++
+!  Change each variable with epsilon g_eps and run active module 
+!  after each change. The gradient is calculated as a difference
+!
+!                 objfunc - obj_start
+!  gradient(i) = --------------------  i= 1,2,3,..., no_var
+!                     g_eps
+! ---
+
+
+   IF ABS(g_eps) < 0.00000000001 THEN         ! Check epsilon
+     EXIT("OPT_GRADV2 g_eps=0");              !
+   ENDIF;                                     !
+
+   mode := 2;                                 ! Change only param. value
+   FOR  i_grad:= 1 TO no_var DO               ! Start loop variables
+      var_id := opt_pid(i_grad);              ! Reference to module
+      var_pno:= opt_pno(i_grad);              ! Parameter number
+      var_val:= opt_val(i_grad) + g_eps;      ! Current variable value
+
+      var_id_s := RSTR(var_id);               ! Temporary fix of UPDPP_MBS bug
+      IF SUBSTR(var_id_s,1,2) = "##" THEN     !
+         var_id_s := SUBSTR(var_id_s,2);      !
+         var_id   := RVAL(var_id_s);          !
+      ENDIF;                                  !
+
+      IF DEBUG = 1 THEN                       !
+        s:=INPMT("OPT_GRADV2 i_grad " +       !
+          STR(i_grad,-1,0) + " var_id " +     !
+              RSTR(var_id)
+             ," ",1);                         !
+      ENDIF;                                  !
+
+      UPDPP_MBS(var_id,var_pno ,              ! Change parameter in part
+               STR(var_val,-15,10) , mode);   ! 
+      RUN_MBS();                              ! Run active module
+
+      PART(#4, OPT_GETOV1 ( obj_name,         ! Retrieve current
+              objfunc ) :SAVE=0);             ! objective fctn
+
+      IF v_method = "penalty" OR              ! Add penalty         (Start)
+         v_method = "PENALTY"    THEN         ! 
+        PART(#27,OPT_GETCV0 ( constr_name,    ! Get penalty values       
+           v_method, no_cst, cst_val, pen_val,!
+           cst_str, stat_cst) :SAVE=0);       ! 
+        FOR i_cst:= 1 TO no_cst DO            !
+          objfunc:= objfunc + pen_val(i_cst); !
+        ENDFOR;                               !
+      ENDIF;                                  ! Add penalty         (End)
+
+      gradient(i_grad):=                      ! Gradient
+            (objfunc-obj_start)/g_eps;        !
+      var_val:= opt_val(i_grad);              ! Current variable value
+      UPDPP_MBS(var_id,var_pno ,              ! Change parameter back   
+               STR(var_val,-15,10) , mode);   ! 
+      IF DEBUG = 1 THEN                       !
+        s:=INPMT("OPT_GRADV2 objfunc  " +     !
+          STR(i_grad  ,-1 ,0) + " " +         !
+          STR(objfunc ,-15,8) + " "           !
+             ," ",1);                         !
+      ENDIF;                                  !
+   ENDFOR;                                    ! End   loop variables
+
+
+   grad_len:= 0.0;                            ! Gradient length
+   FOR  i_grad := 1 TO no_var DO              !
+     grad_len:= grad_len +                    ! 
+     gradient(i_grad)*gradient(i_grad);       !
+   ENDFOR;                                    !
+
+   grad_len:= SQRT(grad_len);                 !
+
+! +++
+! 2. Gradient data to screen                            
+! ---
+
+
+
+  IF g_flag = 0 THEN                          !
+     GOTO noprin;                             !
+  ENDIF;                                      !
+  IF g_flag <> 1 THEN                         !
+     EXIT("OPT_GRADV2 "+ermess3);             !
+  ENDIF;                                      !
+
+   LST_INI( head_s );
+   FOR  i_grad:= 1 TO no_var DO  
+     LST_LIN("Variable "+STR(i_grad,-1,0)+
+              " value "   +STR(opt_val (i_grad),25,10)+
+              " gradient "+STR(gradient(i_grad),25,10));
+   ENDFOR;
+
+   LST_LIN ("Gradient length: "+STR(grad_len,25,10));
+   IF grad_len < 0.000001 THEN
+      LST_LIN ( ermess4 );
+   ENDIF;
+   LST_EXI();
+
+noprin:; ! No printout to screen
+
+
+ENDMODULE
+

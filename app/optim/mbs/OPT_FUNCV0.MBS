@@ -1,0 +1,23 @@
+! ***************** OPT_FUNCV0  ****************************
+!
+! +++
+! This module "registrates" the objective function value.
+!
+! Revision history
+! ________________
+!
+! 1994-12-17 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Registrates the object the objective function value
+
+GLOBAL GEOMETRY MODULE OPT_FUNCV0  (
+FLOAT    obj_val);                 ! Object function value
+
+BEGINMODULE
+
+; ! No calculations
+
+ENDMODULE
+

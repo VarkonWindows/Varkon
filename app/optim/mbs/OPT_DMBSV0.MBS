@@ -1,0 +1,119 @@
+! *************** OPT_DMBSV0***************************
+! +++ 
+! Find directory with the given fname.MBS source code file
+!
+! Output mbsdir name will be Undefined for a failure
+!
+! ---
+! Revision history
+! ________________
+!
+! 1995-06-16  Gunnar Liden
+! 1996-11-25  Use MBS on the active job directory if existing G Liden
+! 2006-01-27  fname 10->50 characters  
+!
+! ****************************************************
+
+!sdesce Retrieve directory name with MBS code for a given module
+
+BASIC  DRAWING MODULE OPT_DMBSV0    (
+    STRING  fname*50;    ! Name of input file (fname.MBS)
+VAR STRING  mbsdir*50);  ! Output MBS directory =Undefined for failure
+
+
+! Interna variabler
+
+  STRING   infile*132;          ! Full name of input  file
+  STRING   path(20)*50;         ! Output directories
+  INT      n_path;              ! Number of directories
+  STRING   alldir(10)*50;       ! All MBS directories with fname.MBS
+  INT      n_dir;               !
+  INT      i_d;                 ! Loop index directory
+  FILE     tmp;                 ! File fname.MBS
+  INT      status;              ! For test if file exists
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+  INT      DEBUG;               ! Debug
+
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 1;
+
+  FOR i_d:= 1 to 10     DO            ! Initialize all directories
+    alldir(i_d):= "Undefined";        !
+  ENDFOR;                             !
+
+! +++
+! 1. Retrieve the user defined search path              
+! ---
+
+! +++
+!    Use MBS file on current job directory if existing  
+! ---
+
+   infile := ACT_JOBDIR()+fname+".MBS";
+   status := TEST_FILE(infile,"X");
+   IF status = 1 THEN
+      n_dir := 1;
+      mbsdir := ACT_JOBDIR();
+      GOTO   actdir;  
+   ENDIF;
+
+  PART(#1,OPT_PATHV0 (path, n_path)); ! Retrieve all directories
+
+! +++
+! 2. Find MBS file
+!
+! Loop for all subdirectories with MBS source code
+!   2.1 Full file name, i.e add fname.MBS
+!   2.1 Try to open file. Next directory for failure
+! ---
+
+  mbsdir:= "Undefined";               ! Initiate mbsdir
+  n_dir := 0;                         ! All directories with fname.MBS
+
+  FOR i_d:= 1 to n_path DO            ! Start loop n_path
+
+   infile:= path(i_d) +fname+ ".MBS"; ! Full file name
+
+   OPEN(tmp,"r",infile );             ! Try to open input (.MBS) file
+   IF (IOSTAT(tmp)<>0 ) THEN          ! 
+      ;                               ! Next directory for failure
+   ELSE                               ! Succesful opening
+     CLOSE(tmp);                      ! Close file
+     n_dir:= n_dir + 1;               ! Add file name to alldir
+     alldir(n_dir):= path(i_d);       !
+     mbsdir       := path(i_d);       ! Last found directory to mbsdir
+   ENDIF;                             !
+  ENDFOR;                             ! End   loop n_path
+
+! +++
+! 4. Exit         
+!
+! Let mbsdir= Undefined if directory not is found
+! Error if file is on multiple directories
+! ---
+
+actdir:; ! Label: MBS is on the active job directory
+
+  IF     n_dir = 0 THEN               ! File not found 
+    IF DEBUG = 1 THEN                 ! mbsdir already Undefined
+      s:=INPMT("Unable to find "+     !
+        fname+ ".MBS"," ",1);         !
+    ENDIF;                            !
+  ELIF  n_dir > 1 THEN                ! Multiple directories 
+    LST_INI("OPT_DMBSV0 Multiple MBS versions of module "+fname+".MBS");
+    LST_LIN(" ");
+    LST_LIN("The given module "+fname+".MBS is on:  ");
+    LST_LIN(" ");
+    FOR i_d:= 1 TO n_dir  DO 
+      LST_LIN("Directory " + alldir(i_d));      
+      LST_LIN(" ");
+    ENDFOR;             
+    LST_LIN(" ");
+    LST_EXI();                         
+    EXIT("Multiple "+ fname+ ".MBS"); !
+  ENDIF;                              !
+
+ENDMODULE

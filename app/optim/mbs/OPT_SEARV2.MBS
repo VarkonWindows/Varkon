@@ -1,0 +1,438 @@
+!****************************************************
+! +++
+! Search for minimum point in a given direction
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-15  Gunnar Liden
+!  1995-12-10  status -1, -2, ... Gunnar Liden
+! ---
+!
+!****************************************************
+
+MACRO MODULE OPT_SEARV2 (
+    INT    n_iter;                 ! Requested no of iterations
+    INT    n_iter_tot;             ! Current total no of iterations
+    STRING optdata*15;             ! Optim. history data file
+    FLOAT  o_step_start;           ! Start step for one-dimensional search
+    STRING obj_name*10;            ! Name of objective fctn module      
+    STRING s_method*15;            ! Search calculation method        
+                                   ! Eq. standard: .. not yet used ...
+    STRING l_method*15;            ! Limit method:                    
+                                   ! Eq. standard: Respect limits      
+                                   ! Eq. error:    Stop optimization   
+                                   ! Eq. warning:  Show variables      
+    STRING constr_name*10;         ! Name of constraint module
+    STRING v_method*10;            ! Handling of constraint
+    FLOAT  obj_start;              ! Start value objective function
+    FLOAT  obj_end;                ! End criterion objective function
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+VAR FLOAT  opt_val(20);            ! Parameter value for opt_pno
+    INT    no_var ;                ! Number of optimization variables
+VAR FLOAT  s_direct(20);           ! Search direction vector
+VAR FLOAT  l_lim(20);              ! Lower limit for variables
+VAR FLOAT  u_lim(20);              ! Upper limit for variables
+VAR INT    v_flag(20);             ! Flags       for variables
+VAR FLOAT  gradient(20);           ! Gradient vector
+    FLOAT  grad_len;               ! Gradient vector length
+VAR FLOAT  o_step;                 ! End step for one-dimensional search
+VAR FLOAT  obj_min;                ! Minimum objective function value
+VAR INT    n_iter_opt;             ! Number of iterations to optimum
+    INT    s_flag;                 ! Flag for output to screen
+                                   ! Eq. 0: No output
+                                   ! Eq. 1: Output
+VAR INT    status);                ! Error/warning code 
+                                   ! Eq.  0: OK
+                                   ! Eq.  1: Optimum reached (obj_end criterion)
+                                   ! Eq. <0: Stop calculation
+                                   ! Eq. -1: Error from OPT_NEXTV0
+                                   ! Eq. -2: Error from OPT_GETCV0
+                                   ! Eq. -3: n_iter_opt > n_iter_max
+                                   ! Eq. -4: n_step     > n_iter_max
+
+!sdesce Search for minimum point in a given direction
+!sdescs Sökning efter minimum punkt i en given riktning
+
+
+! +++
+! Internal variables
+! __________________
+
+   INT    n_iter_max;           ! Maximum number of search iterations
+
+   INT    i_iter;               ! Current iteration number
+   INT    i_v   ;               ! Loop index variable 
+! ---
+
+
+
+   FLOAT  opt_val_out(20);      ! Parameter values   from OPT_NEXTV0
+   INT    stat_next;            ! Error/warning code from OPT_NEXTV0
+                                ! Eq.  0: All parameters within limits
+                                ! Eq.  1: Steps have been changed
+                                ! Eq.  2: Warning point outside limits
+                                ! Eq. -1: Stop calculation, pts outside
+                                ! Eq. -2: User stop of calculation      
+
+   REF    var_id;               ! Reference to var_name
+   INT    var_pno;              ! Parameter number
+
+   STRING var_id_s*30;          ! Reference to var_name as string
+
+   INT    n_step;               ! No o_step adjustments
+   INT    n_step_p;             ! No o_step adjustments plus
+   FLOAT  obj_all(200);         ! All objective fctn values
+   FLOAT  objfunc;              ! Current  value objective fctn
+   FLOAT  objfunc_pre;          ! Previous value objective fctn
+   FLOAT  obj_delta;            ! Delta from previous obj. fctn value 
+   FLOAT  var_val;              ! Current variable value
+   INT    mode;                 ! Mode for UPDPP_PP
+                                ! Eq. 2: Change the parameter only
+                                ! Eq. 1: Change and update part   
+                                ! Eq. 0: Change and update whole active 
+                                !        module if part is referenced
+
+   INT    no_cst ;              ! Total number of constraints
+   FLOAT  cst_val(20);          ! Value of constraint function
+   FLOAT  pen_val(20);          ! Penalty                     
+   STRING cst_str(20)*30;       ! Description of constraint 
+   INT    stat_cst;             ! Error code OPT_GETCV0:
+                                ! Eq.  0: No constraints
+                                ! Eq.  1: Within all contraints
+                                ! Eq.  2: Outside, continue calculation
+                                ! Eq. -1: Outside, stop calculation      
+   INT    i_cst ;               ! Loop index constraint
+   REF    a_id;                 ! Reference for ADD_MBS
+   INT    w_case;               ! Write case:
+                                ! Eq. 1: Parameters 
+                                ! Eq. 2: Parameters + gradient
+                                ! Eq. 3: Parameters + gradient + Hessian
+
+
+   STRING ermess1*50;           ! Error message no_var
+   STRING ermess2*50;           ! Error message 
+   STRING ermess3*50;           ! Error message 
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+!  0. Initializations and checks
+
+   status := 0;                               ! Initialize to OK
+
+   n_iter_max := 50;                          ! Max. iterations
+
+   DEBUG:= 0;
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("OPT_SEARV2 obj_start " +       !
+          STR(obj_start,-15,8) + " "          !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+   language := "e";                           !
+   IF   language = "s" THEN                   !
+     ermess1 :="Antal variabler 0 (modul 1)"; ! Error 
+     ermess2 :="Variabler 2 ej implement.  "; ! Error 
+     ermess3 :="Variabler 3 ej implement.  "; ! Error 
+   ELIF language = "e" THEN                   !
+     ermess1 :="No variables is 0 (module 1)";! Error 
+     ermess2 :="Variables 2 not implement. "; ! Error 
+     ermess3 :="Variables 3 not implement. "; ! Error 
+   ENDIF;                                     !
+
+   IF  no_var  <  1  THEN                     ! Check no_var
+     EXIT("OPT_SEARV2 "+ermess1);             !
+   ENDIF;                                     !
+
+   mode := 2;                                 ! Only change parameter
+
+   IF n_iter < 2 THEN                         ! Ej snyggt ..
+      n_iter := 2;                            !
+   ENDIF;                                     !
+
+! Initializations of local variables
+  FOR i_iter:= 1 TO 200 DO                    !
+    obj_all(i_iter) := -0.123456789;          ! All objective fctn values
+  ENDFOR;                                     !
+
+  objfunc           := -0.123456789;          ! Current  value objective fctn
+  objfunc_pre       := -0.123456789;          ! Previous value objective fctn
+
+  obj_delta         := 50000.0;               ! Delta from previous
+
+! Initializations of output variables
+  obj_min           := -0.123456789;          ! Minimum objective fctn value
+
+! +++
+!  1. Optimize                                        
+! ---
+   o_step   := o_step_start;                  !
+   n_step   := 0;                             !
+   n_step_p := 0;                             !
+
+newstep:;                                     ! New step
+
+   objfunc_pre:= obj_start;                   !
+   n_iter_opt := 0;                           !
+
+   FOR  i_iter:= 1 TO n_iter    DO            ! Start loop iterations
+     n_iter_opt := n_iter_opt + 1;            !
+
+     PART(#15,OPT_NEXTV0 ( n_iter_opt,        ! Next parameter point
+              l_method, opt_val, no_var,      !
+              s_direct, o_step,               !
+              l_lim, u_lim, v_flag,           !
+              opt_val_out,                    !
+              stat_next ) :SAVE=0);           ! 
+
+     IF  stat_next <  0  THEN                 !
+       obj_min := objfunc;                    ! Min value
+       IF DEBUG = 1 THEN                      !
+         s:=INPMT("OPT_SEARV2 stat_next  " +  !
+          STR(stat_next,-1,0) + " obj_min " + !
+          STR(obj_min,-15,10)                 !
+             ," ",1);                         !
+       ENDIF;                                 !
+       status := -1;                          ! Code: Stop calculation
+       GOTO l_break;                          ! End of calc. if stat_next < 0
+     ENDIF;                                   !
+
+     FOR  i_v   := 1 TO no_var   DO           ! Start loop variables
+       var_id := opt_pid(i_v   );             ! Reference to module
+       var_pno:= opt_pno(i_v   );             ! Parameter number
+       var_val:= opt_val_out(i_v);            ! Current parameter value
+      var_id_s := RSTR(var_id);               ! Temporary fix of UPDPP_MBS bug
+      IF SUBSTR(var_id_s,1,2) = "##" THEN     !
+         var_id_s := SUBSTR(var_id_s,2);      !
+         var_id   := RVAL(var_id_s);          !
+      ENDIF;                                  !
+
+      UPDPP_MBS(var_id,var_pno ,              ! Change parameter in part
+               STR(var_val,-15,10) , mode);   ! 
+
+     ENDFOR;                                  ! End   loop variables
+
+     RUN_MBS();                               ! Run active module
+
+     PART(#5, OPT_GETOV1 ( obj_name,          ! Retrieve current
+              objfunc ) :SAVE=0);             ! objective fctn value
+
+     IF v_method = "penalty" OR               ! Add penalty         (Start)
+        v_method = "PENALTY"    THEN          ! 
+       PART(#27,OPT_GETCV0 ( constr_name,     ! Get penalty values       
+          v_method, no_cst, cst_val, pen_val, !
+          cst_str, stat_cst) :SAVE=0);        ! 
+       FOR i_cst:= 1 TO no_cst DO             !
+         objfunc:= objfunc + pen_val(i_cst);  !
+       ENDFOR;                                !
+     ENDIF;                                   ! Add penalty         (End)
+
+     obj_all(i_iter):= objfunc;               ! Objective fctn value to array
+
+                                              ! Minimum point is found:
+
+!1995-06-14     IF objfunc < obj_end     THEN            ! End criterion 
+     IF DEBUG = 8 THEN                        !
+         s:=INPMT("OPT_SEARV2 obj_delta  " +  !
+          STR(obj_delta,-15,8)+" obj_end " +  !
+          STR(obj_end,-15,10)                 !
+             ," ",1);                         !
+     ENDIF;                                  !
+     IF  obj_delta  < obj_end     THEN        ! End criterion 
+       obj_min := objfunc;                    ! Min value
+       FOR  i_v   := 1 TO no_var   DO         ! Start loop variables
+         opt_val(i_v):= opt_val_out(i_v);     ! Output parameter values
+       ENDFOR;                                ! End   loop variables
+       status :=  1;                          ! Code: Stop calculation
+       GOTO optim;                            !
+     ENDIF;                                   !
+
+ ! Current objective function value exceeds previous obj. fctn value
+
+                                             
+     IF objfunc > objfunc_pre THEN            ! Minimum point is passed   
+       IF n_iter_opt < 2 AND n_step < 20 THEN ! 
+!        Restart with input opt_val (not yet changed)
+         n_step := n_step + 1;                ! 
+         o_step:= o_step/(n_step*2.0);        !
+         GOTO newstep;                        !
+       ENDIF;                                 !
+
+       FOR  i_v   := 1 TO no_var   DO         ! Start loop variables
+         var_id := opt_pid(i_v   );           ! Reference to module
+         var_pno:= opt_pno(i_v   );           ! Parameter number
+         var_val:= opt_val(i_v);              ! Current parameter value
+                                              ! (opt_val from previous iteration)
+
+        var_id_s := RSTR(var_id);             ! Temporary fix of UPDPP_MBS bug
+
+        IF SUBSTR(var_id_s,1,2) = "##" THEN   !
+           var_id_s := SUBSTR(var_id_s,2);    !
+           var_id   := RVAL(var_id_s);        !
+        ENDIF;                                !
+
+        UPDPP_MBS(var_id,var_pno ,            ! Change parameter in part
+               STR(var_val,-15,10) , mode);   ! 
+
+       ENDFOR;                                ! End   loop variables
+
+       RUN_MBS();                             ! Run active module
+
+       PART(#6, OPT_GETOV1 ( obj_name,        ! Retrieve current
+              obj_min ) :SAVE=0);             ! objective fctn value
+         PART(#28,OPT_GETCV0 ( constr_name,   ! Get penalty values       
+          v_method, no_cst, cst_val, pen_val, !
+            cst_str, stat_cst) :SAVE=0);      ! 
+       IF v_method = "penalty" OR             ! Add penalty         (Start)
+          v_method = "PENALTY"    THEN        ! 
+         FOR i_cst:= 1 TO no_cst DO           !
+           obj_min:= obj_min + pen_val(i_cst);!
+         ENDFOR;                              !
+     ENDIF;                                   ! Add penalty         (End)
+
+
+       GOTO optim;                            ! Goto end for optimum
+                                              ! (Constraints are checked)
+
+     ELSE                                     ! Continue search
+
+
+       PART(#25,OPT_GETCV0 ( constr_name,     ! Check first constraints
+          v_method, no_cst, cst_val, pen_val, !
+          cst_str, stat_cst) :SAVE=0);        ! 
+       IF  stat_cst  <  0  THEN               !
+         obj_min := objfunc;                  ! Min value
+         IF DEBUG = 1 THEN                    !
+           s:=INPMT("OPT_SEARV2 stat_cst " +  !
+            STR(stat_cst ,-1,0)+ " obj_min "+ !
+            STR(obj_min,-15,10)               !
+               ," ",1);                       !
+         ENDIF;                               !
+         status := -2;                        ! Code: Stop calculation
+         GOTO l_break;                        ! End of calc. if stat_next < 0
+       ENDIF;                                 !
+
+       w_case := 3;                           !
+       PART(#24, OPT_WRITV0 ( optdata,        ! Write history data
+             n_iter_tot+n_iter_opt, w_case,   !
+         no_var, opt_pid, opt_pno, opt_val,   !
+         objfunc  , gradient ,                !
+         l_lim, u_lim, v_flag,                !
+         no_cst,cst_val,pen_val,cst_str ));   !
+
+       FOR  i_v   := 1 TO no_var   DO         ! Start loop variables
+         opt_val(i_v) := opt_val_out(i_v);    ! Previous parameter values
+       ENDFOR;                                ! End   loop variables
+
+       IF DEBUG = 8 THEN                      !
+         s:=INPMT("OPT_SEARV2 n_iter_opt " +  !
+          STR(n_iter_opt,-1,0)+" obj_delta "+ !
+          STR(obj_delta,-15,10)               !
+             ," ",1);                         !
+         s:=INPMT("OPT_SEARV2 objfunc_pre "+  !
+          STR(objfunc_pre,-15,8)+             !
+           " objfunc " +                      !
+          STR(objfunc,-15,10)                 !
+             ," ",1);                         !
+       ENDIF;                                 !
+
+!Q??       IF n_iter_opt > 1 THEN                 !
+         obj_delta:= ABS(objfunc_pre-objfunc);! Delta from previous
+!Q??       ENDIF;                                 !
+       objfunc_pre:= objfunc;                 ! Previous objective fctn value
+     ENDIF;                                   !
+
+
+     IF   n_step_p= 0 AND n_iter_opt > 5 THEN !
+       n_step_p:= n_step_p + 1;               !
+       o_step  := o_step*2.0;
+     ELIF n_step_p= 1 AND n_iter_opt >10 THEN !
+       n_step_p:= n_step_p + 1;               !
+       o_step  := o_step*3.0;
+     ELIF n_step_p= 2 AND n_iter_opt >20 THEN !
+       n_step_p:= n_step_p + 1;               !
+       o_step  := o_step*4.0;
+     ELIF n_step_p= 3 AND n_iter_opt >30 THEN !
+       n_step_p:= n_step_p + 1;               !
+       o_step  := o_step*5.0;
+     ELIF n_step_p= 4 AND n_iter_opt >40 THEN !
+       n_step_p:= n_step_p + 1;               !
+       o_step  := o_step*6.0;
+     ENDIF;                                   !
+
+     IF n_iter_opt > n_iter_max THEN          !
+       s:=INPMT("OPT_SEARV2 Max n_iter_opt "+ !
+          STR(n_iter_opt,-1,0) + " exceeded"  !
+             ," ",1);                         !
+       status := -3;
+       GOTO  i_break;                         !
+     ENDIF;                                   !
+
+     IF n_step     > n_iter_max THEN          !
+       s:=INPMT("OPT_SEARV2 Max n_iter_opt "+ !
+          STR(n_step    ,-1,0) + " exceeded"  !
+             ," ",1);                         !
+       status := -4;
+       GOTO  i_break;                         !
+     ENDIF;                                   !
+
+   ENDFOR;                                    ! End   loop iterations
+
+i_break:;                                     ! Label: Max search iterations
+
+   obj_min := objfunc;                        ! Min after all iterations
+l_break:;
+
+optim:;
+
+
+  IF s_flag = 0 THEN                          !
+     GOTO noprin;                             !
+  ENDIF;                                      !
+
+
+! +++
+! 3. Objective function values to screen                
+! ---
+
+   LST_INI("OBJECTIVE FUNCTION VALUES ");
+   LST_LIN("Iteration "+STR(  0   ,-1,0)+
+       " Objective function value "+STR(obj_start      ,25,10));
+   FOR  i_iter:= 1 TO n_iter_opt DO  
+     LST_LIN("Iteration "+STR(i_iter,-1,0)+
+       " Objective function value "+STR(obj_all(i_iter),25,10));
+   ENDFOR;
+
+   IF n_iter > n_iter_opt THEN
+     LST_LIN("Requested number of iterations "+STR(n_iter,-1,0));
+     LST_LIN("One dimensional search optimum after "+STR(n_iter_opt,-1,0)+
+                         " iterations");
+   ENDIF;
+   FOR  i_v   := 1 TO no_var   DO 
+     LST_LIN("s_direct("+STR(i_v   ,-1,0)+") "+
+       STR(s_direct(i_v   ),25,10));
+   ENDFOR;
+   LST_LIN("Input  step length                   "+STR(o_step_start , 25,10));
+   LST_LIN("Output step length                   "+STR(o_step , 25,10));
+   LST_LIN("One dimensional search minimum value "+STR(obj_min, 25,10));
+   LST_EXI();
+
+noprin:; ! No printout to screen
+
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_SEARV2 Exit  "             !
+         ," ",1);                             !
+   ENDIF;                                     !
+
+
+ENDMODULE
+

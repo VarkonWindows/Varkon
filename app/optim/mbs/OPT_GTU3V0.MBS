@@ -1,0 +1,1014 @@
+!****************************************************
+! +++
+! Input of epsilon values and methods for an optimization 
+! calculation.
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-22  Gunnar Liden
+!  1996-01-29  AIX (opsys=4) added  Gunnar Liden
+!  2009-01-04  flag_advanced added. opsys deleted Gunnar Liden
+! ---
+!
+!****************************************************
+
+
+BASIC GEOMETRY MODULE OPT_GTU3V0 (
+    INT    flag_advanced;        ! Eq. 1: Advanced settings
+VAR STRING c_flag*3;             ! Eq NO: No calculation
+VAR STRING c_method*15;          ! Requested calculation method
+VAR STRING s_method*15;          ! Requested search method
+VAR STRING f_method*15;          ! File method (only option is arrays)
+VAR STRING g_method*15;          ! Gradient calculation method
+VAR STRING l_method*15;          ! Limit handling method
+VAR STRING v_method*15;          ! Constraint handling method
+VAR STRING optdata*15;           ! File name optimization data
+VAR STRING h_method*15;          ! History handling method
+VAR FLOAT  g_eps_start;          ! Start epsilon for gradient calculation
+VAR FLOAT  o_step_input;         ! Input step for line search calculation
+VAR FLOAT  obj_end;              ! Objective function end criterion
+VAR FLOAT  grad_zero);           ! Criterion for zero length gradient 
+
+!sdesce Epsilon values and methods for an optimization calculation
+!sdescs Epsilon värden och metoder för en optimeringsberäkning
+
+!+++
+! Internal variables
+! __________________
+
+   VECTOR main_pos;             ! Main window position
+   FLOAT  main_dx;              ! Main window dimension 
+   FLOAT  main_dy;              !
+   FLOAT  col1_dx;              ! Column 1 delta x     
+   FLOAT  col2_dx;              ! Column 2 delta x     
+   FLOAT  col_w;                ! Column width         
+   FLOAT  h_y;                  ! Height                
+
+!---
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Space loop index
+   FILE   idat;                 ! Input data file
+   STRING f_name*132;           ! Full input filename
+   STRING rad*132;              ! Dummy string
+   INT    n_lin;                ! Number of lines (data) 
+   FLOAT  n_d;                  ! Delta  pixel
+   FLOAT  n_h;                  ! Height pixel
+   INT    main_id;              ! Main window identity   
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+   STRING header*50;            ! String for main window
+   STRING s_edit1*50;           ! String for edit1 
+   STRING s_edit2*50;           ! String for edit2 (temp. calcul. data)
+   STRING s_edit3*50;           ! String for edit3 
+   STRING s_edit4*50;           ! String for edit4 (zero crit. gradient)
+   STRING s_edit5*50;           ! String for edit5 
+   STRING s_edit6*50;           ! String for edit6 (opt. calc. method)
+   STRING s_edit7*50;           ! String for edit7 
+   STRING s_edit8*50;           ! String for edit8 
+   STRING s_edit9*50;           ! String for edit9 
+   STRING s_edit10*50;          ! String for edit10 
+   STRING s_edit11*50;          ! String for edit11 
+   STRING s_edit12*50;          ! String for edit12 
+   STRING s_bid1*50;            ! String for bid1  
+   STRING s_bid2*50;            ! String for bid2  
+
+   STRING ermess1*50;           ! Error message grad_zero
+   STRING ermess2*50;           ! Error message 
+
+   INT    rubr1,rubr2,rubr3;    ! Id's for edit headers
+   INT    rubr4,rubr5,rubr6;    !
+   INT    rubr7,rubr8,rubr9;    !
+   INT    rubr10,rubr11,rubr12; !
+   INT    bid1  ;               ! Id. window OK
+   INT    bid2;                 ! Id. button AVBRYT
+   INT    bid3;                 ! Id. button HJÄLP
+   INT    edit1,edit2,edit3;    ! Id.'s for edit windows
+   INT    edit4,edit5,edit6;    ! 
+
+   INT    edit7;                ! Step one-dim search
+   INT    edit8;                ! Variable module 2
+   INT    edit9;                ! Variable module 3
+   INT    edit10;               ! Name of gradient module
+   INT    edit11;               ! Name of variable limit module
+   INT    edit12;               ! Method for one-dim. search
+
+   INT    bidx;                 ! Identity of event  
+
+
+
+   INT    n_opclo;              ! For file checking
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+!  1. Retrieve input data from previous input
+!  
+!  Data is on file OPT_GTU3V0.MENY on the active job directory
+!  A file will be created if not existent.
+! ---
+
+
+
+!  Don't use non-initialized variables in if statements !!!
+!  (It will result in strange errors ... )
+
+   main_id := -1;
+
+   rubr1 := -1; rubr2 := -1; 
+   rubr3 := -1; rubr4 := -1; 
+   rubr5 := -1; rubr6 := -1; 
+   rubr7 := -1; rubr8 := -1; 
+   rubr9 := -1; rubr10:= -1;
+   rubr11:= -1; rubr12:= -1;
+   bid1  := -1;  bid2 := -1; 
+   bid3  := -1;  bidx := -1;
+   edit1 := -1; edit2 := -1; 
+   edit3 := -1; edit4 := -1; 
+   edit5 := -1; edit6 := -1; 
+   edit7 := -1; edit8 := -1; 
+   edit9 := -1; edit10:= -1;
+   edit11:= -1; edit12:= -1;
+   n_opclo := 0;                              ! For file checking
+
+
+   DEBUG:= 1;
+
+   c_flag:= "YES";                            ! Calculation flag
+
+   f_name:= ACT_JOBDIR()                      ! Full filename
+            +"OPT_GTU3V0.MENUE";             ! 
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("f_name "+f_name,"n",1);        !
+
+     IF s = "n" THEN                          !
+
+        EXIT();                               !
+
+     ENDIF;                                   !
+
+   ENDIF;                                     !
+
+
+
+
+
+
+
+newfile:;                                     ! New file
+
+
+
+   OPEN(idat,"R",f_name);                     ! Open input file R 
+
+   n_opclo := n_opclo + 1;                    ! For file checking
+
+   IF IOSTAT(idat) <> 0 THEN                  !
+
+     n_opclo := n_opclo - 1;                  ! For file checking
+
+     OPEN(idat,"W",f_name);                   ! Open input file W 
+
+     n_opclo := n_opclo + 1;                  ! For file checking
+
+     obj_end       := 0.00000001;             ! Objective function end criterion
+     g_eps_start   := 0.05;                   ! Epsilon for gradient 
+     o_step_input  := 0.07;                   ! Step one-dimensional search
+     f_method      := "arrays";               ! File method        
+     grad_zero     := 0.000000001;            ! Zero gradient criterion 
+     optdata       := "attempt_01";           ! File name optimization data
+     c_method  := "standard";                 ! Requested calculation method
+     g_method  := "standard";                 ! Gradient calculation method
+     l_method  := "standard";                 ! Limit handling method
+     h_method  := "standard";                 ! History handling method
+     v_method  := "standard";                 ! Constraint handling method
+     s_method  := "standard";                 ! Requested search method
+
+
+     w_leng:= LENGTH(f_method);               !
+     FOR i_s:= w_leng TO 17 DO                !
+       f_method:= f_method + " ";             !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(optdata );               !
+     FOR i_s:= w_leng TO 17 DO                !
+       optdata := optdata  + " ";             !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(c_method);               !
+     FOR i_s:= w_leng TO 17 DO                !
+       c_method:= c_method + " ";             !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(g_method  );             !
+     FOR i_s:= w_leng TO 17 DO                !
+       g_method  := g_method   + " ";         !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(l_method  );             !
+     FOR i_s:= w_leng TO 17 DO                !
+       l_method  := l_method   + " ";         !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(h_method  );             !
+     FOR i_s:= w_leng TO 17 DO                !
+       h_method  := h_method   + " ";         !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(v_method  );             !
+     FOR i_s:= w_leng TO 17 DO                !
+       v_method  := v_method   + " ";         !
+     ENDFOR;                                  !
+
+     w_leng:= LENGTH(s_method );              !
+     FOR i_s:= w_leng TO 17 DO                !
+       s_method := s_method  + " ";           !
+     ENDFOR;                                  !
+
+     OUTFLT(idat,obj_end       , 15,10);      !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, g_eps_start  , 15,10);      !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, o_step_input , 15,10);      !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, f_method);                  !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, grad_zero,15,10);           !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, optdata );                  !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, c_method);                  !
+     OUTLIN(idat);                            !
+
+     OUTSTR(idat, g_method  );                !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, l_method  );                !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, h_method  );                !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, v_method  );                !
+     OUTLIN(idat);                            !
+     OUTSTR(idat, s_method );                 !
+     OUTLIN(idat);                            !
+
+     CLOSE(idat);                             !
+
+     n_opclo := n_opclo - 1;                  ! For file checking
+
+     GOTO  newfile;                           ! Goto newfile
+
+   ENDIF;                                     !
+
+
+
+   obj_end := INFLT(idat);                    ! Objective fctn end criterion
+   rad:=   INLIN(idat);                       ! Rest of line
+   g_eps_start   := INFLT(idat);              ! Gradient epsilon
+   rad:=   INLIN(idat);                       ! Rest of line
+   o_step_input  := INFLT(idat);              ! One-dimensionell step
+   rad:=   INLIN(idat);                       ! Rest of line
+   f_method:= INSTR(idat,15);                 ! Objective fctn type
+   rad:=   INLIN(idat);                       ! Rest of line
+   grad_zero:= INFLT(idat);                   ! Zero gradient criterion
+   rad:=   INLIN(idat);                       ! Rest of line
+   optdata := INSTR(idat,15);                 ! File name optimization data
+   rad:=   INLIN(idat);                       ! Rest of line
+   c_method:= INSTR(idat,15);                 ! Requested calculation method
+   rad:=   INLIN(idat);                       ! Rest of line
+   g_method  := INSTR(idat,15);               ! Gradient method
+   rad:=   INLIN(idat);                       ! Rest of line
+   l_method  := INSTR(idat,15);               ! Limit handling method
+   rad:=   INLIN(idat);                       ! Rest of line
+   h_method  := INSTR(idat,15);               ! History handling method
+   rad:=   INLIN(idat);                       ! Rest of line
+   v_method  := INSTR(idat,15);               ! Not yet used
+   rad:=   INLIN(idat);                       ! Rest of line
+   s_method := INSTR(idat,15);                ! Name of search method
+   rad:=   INLIN(idat);                       ! Rest of line
+
+   CLOSE(idat);                               ! Close file
+
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("c_method "+c_method,"n",1);    !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+! +++
+!  2. Create start window with all buttons and edit windows
+!
+!     The distance main_dx defines all other dimensions and positions
+!     of buttons, etc. 
+! ---
+
+   main_pos:= VEC(125,10);                    ! Main window position
+   main_dx := 500;                            ! Main window dimension 
+
+   n_d     := 0.060*main_dx;                  ! Delta  pixel
+   n_h     := 0.056*main_dx;                  ! Height pixel
+   n_lin   := 12;                             ! Number of lines
+   main_dy := 0.060*main_dx + (n_lin+3)*n_d;  !
+   col1_dx := 0.01*main_dx;                   ! Column 1 delta x     
+   col2_dx := 0.51*main_dx;                   ! Column 2 delta x     
+   col_w   := 0.34*main_dx;                   ! Column width         
+   h_y     := 0.04*main_dx;                   ! Height 
+
+! +++
+!  Headers for main window, all edit fields and buttons
+! ---
+
+   language := "e";                             ! Language
+
+   IF   language = "s" THEN                     !
+     header:=  "DEFINIERA EPSILON OCH "+        ! String for main window
+            "METODER FÖR OPIMERINGSBERÄKNING";  !
+     s_edit1:= "Noll kriterium målfunktion";    ! String for edit1 
+     s_edit2:= "Temporär beräkningsdata i";     ! String for edit2 
+     s_edit3:= "Epsilon gradient beräkning";    ! String for edit3 
+     s_edit4:= "Noll kriterium gradient";       ! String for edit4 
+     s_edit5:= "Historikfil för optimeringen";  ! String for edit5 
+     s_edit6:= "Metod för optimeringen";        ! String for edit6 
+     s_edit7:= "Steg en-dimensionell sökning";  ! String for edit7 
+     s_edit8:= "Gradientberäkningsmetod";       ! String for edit8 
+     s_edit9:= "Hantering av variabelgränser";  ! String for edit9 
+     s_edit10:="Hantering av historik";         ! String for edit10
+     s_edit11:="Hantering av villkor";          ! String for edit11
+     s_edit12:="Metod för en-dimens. sökning "; ! String for edit12
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "AVBRYT";                        ! String for bid2  
+     ermess1 :=" ............. ej definierad";  ! Error grad_zero    
+     ermess2 :=" .............ej definierad";   ! Error grad_zero    
+   ELIF language = "e" THEN                     !
+     IF flag_advanced = 1 THEN                  !
+       header:=  "OPTIMIZATION CALCULATION"+    ! String for main window
+               " SETTINGS";                     !
+     ELSE                                       !
+       header:=  "OPTIMIZATION SETTINGS";       ! 
+     ENDIF;                                     !
+     s_edit1:= "Zero criterion obj. function";  ! String for edit1 
+     s_edit2:= "Temporary calcul. data in";     ! String for edit2 
+     s_edit3:= "Epsilon gradient calculat.";    ! String for edit3 
+     s_edit4:= "Zero criterion gradient";       ! String for edit4 
+     s_edit5:= "Optimiz. history file name ";   ! String for edit5 
+     s_edit6:= "Optimization calcul. method ";  ! String for edit6 
+     s_edit7:= "Step one-dimensional search ";  ! String for edit7 
+     s_edit8:= "Gradient calcul. method";       ! String for edit8 
+     s_edit9:= "Handling of limits     ";       ! String for edit9 
+     s_edit10:="Handling of history    ";       ! String for edit10
+     s_edit11:="Handling of constraints";       ! String for edit11
+     s_edit12:="Method one-dimension. search "; ! String for edit12
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "CANCEL";                        ! String for bid2  
+     ermess1 :=" .............e not defined  "; ! Error grad_zero    
+     ermess2 :=" ............. module not def.";! Error grad_zero    
+   ENDIF;                                       !
+
+
+
+! +++
+!  Create main window
+! ---
+
+   IF flag_advanced = 1 THEN 
+     main_id:=CRE_WIN(main_pos,main_dx,        ! Create advanced main window
+              main_dy, header );               !
+   ELSE
+     main_id:=CRE_WIN(main_pos,main_dx/2,      ! Create main window
+              main_dy, header );               !   
+   ENDIF;   
+
+
+
+
+   rubr1:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col1_dx, 0.01*main_dx),            ! Position
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit1,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   IF flag_advanced = 1 THEN			        !
+     rubr2:=CRE_BUTTON(main_id,                 ! Create button (temp. calc. data)
+        VEC(col1_dx,42+n_d*1 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit2,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+   ENDIF;                                       !			 
+
+   rubr3:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*3 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit3,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   IF flag_advanced = 1 THEN			        !			 
+     rubr4:=CRE_BUTTON(main_id,                 ! Create button (zero crit. gradient)
+        VEC(col1_dx,42+n_d*5 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit4,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+   ENDIF;                                       !			 
+
+   rubr5:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*7 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit5,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   IF flag_advanced = 1 THEN			        !			 
+     rubr6:=CRE_BUTTON(main_id,                 ! Create button (opt. calc. method)
+        VEC(col1_dx,42+n_d*9 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit6,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+   ENDIF;                                       !
+   
+   rubr7:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col1_dx,42+n_d*11),                 !
+      1.2*col_w ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit7,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr8:=CRE_BUTTON(main_id,                   ! Create button
+         VEC(col2_dx, 0.01*main_dx),            ! Position
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit8,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr9:=CRE_BUTTON(main_id,                   ! Create button
+        VEC(col2_dx,42+n_d*1 ),                 !
+      1.2*col_w ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit9,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr10:=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,42+n_d*3 ),                 !
+      1.2*col_w ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit10,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr11:=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,42+n_d*5 ),                 !
+         col_w  ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit11,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr12:=CRE_BUTTON(main_id,                  ! Create button
+        VEC(col2_dx,42+n_d*7 ),                 !
+      1.2*col_w ,                               ! Width  in pixels
+           h_y ,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit12,                           ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+! +++
+!  Button for OK and CANCEL
+! ---
+
+   bid1:=CRE_BUTTON(main_id,                  ! Button OK
+     VEC(10,main_dy-0.10*main_dx ),           ! Upper left corner
+       0.09*main_dx,                          ! Width in pixels
+       0.08*main_dx,                          ! Height in pixels
+       0.01*main_dx,                          ! Frame thickness
+     s_bid1,                                  ! Text for status = on
+     s_bid1,                                  ! Text for status = off
+      "",                                     ! Text font    (optional)
+       6);                                    ! Text colour (optional)
+
+   bid2:=CRE_BUTTON(main_id,                  ! Button CANCEL
+     VEC(120,main_dy-0.09*main_dx ),          ! Upper left corner
+       0.10*main_dx,                          ! Width in pixels
+       0.07*main_dx,                          ! Height in pixels
+       0.002*main_dx,                         ! Ramens tjocklek
+     s_bid2,                                  ! Text for status = on
+     s_bid2,                                  ! Text for status = off
+      "",                                     ! Text font    (optional)
+       6);                                    ! Text colour (optional)
+
+! +++
+!  Input of file names, module names and type of optimization fctn
+! ---
+
+   edit1:=CRE_EDIT(main_id,                   ! Create edit subwindow 
+        VEC(col1_dx,n_d),                     ! Position
+     col_w ,n_h,4,                            ! Size, thickness
+        " "+STR(obj_end,15,10) ,              ! Text
+          80);                                ! Max. no of characters
+
+   IF flag_advanced = 1 THEN			      !		  
+     edit2:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            ! 
+         f_method,                            !
+          15);                                !
+   ENDIF;                                     !		  
+
+   edit3:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            ! 
+        STR(g_eps_start,15,10),               !
+          80);                                !
+
+   IF flag_advanced = 1 THEN			      !		  
+     edit4:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            !
+        STR(grad_zero,15,10),                 !
+          80);                                ! 
+   ENDIF;                                     !		  
+
+   edit5:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx ,n_d+n_d*8 ),             !
+     col_w ,n_h,4,                            !
+        optdata ,                             !
+          16);                                !
+
+   IF flag_advanced = 1 THEN			      !		  
+     edit6:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*10),             !
+     col_w ,n_h,4,                            !
+        c_method,                             !
+          16);                                !
+   ENDIF;                                     !		  
+
+   edit7:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx,n_d+n_d*12),              !
+     col_w ,n_h,4,                            ! 
+        STR(o_step_input,15,10),              !
+          80);                                !
+
+   edit8:=CRE_EDIT(main_id,                   ! 
+        VEC(col2_dx,n_d),                     !
+     col_w ,n_h,4,                            !
+        g_method  ,                           !
+          16);                                !
+
+   edit9:=CRE_EDIT(main_id,                   ! 
+        VEC(col2_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            ! 
+         l_method  ,                          !
+          16);                                !
+
+   edit10:=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            ! 
+        h_method  ,                           !
+          16);                                !
+
+   edit11:=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            ! 
+        v_method  ,                           !
+          16);                                !
+
+   edit12:=CRE_EDIT(main_id,                  !
+        VEC(col2_dx,n_d+n_d*8 ),              !
+     col_w ,n_h,4,                            ! 
+        s_method ,                            !
+          16);                                !
+
+! +++
+!  Show result on the screen. 
+! ---
+
+   SHOW_WIN(main_id);                         ! Show start window 
+
+! +++
+!  3. Input of (modifications of) data in the X window
+! ---
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("rubr1  "+STR(rubr1,-1,0)+ " "  !
+             +"rubr2  "+STR(rubr2,-1,0)+ " "  !
+             +"rubr3  "+STR(rubr3,-1,0)+ " "  !
+             +"rubr4  "+STR(rubr4,-1,0)+ " "  !
+             +"rubr5  "+STR(rubr5,-1,0)+ " "  !
+             +"rubr6  "+STR(rubr6,-1,0)+ " "  !
+         ,"",1);                              !
+
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  !
+         ,"",1);                              !
+
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+! +++
+loop:     ! Label: Continue input (change) of data 
+! ---
+
+   bidx:=WAIT_WIN(main_id);                   ! Wait for an event
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  !
+         ,"",1);                              !
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+! +++
+!  Button CANCEL: End (with EXIT) without using inputted data
+! ---
+
+   IF bidx = bid2 THEN                        ! Event in bid2  
+     c_flag:= "NO";                           ! Flag: No calculation 
+     DEL_WIN(main_id);                        ! Erase main window
+     EXIT();                                  ! Exit
+
+! +++
+!  Edit-fields
+! ---
+
+   ELIF bidx = edit1 THEN                     ! Event in edit 1
+     rad    := GET_EDIT(main_id,edit1);       ! Get input data    
+     obj_end:= VAL(rad);                      !
+     DEL_WIN(main_id,edit1);                  ! Erase subwindow  
+     edit1:=CRE_EDIT(main_id,                 ! Create edit subwindow 
+        VEC(col1_dx,n_d),                     ! Position
+     col_w ,n_h,4,                            ! Size, thickness
+        " "+STR(obj_end,15,10) ,              ! Text
+          80);                                ! Max. no of characters
+     GOTO loop;                               ! Back to loop
+
+   ELIF bidx = edit2 THEN                     ! Event in edit 2
+     f_method:= GET_EDIT(main_id,edit2);      ! 
+     f_method      := "arrays";               ! File method
+     DEL_WIN(main_id,edit2);                  ! 
+     edit2:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            ! 
+         f_method,                            !
+          15);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit3 THEN                     ! Event in edit 3
+     rad    := GET_EDIT(main_id,edit3);       ! 
+     g_eps_start :=        VAL(rad) ;         !
+     DEL_WIN(main_id,edit3);                  !
+     edit3:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            ! 
+        STR(g_eps_start,15,10),               !
+          80);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit4 THEN                     !
+     rad      := GET_EDIT(main_id,edit4);     ! 
+     grad_zero:= VAL(rad);                    ! 
+     DEL_WIN(main_id,edit4);                  ! 
+     edit4:=CRE_EDIT(main_id,                 ! 
+        VEC(col1_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            !
+        STR(grad_zero,15,10),                 !
+          80);                                !
+     GOTO loop;                               ! 
+
+   ELIF bidx = edit5 THEN                     ! 
+     optdata := GET_EDIT(main_id,edit5);      ! 
+     DEL_WIN(main_id,edit5);                  ! 
+     edit5:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*8 ),             !
+     col_w ,n_h,4,                            !
+        optdata ,                             !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit6 THEN                     ! 
+     c_method:= GET_EDIT(main_id,edit6);      ! 
+     DEL_WIN(main_id,edit6);                  ! 
+     edit6:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*10),             !
+     col_w ,n_h,4,                            !
+        c_method,                             !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit7 THEN                     ! Event in edit 7
+     rad    := GET_EDIT(main_id,edit7);       ! 
+     o_step_input :=        VAL(rad) ;        !
+     DEL_WIN(main_id,edit7);                  !
+     edit7:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx,n_d+n_d*12),              !
+     col_w ,n_h,4,                            ! 
+        STR(o_step_input,15,10),              !
+          80);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit8 THEN                     ! Event in edit 8
+     g_method  := GET_EDIT(main_id,edit8);    ! 
+     DEL_WIN(main_id,edit8);                  !
+     edit8:=CRE_EDIT(main_id,                 ! 
+        VEC(col2_dx,n_d),                     !
+     col_w ,n_h,4,                            !
+        g_method  ,                           !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit9 THEN                     ! Event in edit 9
+     l_method  := GET_EDIT(main_id,edit9);    ! 
+     DEL_WIN(main_id,edit9);                  !
+     edit9:=CRE_EDIT(main_id,                 ! 
+        VEC(col2_dx,n_d+n_d*2 ),              !
+     col_w ,n_h,4,                            !
+        l_method  ,                           !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit10 THEN                    ! Event in edit 10
+     h_method  := GET_EDIT(main_id,edit10);   ! 
+     DEL_WIN(main_id,edit10);                 !
+     edit10:=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*4 ),              !
+     col_w ,n_h,4,                            !
+        h_method  ,                           !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit11 THEN                    ! Event in edit 11
+     v_method  := GET_EDIT(main_id,edit11);   ! 
+     DEL_WIN(main_id,edit11);                 !
+     edit11:=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*6 ),              !
+     col_w ,n_h,4,                            !
+        v_method  ,                           !
+          16);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit12 THEN                    ! Event in edit 12
+     s_method := GET_EDIT(main_id,edit12);    ! 
+     DEL_WIN(main_id,edit12);                 !
+     edit12:=CRE_EDIT(main_id,                ! 
+        VEC(col2_dx,n_d+n_d*8 ),              !
+     col_w ,n_h,4,                            !
+        s_method ,                            !
+          16);                                !
+     GOTO loop;                               !
+
+! +++
+!  Edit window OK
+! ---
+
+   elif bidx = bid1   THEN                    ! Event in bid1    
+
+     rad      := GET_EDIT(main_id,edit1);     ! Get input data    
+     obj_end  := VAL(rad);                    !
+     rad      := GET_EDIT(main_id,edit3);     ! 
+     g_eps_start    :=      VAL(rad);         !
+     optdata  := GET_EDIT(main_id,edit5);     ! 
+     rad      := GET_EDIT(main_id,edit7);     ! 
+     o_step_input   :=        VAL(rad) ;      !
+     g_method := GET_EDIT(main_id,edit8);     ! 
+     l_method := GET_EDIT(main_id,edit9);     ! 
+     h_method := GET_EDIT(main_id,edit10);    ! 
+     v_method := GET_EDIT(main_id,edit11);    ! 
+     s_method := GET_EDIT(main_id,edit12);    ! 
+	 
+     IF flag_advanced = 1 THEN			      ! 		 
+       f_method := GET_EDIT(main_id,edit2);   ! 
+       f_method := "arrays";                  ! File method	 
+       rad      := GET_EDIT(main_id,edit4);   ! 
+       grad_zero:= VAL(rad);                  ! 
+       c_method := GET_EDIT(main_id,edit6);   !
+     ENDIF;	   
+	 
+     DEL_WIN(main_id);                        ! Erase main window  
+     GOTO slut;                               ! End of data input
+
+   ELSE
+     GOTO loop;                               ! Back to loop
+   ENDIF;
+
+! +++
+slut:;                                        ! Label: Input finished
+! ---
+
+! +++
+!  4. Write data to file .MENUE
+! ---
+
+   OPEN(idat,"W",f_name);                     ! Open MENUE file  W
+   n_opclo := n_opclo + 1;                    ! For file checking
+
+   w_leng:= LENGTH(f_method);                 !
+   FOR i_s:= w_leng TO 17 DO                  !
+     f_method:= f_method + " ";               !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(optdata );                 !
+   FOR i_s:= w_leng TO 17 DO                  !
+     optdata := optdata  + " ";               !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(c_method);                 !
+   FOR i_s:= w_leng TO 17 DO                  !
+     c_method:= c_method + " ";               !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(g_method  );               !
+   FOR i_s:= w_leng TO 17 DO                  !
+     g_method  := g_method   + " ";           !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(l_method  );               !
+   FOR i_s:= w_leng TO 17 DO                  !
+     l_method  := l_method   + " ";           !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(h_method  );               !
+   FOR i_s:= w_leng TO 17 DO                  !
+     h_method  := h_method   + " ";           !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(v_method  );               !
+   FOR i_s:= w_leng TO 17 DO                  !
+     v_method  := v_method   + " ";           !
+   ENDFOR;                                    !
+
+   w_leng:= LENGTH(s_method );                !
+   FOR i_s:= w_leng TO 17 DO                  !
+     s_method := s_method  + " ";             !
+   ENDFOR;                                    !
+
+   OUTFLT(idat,obj_end,15,10);                !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, g_eps_start  , 15,10);        !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, o_step_input , 15,10);        !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, f_method);                    !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, grad_zero,15,10);             !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, optdata );                    !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, c_method);                    !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, g_method  );                  !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, l_method  );                  !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, h_method  );                  !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, v_method  );                  !
+   OUTLIN(idat);                              !
+   OUTSTR(idat, s_method );                   !
+   OUTLIN(idat);                              !
+   CLOSE(idat);                               ! Close MENUE file
+
+   n_opclo := n_opclo - 1;                    ! For file checking
+
+! Remove spaces in names and check names       
+
+   i_s     := FINDS(optdata ," ");            ! File name optimization data
+   w_leng  := LENGTH(optdata );               !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     optdata := SUBSTR(optdata ,1,i_s-1);     !
+   ELSE                                       !
+     optdata := " ";                          !
+   ENDIF;                                     !
+
+   i_s     := FINDS(f_method," ");            ! 
+   w_leng  := LENGTH(f_method );              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     f_method:= SUBSTR(f_method,1,i_s-1);     !
+   ELSE                                       !
+     f_method := " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(g_method  ," ");          ! Gradient method         
+   w_leng  := LENGTH(g_method  );             !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     g_method  := SUBSTR(g_method  ,1,i_s-1); !
+   ELSE                                       !
+     g_method  := " ";                        !
+   ENDIF;                                     !
+
+   i_s     := FINDS(l_method  ," ");          ! Limit method            
+   w_leng  := LENGTH(l_method  );             !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     l_method  := SUBSTR(l_method  ,1,i_s-1); !
+   ELSE                                       !
+     l_method  := " ";                        !
+   ENDIF;                                     !
+
+   i_s     := FINDS(h_method  ," ");          ! History handling method 
+   w_leng  := LENGTH(h_method  );             !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     h_method  := SUBSTR(h_method  ,1,i_s-1); !
+   ELSE                                       !
+     h_method  := " ";                        !
+   ENDIF;                                     !
+
+   i_s     := FINDS(v_method  ," ");          ! Constraint handling method
+   w_leng  := LENGTH(v_method  );             !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     v_method := SUBSTR(v_method  ,1,i_s-1);  !
+   ELSE                                       !
+     v_method := " ";                         !
+   ENDIF;                                     !
+
+   i_s     := FINDS(s_method ," ");           ! Search method
+   w_leng  := LENGTH(s_method );              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     s_method:= SUBSTR(s_method ,1,i_s-1);    !
+   ELSE                                       !
+     s_method:= " ";                          !
+   ENDIF;                                     !
+
+   i_s     := FINDS(c_method ," ");           ! Search method
+   w_leng  := LENGTH(c_method );              !
+   IF   w_leng > 1 AND i_s = 0 THEN           ! No spaces in name
+     ;                                        !
+   ELIF w_leng > 1 AND i_s > 1 THEN           ! End space(s) in name
+     c_method:= SUBSTR(c_method ,1,i_s-1);    !
+   ELSE                                       !
+     c_method:= " ";                          !
+   ENDIF;                                     !
+
+   IF   n_opclo <> 0  THEN                    ! For file checking
+     EXIT("OPT_GTU3V0 Open/Close error");     !
+   ENDIF;                                     !
+
+ENDMODULE
+

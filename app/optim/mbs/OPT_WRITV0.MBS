@@ -1,0 +1,175 @@
+!****************************************************
+! +++
+! Write optimization history data to text file.  
+! 
+! Return if file name not is defined ..
+!
+! Revision history
+! ________________
+!
+! 1995-06-09  Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE OPT_WRITV0   (
+    STRING optdata*15;             ! Optim. history data file
+    INT    i_iteration;            ! Iteration number                  
+    INT    w_case;                 ! Write case:
+                                   ! Eq. 1: Param's 
+                                   ! Eq. 2: Param's+limits
+                                   ! Eq. 3: Param's+limits+constraints
+                                   ! Eq. 4: Param's+limits+constraints+gradient
+                                   ! Eq. 5: Param's+gradient+limits
+                                   ! Eq. 6: Param's+gradient+constraints
+                                   ! Eq. 7: Param's+gradient
+    INT    no_var ;                ! Number of optimization variables
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+VAR FLOAT  opt_val(20);            ! Parameter value for opt_pno
+    FLOAT  objfunc;                ! Objective function value
+VAR FLOAT  gradient(20);           ! Gradient vector
+VAR FLOAT  l_lim(20);              ! Lower limit for variables
+VAR FLOAT  u_lim(20);              ! Upper limit for variables
+VAR INT    v_flag(20);             ! Flags       for variables
+    INT    no_cst ;                ! Total number of constraints
+VAR FLOAT  cst_val(20);            ! Value of constraint function
+VAR FLOAT  pen_val(20);            ! Penalty                     
+VAR STRING cst_str(20)*30 );       ! Description of constraint 
+
+!sdesce Write optimization history data to text file   
+!sdescs Skriv optimeringshistorik data till text fil 
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_v;                  ! Loop index 
+
+   INT    i_c;                  ! Loop index constraint
+! ---
+
+
+   FILE   odat;                 ! Output data file
+   STRING f_name*132;           ! Full input filename
+   STRING o_code*1;             ! Open code
+
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Loop index spaces in string
+   STRING descr*30;             ! Constraint description
+   STRING id_s*25;              ! Reference as string    
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+!  0. Initializations and checks
+
+   DEBUG:= 0;
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_WRITV0 no_var " +          !
+          STR(no_var ,-1,0) + " i_iteration "+!
+          STR(i_iteration ,-1,0)              !
+             ," ",1);                         !
+   ENDIF;                                     !
+
+   IF optdata = "" OR optdata = " " THEN      !
+     EXIT();                                  ! Return if opdata not defined
+   ENDIF;                                     !
+
+   f_name:= ACT_JOBDIR() + optdata +          ! Full filename
+              ".OPTDATA";                     ! 
+
+   IF DEBUG = 1 THEN                          !
+     s:=INPMT("OPT_WRITV0 f_name "+f_name,    !
+          "n",1);                             !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+   IF i_iteration = 0 THEN                    !
+     o_code:= "W";                            !
+     OPEN(odat,o_code,f_name);                ! Open input file
+     IF IOSTAT(odat) <> 0 THEN                !
+       EXIT("OPT_WRITV0 Open failed");        !
+     ENDIF;                                   !
+     CLOSE(odat);                             !
+   ENDIF;                                     !
+
+   o_code:= "A";                              !
+
+   OPEN(odat,o_code,f_name);                  ! Open input file
+   IF IOSTAT(odat) <> 0 THEN                  !
+     EXIT("OPT_WRITV0 Open failed");          !
+   ENDIF;                                     !
+
+! +++
+! Line 1: iteration  no  objfunc  case
+! ---
+
+   OUTSTR(odat, "iteration   ");              ! Iteration
+   OUTINT(odat,i_iteration);                  ! number
+   OUTFLT(odat,objfunc    ,25,10);            ! Objective fctn value
+   OUTINT(odat, w_case    );                  ! Case  
+   OUTINT(odat, no_var    );                  ! Number of variables
+   OUTLIN(odat);                              !
+
+   FOR i_v := 1 TO no_var DO                  ! Start loop variable values 
+     id_s  := RSTR(opt_pid(i_v));             ! Reference to part    
+     w_leng:= LENGTH(id_s);                   !
+     FOR i_s:= w_leng TO 26 DO                !
+       id_s    := id_s     + " ";             !
+     ENDFOR;                                  !
+     OUTSTR(odat,id_s);                       ! 
+     OUTINT(odat,opt_pno(i_v));               ! Parameter number     
+     OUTFLT(odat,opt_val(i_v),25,10);         ! Parameter value       
+     IF w_case = 3  OR w_case = 4  OR         !
+        w_case = 7                   THEN     !
+     OUTFLT(odat,gradient(i_v),25,10);        ! Gradient              
+     ENDIF;                                   !
+     OUTLIN(odat);                            !
+   ENDFOR;                                    !
+
+   IF w_case = 2  OR w_case = 3  OR           !
+      w_case = 4  OR w_case = 5      THEN     !
+     OUTSTR(odat, "limits                 "); ! Limits     
+     OUTLIN(odat);                            !
+     FOR i_v := 1 TO no_var DO                ! Start loop limits
+       id_s  := RSTR(opt_pid(i_v));           ! Reference to part    
+       w_leng:= LENGTH(id_s);                 !
+       FOR i_s:= w_leng TO 26 DO              !
+         id_s    := id_s     + " ";           !
+       ENDFOR;                                !
+       OUTSTR(odat,id_s);                     ! 
+       OUTINT(odat,opt_pno(i_v));             ! Parameter number     
+       OUTFLT(odat,l_lim(i_v),25,10);         ! Lower limit
+       OUTFLT(odat,u_lim(i_v),25,10);         ! Upper limit
+       OUTINT(odat,v_flag(i_v));              ! Limit flag           
+       OUTLIN(odat);                          !
+     ENDFOR;                                  ! End   loop limits
+   ENDIF;                                     !
+
+   IF w_case = 3  OR w_case = 4 OR            !
+      w_case = 6                     THEN     !
+     OUTSTR(odat, "constraints ");            ! Constraints
+     OUTINT(odat,no_cst);                     ! Number of constraints
+     OUTLIN(odat);                            !
+     FOR i_c := 1 TO no_cst DO                ! Start loop limits
+       descr := cst_str(i_c);                 ! Description
+       w_leng:= LENGTH(descr   );             !
+       FOR i_s:= w_leng TO 31 DO              !
+         descr   := descr    + " ";           !
+       ENDFOR;                                !
+       OUTSTR(odat,descr);                    ! 
+       OUTFLT(odat,cst_val(i_c),25,10);       ! Constraint value
+       OUTFLT(odat,pen_val(i_c),25,10);       ! Penalty value
+       OUTLIN(odat);                          !
+     ENDFOR;                                  ! End   loop limits
+   ENDIF;                                     !
+
+  CLOSE(odat);                                !
+
+ENDMODULE

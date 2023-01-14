@@ -1,0 +1,213 @@
+!****************************************************
+! +++
+! List gradient and parameter values
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-10  Gunnar Liden
+! ---
+!
+!****************************************************
+
+
+ BASIC GEOMETRY MODULE OPT_LISGV0 (
+    FLOAT  g_eps;                  ! Epsilon used for gradient calculation
+    STRING obj_name*10;            ! Name of objective fctn module      
+    STRING g_method*15;            ! Gradient calculation method        
+                                   ! Eq. standard: .. not yet used ...
+    FLOAT  obj_start;              ! Start value objective function
+VAR REF    opt_pid(20);            ! References to parts with opt. variables 
+VAR INT    opt_pno(20);            ! Parameter number in opt_pid
+VAR FLOAT  opt_val(20);            ! Parameter value for opt_pno
+    INT    no_var ;                ! Number of optimization variables
+VAR FLOAT  gradient(20);           ! Gradient vector
+    FLOAT  grad_len);              ! Gradient vector length
+
+
+!sdesce List gradient and parameter values
+!sdescs Lista gradient och parametervärden
+
+! +++
+! Internal variables
+! __________________
+
+   INT    i_grad;               ! Loop index gradient
+! ---
+
+
+
+   STRING head_s*50;            ! Header printout
+
+   STRING ermess1*50;           ! Error   message no_var =  0
+
+   STRING ermess2*50;           ! Error   message no_var > 20
+
+
+
+   STRING pno_s*50;             ! Parameter number
+
+   STRING ref_s*50;             ! Referens to part
+
+   STRING val_s*50;             ! Value of parameter
+
+   STRING gra_s*50;             ! Value of gradient 
+
+   STRING grl_s*50;             ! Length of gradient 
+
+   STRING nop_s*50;             ! Number of parameters
+
+   STRING eps_s*50;             ! Epsilon value      
+
+
+
+   STRING language*1;           ! Eq. e: English   
+
+                                ! Eq. s: Swedish   
+
+
+
+   INT    DEBUG;                ! Debug
+
+   STRING s*1;                  ! For INPMT
+
+
+
+BEGINMODULE
+
+
+
+!  0. Initializations and checks
+
+
+
+   DEBUG:= 0;
+
+
+
+   language := "e";                           !
+
+   IF   language = "s" THEN                   !
+
+     head_s  :="AKTUELLA VÄRDEN PÅ VARIABLER"+! Header printout
+
+               " OCH GRADIENT";               !
+
+     ermess1 :="Antal variabler 0";           ! Error 
+
+     ermess2 :="Antal variabler > 20";        ! Error 
+
+     pno_s   :=" Parameter ";                 ! Parameter number
+
+     ref_s   :=" i part ";                    ! Reference to part
+
+     val_s   :=" Parameter värde ";           ! Value of parameter
+
+     gra_s   :=" Gradient värde ";            ! Value of gradient 
+
+     grl_s   :=" Gradient längd: ";           ! Length of gradient 
+
+     nop_s   :=" Antal optimeringsvariabler ";! Number of parameters
+
+     eps_s   :=" Epsilon värde för "+         ! Epsilon value      
+
+               "beräkningen";                 !
+
+   ELIF language = "e" THEN                   !
+
+     head_s  :="OPTIMIZATION VARIABLE VALUES"+! Header printout
+
+               " AND GRADIENT";               !
+
+     ermess1 :="No variables is 0 ";          ! Error 
+
+     ermess2 :="No variables > 20";           ! Error 
+
+     pno_s   :=" Parameter ";                 ! Parameter number
+
+     ref_s   :=" in part ";                   ! Reference to part
+
+     val_s   :=" Parameter value ";           ! Value of parameter
+
+     gra_s   :=" Gradient value";             ! Value of gradient 
+
+     grl_s   :=" Gradient length: ";          ! Length of gradient 
+
+     nop_s   :=" No optimization variables "; ! Number of parameters
+
+     eps_s   :=" Epsilon value for "+         ! Epsilon value      
+
+               "the calculation: ";           !
+
+   ENDIF;                                     !
+
+
+
+   IF  no_var  <  1  THEN                     ! Check no_var
+
+     EXIT("OPT_LISGV0 "+ermess1);             !
+
+   ENDIF;                                     !
+
+   IF  no_var  > 20  THEN                     ! Check no_var
+
+     EXIT("OPT_LISGV0 "+ermess2);             !
+
+   ENDIF;                                     !
+
+
+
+! +++
+! 1. Gradient data to screen                            
+! ---
+
+
+
+   LST_INI( head_s );
+
+   LST_LIN (" ");
+
+   LST_LIN (nop_s + STR(no_var  , 5,0));
+
+   LST_LIN(" ");
+
+   FOR  i_grad:= 1 TO no_var DO  
+
+     pno_s   :=" Parameter ";                 ! Parameter number
+
+     ref_s   :=" in part ";                   ! Reference to part
+
+     val_s   :=" Parameter value ";           ! Value of parameter
+
+     gra_s   :=" Gradient value";             ! Value of gradient 
+
+     LST_LIN(STR(i_grad,4,0)+                 !
+
+          pno_s + STR(opt_pno(i_grad),3,0) +  !
+
+          ref_s + RSTR(opt_pid(i_grad)));     !
+
+     LST_LIN("    "         +                 !
+
+       val_s + STR(opt_val(i_grad),15,8) +    !
+
+       gra_s + STR(gradient(i_grad),15,8));   !
+
+   ENDFOR;
+
+   LST_LIN (" ");
+
+   LST_LIN (grl_s + STR(grad_len,25,10));
+
+   LST_LIN (" ");
+
+   LST_LIN (eps_s + STR(g_eps   ,25,10));
+
+   LST_LIN (" ");
+
+   LST_EXI();
+
+
+
+ENDMODULE
+

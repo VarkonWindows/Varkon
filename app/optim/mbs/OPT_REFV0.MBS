@@ -1,0 +1,27 @@
+! ***************** OPT_REFV0   ****************************
+!
+! +++
+! This module "registrates" the object (geometry) which   
+! shall be optimized.
+!
+! Revision history
+! ________________
+!
+! 1994-12-16 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Registrates the object (geometry) which shall be optimized
+!sdescs Registrerar objektet (geometrin) som skall optimeras
+
+
+
+GLOBAL GEOMETRY MODULE OPT_REFV0   (
+REF    id_obj);  ! Object (geometry) which shall be optimized
+
+BEGINMODULE
+
+; ! No calculations
+
+ENDMODULE
+

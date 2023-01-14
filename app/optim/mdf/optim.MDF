@@ -1,0 +1,211 @@
+!sdescs Huvud 3D meny för optimerings demonstration
+!sdesce Main 3D menue for an opimization demonstration
+
+! 1995-11-25  Gunnar Liden
+
+!Home #include "$SAAB_MDF/x11_saab"     ! Förutsätter att alla kör X windows
+
+!HOme #include "$SAAB_MDF/menyer_saab"  ! Alla SAAB/VARKON menyer
+!Home #include "$SAAB_MDF/modules_saab" ! Alla SAAB/VARKON moduler
+!QQQ#include "$VARKON_MDF/x11" 
+!QQQ#include "$VARKON_MDF/txtstr" 
+!QQQ#include "$VARKON_MDF/menyer"
+#include "$VARKON_MDF\v319.MDF"
+
+
+Main_menu = 200
+
+m289  = "OPTIMIZATION"
+        "examples"     ,m251
+        "limit"        ,p670
+        "constraint"   ,p671
+        "optimize"     ,M659
+        "undo"         ,M661
+        "analyse"      ,m252
+        "terminate"    ,f173
+        "help"         ,f153
+        "varkon"       ,m3;
+
+m200    = "OPTIMIZATION"
+        "examples"     ,m257
+        "limit"        ,p670
+        "constraint"   ,p671
+        "optimize"     ,M659
+        "undo"         ,M661
+        "analyse"      ,m252
+        "terminate"    ,f173
+        "varkon"       ,m2;
+
+
+m251 = "EXAMPLES"
+       "curve"             ,m253
+       "pipe"              ,m255 
+       "bottle"            ,m254
+       "surface"           ,m256;
+
+m252 = "ANALYSE"
+       "plot"              ,r660
+       "iso-objective"     ,M669
+       "variables"         ,F668
+       "objective"         ,F663
+       "gradient"          ,F664
+       "constraint"        ,F662;
+
+
+m253 = "CURVE"
+       "create"            ,p652
+       "analyze"           ,p653;
+
+
+m254 = "BOTTLE"
+       "create"            ,p666
+       "analyze"           ,p667;
+
+m255 = "PIPE"
+       "create"            ,p665
+       "analyze"           ,p653;
+
+m256 = "SURFACE"
+       "create"            ,p672
+       "analyze"           ,F673;
+
+m257 = "EXAMPLES"
+       "cykel"             ,m258;
+
+m258 = "CYKEL"  
+       "ram"               ,p674
+       "hjul"              ,p675
+       "styre"             ,p676
+       "analys"            ,p677;
+
+m293= "BASMODUL-3D"
+      "skapa",m11
+      "ändra",m15
+      "ta bort",m22
+      "variera",m34
+      "analys",m75  
+      "grafik",m66 
+      "nivåer",m65
+      "attribut",m14
+      "lagra/sluta",m5;
+
+
+m292= "BASMODUL-2D"
+      "skapa",m13
+      "ändra",m15
+      "ta bort",m22
+      "variera",m34
+      "analys",m75
+      "grafik",m66
+      "nivåer",m65
+      "attribut",m14
+      "lagra/sluta",m5;
+
+
+
+t500 = "ma_suroffs"
+t501 = "ma_surexdf"
+t502 = "ma_curint"
+t503 = "ma_cursil"
+t504 = "ma_curiso"
+t505 = "ma_onsur" 
+t506 = "ma_invons" 
+t507 = "ma_surcon" 
+t508 = "ma_surpts" 
+t509 = "l_aneval" 
+t510 = "ma_surappr" 
+t511 = "fangamasv0"   
+t512 = "ma_surtrim"   
+t513 = "ma_curtrim"   
+t514 = "ma_tmove"   
+t515 = "ma_trotl"   
+t516 = "ma_tmirr"   
+t517 = "ma_tcopy"   
+t518 = "ex_consurf"
+t519 = "acubsurv1"
+t520 = "ex_nmgbic"
+t521 = "ma_surlin"
+t522 = "fangatmpv0"
+t523 = "fangamapv0"
+t524 = "fangamacv0"
+t525 = "surptsfil"
+t526 = "s_wricatia"
+
+t550 = "cylinder_1"
+t551 = "cylinder_2"
+t552 = "ellipcyl_1"
+t553 = "s_rotsurv0"
+t554 = "sphere_1"      
+t555 = "ellipsoid1"      
+t556 = "paraboloid"      
+t557 = "cone_1"            
+t558 = "affsattel"            
+t559 = "ellipcone1"            
+t560 = "ellparab_1"            
+t561 = "hyperpar_1"            
+t562 = "hyperbol_1"            
+t563 = "hyperbol_2"            
+
+t590 = "saabvyer"
+t591 = "vy_cxyv0"
+t592 = "vy_cxzv0"
+t593 = "vy_cyzv0"
+t594 = "vy_cisov0"
+
+t652 = "opt_crecur"
+t653 = "opt_anacur"
+t656 = "flaska"
+t657 = "flask_ana"
+t659 = "OPT_CONTV2"
+t660 = "OPT_SHOWV1"
+t661 = "OPT_BACKV0"
+t662 = "OPT_HLSCV1"
+t663 = "OPT_HLSOV1"
+t664 = "OPT_HLSGV1"
+t665 = "opt_pipe"
+t666 = "opt_bottle"
+t667 = "opt_anbott"
+t668 = "OPT_HLSPV1"
+t669 = "OPT_OBJAV0"
+t670 = "OPT_LIMV0"
+t671 = "OPT_CSTV0"
+t672 = "opt_surf"
+t673 = "opt_ansurf"
+t674 = "opt_ram"   
+t675 = "opt_hjul"  
+t676 = "opt_styre" 
+t677 = "opt_cykana" 
+
+! t700- ...  Saab funktioner
+t700 = "saabvyer"
+t701 = "cre_csys"
+t702 = "cre_csys_b"
+t703 = "anacurve"
+t704 = "s_alimitv0"           
+t705 = "s_bplanint"           
+t706 = "s_tplanv0"           
+t707 = "s_uvnetv0"           
+t708 = "c_aconicv0"
+t709 = "c_bconicv0"
+t710 = "surintplan"           
+t711 = "c_econicv0"
+t712 = "c_fconicv0"
+t713 = "c_gconicv0"
+t714 = "c_aplanev0"
+t715 = "c_atrimv0" 
+t716 = "s_isoparam"           
+t717 = "c_reduc1v0"
+t718 = "surintplan"           
+t719 = "surimport"           
+t720 = "s_isopatch"           
+t721 = "s_isoupar"           
+t722 = "s_kappav0"           
+t723 = "s_isovpar"           
+t724 = "s_crepsur"           
+t725 = "s_poiprtv1"           
+t727 = "anacsys"           
+t728 = "c_aprojv0"           
+t729 = "c_directv0"           
+t741 = "rdnmgbicv0"
+t780 = "rdsurprov0"
+
