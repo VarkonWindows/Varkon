@@ -1,0 +1,142 @@
+!********************* extcurve *****************************************
+!
+!  Modulen best{mmer max- och min- v{rden f|r en rationell 
+!  kubisk spline-kurva.
+!
+!  1992-11-20  Gunnar Liden
+!
+!************************************************************************
+
+BASIC GEOMETRY MODULE extcurve
+(
+INT        nseg;                    ! Antal segment i kurvan
+VAR FLOAT  segdat(25,4,4);          ! Koefficienter till kurva
+VAR FLOAT  minx;                    ! Minimum X v{rde
+VAR FLOAT  maxx;                    ! Maximum X v{rde
+VAR FLOAT  miny;                    ! Minimum Y v{rde
+VAR FLOAT  maxy;                    ! Maximum Y v{rde
+VAR FLOAT  minz;                    ! Minimum Z v{rde
+VAR FLOAT  maxz);                   ! Maximum Z v{rde
+
+
+! Interna variabler:
+
+INT        DEBUG;                   ! Eq. 0: No      debug
+                                    ! Eq. 1: Full    debug
+                                    ! Eq. 2: Reduced debug
+
+VECTOR     ps;                      ! Start punkt i segment
+VECTOR     pe;                      ! Slut  punkt i segment (kurva)
+FLOAT      denom;                   ! Komponent 4 f|r punktens homogena
+                                    ! koordinat
+
+INT        nopoints;                ! Antal punkter (i  kurva)
+VECTOR     pcurve(200);             ! Punkter       (p} kurva)
+
+INT        iseg;                    ! R{knare f|r segment
+
+
+BEGINMODULE
+
+!                    1. Initieringar och kontroller
+!                    ==============================
+
+
+  DEBUG:= 0;                        ! [ndra vid behov till 0, 1 eller 2
+
+  IF nseg > 25 THEN                 ! Kontrollera antalet segment
+    EXIT("extcurve: nseg > 25");    !
+  ENDIF;                            !
+
+!  IF DEBUG > 0 THEN                 ! \ppna fil f|r DEBUG > 0
+!    lst_ini("extcurve: Antal "+     !
+!     "segment {r "+STR(nseg,-1,0)); !
+!  ENDIF;                            !
+
+!                    2. Ber{kna punkter p} kurvan
+!                    ============================
+
+  FOR iseg:=1 TO nseg DO            ! Start loop alla segment
+
+
+      ps.x := segdat(iseg,1,1);     ! Startpunkt i segment
+      ps.y := segdat(iseg,1,2);     !
+      ps.z := segdat(iseg,1,3);     !
+      denom:= segdat(iseg,1,4);     !
+
+
+      IF ABS(denom) > 0.0001 THEN   ! Fr}n homogena   koordinater
+        ps.x := ps.x/denom;         ! till kartesiska koordinater
+        ps.y := ps.y/denom;         !
+        ps.z := ps.z/denom;         !
+      ELSE                          !
+        EXIT("extcurve: ps n{mnare"+!
+              " {r noll"); !        !
+      ENDIF;                        !
+
+      pcurve(iseg):= ps;            ! Till array f|r MINMAX
+
+     IF DEBUG = 1 THEN              ! Utskrift f|r DEBUG=1
+          LST_LIN("Pnr "            !
+         +STR(iseg,1,1)+"  "+       !
+          STR(ps.x,12,6)+" "+       !
+          STR(ps.y,12,6)+" "+       !
+          STR(ps.z,12,6)+" "+       !
+          STR(denom,12,6));         !
+     ENDIF;                         !
+                                    !
+  ENDFOR;                           ! Slut  loop alla segment
+
+  pe.x := segdat(nseg,1,1)+         ! Slut punkt p} kurva
+          segdat(nseg,2,1)+         !
+          segdat(nseg,3,1)+         !
+          segdat(nseg,4,1);         !
+  pe.y := segdat(nseg,1,2)+         !
+          segdat(nseg,2,2)+         !
+          segdat(nseg,3,2)+         !
+          segdat(nseg,4,2);         !
+  pe.z := segdat(nseg,1,3)+         !
+          segdat(nseg,2,3)+         !
+          segdat(nseg,3,3)+         !
+          segdat(nseg,4,3);         !
+  denom:= segdat(nseg,1,4)+         !
+          segdat(nseg,2,4)+         !
+          segdat(nseg,3,4)+         !
+          segdat(nseg,4,4);         !
+  IF ABS(denom) > 0.0001 THEN       ! Fr}n homogena   koordinater
+    pe.x := pe.x/denom;             ! till kartesiska koordinater
+    pe.y := pe.y/denom;             !
+    pe.z := pe.z/denom;             !
+  ELSE                              !
+    EXIT("extcurve: pe n{mnare"+    !
+          " {r noll"); !            !
+  ENDIF;                            !
+
+!  IF DEBUG = 1 OR DEBUG = 2 THEN    ! Uskrift f|r DEBUG =1 eller =2
+!      LST_LIN("Pnr "+               !
+!      STR(nseg+1,1,1)+"  "+         !
+!      STR(pe.x,12,6)+" "+           !
+!      STR(pe.y,12,6)+" "+           !
+!      STR(pe.z,12,6)+" "+           !
+!      STR(denom,12,6));             !
+!  ENDIF;                            !
+
+!                      3. Extremv{rden f|r kurvan
+!                      ==========================
+
+  pcurve(nseg+1):= pe;              ! Punkt pe till array f|r MINMAX
+  nopoints:= nseg+1;                ! Antal punkter (i  kurva)
+
+  PART(#1,MINMAX(nopoints,pcurve,   ! Ber{kna max- och min- v{rden
+   minx,maxx,miny,maxy,minz,maxz)   ! (Anrop beh|ver ej sparas i GM
+   :SAVE=0);                        !  och geometri skapas ej)
+
+!                           4. Slut
+!                           ========
+
+!  IF DEBUG > 0 THEN                 ! St{ng fil f|r DEBUG > 0
+!    LST_EXI();                      !
+!  ENDIF;                            !
+
+ENDMODULE
+

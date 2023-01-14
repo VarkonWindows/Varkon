@@ -1,0 +1,80 @@
+!***********************************************************************
+! +++
+! Module to decide the host operating system.
+! The string returned by ACT_JOBDIR() is evaluated.
+! For UNIX is uname -n used to determine node name 
+!
+! Revision history
+! _________________
+!
+! 1994-11-04 Originally written  ]ke ]gren 
+! 1995-04-12 uname added         Gunnar Liden
+! 1996-01-19 AIX, IRIX           Gunnar Liden
+! 1996-10-23 darkstar added      Gunnar Liden
+! ---
+!***********************************************************************
+
+BASIC GEOMETRY MODULE getopsys
+(
+VAR INT    opsys   ! Operating system
+                   ! Eq. 1: VMS            (VAX)
+                   ! Eq. 2: SCO  UNIX      (PC)
+                   ! Eq. 3: SGI  UNIX      (X server)
+                   ! Eq. 4: AIX  UNIX      (X server)
+                   ! Eq. 5: IRIX UNIX      (X server)
+);
+
+! Internal variables
+
+  FILE     pipe;        ! For pipe read
+  STRING   nodename*80; ! Node name
+
+BEGINMODULE
+
+!*
+!***Fetch and parse the current job directory
+!*
+
+     IF FINDS(ACT_JOBDIR(),"/") = 0 then
+       opsys := 1;
+     ELSE
+       opsys := 99;
+     ENDIF;
+
+     IF opsys = 99 THEN
+       OPEN(pipe,"rp","uname -n");
+       IF IOSTAT(pipe) <> 0  THEN
+         EXIT("getopsys OPEN IOSTAT "+STR(IOSTAT(pipe),-1,0));
+       ENDIF;
+       nodename:= INSTR(pipe);
+       IF IOSTAT(pipe) <> 0  THEN
+         EXIT("getopsys INSTR IOSTAT "+STR(IOSTAT(pipe),-1,0));
+       ENDIF;
+       CLOSE(pipe);
+       IF IOSTAT(pipe) <> 0  THEN
+         EXIT("getopsys CLOSE IOSTAT "+STR(IOSTAT(pipe),-1,0));
+       ENDIF;
+       IF   SUBSTR(nodename,1,3) = "sco"    THEN
+         opsys := 2;
+       ELIF SUBSTR(nodename,1,6) = "tigris"    THEN
+         opsys := 2;
+       ELIF SUBSTR(nodename,1,8) = "darkstar"  THEN
+         opsys := 2;
+       ELIF SUBSTR(nodename,1,6) = "meteor" THEN
+         opsys := 3;
+       ELIF SUBSTR(nodename,1,6) = "milibu"  OR   
+            SUBSTR(nodename,1,6) = "camber"  OR    
+            SUBSTR(nodename,1,7) = "charlie" OR    
+            SUBSTR(nodename,1,7) = "caribou" OR    
+            SUBSTR(nodename,1,6) = "triumf"      THEN
+         opsys := 4;
+       ELIF SUBSTR(nodename,1,7) = "express" THEN
+         opsys := 5;
+       ELIF SUBSTR(nodename,1,4) = "dash"    THEN
+         opsys := 5;
+       ELSE
+         EXIT("getopsys nodename "+nodename);
+       ENDIF;
+     ENDIF;
+
+ENDMODULE

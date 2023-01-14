@@ -1,0 +1,149 @@
+!********************* MPLIN *********************************************
+!
+! Creates a call in the active module to part PLIN. It is identical
+! to PLIN but makes it possible to input variable name v1, v2, ...
+!
+! Default values will also be given to variables:
+! d1max   :=  2.0
+! d1min   := -2.0
+! graphic :=  1
+!
+! 1992-11-24  Gunnar Liden
+!************************************************************************
+
+MACRO GEOMETRY MODULE MPLIN (
+REF    curve_id                   > "@t8 Select curve to be modified ";
+INT    i_point := 3               > "Point which shall be modified ";
+STRING var_i*9 := "v1"            > "Variable v1, v2, .... , v10 " ;
+VECTOR u1      :=vec(0.0,1.0,1.0) > "Vector which defines the line");
+
+! Internal variables
+
+  FLOAT  d1max;                   ! Upper limit for d1
+  FLOAT  d1min;                   ! Lower limit for d1
+  INT    graphic;                 ! Graphical representation 
+  FLOAT  d1;                      ! Distance along line (variable value)
+  INT    i_var;                   ! Number of variable, which is used 
+
+
+  INT     DEBUG;                  ! Debug flag
+                                  ! Eq. 0: No   debug
+                                  ! Eq. 1: Full debug
+
+  REF    id;                      ! Identitet f|r ADD_MBS
+  STRING p1*80;                   ! Parameter  1 till part
+  STRING p2*80;                   ! Parameter  2 till part
+  STRING p3*80;                   ! Parameter  3 till part
+  STRING p4*80;                   ! Parameter  4 till part
+  STRING p5*80;                   ! Parameter  5 till part
+  STRING p6*80;                   ! Parameter  6 till part
+  STRING p7*80;                   ! Parameter  7 till part
+  STRING p8*80;                   ! Parameter  8 till part
+
+  STRING s*1;                     ! For debug printout with INPMT
+  
+
+BEGINMODULE
+
+!                  1. Initiations and check of input data
+!                  =======================================
+
+
+  DEBUG := 0;                     ! Change to 0 or 1
+ 
+
+  d1max   :=+2.0;                 ! Upper limit for d1
+  d1min   :=-2.0;                 ! Lower limit for d1
+
+  graphic := 1;                   ! Graphical representation
+
+  IF ABS(u1.x)+ABS(u1.y)+         ! Check that u1 is defined
+     ABS(u1.z) < 0.001     THEN   !
+    EXIT("Line vector "+          !
+         "is VEC(0,0,0)");        !
+  ENDIF;                          !
+
+  IF SUBSTR(var_i,1,1)<>"v" THEN  ! Check that the first letter is v
+    EXIT("Variable name must"+    ! in the variable name
+         " begin with v");        !
+  ENDIF;                          !
+
+  IF   SUBSTR(var_i,2)=  "1" THEN ! Check that the number of the variable
+    ;                             ! is 1, 2, 3, ...., 10
+  ELIF SUBSTR(var_i,2)=  "2" THEN ! 
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "3" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "4" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "5" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "6" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "7" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "8" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)=  "9" THEN !
+    ;                             ! 
+  ELIF SUBSTR(var_i,2)= "10" THEN !
+    ;                             ! 
+  ELSE                            !
+    EXIT("Variable number must"+  ! 
+         " be 1, 2, .. or 10");   !
+  ENDIF;                          !
+
+  curve_id :=                     ! One level reference
+  GLOBAL_REF(curve_id,1);         !
+
+
+!            2. Add call of PLIN in the active module
+!            ========================================
+
+
+  p1 := RSTR(curve_id);           ! Input curve reference
+  p1 := SUBSTR(p1,2);             ! Remove # from global name ##
+  p2 := STR(i_point,-1,0);        ! Point which shall be modified
+  p3 := var_i;                    ! Variable name
+  p4 := SUBSTR(var_i,2);          ! Number of variable used
+  p5 := "VEC("+                   ! Vector which defines the line
+        STR(u1.x,-12,6)+","+      !
+        STR(u1.y,-12,6)+","+      !
+        STR(u1.z,-12,6)+")";      !
+  p6 := STR(d1max,-12,6);         ! Maximum value
+  p7 := STR(d1min,-12,6);         ! Minimum value
+  p8 := STR(graphic,-1,0);        ! Graphical representation
+
+  IF  DEBUG=1  THEN               ! Debug printout for DEBUG=1
+   s:=INPMT("MPLIN: curve_id="    !
+   +rstr(curve_id),"",1);         !
+   s:=INPMT("p1 curve_id= "       !
+       +p1,"",1);                 !
+   s:=INPMT("p2 i_point= "        !
+       +p2,"",1);                 !
+   s:=INPMT("p3 var_i= "          !
+       +p3,"",1);                 !
+   s:=INPMT("p4 variabel nr= "    !
+       +p4,"",1);                 !
+   s:=INPMT("p5 u1= "             !
+       +p5,"",1);                 !
+   s:=INPMT("p6 d1max= "          !
+       +p6,"",1);                 !
+   s:=INPMT("p7 d1min= "          !
+       +p7,"",1);                 !
+   s:=INPMT("p8 graphic= "        !
+       +p8,"",1);                 !
+  ENDIF;                          !
+
+
+  id:= ADD_MBS("PART","PLIN",     ! Add MBS statement PART(PLIN, ...
+           p1,p2,p3,p4,           !
+           p5,p6,p7,p8);          !
+
+   s:=INPMT("PLIN default "+      ! Show default values
+      "values d1max= " + p6 +     !
+      " d1min= " + p7 +           !
+      "  <CR>=Continue"           !
+          ,"",1);                 !
+
+ENDMODULE

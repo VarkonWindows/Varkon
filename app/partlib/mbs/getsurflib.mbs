@@ -1,0 +1,58 @@
+!********************  getsurflib **********************
+!
+! +++
+! Get full name to directory surflib for the active project
+!
+! Revision history
+! ________________
+!
+! 1995-12-16  Gunnar Liden
+! 1996-01-16  express and dash added  Gunnar Liden
+!
+! ---
+!*******************************************************
+
+BASIC  GEOMETRY MODULE  getsurflib (
+VAR STRING dirname*132);   ! Directory name (path to) surflib
+
+!sdesce Get full name to directory surflib for the active project
+!sdescs Fullst{ndigt namn f|r surflib katalog till aktivt Varkon projekt
+
+! Internal variables:
+
+  STRING v_proj*132;                ! Current Varkon project
+  STRING host*132;                  ! Host
+ 
+BEGINMODULE
+
+! +++
+!  Algorithm
+!  _________
+! --
+! +++
+!  Directory name with functions ACT_PID and ACT_HOST
+! ---
+  
+  v_proj:= ACT_PID();              ! Active Varkon project
+  host  := ACT_HOST();             ! Active host
+
+  IF    host = "skylane" THEN      !
+    dirname:=                      !
+    "/home/auspex16/varkon/"       !
+     +"prjlib/"+v_proj+"/surflib/";!
+  ELIF  host = "express" OR        !
+        host = "dash"       THEN   !
+    dirname:=                      !
+    "/home/orion/a89493/v3/"       !
+     +"prjlib/"+v_proj+"/surflib/";!
+  ELIF  host = "sco1geo" OR        !
+        host = "sco2geo" OR        !
+        host = "tigris"    THEN    !
+    dirname:=                      !
+    "/u/"+v_proj+"/surflib/";      !
+  ELSE                             !
+    EXIT("getsurflib host "+host+  !
+      " not implemented");         !
+  ENDIF;                           !
+
+ENDMODULE

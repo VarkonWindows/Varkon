@@ -1,0 +1,419 @@
+!********************* extbplanv0 ***********************
+! +++
+! Extend a B-plane a given distance perpendicular to the edges
+!
+! Revision history
+! ________________
+!
+! 1996-01-27  Gunnar Liden
+! 
+! ---
+!*******************************************************
+
+!sdescs F|rl{ng ett B-plan med ett givet vinkelr{tt avst}nd till kanterna
+!sdesce Extend a B-plane a given distance perpendicular to the edges
+
+GLOBAL GEOMETRY MODULE extbplanv0(
+
+REF bpl1_id           >"@t32768 Select B_PLANE"; 
+FLOAT dist    := 30.0 >"Distance";
+INT graphic   :=  1   >"Graphics 0: None  1: Show extended plane 2: Show all");
+
+
+! Internal variables:
+
+  
+  INT        graphic_ana;        ! Graphics 0: None  1: Show normals 2: Show all   
+  INT        b_type;             ! Type of polygon
+                                 ! Eq.  1: Triangle
+                                 ! Eq.  2: Convex 4-point polygon
+                                 ! Eq.  3: Non-convex polygon
+                                 ! Eq.  4: p4, p1, p2 are colinear
+                                 ! Eq.  5: p1, p2, p3 are colinear
+                                 ! Eq.  6: p2, p3, p4 are colinear
+                                 ! Eq.  7: p3, p4, p1 are colinear
+                                 ! Eq. -1: p1 = p2            
+                                 ! Eq. -2: p3 = p4            
+                                 ! Eq. -3: p1 = p4            
+                                 ! Eq. -4: p1, p2, p3, p4 not coplanar
+                                 ! Eq. -5: Self-intersecting polygon
+  INT        p_nr;               ! Non-convex point number (b_type= 3)
+                                 ! or colinear mid pt (b_type= 4-7).
+
+  REF        bpl2_id;            ! Extended B_PLANE
+
+  VECTOR     p11,p12,p13,p14;    ! B-plane 1 corner points 
+  VECTOR     p21,p22,p23,p24;    ! B-plane 2 corner points 
+
+  VECTOR     v1;                 ! v1  = p12 - p11
+  VECTOR     v2;                 ! v2  = p13 - p12
+  VECTOR     v3;                 ! v3  = p14 - p13
+  VECTOR     v4;                 ! v4  = p11 - p14
+
+  FLOAT      sign1;              ! Translation distance sign for pt 1
+  FLOAT      sign2;              ! Translation distance sign for pt 2
+  FLOAT      sign3;              ! Translation distance sign for pt 3
+  FLOAT      sign4;              ! Translation distance sign for pt 4
+
+  FLOAT      dist1;              ! Translation distance for point 1
+  FLOAT      dist2;              ! Translation distance for point 2
+  FLOAT      dist3;              ! Translation distance for point 3
+  FLOAT      dist4;              ! Translation distance for point 4
+
+  VECTOR     vdist1;             ! Translation direction point 1
+  VECTOR     vdist2;             ! Translation direction point 2
+  VECTOR     vdist3;             ! Translation direction point 3
+  VECTOR     vdist4;             ! Translation direction point 4
+
+  FLOAT      sin_alfa1;          ! Sinus   alfa point 1
+  FLOAT      cos_alfa1;          ! Cosinus alfa point 1
+  FLOAT      sin_alfa2;          ! Sinus   alfa point 2
+  FLOAT      cos_alfa2;          ! Cosinus alfa point 2
+  FLOAT      sin_alfa3;          ! Sinus   alfa point 3
+  FLOAT      cos_alfa3;          ! Cosinus alfa point 3
+  FLOAT      sin_alfa4;          ! Sinus   alfa point 4
+  FLOAT      cos_alfa4;          ! Cosinus alfa point 4
+
+  FLOAT      ang_arrow;          ! Angle  for arrow
+  FLOAT      l_arrow;            ! Length for arrow     
+  VECTOR     p0;                 ! Start point for arrow  
+  VECTOR     p1;                 ! End   point for arrow 
+
+
+  INT        b_flag;             ! Blank value for output B-plane
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+   DEBUG := 1;                       ! Change to 0 or 1
+
+   IF    graphic = 0  THEN           ! Blank variable 
+     graphic_ana := 0;               !
+     b_flag:= 1;                     !
+   ELIF  graphic = 1  THEN           !
+     graphic_ana := 0;               !
+     b_flag:= 0;                     !
+   ELIF  graphic = 2  THEN           !
+     graphic_ana := 2;               !
+     b_flag:= 0;                     !
+   ELSE                              !
+     EXIT("extbplanv0: graphic "     !
+          + "not OK");               !
+   ENDIF;                            !
+
+  sin_alfa1 := -0.123456789;         ! Sinus   alfa point 1
+  cos_alfa1 := -0.123456789;         ! Cosinus alfa point 1
+  sin_alfa2 := -0.123456789;         ! Sinus   alfa point 2
+  cos_alfa2 := -0.123456789;         ! Cosinus alfa point 2
+  sin_alfa3 := -0.123456789;         ! Sinus   alfa point 3
+  cos_alfa3 := -0.123456789;         ! Cosinus alfa point 3
+  sin_alfa4 := -0.123456789;         ! Sinus   alfa point 4
+  cos_alfa4 := -0.123456789;         ! Cosinus alfa point 4
+
+  dist1     := -0.12345678;          ! Translation distance for point 1
+  dist2     := -0.12345678;          ! Translation distance for point 2
+  dist3     := -0.12345678;          ! Translation distance for point 3
+  dist4     := -0.12345678;          ! Translation distance for point 4
+  vdist1    := VEC(0,0,0);           ! Translation direction point 1
+  vdist2    := VEC(0,0,0);           ! Translation direction point 2
+  vdist3    := VEC(0,0,0);           ! Translation direction point 3
+  vdist4    := VEC(0,0,0);           ! Translation direction point 4
+
+  sign1     := -0.123456789;         ! Translation distance sign for pt 1
+  sign2     := -0.123456789;         ! Translation distance sign for pt 2
+  sign3     := -0.123456789;         ! Translation distance sign for pt 3
+  sign4     := -0.123456789;         ! Translation distance sign for pt 4
+
+  p21       := VEC(0,0,0);
+  p22       := VEC(0,0,0);
+  p23       := VEC(0,0,0);
+  p24       := VEC(0,0,0); 
+
+  v1        := VEC(0,0,0);
+  v2        := VEC(0,0,0);
+  v3        := VEC(0,0,0);
+  v4        := VEC(0,0,0); 
+
+! +++
+! Classification of the B-plane
+! --- 
+
+  PART(#3, anabplanv0 ( bpl1_id,     !
+     graphic_ana, b_type, p_nr));    !
+
+  IF     b_type = -1  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p1=p2 in input B-plane");       !
+  ELIF   b_type = -2  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p3=p4 in input B-plane");       !
+  ELIF   b_type = -3  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p1=p4 in input B-plane");       !
+  ELIF   b_type = -4  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Input p1, p2, p3, p4 "+         !
+     " not coplanar");               !
+  ELIF   b_type = -5  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Self-intersecting "+            !
+     "input polygon");               !
+  ELIF   b_type <  0  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Input B-plane not OK");         !
+  ENDIF;                             !
+
+! +++
+! Retrieve B_PLANE corner points
+! --- 
+
+
+  GETBPL(bpl1_id,p11,p12,p13,p14);   ! Get B-plane 1 corner points
+
+! +++
+! Goto triangle if it is a three point polygon  (b_type=2,4,5,6,7)
+! --- 
+
+  IF   b_type = 1 OR b_type= 4 OR b_type= 5 OR b_type= 6 OR b_type= 7 THEN 
+    GOTO  triangle;
+  ENDIF;
+
+
+! +++
+! Calculate normalized edge vectors
+! --- 
+
+  v1 := VECN(p12 - p11);
+  v2 := VECN(p13 - p12);
+  v3 := VECN(p14 - p13);
+  v4 := VECN(p11 - p14);
+
+! +++
+! Determine the sign for the translation distance
+! --- 
+
+  IF  b_type = 2 THEN
+    sign1 :=  1.0;
+    sign2 :=  1.0;
+    sign3 :=  1.0;
+    sign4 :=  1.0;
+  ELIF   b_type = 3  THEN 
+    IF    p_nr = 1  THEN
+      sign1 := -1.0;
+      sign2 :=  1.0;
+      sign3 :=  1.0;
+      sign4 :=  1.0;
+    ELIF  p_nr = 2  THEN
+      sign1 :=  1.0;
+      sign2 := -1.0;
+      sign3 :=  1.0;
+      sign4 :=  1.0;
+    ELIF  p_nr = 3  THEN
+      sign1 :=  1.0;
+      sign2 :=  1.0;
+      sign3 := -1.0;
+      sign4 :=  1.0;
+    ELIF  p_nr = 4  THEN
+      sign1 :=  1.0;
+      sign2 :=  1.0;
+      sign3 :=  1.0;
+      sign4 := -1.0;
+    ENDIF;
+  ELSE
+    EXIT("extbplanv0 Switch b_type "+STR(b_type,-1,0));
+  ENDIF;
+
+! +++
+! Translation direction vector for corner points 
+! --- 
+
+  vdist1 := VECN(v1 - v4);     
+  vdist2 := VECN(v2 - v1);    
+  vdist3 := VECN(v3 - v2);   
+  vdist4 := VECN(v4 - v3);  
+
+  IF  graphic >= 2   THEN
+    l_arrow  := 0.5 * VECL(p13-p11);  
+    LIN_FREE(#11,p11,p11 - l_arrow*vdist1:LFONT=1,LDASHL= 0.1*l_arrow,PEN=2);
+    LIN_FREE(#12,p12,p12 - l_arrow*vdist2:LFONT=1,LDASHL= 0.1*l_arrow,PEN=2);
+    LIN_FREE(#13,p13,p13 - l_arrow*vdist3:LFONT=1,LDASHL= 0.1*l_arrow,PEN=2);
+    LIN_FREE(#14,p14,p14 - l_arrow*vdist4:LFONT=1,LDASHL= 0.1*l_arrow,PEN=2);
+  ENDIF;
+
+  
+! +++
+! Translation distance                           
+! --- 
+
+  IF  VECL(vdist1+v1) < 0.001 THEN
+    EXIT("extbplanv0 vdist1+v1 zero vector");
+  ENDIF;
+  cos_alfa1 := (1.0 + vdist1*v1)/VECL(vdist1+v1);
+  sin_alfa1 := SQRT(1.0 - cos_alfa1*cos_alfa1);
+
+  IF  VECL(vdist2+v2) < 0.001 THEN
+    EXIT("extbplanv0 vdist2+v2 zero vector");
+  ENDIF;
+  cos_alfa2 := (1.0 + vdist2*v2)/VECL(vdist2+v2);
+  sin_alfa2 := SQRT(1.0 - cos_alfa2*cos_alfa2);
+
+  IF  VECL(vdist3+v3) < 0.001 THEN
+    EXIT("extbplanv0 vdist3+v3 zero vector");
+  ENDIF;
+  cos_alfa3 := (1.0 + vdist3*v3)/VECL(vdist3+v3);
+  sin_alfa3 := SQRT(1.0 - cos_alfa3*cos_alfa3);
+
+  IF  VECL(vdist4+v4) < 0.001 THEN
+    EXIT("extbplanv0 vdist4+v4 zero vector");
+  ENDIF;
+  cos_alfa4 := (1.0 + vdist4*v4)/VECL(vdist4+v4);
+  sin_alfa4 := SQRT(1.0 - cos_alfa4*cos_alfa4);
+
+
+  IF   sin_alfa1 > 0.0001  THEN
+    dist1 := sign1*dist/sin_alfa1;
+  ELSE
+    EXIT("extbplanv0 B-plane not OK sin_alfa1= 0");
+  ENDIF;
+  IF   sin_alfa2 > 0.0001  THEN
+    dist2 := sign2*dist/sin_alfa2;
+  ELSE
+    EXIT("extbplanv0 B-plane not OK sin_alfa2= 0");
+  ENDIF;
+  IF   sin_alfa3 > 0.0001  THEN
+    dist3 := sign3*dist/sin_alfa3;
+  ELSE
+    EXIT("extbplanv0 B-plane not OK sin_alfa3= 0");
+  ENDIF;
+  IF   sin_alfa4 > 0.0001  THEN
+    dist4 := sign4*dist/sin_alfa4;
+  ELSE
+    EXIT("extbplanv0 B-plane not OK sin_alfa4= 0");
+  ENDIF;
+
+
+! +++
+! Translated (new) corner points for the extended B-plane
+! --- 
+
+  p21   := p11 - dist1*vdist1;
+  p22   := p12 - dist2*vdist2;
+  p23   := p13 - dist3*vdist3;
+  p24   := p14 - dist4*vdist4;
+
+  IF  graphic >= 2   THEN
+    POI_FREE(#21,p21:PEN=1);
+    POI_FREE(#22,p22:PEN=2);
+    POI_FREE(#23,p23:PEN=3);
+    POI_FREE(#24,p24:PEN=4);
+  ENDIF;
+
+  GOTO  cre_plane;
+
+! +++
+! The input B-plane is a triangle
+triangle:;    ! Label:
+! ---
+
+  IF       b_type = 1 THEN      
+    PART( #2, extbpla3v0 ( p11, p12, p14, dist, p21, p22, p24));
+    p23 := p22;
+  ELIF     b_type = 4 THEN      
+    PART( #4, extbpla3v0 ( p12, p13, p14, dist, p22, p23, p24));
+    p21 := p24 + VECL(p11-p14)/VECL(p14-p12)*(p22-p24);
+  ELIF     b_type = 5 THEN      
+    PART( #5, extbpla3v0 ( p13, p14, p11, dist, p23, p24, p21));
+    p22 := p21 + VECL(p12-p11)/VECL(p13-p11)*(p23-p21);
+  ELIF     b_type = 6 THEN      
+    PART( #6, extbpla3v0 ( p14, p11, p12, dist, p24, p21, p22));
+    p23 := p22 + VECL(p13-p12)/VECL(p14-p12)*(p24-p22);
+  ELIF     b_type = 7 THEN      
+    PART( #7, extbpla3v0 ( p11, p12, p13, dist, p21, p22, p23));
+    p24 := p23 + VECL(p14-p13)/VECL(p11-p13)*(p21-p23);
+  ELSE
+    EXIT("extbplanev0 Switch triangle error");
+  ENDIF;
+
+
+! +++
+! Create extended B-plane
+! --- 
+
+cre_plane:;
+
+  B_PLANE(#1,p21,p22,p23,p24:BLANK=b_flag,PEN=2);
+  bpl2_id := GLOBAL_REF(#1);
+
+! +++
+! Printout of data for DEBUG= 1
+! ---
+
+  IF  DEBUG = 1  THEN
+  LST_INI("extbplanev0 Extend value dist= "+STR(dist,-15,8)+" B-plane "+RSTR(bpl1_id));
+  LST_LIN("v1  "+STR( v1.x,8,5)+" "+STR( v1.y,8,5)+" "+STR( v1.z,8,5));
+  LST_LIN("v2  "+STR( v2.x,8,5)+" "+STR( v2.y,8,5)+" "+STR( v2.z,8,5));
+  LST_LIN("v3  "+STR( v3.x,8,5)+" "+STR( v3.y,8,5)+" "+STR( v3.z,8,5));
+  LST_LIN("v4  "+STR( v4.x,8,5)+" "+STR( v4.y,8,5)+" "+STR( v4.z,8,5));
+  LST_LIN("sign1 "+STR(sign1,8,5)+" sign2 "+STR(sign2,8,5)
+        +" sign3 "+STR(sign3,8,5)+" sign4 "+STR(sign4,8,5));
+  LST_LIN("vdist1 "+STR(vdist1.x,9,4)+" "+STR(vdist1.y,9,4)+" "+STR(vdist1.z,9,4));
+  LST_LIN("vdist2 "+STR(vdist2.x,9,4)+" "+STR(vdist2.y,9,4)+" "+STR(vdist2.z,9,4));
+  LST_LIN("vdist3 "+STR(vdist3.x,9,4)+" "+STR(vdist3.y,9,4)+" "+STR(vdist3.z,9,4));
+  LST_LIN("vdist4 "+STR(vdist4.x,9,4)+" "+STR(vdist4.y,9,4)+" "+STR(vdist4.z,9,4));
+  LST_LIN("dist1 "+STR(dist1,8,5)+" dist2 "+STR(dist2,8,5)
+        +" dist3 "+STR(dist3,8,5)+" dist4 "+STR(dist4,8,5));
+  LST_LIN("p11 "+STR(p11.x,9,3)+" "+STR(p11.y,9,3)+" "+STR(p11.z,9,3));
+  LST_LIN("p12 "+STR(p12.x,9,3)+" "+STR(p12.y,9,3)+" "+STR(p12.z,9,3));
+  LST_LIN("p13 "+STR(p13.x,9,3)+" "+STR(p13.y,9,3)+" "+STR(p13.z,9,3));
+  LST_LIN("p14 "+STR(p14.x,9,3)+" "+STR(p14.y,9,3)+" "+STR(p14.z,9,3));
+  LST_LIN("p21 "+STR(p21.x,9,3)+" "+STR(p21.y,9,3)+" "+STR(p21.z,9,3));
+  LST_LIN("p22 "+STR(p22.x,9,3)+" "+STR(p22.y,9,3)+" "+STR(p22.z,9,3));
+  LST_LIN("p23 "+STR(p23.x,9,3)+" "+STR(p23.y,9,3)+" "+STR(p23.z,9,3));
+  LST_LIN("p24 "+STR(p24.x,9,3)+" "+STR(p24.y,9,3)+" "+STR(p24.z,9,3));
+  LST_EXI();
+  ENDIF;
+
+  PART(#8, anabplanv0 ( bpl2_id,     !
+     graphic_ana, b_type, p_nr));    !
+
+  IF     b_type = -1  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p1=p2 in output B-plane");      !
+  ELIF   b_type = -2  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p3=p4 in output B-plane");      !
+  ELIF   b_type = -3  THEN           !
+    EXIT("extbplanv0 "+              !
+    "p1=p4 in output B-plane");      !
+  ELIF   b_type = -4  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Output p1, p2, p3, p4 "+        !
+     " not coplanar");               !
+  ELIF   b_type = -5  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Self-intersecting "+            !
+    "output polygon");               !
+  ELIF   b_type <  0  THEN           !
+    EXIT("extbplanv0 "+              !
+    "Output B-plane not OK");        !
+  ENDIF;                             !
+
+
+
+
+
+ENDMODULE

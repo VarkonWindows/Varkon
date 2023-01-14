@@ -1,0 +1,626 @@
+!********************* linbplanv0 ***********************
+! +++
+! Create line as intersect between two B_PLANE's         
+!
+!  !!!! Denna ska inte anv{ndas !!!! 
+! Anv{nd ist{llet CUR_INT sk{rning B-plan/B-plan ist{llet !!!
+! Denna rutin g|r kanske inte helt r{tt   !!!!
+!
+! Revision history
+! ________________
+!
+! 1996-01-06  Gunnar Liden
+! 
+! ---
+!*******************************************************
+
+!sdescs Skapa linje som sk{rning mellan tv} B_PLANE
+!sdesce Create line as intersect between two B_PLANE's         
+
+GLOBAL GEOMETRY MODULE linbplanv0(
+
+    REF bpl1_id;    ! B_PLANE 1
+    REF bpl2_id;    ! B_PLANE 2
+    INT graphic;    ! Graphics 0: None  1: Show line 2: Show all
+VAR VECTOR ps_out;  ! Start point output line
+VAR VECTOR pe_out;  ! End   point output line
+VAR INT status);    ! Error code 0: OK -1: No intersect
+
+! Internal variables:
+
+  
+  VECTOR     p11,p12,p13,p14;    ! B-plane 1 corner points 
+  VECTOR     p21,p22,p23,p24;    ! B-plane 2 corner points 
+  VECTOR     v_b1;               ! B-plane 1 normal
+  VECTOR     v_b2;               ! B-plane 2 normal
+  FLOAT      d_b1;               ! D value B-plane 1
+  FLOAT      d_b2;               ! D value B-plane 2
+  VECTOR     v_p11_p12;          ! Plane p11-p12/v_b1 normal
+  VECTOR     v_p12_p13;          ! Plane p12-p13/v_b1 normal
+  VECTOR     v_p13_p14;          ! Plane p13-p14/v_b1 normal
+  VECTOR     v_p14_p11;          ! Plane p14-p11/v_b1 normal
+  VECTOR     v_p21_p22;          ! Plane p21-p22/v_b2 normal
+  VECTOR     v_p22_p23;          ! Plane p22-p23/v_b2 normal
+  VECTOR     v_p23_p24;          ! Plane p23-p24/v_b2 normal
+  VECTOR     v_p24_p21;          ! Plane p24-p21/v_b2 normal
+  FLOAT      d_p11_p12;          ! Plane p11-p12/v_b1 D value
+  FLOAT      d_p12_p13;          ! Plane p12-p13/v_b1 D value
+  FLOAT      d_p13_p14;          ! Plane p13-p14/v_b1 D value
+  FLOAT      d_p14_p11;          ! Plane p14-p11/v_b1 D value
+  FLOAT      d_p21_p22;          ! Plane p21-p22/v_b2 D value
+  FLOAT      d_p22_p23;          ! Plane p22-p23/v_b2 D value
+  FLOAT      d_p23_p24;          ! Plane p23-p24/v_b2 D value
+  FLOAT      d_p24_p21;          ! Plane p24-p21/v_b2 D value
+  VECTOR     p11_p12;            ! Intersect pt p11-p12/v_b1 
+  VECTOR     p12_p13;            ! Intersect pt p12-p13/v_b1 
+  VECTOR     p13_p14;            ! Intersect pt p13-p14/v_b1 
+  VECTOR     p14_p11;            ! Intersect pt p14-p11/v_b1 
+  VECTOR     p21_p22;            ! Intersect pt p21-p22/v_b2 
+  VECTOR     p22_p23;            ! Intersect pt p22-p23/v_b2 
+  VECTOR     p23_p24;            ! Intersect pt p23-p24/v_b2 
+  VECTOR     p24_p21;            ! Intersect pt p24-p21/v_b2 
+
+  FLOAT      mid_che;            ! For the check if intersect pt 
+                                 ! is between start and end line pt
+                                 
+  FLOAT      mids_che;           ! For the check if intersect pt 
+                                 ! is between start and end line pt
+  FLOAT      mide_che;           ! For the check if intersect pt 
+                                 ! is between start and end line pt
+
+  FLOAT      dot;                ! Scalar product 
+
+  INT        n_plane1;           ! Number of intersect points plane 1
+  INT        n_plane2;           ! Number of intersect points plane 2
+  VECTOR     p_start1;           ! Start point line in plane 1
+  VECTOR     p_end1;             ! End   point line in plane 1
+  VECTOR     p_start2;           ! Start point line in plane 2
+  VECTOR     p_end2;             ! End   point line in plane 2
+
+  INT        stat_int;           ! Error code poi3planv0
+
+  VECTOR     v_l;                ! Line direction
+
+  VECTOR     p_temp;             ! Temporary point for shift
+
+  INT        b_flag;             ! Blank value for output line 
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+   DEBUG := 0;                       ! Change to 0 or 1
+
+   status := 0;                      ! Initialize error code to OK
+
+   IF    graphic = 0  THEN           ! Blank variable 
+     b_flag:= 1;                     !
+   ELIF  graphic = 1  THEN           !
+     b_flag:= 0;                     !
+   ELIF  graphic = 2  THEN           !
+     b_flag:= 0;                     !
+   ELSE                              !
+     EXIT("linbplanv0: graphic "     !
+          + "not OK");               !
+   ENDIF;                            !
+
+  n_plane1 := 0;                     ! Number of intersect points plane 1
+  n_plane2 := 0;                     ! Number of intersect points plane 2
+
+  p_start1:= VEC(0,0,0);             ! 
+  p_end1  := VEC(0,0,0);             ! 
+  p_start2:= VEC(0,0,0);             ! 
+  p_end2  := VEC(0,0,0);             ! 
+  ps_out  := VEC(0,0,0);             ! 
+  pe_out  := VEC(0,0,0);             !
+
+! +++
+! Retrieve B_PLANE data        
+! --- 
+
+
+  GETBPL(bpl1_id,p11,p12,p13,p14);   ! Get B-plane 1 corner points
+  v_b1:=VECN(VPROD(p12-p11,p14-p11));! B_PLANE 1 normalized normal
+  d_b1:= p11*v_b1;                   ! D value B-plane 1
+  GETBPL(bpl2_id,p21,p22,p23,p24);   ! Get B-plane 2 corner points
+  v_b2:=VECN(VPROD(p22-p21,p24-p21));! B_PLANE 2 normalized normal
+  d_b2:= p21*v_b2;                   ! D value B-plane 1
+
+! +++
+! Check if planes are parallell (no intersection)
+! --- 
+
+  dot := v_b1*v_b2;                  ! Scalar product
+
+  IF  DEBUG = 2 THEN                 ! Debug
+    s:= INPMT(                       !
+    " dot "+STR(dot,5,1),            !
+    " ",1);                          !
+  ENDIF;                             !
+
+  IF ABS(dot-1.0) < 0.00001 THEN     ! No intersect
+!   LIN_FREE(#2,p11,p24:PEN=2);      !
+    status := -1;                    ! 
+    EXIT();                          !
+  ENDIF;
+
+! +++
+! Calculate direction for intersect line
+! --- 
+
+  v_l :=VECN(VPROD(v_b1,v_b2));      ! Line (normalized) direction
+
+  IF graphic = 2 THEN                ! Show direction
+!  LIN_FREE(#3,p11,p11+50.0*v_l      !
+!          :PEN=3);                  !
+!  LIN_FREE(#4,p21,p21+50.0*v_l      !
+!          :PEN=3);                  !
+!  POI_FREE(#11,p11:PEN=3);          !
+!  POI_FREE(#12,p12:PEN=3);          !
+!  POI_FREE(#13,p13:PEN=3);          !
+!  POI_FREE(#14,p14:PEN=3);          !
+!  POI_FREE(#21,p21:PEN=4);          !
+!  POI_FREE(#22,p22:PEN=4);          !
+!  POI_FREE(#23,p23:PEN=4);          !
+!  POI_FREE(#24,p24:PEN=4);          !
+   LIN_FREE(#71,p11,p12:PEN=3);      !
+   LIN_FREE(#72,p13,p14:PEN=3);      !
+   LIN_FREE(#73,p14,p11:PEN=3);      !
+   LIN_FREE(#81,p21,p22:PEN=4);      !
+   LIN_FREE(#82,p23,p24:PEN=4);      !
+   LIN_FREE(#83,p24,p21:PEN=4);      !
+  ENDIF;                             !
+
+! +++
+! Calculate intersects between plane 1 boundaries and plane 2
+! All calculated as three planes intersect
+! Intersect p11_p12: Plane defined by boundary p11-p12 and v_b1, plane 1 and plane 2
+! --- 
+
+  v_p11_p12:= VPROD(p11-p12,v_b1);   ! Plane p11-p12/v_b1 normal
+  v_p11_p12:= VECN(v_p11_p12);       ! Normalized
+  d_p11_p12:= p11*v_p11_p12;         ! Plane p11-p12/v_b1 D value 
+
+  PART (#31, poi3planv0 (            ! Intersect point
+    v_p11_p12, d_p11_p12,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p11_p12, stat_int):SAVE=0);      !
+ 
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p11_p12-p11)*     !
+              VECN(p12-p11_p12);     !
+  ELSE                               !
+   mid_che := -2.0;                  !
+  ENDIF;                             !
+
+  IF mid_che >= 0 THEN               !
+    n_plane1 := n_plane1 + 1;        ! 
+    p_start1 := p11_p12;             ! Start point line in plane 1
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#51, p11_p12:PEN=4);    !
+!   LIN_FREE(#56, p11_p12,p11:PEN=3);!
+!   LIN_FREE(#57, p12,p11_p12:PEN=4);!
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane1 "+STR(n_plane1,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Intersect p12_p13: Plane defined by boundary p12-p13 and v_b1, plane 1 and plane 2
+! --- 
+
+  IF VECL(p12-p13)< 0.01 THEN        !
+    p12_p13 := VEC(0,0,0);           !
+    GOTO no_p12_p13;                 !
+  ENDIF;                             !
+  v_p12_p13:= VPROD(p12-p13,v_b1);   ! Plane p12-p13/v_b1 normal
+  v_p12_p13:= VECN(v_p12_p13);       ! Normalized
+  d_p12_p13:= p12*v_p12_p13;         ! Plane p12-p13/v_b1 D value 
+
+  PART (#32, poi3planv0 (            ! Intersect point
+    v_p12_p13, d_p12_p13,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p12_p13, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p12_p13-p12)*     !
+              VECN(p13-p12_p13);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane1=0 THEN !
+    n_plane1 := n_plane1 + 1;        ! 
+    p_start1 := p12_p13;             ! Start point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=1 THEN!
+    n_plane1 := n_plane1 + 1;        ! 
+    p_end1   := p12_p13;             ! End   point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=2 THEN!
+    EXIT("linbplanv0: n_plane1 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#52, p12_p13:PEN=4);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane1 "+STR(n_plane1,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+no_p12_p13:;                         ! No line p12-p13
+
+! +++
+! Intersect p13_p14: Plane defined by boundary p13-p14 and v_b1, plane 1 and plane 2
+! --- 
+
+  v_p13_p14:= VPROD(p13-p14,v_b1);   ! Plane p13-p14/v_b1 normal
+  v_p13_p14:= VECN(v_p13_p14);       ! Normalized
+  d_p13_p14:= p13*v_p13_p14;         ! Plane p13-p14/v_b1 D value 
+
+  PART (#33, poi3planv0 (            ! Intersect point
+    v_p13_p14, d_p13_p14,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p13_p14, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p13_p14-p13)*     !
+              VECN(p14-p13_p14);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane1=0 THEN !
+    n_plane1 := n_plane1 + 1;        ! 
+    p_start1 := p13_p14;             ! Start point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=1 THEN!
+    n_plane1 := n_plane1 + 1;        ! 
+    p_end1   := p13_p14;             ! End   point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=2 THEN!
+    EXIT("linbplanv0: n_plane1 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#53, p13_p14:PEN=4);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane1 "+STR(n_plane1,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Intersect p14_p11: Plane defined by boundary p14-p11 and v_b1, plane 1 and plane 2
+! --- 
+
+  v_p14_p11:= VPROD(p14-p11,v_b1);   ! Plane p14-p11/v_b1 normal
+  v_p14_p11:= VECN(v_p14_p11);       ! Normalized
+  d_p14_p11:= p14*v_p14_p11;         ! Plane p14-p11/v_b1 D value 
+
+  PART (#34, poi3planv0 (            ! Intersect point
+    v_p14_p11, d_p14_p11,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p14_p11, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p14_p11-p14)*     !
+              VECN(p11-p14_p11);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane1=0 THEN !
+    n_plane1 := n_plane1 + 1;        ! 
+    p_start1 := p14_p11;             ! Start point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=1 THEN!
+    n_plane1 := n_plane1 + 1;        ! 
+    p_end1   := p14_p11;             ! End   point line in plane 1
+  ELIF mid_che>=0 AND n_plane1=2 THEN!
+    EXIT("linbplanv0: n_plane1 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#54, p14_p11:PEN=4);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane1 "+STR(n_plane1,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Calculate intersects between plane 2 boundaries and plane 1
+! Intersect p21_p22: Plane defined by boundary p21-p22 and v_b1, plane 1 and plane 2
+! --- 
+
+  v_p21_p22:= VPROD(p21-p22,v_b2);   ! Plane p21-p22/v_b2 normal
+  v_p21_p22:= VECN(v_p21_p22);       ! Normalized
+  d_p21_p22:= p21*v_p21_p22;         ! Plane p21-p22/v_b2 D value 
+
+  PART (#41, poi3planv0 (            ! Intersect point
+    v_p21_p22, d_p21_p22,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p21_p22, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p21_p22-p21)*     !
+              VECN(p22-p21_p22);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF mid_che>= 0 THEN                !
+    n_plane2 := n_plane2 + 1;        ! 
+    p_start2 := p21_p22;             ! Start point line in plane 2
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#61, p21_p22:PEN=3);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane2 "+STR(n_plane2,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Intersect p22_p23: Plane defined by boundary p22-p23 and v_b2, plane 1 and plane 2
+! --- 
+
+  IF VECL(p22-p23)< 0.01 THEN        !
+    p22_p23 := VEC(0,0,0);           !
+    GOTO no_p22_p23;                 !
+  ENDIF;                             !
+  v_p22_p23:= VPROD(p22-p23,v_b2);   ! Plane p22-p23/v_b2 normal
+  v_p22_p23:= VECN(v_p22_p23);       ! Normalized
+  d_p22_p23:= p22*v_p22_p23;         ! Plane p22-p23/v_b2 D value 
+
+  PART (#42, poi3planv0 (            ! Intersect point
+    v_p22_p23, d_p22_p23,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p22_p23, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p22_p23-p22)*     !
+              VECN(p23-p22_p23);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane2=0 THEN !
+    n_plane2 := n_plane2 + 1;        ! 
+    p_start2 := p22_p23;             ! Start point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=1 THEN!
+    n_plane2 := n_plane2 + 1;        ! 
+    p_end2   := p22_p23;             ! End   point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=2 THEN!
+    EXIT("linbplanv0: n_plane2 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#62, p22_p23:PEN=3);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane2 "+STR(n_plane2,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+no_p22_p23:;                         ! No line p22-p23
+
+! +++
+! Intersect p23_p24: Plane defined by boundary p23-p24 and v_b2, plane 1 and plane 2
+! --- 
+
+  v_p23_p24:= VPROD(p23-p24,v_b2);   ! Plane p23-p24/v_b2 normal
+  v_p23_p24:= VECN(v_p23_p24);       ! Normalized
+  d_p23_p24:= p23*v_p23_p24;         ! Plane p23-p24/v_b2 D value 
+
+  PART (#43, poi3planv0 (            ! Intersect point
+    v_p23_p24, d_p23_p24,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p23_p24, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p23_p24-p23)*     !
+              VECN(p24-p23_p24);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane2=0 THEN !
+    n_plane2 := n_plane2 + 1;        ! 
+    p_start2 := p23_p24;             ! Start point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=1 THEN!
+    n_plane2 := n_plane2 + 1;        ! 
+    p_end2   := p23_p24;             ! End   point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=2 THEN!
+    EXIT("linbplanv0: n_plane2 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#63, p23_p24:PEN=3);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane2 "+STR(n_plane2,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Intersect p24_p21: Plane defined by boundary p24-p21 and v_b2, plane 1 and plane 2
+! --- 
+
+  v_p24_p21:= VPROD(p24-p21,v_b2);   ! Plane p24-p21/v_b2 normal
+  v_p24_p21:= VECN(v_p24_p21);       ! Normalized
+  d_p24_p21:= p24*v_p24_p21;         ! Plane p24-p21/v_b2 D value 
+
+  PART (#44, poi3planv0 (            ! Intersect point
+    v_p24_p21, d_p24_p21,            !
+    v_b1, d_b1, v_b2, d_b2,          !
+    p24_p21, stat_int):SAVE=0);      !
+
+  IF stat_int= 0 THEN                ! Between line end points ?
+   mid_che := VECN(p24_p21-p24)*     !
+              VECN(p21-p24_p21);     !
+  ELSE                               !
+   mid_che := -1.0;                  !
+  ENDIF;                             !
+
+  IF  mid_che>=0 AND n_plane2=0 THEN !
+    n_plane2 := n_plane2 + 1;        ! 
+    p_start2 := p24_p21;             ! Start point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=1 THEN!
+    n_plane2 := n_plane2 + 1;        ! 
+    p_end2   := p24_p21;             ! End   point line in plane 2
+  ELIF mid_che>=0 AND n_plane2=2 THEN!
+    EXIT("linbplanv0: n_plane2 >"    !
+          + " 2");                   !
+  ENDIF;                             !
+
+  IF graphic= 2 AND stat_int= 0 THEN !
+    POI_FREE(#64, p24_p21:PEN=3);    !
+  ENDIF;                             !
+
+  IF  DEBUG = 1 THEN                 ! Debug
+    s:= INPMT(                       !
+    " mid_che "+STR(mid_che,5,1) +   !
+    " n_plane2 "+STR(n_plane2,5,1),  !
+    " ",1);                          !
+  ENDIF;                             !
+
+! +++
+! Criterion for the boolean intersect is that ....
+! ---
+
+  IF    n_plane1 =  2          THEN  ! Check if exactly zero or two points
+    IF graphic= 3               THEN !
+      LIN_FREE(#46, p_start1,        !
+                    p_end1:PEN=4);   !
+    ENDIF;                           !
+  ELIF  n_plane1 =  0          THEN  ! 
+    ;                                !
+  ELSE                               !
+    EXIT("linbplanv0: n_plane1 <>"   !
+          + " 0 or 2");              !
+  ENDIF;                             !
+
+
+  IF    n_plane2 =  2          THEN  ! Check if exactly zero or two points
+    IF graphic= 3               THEN !
+      LIN_FREE(#47, p_start2,        !
+                    p_end2:PEN=4);   !
+    ENDIF;                           !
+  ELIF  n_plane2 =  0          THEN  ! 
+    ;                                !
+  ELSE                               !
+    EXIT("linbplanv0: n_plane2 <>"   !
+          + " 0 or 2");              !
+  ENDIF;                             !
+
+  IF n_plane1= 2 AND                 !
+     n_plane2= 2        THEN         !
+   ;                                 !
+  ELSE                               !
+    status := -1;                    ! 
+    EXIT();                          !
+  ENDIF;                             !
+
+
+  mids_che:=                           !
+             VECN(p_start2-p_start1)   !
+            *VECN(p_end1  -p_start2);  !
+  mide_che:=                           !
+             VECN(p_end2  -p_start1)   !
+            *VECN(p_end1  -p_end2  );  !
+
+ IF   mids_che>=0 AND mide_che>=0 THEN !    *----s-----e---*
+   ps_out  := p_start2;                ! 
+   pe_out  := p_end2;                  !
+ ELIF mids_che>=0 AND mide_che< 0 THEN !    *-------s------*  e
+    mid_che:=                          !
+             VECN(p_start1-p_start2)   !
+            *VECN(p_end2  -p_start1);  !
+   IF mid_che >=  0              THEN  !    e-------s------s  e
+     ps_out  := p_start1;              ! 
+     pe_out  := p_start2;              !
+   ELSE                                !    s-------s------e  e
+     ps_out  := p_end1;                ! 
+     pe_out  := p_start2;              !
+   ENDIF;                              !
+ ELIF mids_che< 0 AND mide_che>=0 THEN !    *-------e------*  s
+    mid_che:=                          !
+             VECN(p_start1-p_end2  )   !
+            *VECN(p_start2-p_start1);  !
+   IF mid_che >=  0              THEN  !    e-------e------s  s
+     ps_out  := p_end2;                ! 
+     pe_out  := p_start1;              !
+   ELSE                                !    s-------e------e  s
+     ps_out  := p_end1;                ! 
+     pe_out  := p_end2;                !
+   ENDIF;                              !
+ ELIF mids_che< 0 AND mide_che< 0 THEN !    *--------------*  s  e
+    p_temp  := p_start1;               !           or
+    p_start1:= p_start2;               !
+    p_start2:= p_temp;                 ! s  *--------------*  e
+    p_temp  := p_end1;                 !
+    p_end1  := p_end2;                 !
+    p_end2  := p_temp;                 !
+    mids_che:=                         !
+             VECN(p_start2-p_start1)   !
+            *VECN(p_end1  -p_start2);  !
+    mide_che:=                         !
+             VECN(p_end2  -p_start1)   !
+            *VECN(p_end1  -p_end2  );  !
+   IF mids_che>=0 AND mide_che>=0 THEN !    *----s-----e---*
+     ps_out  := p_start2;              ! 
+     pe_out  := p_end2;                !
+   ELSE                                !    *----------*  s  e
+     status := -1;                     ! 
+     EXIT();                           !
+   ENDIF;                              !
+ ELSE                                  !
+   EXIT("linbplanv0 Program error " +  !
+        "mids_che/mide_che");          !
+ ENDIF;                                !
+
+ LIN_FREE(#1,ps_out,pe_out             ! Output line
+    :BLANK=b_flag,PEN=2);              !
+
+ENDMODULE

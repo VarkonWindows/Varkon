@@ -1,0 +1,258 @@
+! ******************* newmbsv0  ******************************
+! +++ 
+!
+! New MBS source code on project source code directory
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-04-10  Gunnar Liden
+!
+! *************************************************************
+
+!sdesce New MBS source code on project source code directory
+!sdescs Ny MBS kod p} projekt k{llkods katalog 
+
+
+MACRO  MODULE newmbsv0  (
+STRING  fname*10 := "slaskny"   >"Name of new module";
+STRING  vproj*10 := "sur"       >"Varkon project");
+
+
+! Internal variables
+
+  STRING   o_s*4;               ! Operating system VAX/UNIX 
+  STRING   path(20)*50;         ! Output directories
+  INT      n_path;              ! Number of directories
+  INT      i_d;                 ! Loop index directory
+  INT      i_s;                 ! Position for fname in directory name
+
+  STRING   mbsdir*50;           ! Directory with fname.MBS
+  STRING   docdir*50;           ! Directory for  fname.DOC
+
+  STRING   infile*132;          ! Full name of input  file
+  STRING   bakfile*132;         ! Full name of backup file
+  STRING   jobfile*132;         ! Full name of job    file
+  STRING   logfile*132;         ! Full name of log    file
+
+  INT      status;              ! For TEST_FILE
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+
+  FILE     log;                 ! Log file
+  FILE     mbs;                 ! MBS file
+
+  STRING   date*50;             ! Date
+
+  INT      l_str;               ! Length of string mbsdir
+
+  INT      DEBUG;               ! Debug flag
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! --
+
+! +++
+! 1. Check if MBS file already is on the active job directory
+! ---
+
+  jobfile := ACT_JOBDIR()+fname+".MBS";
+
+  status := TEST_FILE(jobfile,"X");
+  IF status = 1 THEN
+    EXIT("newmbsv0 "+fname+".MBS is already exists on your job directory");
+  ENDIF;
+
+
+! +++
+! 2. Determine if input directory for source code exists
+! ---
+
+   o_s := "UNIX";              !
+   DEBUG := 0;                 !
+   PART(#1,m_extpath ( o_s,    ! Retrieve all directories with code
+       path, n_path, DEBUG));  !
+
+   mbsdir:= "Undefined";       ! Initiate mbsdir
+   FOR i_d:= 1 to n_path DO    ! Start loop n_path
+
+    i_s := FINDS(path(i_d),    ! Find string
+                vproj  );      !
+    IF i_s > 0 THEN            !
+      mbsdir := path(i_d) +    !
+                "code/";       !
+      GOTO  found;             !
+    ENDIF;                     !
+   ENDFOR;                     !
+
+   EXIT("newmbsv0 No "+vproj+  !
+        " project");           !
+
+found:;                        ! Directory exists
+
+! +++
+! 3. Check if file already exists on source code directory
+! ---
+
+  infile:= mbsdir+fname+       ! Full file name for MBS code
+            ".MBS";            !
+
+  status := TEST_FILE(infile,"X");
+  IF status = 1 THEN
+    EXIT("newmbsv0 "+fname+" exists on "+mbsdir);
+  ENDIF;
+
+! +++
+! 4. Create new MBS file
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  IF year  < 99 THEN
+    date    := "19" + STR(year , -1,0)+"-";
+  ELSE
+    date    := "20" + STR(year , -1,0)+"-";
+  ENDIF;
+  IF month < 10 THEN
+    date    := date    + "0"  +STR(month, -1,0)+"-";
+  ELSE
+    date    := date           +STR(month, -1,0)+"-";
+  ENDIF;
+  IF day   < 10 THEN
+    date    := date    + "0"  +STR(day  , -1,0);
+  ELSE
+    date    := date           +STR(day  , -1,0);
+  ENDIF;
+  
+  OPEN(mbs,"W", infile);
+  OUTSTR(mbs,"! ******************* "+fname+" ******************************");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! +++ ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! The function ........ ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! --- ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! Revision history");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! _______________ ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! "+date + " Name of programmer");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! ************************************************************");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!sdesce Undefined ...... ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!sdescs Odefinierat .... ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"GLOBAL GEOMETRY MODULE "+fname+ " ();");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! Internal variables:");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"BEGINMODULE");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! +++ ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! Algorithm");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! _________ ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! --- ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs," ; ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"ENDMODULE");
+  OUTLIN(mbs);
+  CLOSE(mbs);
+
+! +++
+! 5. Register that the file is checked out
+! ---
+
+  logfile := mbsdir+"BAK/"+fname+".OUT";
+  OPEN(log,"W",logfile);
+  OUTSTR(log,"The MBS file is used by ....");
+  OUTLIN(log);
+  CLOSE(log);
+
+! +++
+! 6. Backup file to BAK directory
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  bakfile := mbsdir+"BAK/"+fname+"."+
+  STR(year,-1,0);
+  IF month < 10 THEN
+    bakfile := bakfile + "0"  +STR(month, -1,0);
+  ELSE
+    bakfile := bakfile        +STR(month, -1,0);
+  ENDIF;
+  IF day   < 10 THEN
+    bakfile := bakfile + "0"  +STR(day  , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    bakfile := bakfile + "0"  +STR(hour , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    bakfile := bakfile + "0"  +STR(minute,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    bakfile := bakfile + "0"  +STR(second,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(second,-1,0);
+  ENDIF;
+
+  bakfile := bakfile + "_new";
+
+  COPY_FILE(infile,bakfile);
+
+
+! +++
+! 7. Copy file from the source code directory to active job directory
+! ---
+
+  COPY_FILE(infile,jobfile);
+
+ENDMODULE

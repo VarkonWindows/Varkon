@@ -1,0 +1,87 @@
+!**************** m_csys02   ***************************
+! +++
+! Create a coordinate system in the active module
+! _______________________________________________
+!
+! The function retrieves the identity for the global system
+! of the active module, i.e the coordinate system created with  
+! a #0 reference to the related system
+! 
+! Only a system defined in the coordinate system library (for
+! the given project) can be created. The function will skip the 
+! checks only if project None is given.
+!
+! Revision history
+! ________________
+!
+! 1996-02-08 Gunnar Liden
+! 
+! ---
+
+!sdesce Create a coordinate system for the active module
+!sdescs Skapa ett koordinatsystem f|r den aktiva modulen
+
+MACRO MODULE m_csys02   (
+
+STRING project*44  := "39"      >"Project (39, SF340, SIRIUS2, .. or None)";
+STRING csys*28     := "1141"    >"Coordinate system ";
+INT    grafik      :=   1       >"=0: System blanked =1: Show system");
+
+! Internal variables:
+
+  REF    id_zero(10);           ! Identity #0 for reference coord. system
+  INT    n_zero;                ! Number of #0 csys references
+  REF    id_che;                ! Identity 
+  REF    id_csys_m;             ! Related to coordinate system (m)
+  INT    i_ent;                 ! Loop index entity
+  REF    a_id;                  ! ADD_MBS identity
+  STRING s_string*50;           ! Search string (name)
+  STRING s_case*5;              ! Search case GROUP or PART
+  INT    no_ent;                ! Number of entities
+  REF    ent_id(3000);          ! References (# id's)
+
+BEGINMODULE 
+
+! +++
+! 1. Retrieve all references to coordinate systems
+! ---
+
+  s_string := "csysregv0";
+  s_case   := "PART";
+  PART(#2, getid_gm ( s_string, s_case, no_ent, ent_id):SAVE=0);
+
+! +++
+! 2. Find global coordinate system for the active module
+! ---
+
+  n_zero := 0;
+  FOR  i_ent := 1 TO no_ent DO
+   id_che  := GETREF(ent_id(i_ent),3);
+   IF  id_che  = #0 THEN
+     n_zero := n_zero + 1;
+     id_zero(n_zero) := id_che;
+   ENDIF;
+  ENDFOR;
+
+  IF     n_zero = 0 THEN
+    LST_INI("m_csy02 ");
+    LST_LIN("A global system must be defined for the active module");
+    LST_EXI();
+    EXIT("m_csy02 Define global system !");
+  ELIF   n_zero = 1 THEN
+    ; ! Continue
+  ELSE
+    EXIT("m_csy02 Check of multiple #0 systems not yet impl.");
+  ENDIF;
+ 
+
+! +++
+! 4. Create MBS statement
+! ---
+
+
+a_id:= ADD_MBS("PART","csyscrev0",
+               CHR(34)+project+CHR(34), CHR(34)+csys+CHR(34), 
+                STR(grafik,-1,0), RSTR(id_csys_m));
+
+ENDMODULE 

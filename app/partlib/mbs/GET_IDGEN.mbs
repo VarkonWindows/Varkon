@@ -1,0 +1,211 @@
+!********************* GET_IDGEN **************************************
+!
+! Purpose: Get references (# identity) for generatrix curves
+!          defined as GROUPS with name GENERATRIX.
+!
+!
+! Output: Number of sections and an arrays with curve references
+!
+! 1992-12-14  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE GET_IDGEN (
+    REF     part_id;               ! Input generatrix part
+VAR INT     no_sections;           ! Number of section curves
+VAR REF     gen_id(200));          ! Generatrix  curves (# id's)
+
+! Internal variables
+
+  STRING    code*1;                ! Flag for GM routine GETID
+                                   ! F for first entity in GM
+                                   ! N for next  entity 
+                                   ! n for next  entity on same level
+                                   ! P for next  part
+  REF       id;                    ! Temporarely used id for GETID
+
+  REF       end_id;                ! Next entity in GM after part_id
+
+  INT       typ;                   ! Type of entity
+  INT       nref;                  !
+  INT       blnk;                  !
+  INT       niv;                   !
+  INT       pen;                   !
+  INT       nm;                    !
+  INT       flag;                  ! ????
+
+  REF       gid(3);                !
+  REF       idvec(100);            !
+  STRING    gnam*20;               ! Group name
+
+  STRING    part_ids*132;          ! Input reference as a string
+
+  INT       no_iteration;          ! Number of iterations (program check)
+
+  REF       temp_id(200);          ! For the ordering of gen_id
+
+  INT       ix1;                   ! Temporarely used loop index
+
+  STRING    s*1;                   ! For debug printout to screen
+
+
+BEGINMODULE
+
+!                         1. Initializations
+!                         ==================
+
+  no_sections := 0;                ! Initialize output variables
+  FOR ix1:=1 TO 200 DO             !
+    gen_id(ix1):= #0 ;             !
+  ENDFOR;                          !
+
+!  IF part_id <>                   ! Check input reference ......
+
+   part_ids:=RSTR(part_id);        ! Convert input reference to string
+   part_ids:="#"+part_ids;         ! Add # to reference
+   part_id := RVAL(part_ids);      ! Convert from string to reference
+
+!              2. Find "limits" for the input part (surface)
+!              =============================================
+
+  code := "F";                     ! Flag for first entity in GM
+
+
+!  s:=INPMT("GET_IDGEN: (0) "+      ! Debug printout to screen
+!  "Input part_id="                 !
+!   +rstr(part_id),"",1);           !
+
+start:                             ! Label to find the input part
+
+  id := GETID(code);               ! Get reference for next entity 
+
+!   s:=INPMT("GET_IDGEN: (1)"+      ! Debug printout to screen
+!   " Retrieved id ="               !
+!    +rstr(id),"",1);               !
+
+  IF RSTR(id) = RSTR(part_id)THEN  ! M}ste det vara str{ng ?????????
+      code   := "n";               ! Flag for next entity on same level
+      end_id := GETID(code);       ! Get end reference (entity which not
+                                   ! is in input part (generatrix) part_id.
+      GOTO step3;                  ! Next scanning phase
+
+  ELIF id = #0 AND code = "P" THEN !
+      EXIT("GET_IDGEN: "+          ! Programming error for id= #0
+       "No part_id");              !
+  ELSE
+      code := "P";                 ! Flag for next part in GM
+      GOTO  start;                 ! Continue scanning of GM
+  ENDIF;
+
+  EXIT("GET_IDGEN: "+              ! Programming error
+   "No part_id in GM");            !
+
+
+!              3. Retrieve curve types and references
+!              =======================================
+
+step3:                             ! Retrieve GROUPS
+
+!   s:=INPMT("GET_IDGEN: end_id="   ! Debug printout to screen
+!   +rstr(end_id),"",1);            !
+
+  no_iteration := 0;               ! Number of iterations as a check
+
+
+  code := "F";                     ! Flag for first entity in GM
+
+surface:                           ! Label to find entities in generatrix
+
+  no_iteration := no_iteration+1;  ! Number of iterations as a check
+  IF no_iteration > 2000 THEN      !
+      EXIT("GET_IDGEN: "+          ! Programming error
+      "no_iteration > 2000");      !
+  ENDIF;
+
+
+  id := GETID(code);               ! Get reference for next entity 
+  IF code = "F" THEN               !
+      code := "P";                 ! Flag for next part in GM
+  ENDIF;
+
+
+!   s:=INPMT("GET_IDGEN: (2)"+     ! Debug printout to screen
+! " Retrieved id ="+rstr(id),"",1);!
+
+
+  IF RSTR(id) = RSTR(part_id)THEN  ! M}ste det vara str{ng ?????????
+                                   ! ???  IF id = part_id THEN
+                                   ! Retrieved entity (part) = input id ?
+
+!      s:=INPMT("GET_IDGEN: (2)"+   ! Debug printout to screen
+!     " Retrieved id = "+           !
+!      "input part_id ="            !
+!     +rstr(id),"",1);              !
+
+      code   := "N";               ! Flag for next entity in the surface
+      GOTO surface;                ! Start retrieving GROUPS
+  ELIF code = "P" THEN             !
+      GOTO surface;                ! Continue scanning for input part
+  ELIF RSTR(id) = RSTR(end_id) THEN!
+      GOTO check;                  ! All GROUPS (curves) retrieved
+  ENDIF;
+
+  IF id <> #0 THEN                 !
+      GETHDR(id,typ,nref,blnk,     ! Get header for retrieved entity id
+             niv,pen,gid);         !
+  ELSE                             !
+      EXIT("GET_IDGEN: "+          ! Programming error for id= #0
+       "id= #0");                  !
+  ENDIF;
+
+
+!   s:=INPMT("GET_IDGEN: typ="     !  Debug printout to screen
+!   +str(typ,-1,0),"",1);
+
+
+  IF typ = 4096 THEN               ! Is the entity a GROUP ?
+      GETGRP(id,gnam,nm,idvec);    ! Get data for entity GROUP
+                                   ! Check that nm=1 ......
+  ELSE
+      GOTO surface;                ! Continue scanning
+  ENDIF;                           !
+
+
+!   s:=INPMT("GET_IDGEN: gnam= "   ! Debug printout to screen
+!    +gnam,"",1);                  !
+
+
+  IF SUBSTR(gnam,1,3) = "GEN" THEN ! Generatrix curve ?
+!   s:=INPMT("GET_IDGEN: "+         ! Debug printout to screen
+!   " Retrieved idvec(1) ="         !
+!    +rstr(id),"",1);               !
+
+      no_sections:=no_sections+1;  ! Increase number of sections
+      temp_id(no_sections) :=      ! Adress to temporary vector
+             idvec(1);             !
+!Q      gen_id(no_sections) :=       !
+!Q             idvec(1);             !
+  ELSE
+  
+     EXIT("GET_IDGEN: "+           ! Programming error: Not a valid
+      "G-name "+gnam+" not OK");        ! GROUP (curve) name
+  ENDIF;
+
+  GOTO  surface;                   ! Continue scanning in generatrix part
+
+
+!              4. Check that generatrixes are defined
+!              =======================================
+
+check:                             ! Checking phase
+
+  IF no_sections < 2 THEN          ! Check number of sections
+     EXIT("GET_IDGEN: "+           ! 
+      "No sections < 2");          ! 
+  ENDIF;
+
+  FOR ix1 :=1 TO no_sections DO    ! Reorder the id array
+      gen_id(ix1) :=               !
+     temp_id(no_sections-ix1+1);   !
+  ENDFOR;                          !
+
+ENDMODULE

@@ -1,0 +1,418 @@
+!******************** GETNMGCSV1 *****************************************
+! +++
+! Kontrollerar om |nskat koordinatsystem existerar i VARKON:s "koordinat-
+! systemsdatabas" och ifall inte startas en NMG-k|rning upp som skriver
+! koordinatsystemsdata p} en yttre fil.
+!
+!
+! 1994-06-17 Karl-Erik Eklund
+! 1994-12-13 OPEN/CLOSE kontroller och felr{ttning Gunnar Liden
+! 1994-12-15 fcsys var |ppen n{r NMG k|rts         Gunnar Liden
+! 1994-12-15 F|renkling f|r PC + sm} bokst{ver     Gunnar Liden
+! 1996-09-21 Special för Linux                     Gunnar Liden
+! 1997-04-08 Not an open filed was closed          Gunnar Liden
+! ---
+!***********************************************************************
+!sdesce Check if required csys exist on file and if not fetch it from NMG
+!sdescs Kontrollerar om |nskat ksys finns p} fil om ej h{mtar fr}n NMG
+
+!1994-12-15 BASIC GEOMETRY MODULE GETNMGCSV1(
+BASIC GEOMETRY MODULE getnmgcsv1(
+
+    STRING tapein*44;        ! NMG projekt (ett eller flera }tskillt med ,)
+    INT    ncsys;            ! Antal koordinatsystem att l{sa in
+VAR STRING csys(6)*28;       ! Koordinatsystem att l{sa in
+    STRING datum*28;         ! Koordinatsystem som csys relateras till
+VAR STRING csysfil(6)*80);   ! Namn p} yttre datafil (skapas i denna modul)
+
+! Internal variable:
+
+FILE       fnmgpp,           ! pekare till NMG partprogram
+           fpunfil,          ! pekare till den tillf{lligt anv{nda punchfilen
+           fcsys;            ! pekare till den yttre koordinatsystemsfilen
+STRING     answer*2,         ! tempor{rt anv{nd str{ng
+           jobid*8,          ! job-identifikation
+           line*132,         ! rad l{st fr}n PUNCH-filen
+           nmgpp*27,         ! namn p} NMG partprogram-fil
+           project*44,       ! namn p} NMG-projekt om TEST eller GENERAL
+           punfil*28;        ! namn p} tempor{rt anv{nd punch-fil
+INT        acp,              ! eq 1: om flygplansprojekt hittats
+           beglin,           ! position till b|rjan av linjen
+           curcsys,          ! index till g{llande koordinatsystem
+           datent,           ! eq 1: csys relateras till ett koordinatsys.
+           dattim(6),        ! }r,m}nad,dag,timme,min,sek;
+           ixcsys,ix2,ix3,   ! tempor{rt anv{nda index
+           nfetch,           ! antal koordinatsystem att h{mta
+           nlines,           ! antal rader att l{sas
+           fcsys_open,       ! 1: koordinatsystemsdata-filen {r skapad
+           nmgpp_open;       ! 1: NMG partprogram-filen {r skapad
+INT        fpunfil_flag,     ! 0: \ppen 1: St{ngd (2: \ppnad tv} g}nger ..)
+           fcsys_flag,       ! (Program check)
+           fnmgpp_flag;      !
+
+BEGINMODULE
+
+fpunfil_flag := 0;               ! I startl{get {r filerna st{ngda
+fcsys_flag   := 0;               !
+fnmgpp_flag  := 0;               !
+
+nfetch     := 0;
+nmgpp_open := 0;
+
+   IF (datum = "") OR (datum = " ") THEN
+     datent := 0;
+   ELSE
+     datent := 1;
+   ENDIF;
+
+! +++ -----------------------------------------------------------------------
+! Kontrollera om koordinatsystemet(en) finns p} VARKON:s koordinatsystems-
+! databas. Om inte m}ste NMG k|ras f|r att h{mta koordinatsystemet(en).
+! --- -----------------------------------------------------------------------
+
+   FOR ixcsys:=1 TO ncsys DO
+
+!    Kontrollera/Skapa koordinatsystems-filnamnet
+
+       IF csysfil(ixcsys) = "" THEN
+!1993-12-15  csysfil(ixcsys) := "v3$root:<csyslib>";
+!1996-09-21         csysfil(ixcsys) := "/u/csyslib/";
+         csysfil(ixcsys) := "/u/csyslib/";
+ 
+           FOR ix2:=1 TO LENGTH(csys(ixcsys)) DO
+             ix3 := ASCII(SUBSTR(csys(ixcsys),ix2,1));
+
+               IF ((ix3 >= 48) AND (ix3 <=  57)) OR            ! 0 - 9
+                  ((ix3 >= 65) AND (ix3 <=  90)) OR            ! A - Z
+                  ((ix3 >= 97) AND (ix3 <= 122)) OR            ! a - z
+                   (ix3  = 45) OR  (ix3  =  95)  THEN          ! -_
+                 csysfil(ixcsys) := csysfil(ixcsys) + CHR(ix3);
+               ENDIF;
+           ENDFOR;
+
+         csysfil(ixcsys) := csysfil(ixcsys) + ".DAT";
+
+           IF datent > 0 THEN
+             csysfil(ixcsys) := csysfil(ixcsys) + "_" + datum;
+           ENDIF;
+       ENDIF;
+
+!    \ppna koordinatsystemsfilen f|r att kontrollera att den existerar
+
+     OPEN(fcsys,"R",csysfil(ixcsys));
+     fcsys_flag   := fcsys_flag  +  1;  ! \ppna fil
+
+
+       IF IOSTAT(fcsys) = 0 THEN
+!        Koordinatsystemsfilen existerar!
+         CLOSE(fcsys);
+         fcsys_flag   := fcsys_flag   - 1;  ! St{ng fil
+         GOTO prepare_nmgpp_end;
+       ENDIF;
+!Test       CLOSE(fcsys);  ! Filen verkar |ppnas igen nedan 1994-12-15
+       fcsys_flag   := fcsys_flag   - 1;  ! St{ng fil
+
+!    Koordinatsystemsfilen existerar inte!
+!    Skapa NMG-partprogrammet.
+
+     EXIT("GETNMGCSV1 System finns ej i PC"); ! 1993-12-15
+
+
+       IF nmgpp_open = 0 THEN
+
+!        Skapa en unik job identifikations-str{ng
+
+         TIME(dattim(1),dattim(2),dattim(3),dattim(4),dattim(5),dattim(6));
+
+         jobid:="";
+  
+            FOR ix2:=3 TO 6 DO
+              ix3 := TRUNC(dattim(ix2)/10);
+              jobid := jobid + CHR(ix3+48) +
+                               CHR((dattim(ix2)-(ix3*10))+48);
+            ENDFOR;
+
+          nmgpp := "sys$scratch:" + jobid + ".TMP_PP";
+
+          OPEN(fnmgpp,"W",nmgpp);
+          fnmgpp_flag  := fnmgpp_flag +  1;  ! \ppna fil
+
+
+             IF IOSTAT(fnmgpp) <> 0 THEN
+               EXIT("GETNMGCSV1: Kan ej |ppna partprogramfilen.");
+             ENDIF;
+
+!       Konvertera till uppercase
+           PART(#1,tv_upcase(tapein));
+
+!       Lokalisera det 1:sta kommat
+           ix2 := FINDS(tapein,",");
+
+!       Hittar inget komma
+             IF ix2 = 0 THEN
+                 IF (tapein = "TEST") OR (tapein = "GENERAL") THEN
+                   acp := 0;
+                 ELSE
+                   acp := 1;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + tapein); OUTLIN(fnmgpp);
+
+!       Dela upp tapein-str{ngen
+             ELSE
+               acp  := 0;
+               line := tapein;
+               ix3  := LENGTH(line);
+nxt_project:;
+                 IF ix2 = 1 THEN
+                   EXIT("GETNMGCSV1: Dubbla kommatecken");
+                 ENDIF;
+
+               project := SUBSTR(line,1,(ix2-1));
+
+                 IF acp = 0 THEN
+                   IF ((project <> "TEST") AND (project <> "GENERAL")) THEN
+                     tapein := project;
+                     acp    := 1;
+                   ENDIF;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + project); OUTLIN(fnmgpp);
+
+               ix3  := ix3 - ix2;
+
+                 IF ix3 <= 0 THEN
+                   EXIT("GETNMGCSV1: Avslutande kommatecken");
+                 ENDIF;
+
+               line := SUBSTR(line,(ix2+1),ix3);
+               ix2  := FINDS(line,",");
+
+                 IF ix2 > 0 THEN
+                   goto nxt_project;
+                 ENDIF;
+
+!       Sista projekt-namnet hittat
+
+                 IF acp = 0 THEN
+                   IF ((line <> "TEST") AND (line <> "GENERAL")) THEN
+                     tapein := line;
+                     acp    := 1;
+                   ENDIF;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + line); OUTLIN(fnmgpp);
+             ENDIF;
+
+!       Ta reda p} projekt-namnet n{r TEST/GENERAL anv{nts (Vilken DDF ska
+!       anv{ndas Milit{r/Civil. TEST/GENERAL finns p} b}da.)
+
+             IF acp = 0 THEN
+               project := INPMT("Ange flygplansprojekt: ","39",44);
+
+                 IF project <> "" THEN
+                   PART(#2,tv_upcase(project));
+                   tapein := project;
+                 ENDIF;
+             ENDIF;
+
+           OUTSTR(fnmgpp,"PRINT"); OUTLIN(fnmgpp);
+           OUTSTR(fnmgpp,"  OFF"); OUTLIN(fnmgpp);
+           nmgpp_open := 1;
+
+             IF datent > 0 THEN
+               PART(#3,tv_upcase(datum));
+             ENDIF;
+       ENDIF;
+
+!    L{gg till i partprogrammet
+
+       IF datent = 0 THEN
+         OUTSTR(fnmgpp,"SPUNCH"); OUTLIN(fnmgpp);
+         OUTSTR(fnmgpp,"  #FORMAT 3(F17.8),3(/,3F15.12)"); OUTLIN(fnmgpp);
+         OUTSTR(fnmgpp,"*  " + csys(ixcsys));
+       ELSE
+         OUTSTR(fnmgpp,"SPUNCH"); OUTLIN(fnmgpp);
+         OUTSTR(fnmgpp,"  #FORMAT 3(F17.8),3(/,3F15.12)"); OUTLIN(fnmgpp);
+         OUTSTR(fnmgpp,"*  " + csys(ixcsys) + " DATUM " + datum);
+         OUTLIN(fnmgpp);
+       ENDIF;
+     
+     OUTLIN(fnmgpp);
+     nfetch := nfetch + 1;
+
+prepare_nmgpp_end:;
+   ENDFOR;
+
+! +++ -----------------------------------------------------------------
+! Starta en NMG-k|rning om koordinatsystemsfilen(erna) inte existerar
+! --- -----------------------------------------------------------------
+
+   IF nmgpp_open <> 0 THEN
+     CLOSE(fnmgpp);
+     fnmgpp_flag  := fnmgpp_flag -  1;  ! St{ng fil
+
+
+
+       punfil := "sys$scratch:" + jobid + ".TMP_PUN";
+
+       IF nfetch = 1 THEN
+
+!        S{tt P3 till "jobid" ist{llet f|r "nmgpp" f|r att undvika att OS
+!        kommando-str{ngen |verskrider 132 tecken. Kommando-proceduren
+!        antager SYS$SCRATCH: och .TMP_PP om |verhoppad.
+
+         psh_pmt("H{mtar koordinatsystem " + csys(1) + " fr}n NMG... ");
+
+         OS("@APT$BATCH:NMGVARKON.COM/OUTPUT=sys$scratch:" + jobid + ".LOG "+
+            tapein + " " + jobid + " " + jobid  + " " + csysfil(1),0);
+
+         pop_pmt();
+
+!        Kontrollera om NMG-koordinatsystemet existerar. Punch-filen f}r inte
+!        vara tom.
+
+         OPEN (fcsys,"R",csysfil(1));
+         fcsys_flag   := fcsys_flag  +  1;  ! \ppna fil
+
+
+           IF IOSTAT(fcsys) <> 0 THEN
+             PART(#11,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGCSV1: \ppningsfel, NMG's PUNCH-fil");
+           ENDIF;
+
+         line := INLIN(fcsys);
+         ix2  := IOSTAT(fcsys);
+
+         CLOSE(fcsys);
+         fcsys_flag   := fcsys_flag   - 1;  ! St{ng fil
+
+           IF ix2 = -1 THEN
+             PART(#12,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("Koordinatsystemet " + csys(1) + " finns inte i NMG.");
+           ELIF ix2 <> 0 THEN
+             PART(#13,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGCSV1: L{sfel, PUNCH-filen (" + CHR(ix2) + ").");
+           ENDIF;
+
+!        Mer {n ett koordinatsystem att h{mta
+       ELSE
+         psh_pmt("H{mtar koordinatsystemen fr}n NMG... ");
+
+         OS("@APT$BATCH:NMGVARKON.COM/OUTPUT=sys$scratch:" + jobid + ".LOG "+
+            tapein + " " + jobid + " " + nmgpp  + " " + punfil,0);
+
+         pop_pmt();
+
+!        Sl} s|nder punch-filen i koordinatsystems-datafiler
+
+         fcsys_open := 0;
+         curcsys := 0;
+         ixcsys := 1;                       ! Index i Koordinatsystemstabellen
+         OPEN (fpunfil,"U",punfil);         ! U f|r att anv{nda SEEK senare
+         fpunfil_flag := fpunfil_flag+  1;  ! \ppna fil
+
+
+           IF IOSTAT(fpunfil) <> 0 THEN
+             PART(#21,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGCSV1: \ppningsfel, NMG's PUNCH-fil");
+           ENDIF;
+
+!        L{s den f|rsta raden
+
+         line := INLIN(fpunfil);
+         ix2  := IOSTAT(fpunfil);
+
+           IF ix2 <> 0 THEN
+             PART(#22,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("Koordinatsystemet/n finns troligen inte i NMG.");
+           ENDIF;
+
+!        Lokalisera koordinatsystemsnamnet i koordinatsystemstabellen
+
+split_nxt_csys:;
+
+           IF FINDS(line,csys(ixcsys)) = 0 THEN
+             ixcsys := ixcsys + 1;
+
+               IF ixcsys > ncsys THEN
+                 CLOSE (fpunfil);
+                 fpunfil_flag := fpunfil_flag - 1;  ! St{ng fil
+                 EXIT("GETNMGCSV1: Odef. koordinatsystem p} f|rsta raden.");
+               ELSE
+                 GOTO split_nxt_csys;
+               ENDIF;
+           ENDIF;
+
+!        Har hittat ett angivet koordinatsystemsnamn p} rad 1 i filen.
+!        Skapa en koordinatsystemsfil f|r detta koordinatsystem.
+
+           OPEN (fcsys,"W",csysfil(ixcsys));
+           fcsys_flag   := fcsys_flag  +  1;  ! \ppna fil
+
+
+             IF IOSTAT(fcsys) <> 0 THEN
+               CLOSE (fpunfil);
+               fpunfil_flag := fpunfil_flag - 1;  ! St{ng fil
+               EXIT("GETNMGCSV1: Kan ej |ppna koordinatsystemsfilen.");
+             ENDIF;
+
+           fcsys_open := 1;
+                                              
+         OUTSTR(fcsys,line); OUTLIN(fcsys);      ! Skriver: csys + "1"
+
+         FOR ix3:= 1 TO 4 DO
+           line:= INLIN(fpunfil);
+           ix2:= IOSTAT(fpunfil);
+
+           IF ix2 = 0 THEN
+             OUTSTR(fcsys,line); OUTLIN(fcsys);
+           ELSE
+             CLOSE (fpunfil);
+             fpunfil_flag := fpunfil_flag - 1;  ! St{ng fil
+
+               IF fcsys_open = 1 THEN
+                 CLOSE (fcsys);
+                 fcsys_flag   := fcsys_flag   - 1;  ! St{ng fil
+               ENDIF;
+
+             EXIT("GETNMGCSV1: L{sfel, PUNCH-fil (" + CHR(ix2) + ").");
+           ENDIF;
+         ENDFOR;
+
+!        L{s n{sta rad f|r ev. flera koordinatsystem.
+
+         line := INLIN(fpunfil);
+         ix2  := IOSTAT(fpunfil);
+
+           IF ix2 = 0 THEN
+             goto split_nxt_csys;
+           ELIF ix2 = -1 THEN
+             CLOSE (fpunfil);
+             fpunfil_flag := fpunfil_flag - 1;  ! St{ng fil
+
+               IF fcsys_open = 1 THEN
+                 CLOSE (fcsys);
+                 fcsys_flag   := fcsys_flag   - 1;  ! St{ng fil
+               ENDIF;
+           ELSE
+             EXIT("GETNMGCSV1: L{sfel, PUNCH-fil (" + CHR(ix2) + ").");
+           ENDIF;
+       ENDIF;
+   ENDIF;
+
+   IF  fnmgpp_flag  <> 0 THEN  ! Kontrollera att filerna {r st{ngda
+     EXIT("GETNMGCSV1 Program" ! (Programmeringskontroll)
+     + "fel fnmgpp |ppen");    !
+   ENDIF;                      !
+   IF  fpunfil_flag <> 0 THEN  !
+     EXIT("GETNMGCSV1 Program" !
+     + "fel fpunfil |ppen");   !
+   ENDIF;                      !
+   IF  fcsys_flag   <> 0 THEN  !
+     EXIT("GETNMGCSV1 Program" !
+     + "fel fcsys |ppen");     !
+   ENDIF;                      !
+
+ENDMODULE
+

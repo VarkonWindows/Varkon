@@ -1,0 +1,209 @@
+!********************* getid_gm   **************************************
+! +++
+! General function which retrieves identities to entities with a
+! given (part) name or group name in GM
+!
+! Revision history
+! ________________
+!
+! 1995-11-04  Gunnar Liden
+! 1995-11-08  s_string length 10 -> 50 for GROUP Gunnar Liden
+! 2006-01-27  Part name 10 to 50 characters
+! ---
+!************************************************************************
+
+!sdesce Retrieve identities in GM for entities with a given name
+!sdesce H{mta identiteter i GM f|r storheter med givet namn  
+
+GLOBAL GEOMETRY MODULE getid_gm   (
+    STRING  s_string*50;           ! Search string (name)
+    STRING  s_case*5;              ! Search case GROUP or PART
+VAR INT     no_ent;                ! Number of entities
+VAR REF     ent_id(3000) );        ! References (# id's)
+
+! Internal variables
+
+  STRING    code*1;                ! Flag for GM routine GETID
+                                   ! F for first entity in GM
+                                   ! N for next  entity 
+                                   ! n for next  entity on same level
+                                   ! P for next  part
+  REF       id;                    ! Temporarely used id for GETID
+
+  REF       end_id;                ! Next entity in GM after prt_id 
+
+                                   ! For function GETPRT:
+  STRING namn*50;                  ! Name of the part
+  STRING  prt_name*50;             ! Name of part prep_id
+  INT    mtyp;                     ! Module type
+                                   ! Eq. 2: DRAWING
+                                   ! Eq. 3: GEOMETRY
+  INT    mattr;                    ! Module attribute
+                                   ! Eq. 1: LOCAL
+                                   ! Eq. 2: GLOBAL
+                                   ! Eq. 3: BASIC
+  REF    kid;                      ! Global identity for the 
+                                   ! coord. system used to position
+                                   ! the part
+  INT    np;                       ! Number of parameters in the part
+  INT    mant;                     ! Number of entities in the part
+  REF    idm(200);                 ! Array with global references (##)
+  INT    mant_lev1;                ! Number of entities in the part
+  REF    idm_lev1(5);              ! Array with global references (##)
+
+  INT       typ;                   ! Type of entity
+  INT       nref;                  ! Number of references
+  INT       blnk;                  !
+  INT       niv;                   !
+  INT       pen;                   !
+  INT       nm;                    !
+  INT       flag;                  ! ????
+
+  REF       gid(3);                !
+  REF       idvec(100);            !
+  STRING    gnam*20;               ! Group name
+
+  INT       no_iteration;          ! Number of iterations (program check)
+
+
+
+  INT       ix1,ix2;               ! Temporarely used loop index
+
+  INT       DEBUG;                 ! Debug parameter
+
+  STRING    s*1;                   ! For debug printout to screen
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations
+! ---
+
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  IF   s_case = "GROUP" THEN       !
+    ;                              !
+  ELIF s_case = "group" THEN       !
+    s_case:= "GROUP";              !
+  ELIF s_case = "PART"  THEN       !
+    ;                              !
+  ELIF s_case = "part"  THEN       !
+    s_case:= "PART";               !
+  ELSE                             !
+    EXIT("getid_gm   s_case " +    !
+         "not OK");                !
+  ENDIF;                           !
+
+  no_ent    := 0;                  ! Initialize output variables
+  ent_id(1) := #0;                 !
+  IF  DEBUG = 1 THEN               !
+    FOR ix1:=1 TO 3000 DO          ! 
+      ent_id(ix1)  := #0;          !
+    ENDFOR;                        !
+  ENDIF;                           !
+
+  IF DEBUG = 1 THEN                ! Debug
+  s:=INPMT("getid_gm s_string " +  !
+     s_string + " s_case "+ s_case !
+     ,"y",1);                      !
+  IF  s <> "y"  THEN               !
+    EXIT("getid_gm User interr."); !
+  ENDIF;                           !
+  ENDIF;                           !
+                
+! +++
+! 2. Retrieve references
+! ---
+
+
+  no_iteration := 0;               ! Number of iterations as a check
+
+  code := "F";                     ! Flag for first entity in GM
+
+cont_sc:                           ! Label: Continue scanning in GM
+
+  no_iteration := no_iteration+1;  ! Number of iterations as a check
+  IF   no_iteration > 9000  AND    !
+       s_case = "PART"       THEN  !
+    EXIT("getid_gm  : "+           ! 
+    "no_iteration > 9000 (PART)"); !
+  ELIF no_iteration > 50000  AND   !
+       s_case = "GROUP"      THEN  !
+    EXIT("getid_gm  : "+           ! 
+    "no_iteration > 500000 "+      !
+         "(GROUP)");               !
+  ENDIF;
+
+
+  id := GETID(code);               ! Get reference for next entity 
+  IF code = "F"  AND               !
+     s_case= "PART" THEN           !
+      code := "P";                 ! Flag for next part   in GM
+  ELSE                             !
+      code := "N";                 ! Flag for next entity in GM
+  ENDIF;
+
+
+!   s:=INPMT("getid_gm  : (2)"+    ! Debug printout to screen
+! " Retrieved id ="+rstr(id),"",1);!
+
+
+  IF id <> #0 THEN                 !
+      GETHDR(id,typ,nref,blnk,     ! Get header for retrieved entity id
+             niv,pen,gid);         !
+  ELSE                             !
+    GOTO a_ret;                    ! id= #0 ==> End of scanning
+  ENDIF;                           !
+
+
+!   s:=INPMT("getid_gm  : typ="    !  Debug printout to screen
+!   +str(typ,-1,0),"",1);
+
+
+  IF   s_case = "GROUP" AND        !
+       typ = 4096          THEN    ! Is the entity a GROUP ?
+!   s:=INPMT("getid_gm  : typ="    !  Debug printout to screen
+!   +str(typ,-1,0),"",1);
+    GETGRP(id,gnam,nm,idvec);      ! Get data for entity GROUP
+!   s:=INPMT("getid_gm  : gnam "   !  Debug printout to screen
+!   +gnam+" nm "+str(nm,-1,0),"",1);
+    IF s_string = gnam THEN        ! 
+      FOR ix1:= 1 TO nm DO         !
+       no_ent:= no_ent + 1;        !
+       ent_id(no_ent):= idvec(ix1);!
+      ENDFOR;                      !
+    ENDIF;                         !
+  ELIF s_case = "PART"  AND        !
+          typ = 16384        THEN  ! Is the entity a PART ?
+    GETPRT(id, prt_name,mtyp,      ! Get data about the part
+     mattr,kid,np,mant,idm);       ! 
+    IF s_string = prt_name THEN    ! 
+      no_ent:= no_ent + 1;         !
+      ent_id(no_ent):= id;         !
+    ENDIF;                         !
+  ELSE
+    GOTO cont_sc;                  ! Continue scanning in GM
+  ENDIF;                           !
+
+
+!   s:=INPMT("getid_gm  : gnam= "  ! Debug printout to screen
+!    +gnam,"",1);                  !
+
+
+  GOTO  cont_sc;                   ! Continue scanning in GM
+
+
+! +++
+! 3. Exit
+! ---
+
+a_ret:;                            ! All data retrieved 
+
+
+ENDMODULE

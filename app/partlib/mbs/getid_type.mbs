@@ -1,0 +1,137 @@
+!********************* getid_type **************************************
+! +++
+! General function which retrieves identities to entities with a
+! given type (unblanked) in GM
+!
+! Revision history
+! ________________
+!
+! 1995-11-14  Gunnar Liden
+! 
+! ---
+!************************************************************************
+
+!sdesce Retrieve identities in GM for entities with a given type
+!sdesce H{mta identiteter i GM f|r storheter med given typ   
+
+GLOBAL GEOMETRY MODULE getid_type (
+    INT     r_type;                ! Requested type
+VAR INT     no_ent;                ! Number of entities
+VAR REF     ent_id(3000) );        ! References (# id's)
+
+! Internal variables
+
+  STRING    code*1;                ! Flag for GM routine GETID
+                                   ! F for first entity in GM
+                                   ! N for next  entity 
+                                   ! n for next  entity on same level
+                                   ! P for next  part
+  REF       id;                    ! Temporarely used id for GETID
+
+                                   ! For GETHDR
+  INT       typ;                   ! Type of entity
+  INT       nref;                  ! .. ber of references
+  INT       blnk;                  ! Blank flag
+  INT       niv;                   ! Level for the entity
+  INT       pen;                   ! Pen   for the entity
+  REF       gid(3);                ! References to groups for the entity
+
+  INT       no_iteration;          ! Number of iterations (program check)
+
+
+
+  INT       ix1;                   ! Temporarely used loop index
+
+  INT       DEBUG;                 ! Debug parameter
+
+  STRING    s*1;                   ! For debug printout to screen
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations
+! ---
+
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+ ! Check r_type !!!!!!!!!  
+
+  no_ent    := 0;                  ! Initialize output variables
+  ent_id(1) := #0;                 !
+  IF  DEBUG = 1 THEN               !
+    FOR ix1:=1 TO 3000 DO          ! 
+      ent_id(ix1)  := #0;          !
+    ENDFOR;                        !
+  ENDIF;                           !
+
+  IF DEBUG = 1 THEN                ! Debug
+  s:=INPMT("getid_type r_type " +  !
+       STR(r_type,-1,0)            !
+     ,"y",1);                      !
+  IF  s <> "y"  THEN               !
+    EXIT("getid_type User inter.");!
+  ENDIF;                           !
+  ENDIF;                           !
+                
+! +++
+! 2. Retrieve references
+! ---
+
+
+  no_iteration := 0;               ! Number of iterations as a check
+
+  code := "F";                     ! Flag for first entity in GM
+
+cont_sc:                           ! Label: Continue scanning in GM
+
+  no_iteration := no_iteration+1;  ! Number of iterations as a check
+  IF   no_iteration > 9000  THEN   !
+    EXIT("getid_type: "+           ! 
+    "no_iteration > 9000");        !
+  ENDIF;                           !
+
+
+  id := GETID(code);               ! Get reference for next entity 
+  IF code = "F"  THEN              !
+      code := "N";                 ! Flag for next entity in GM
+  ENDIF;
+
+
+!   s:=INPMT("getid_type: (2)"+    ! Debug printout to screen
+! " Retrieved id ="+rstr(id),"",1);!
+
+
+  IF id <> #0 THEN                 !
+      GETHDR(id,typ,nref,blnk,     ! Get header for retrieved entity id
+             niv,pen,gid);         !
+  ELSE                             !
+    GOTO a_ret;                    ! id= #0 ==> End of scanning
+  ENDIF;                           !
+
+
+!   s:=INPMT("getid_type: typ="    !  Debug printout to screen
+!   +str(typ,-1,0),"",1);
+
+  IF r_type = typ AND blnk= 0 THEN ! Requested type and not blanked ?
+    no_ent:= no_ent + 1;           !
+    ent_id(no_ent):= id;           !
+  ENDIF;                           !
+
+
+  GOTO  cont_sc;                   ! Continue scanning in GM
+
+
+! +++
+! 3. Exit
+! ---
+
+a_ret:;                            ! All data retrieved 
+
+
+ENDMODULE

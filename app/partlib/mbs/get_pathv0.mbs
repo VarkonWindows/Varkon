@@ -1,0 +1,172 @@
+!******************** get_pathv0**********************
+!
+! Get the path for an entity
+! !!! Prgrammera f|r att indata {r en part !!
+! Revision history
+! ________________
+!
+! 1995-11-05 Gunnar Liden
+! 1997-02-13 1 -->i_r (Antagligen ändrat på Saab) Gunnar Liden
+! 1999-04-06 Not ##0.1 for Windows Gunnar Liden
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE get_pathv0(
+
+    REF     input_id;          ! Reference to an entity
+VAR STRING  name_part(10)*10;  ! Part names
+VAR REF     id_prt(10);        ! Reference name on the different levels
+VAR INT     n_parts );         ! Number of levels (part names)
+
+! Interna variabler:
+
+  STRING      input_ids*132;   ! Input part_id as a string
+
+  INT         i_cur;           ! Current position in input_ids
+
+  INT         nlev;            ! Number of levels
+
+  INT         i_s;             ! Position in string for sign #
+
+  INT         i_r;             ! Loop index for references
+
+  STRING      tstr*132;        ! Dummy string
+
+  STRING      ids*132;         ! Reference id as a string
+
+                               ! For function GETHDR:
+  REF         id;              ! Reference to entity
+  INT         typ;             ! Type of entity
+  INT         nref;            ! Number of references to part
+                               ! (not used any more !!!! )
+  INT         blank;           ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT         niv};            ! The layer for the entity
+  INT         penna;           ! Pen number (colour)
+  REF         grupp_id(3);     ! Global identities for the
+                               ! groups, which the entity is part of ..
+
+                               ! For function GETPRT:
+  STRING      namn*10;         ! Name of the part
+  INT         mtyp;            ! Module type
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Module attribute
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identity for the 
+                               ! coord. system used to position
+                               ! the part
+  INT         np;              ! Number of parameters in the part
+  INT         mant;            ! Number of entities in the part
+  REF         idm(5);          ! Array with global references (##)
+
+  STRING      s*1;             ! String for DEBUG (INPMT)
+
+  INT         DEBUG;           ! For debug printout
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations
+! ---
+
+  DEBUG := 0;                                ! Change to 0, 1 or 2
+
+  FOR i_r:= 1 TO 10 DO                       ! Initialize output variables
+    name_part(i_r) := "Undefined";           !
+    id_prt(i_r)    := #0;                    !
+  ENDFOR;                                    !
+
+  n_parts := 0;                              !
+
+! It is assumed that the input reference is a global reference 
+
+   input_ids:=RSTR(input_id);                ! Convert reference to string
+
+   IF SUBSTR(input_ids,1,2) = "##"  THEN     ! Check that it starts wit ##
+     ;                                       !
+   ELIF SUBSTR(input_ids,1,4) = "#0.1" THEN  ! or #0.1
+     input_ids := "#"+input_ids;
+   ELSE                                      !
+     EXIT("get_pathv0 Not a global "+        !
+           "reference "+input_ids);          !
+   ENDIF;                                    !
+
+! +++
+! 2. Pack up the string (input reference converted to a string)
+! ---
+
+   nlev:=1;                                  ! Initialize number of levels
+   tstr := input_ids;                        ! Current part of input string
+   i_cur:= 3;                                ! Start search # from position 3
+
+
+loop:                                        ! Label: Next level
+
+   i_s:=FINDS(SUBSTR(input_ids,i_cur),"#");  ! Find next # in string from position i_cur
+
+    IF DEBUG = 1 THEN         
+    s:=INPMT("get_pathv0 input_ids "+input_ids +" i_cur "+STR(i_cur,-1,0)
+              +" i_s "+STR(i_s  ,-1,0)
+     ,"", 1);             
+    ENDIF;               
+
+   IF i_s > 0 THEN
+     id_prt(nlev):=                          ! Reference to part at level nlev
+      RVAL(SUBSTR(input_ids,1,i_cur+i_s-2)); !
+      i_cur := i_cur + i_s ;                 ! Search for # from new position
+     nlev:= nlev + 1;                        ! An additional level
+     GOTO loop;
+   ELSE
+     id_prt(nlev):= input_id;                ! Reference to input entity at lowest level
+   ENDIF;
+
+    IF DEBUG = 1 THEN         
+    s:=INPMT("get_pathv0 input_ids "+input_ids+" nlev "+STR(nlev,-1,0)
+     ,"", 1);             
+    ENDIF;               
+
+  n_parts:= nlev - 1;
+
+! +++
+! 3. Retrieve name of parts in the path
+! ---
+
+  FOR i_r := 1 TO n_parts  DO                ! Start loop all levels (references)
+
+    id := id_prt(i_r);  ! 1997-02-13           ! Current reference to part
+    GETHDR(id,typ,nref,                      ! Read header for the entity
+    blank,niv},penna,grupp_id);              ! 
+
+    IF DEBUG = 1 THEN        
+    s:=INPMT("get_pathv0 " + " id " + RSTR(id) +         
+    " typ "+STR(typ,-1,0)  + " i_r "+STR(i_r,-1,0)   
+     ,"", 1);              
+    ENDIF;                
+
+    IF   typ = 16384   THEN                  !
+      ;                                      !
+    ELSE                                     !
+        EXIT("get_pathv0" +                  ! Programming check
+        "typ error");                        !
+    ENDIF;                                   !
+
+    GETPRT(id,namn,mtyp,                     ! Read data about the part
+     mattr,kid,np,mant,idm);                 !
+
+    IF DEBUG = 1 THEN       
+    s:=INPMT("get_pathv0 namn " + namn  ,"", 1); 
+    ENDIF; 
+
+    name_part(i_r):= namn;                   ! Part names
+
+  ENDFOR;                                    ! End loop all references 
+
+ENDMODULE
+

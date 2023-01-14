@@ -1,0 +1,210 @@
+!******************** GET_CSYSID ***************************************
+! +++
+! H{mtar id-adress fr}n ett registrerat koordinatsystem i GM.
+!
+! 1994-10-24 Karl-Erik Eklund
+! 1994-11-09 Karl-Erik Eklund
+! 1995-02-27 Karl-Erik Eklund  id-referns f|r k-sys r{ttad
+! ---
+!***********************************************************************
+!sdesce Fetch id-adress from a registrate coordinate system in GM
+!sdescs H{mtar id-adress fr}n ett registrerat koordinatsystem i GM
+
+GLOBAL GEOMETRY MODULE GET_CSYSID(
+STRING    csys*28    := "417"             >"Koordinatsystem ";
+VAR REF   csys_id      ;
+VAR INT   ncsys       );      
+
+! Interna variabler:
+
+  INT         i_r;             ! Loop index f|r referenser i part
+  REF         id;              ! Referens
+
+                               ! F|r funktion GETHDR:
+  INT         typ;             ! Typ av storhet
+  INT         nref;            ! Antal referenser i storheten
+                               ! (Vad {r detta Johan !!!!)
+  INT         blank;           ! Eq. 0: T{nd  Eq. 1: Sl{ckt
+  INT         niv};            ! Storhetens niv}
+  INT         penna;           ! Storhetens pennummer
+  REF         grupp_id(3);     ! Globala identiteter f|r de
+                               ! grupper storheten ing}r i
+
+                               ! F|r funktion GETPRT:
+  STRING      namn*10;         ! Namn p} part
+  INT         mtyp;            ! Modultyp 
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Modul attribut
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identitet f|r det
+                               ! koordinatsystem som anv{nts 
+                               ! f|r att placera parten
+  INT         np;              ! Antal parametrar i parten
+  INT         mant;            ! Antal storheter  i parten
+  REF         idm(500);        ! Array med globala identiteter
+                               ! till storheterna i parten
+                               ! (antalet mant om det f}r plats)
+
+                               ! F|r funktion GETID: 
+  STRING      code*1;          ! Eq. F: F|rsta storheten i GM
+                               ! Eq. N: N{sta storhet
+                               ! Eq. n: N{sta storhet p} niv}n
+                               ! Eq. P: N{sta part   
+
+  STRING      csys_part*28;    ! Koordinatsystemsnamn l{st
+                               ! fr}n part-data med GETSTR
+
+  STRING      s*1;             ! Str{ng f|r DEBUG (INPMT)
+  INT         DEBUG;           ! F|r kontroll utskrifter
+
+BEGINMODULE
+
+! +++
+! Algoritm
+! ========
+! ----
+!                          Initieringar
+!                          ============
+
+  DEBUG := 0;                  ! [ndra till 0 eller 1
+
+  ncsys:= 0;
+
+! +++
+! 1. S|k igenom GM efter alla parts med namn REG_CSYS och REG_CSYS_B
+!    och konstatera om csys redan finns och om datum finns.
+! ---
+
+  code := "F";                 ! St{ll pekare i GM p} f|rsta storhet
+
+  id := GETID(code);           ! L{s f|rsta storhet          
+
+  GETHDR(id,typ,nref,          ! L{s "header" f|r storheten
+  blank,niv},penna,grupp_id);  ! 
+
+  IF DEBUG = 1 THEN
+     s:=INPMT("GET_CSYSID: GETHDR: typ ="
+        + str(typ,-1,0) + " "
+        ,"",1);
+  ENDIF;
+
+  IF typ = 16384 THEN          ! Kontrollera om f|rsta storheten {r en part
+    
+    GETPRT(id,namn,mtyp,       ! L{s data om parten
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: F|rsta storheten {r en part"
+          ,"", 1);
+    ENDIF;
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: GETPRT: id = "
+          + RSTR(id) + " "
+          ,"",1);
+    ENDIF;
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: GETPRT: partnamn = "
+          + namn + " "
+          ,"",1);
+    ENDIF;
+
+    IF namn = "REG_CSYS_B" OR  ! Kontrollerar om n}got registrerat
+       namn = "reg_csys_b" OR  ! koordinatsystem redan finns
+       namn = "REG_CSYS" OR    !
+       namn = "reg_csys" THEN  !
+
+      csys_part:= GETSTR(id,2);
+
+      IF DEBUG = 1 THEN
+          s:=INPMT("GET_CSYSID: GETSTR: csys_part = "
+            + csys_part + " "
+            ,"",1);
+      ENDIF;
+
+      IF csys_part = csys THEN
+
+        ncsys:= ncsys + 1;
+        csys_id:= RVAL(RSTR(id)+"#1.1");
+        goto slut;
+
+      ENDIF;                   !
+
+    ENDIF;                     !
+
+  ENDIF;                       !
+
+  code := "P";                 ! Kod f|r att l{sa enbart parts      
+
+  FOR i_r := 1 TO 10000 DO     ! Start loop alla referenser
+
+    id := GETID(code);         ! Referens till n{sta part
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: i_r ="
+          + str(i_r,-1,0) + " "
+          ,"",1);
+    ENDIF;
+
+   IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: GETPRT: id = "
+          + RSTR(id) + " "
+          ,"",1);
+    ENDIF;
+
+    IF id = #0 THEN            ! G} till Label slut om
+      GOTO slut;               ! om inga fler parts finns
+    ENDIF;                     ! i aktiva modulen
+
+    GETPRT(id,namn,mtyp,       ! L{s data om parten
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN
+       s:=INPMT("GET_CSYSID: GETPRT: partnamn = "
+          + namn + " "
+          ,"",1);
+    ENDIF;
+
+    IF namn = "REG_CSYS_B" OR  ! Kontrollerar om 
+       namn = "reg_csys_b" OR  ! koordinatsystemet finns
+       namn = "REG_CSYS" OR    !
+       namn = "reg_csys" THEN  !
+
+      csys_part:= GETSTR(id,2);
+
+      IF DEBUG = 1 THEN
+         s:=INPMT("GET_CSYSID: GETSTR: csys_part = "
+            + csys_part + " "
+            ,"",1);
+      ENDIF;
+
+      IF csys_part = csys THEN
+
+        ncsys:= ncsys + 1;
+        csys_id:= RVAL(RSTR(id)+"#1.1");
+        goto slut;
+
+      ENDIF;                   !
+
+    ENDIF;                     !
+
+  ENDFOR;                      ! Slut  loop alla referenser
+
+slut:                          
+                               ! Programmet har letat i GM tills det har
+   IF DEBUG = 1 THEN           ! hittat |nskat koordinatsystem/letat igenom
+       s:=INPMT("GET_CSYSID:"+ ! hela GM utan tr{ff.
+       " ncsys  ="             !
+        + str(i_r,-1,0) + " "  !
+          ,"",1);
+    ENDIF;
+
+    IF ncsys = 0 THEN
+      csys_id:= RVAL("#0");
+    ENDIF;
+
+ENDMODULE

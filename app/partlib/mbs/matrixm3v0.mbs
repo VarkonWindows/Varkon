@@ -1,0 +1,53 @@
+!********************* matrixm3v0 ***************************************
+! +++
+!  Multiplikation mellan en 1X4-matris och en 4X4-matris, d{r resul-
+!  tatet blir en 1X4-matris.  A*B = C
+!
+! ---
+!
+!  Revision history
+!  ________________
+!
+!  1992-11-30  Karl-Erik Eklund
+!  1997-02-16  Dokumentation Gunnar Liden
+!
+!************************************************************************
+
+!sdesce Matrix multiplication C(4) = A(4)*B(4,4)
+!sdescs Matris multiplikation C(4) = A(4)*B(4,4)
+
+BASIC GEOMETRY MODULE matrixm3v0
+(
+VAR FLOAT  A(4);                 ! Input  1X4-matris
+VAR FLOAT  B(16);                ! Input  4X4-matris
+VAR FLOAT  C(4)                  ! Output 1X4-matris
+);
+
+!                               ___                     ___
+!                               !  B(1)  B(2)  B(3)  B(4) !
+!                               !                         !
+!  ___                   ___    !  B(5)  B(6)  B(7)  B(8) !
+!  ! A(1)  A(2)  A(3)  A(4)!  * !                         ! =
+!  ---                   ---    !  B(9) B(10) B(11) B(12) !
+!                               !                         !
+!                               ! B(13) B(14) B(15) B(16) !
+!                               ---                     ---
+!
+!
+!     ___                   ___
+!  =  ! C(1)  C(2)  C(3)  C(4)!
+!     ---                   ---
+
+
+BEGINMODULE
+
+C(1):=  A(1)*B(1) +  A(2)*B(5) +  A(3)*B(9)  +  A(4)*B(13);
+
+C(2):=  A(1)*B(2) +  A(2)*B(6) +  A(3)*B(10) +  A(4)*B(14);
+
+C(3):=  A(1)*B(3) +  A(2)*B(7) +  A(3)*B(11) +  A(4)*B(15);
+
+C(4):=  A(1)*B(4) +  A(2)*B(8) +  A(3)*B(12)  + A(4)*B(16);
+
+ENDMODULE
+

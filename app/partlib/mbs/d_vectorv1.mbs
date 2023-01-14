@@ -1,0 +1,47 @@
+!******************** d_vectorv1 ****************************************
+! +++
+! Skriver ut en vektors namn och v{rde (komponentvis) f|r given modul
+! och givet debug-v{rde.
+!
+! 1994-02-10 Ronny Gyllensten
+! 1994-05-03 Kompletterad med j{mf|relse mellan 2 str{ngar f|r att f}
+!            utskrift endast i |nskad modul.
+!             desc*10 {ndrad till desc*25          Karl-Erik Eklund
+! ---
+!***********************************************************************
+!sdesce Type on screen a vector for given module and debug-value
+!sdescs Skriver ut p} sk{rm en vektor f|r given modul och debug-v{rde
+
+MACRO GEOMETRY MODULE d_vectorv1  (
+
+STRING   sdebug1*10              >"\nskat modulnamn f|r utskrift";
+STRING   sdebug2*10              >"G{llande modulnamn";
+INT      debug1:= 1              >"\nskat debug-v{rde f|r utskrift";
+INT      debug2:= 1              >"G{llande debug-v{rde";
+STRING   desc*25                 >"Beskrivning (vektorns namn=)";
+VECTOR   v:= VEC(1,0,0)          >"Vektor");
+
+! Internal variable:
+
+STRING   s*1;                    ! F|r INPMT
+STRING   sdebugmod1*10;          ! Str{ngen sdebug1 modifierad till versaler
+STRING   sdebugmod2*10;          ! Str{ngen sdebug2 modifierad till versaler
+
+
+BEGINMODULE
+
+    part(#1,capsv1(sdebug1,sdebugmod1));
+
+    part(#2,capsv1(sdebug2,sdebugmod2));
+
+    IF sdebugmod1 = sdebugmod2 AND debug1 = debug2 OR
+       sdebugmod1 = "ALL" AND debug1 = debug2 THEN
+
+      s:=INPMT( sdebug2 + ": " + desc + " = "+
+         STR(v.x,-16,9)+ " "+
+         STR(v.y,-16,9)+ " "+
+         STR(v.z,-16,9)+ " ","",1);
+
+    ENDIF;
+
+ENDMODULE

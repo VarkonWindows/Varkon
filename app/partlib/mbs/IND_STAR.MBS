@@ -1,0 +1,104 @@
+!******************** IND_STAR **********************
+!
+! Creates an indication star.
+!
+! This module should normally be called with SAVE=0
+! (with F in the menue file .MDF).
+!
+! Created star will only be saved in GM for case=3.
+!
+! 1992-12-17 Gunnar Liden
+!
+!****************************************************
+
+GLOBAL GEOMETRY MODULE IND_STAR (
+
+  VECTOR      tp    := VEC(100,200,300) >"Indication point";
+  FLOAT       l_s   := 10.0             >"Size of star";
+  INT         case  := 1                >"=1: Repaint screen (y/n)");
+
+! Internal variables:
+
+  FLOAT       scale;            ! Scaling factor for active screen
+
+  FLOAT       l_tp;             ! Scaled size of star
+
+  INT         save_flag;        ! For SAVE=0 or SAVE=1
+
+  STRING      s*1;              ! String for case=1 (INPMT)
+
+BEGINMODULE
+
+!                       1. Initiations
+!                       ===============
+  IF case=1 OR case=2 THEN     !
+    save_flag:=0;              !
+  ELIF case=3         THEN     !
+    save_flag:=1;              !
+  ELSE                         !
+    save_flag:=0;              !
+  ENDIF;                       !
+
+!                       2. Scaling of star
+!                       ==================
+
+  scale:= ACT_SCL();           ! Get screen scale
+
+  IF ABS(scale)>0.000001 THEN  ! Scaled length for indication star
+    l_tp := l_s/scale;         !
+  ELSE                         !
+    l_tp:=200.0;               !
+  ENDIF;                       !
+
+!                 4. Create star as straight lines
+!                 ================================
+
+  LIN_FREE(#1,                 ! Lines in the indication star
+    tp+vec(-l_tp,0,0)          ! 
+   ,tp+vec(+l_tp,0,0)          !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#2,                 !
+    tp+vec(0,-l_tp,0)          !
+   ,tp+vec(0,+l_tp,0)          !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#3,                 !
+    tp+vec(0,0,-l_tp)          !
+   ,tp+vec(0,0,+l_tp)          !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#4,                 !
+   tp+vec(0,-l_tp,-l_tp)       !
+  ,tp+vec(0,+l_tp,+l_tp)       !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#5,                 !
+   tp+vec(-l_tp,0,-l_tp)       !
+  ,tp+vec(+l_tp,0,+l_tp)       !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#6,                 !
+   tp+vec(-l_tp,-l_tp,0)       !
+  ,tp+vec(+l_tp,+l_tp,0)       !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#7,                 !
+   tp+vec(0,-l_tp,+l_tp)       !
+  ,tp+vec(0,+l_tp,-l_tp)       !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#8,                 !
+   tp+vec(-l_tp,0,+l_tp)       !
+  ,tp+vec(+l_tp,0,-l_tp)       !
+    :SAVE=save_flag  );        !
+  LIN_FREE(#9,                 !
+   tp+vec(-l_tp,+l_tp,0)       !
+  ,tp+vec(+l_tp,-l_tp,0)       !
+    :SAVE=save_flag  );        !
+
+
+  IF case = 1 THEN             ! Repaint screen for case=1
+     s:= INPMT("Repaint screen"!
+       +" (y/n)"               !
+      ,"y",1);                 !
+
+    IF s="Y" OR s="y" THEN     !
+      REP_VIEW();              ! Temporary lines (star) will disappear
+     ENDIF;                    !
+                               !
+  ENDIF;                       !
+ENDMODULE

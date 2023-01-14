@@ -1,0 +1,40 @@
+!******************** MINMAXREG ***********************************
+!
+! Registrerar maximala och minimala v{rden f|r en punktm{ngd (yta)
+! samt antal U och V linjer.
+!
+! 1992-11-10 Gunnar Liden
+!
+! 
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE MINMAXREG (
+
+FLOAT  minx;                  ! Minimum X value
+FLOAT  maxx;                  ! Maximum X value
+FLOAT  miny;                  ! Minimum Y value
+FLOAT  maxy;                  ! Maximum Y value
+FLOAT  minz;                  ! Minimum Z value
+FLOAT  maxz;                  ! Maximum Z value
+INT    nu;                    ! Antal U linjer i ytan
+INT    nv);                   ! Antal V linjer i ytan
+
+
+! Internal variables:
+
+INT    b_flag;                ! Flagga f|r blankning
+
+BEGINMODULE
+
+  b_flag := 1;
+
+  POI_FREE(#1,VEC(minx,miny,minz):BLANK=b_flag);
+  POI_FREE(#2,VEC(maxx,miny,minz):BLANK=b_flag);
+  POI_FREE(#3,VEC(minx,maxy,minz):BLANK=b_flag);
+  POI_FREE(#4,VEC(maxx,maxy,minz):BLANK=b_flag);
+  POI_FREE(#5,VEC(minx,miny,maxz):BLANK=b_flag);
+  POI_FREE(#6,VEC(maxx,miny,maxz):BLANK=b_flag);
+  POI_FREE(#7,VEC(minx,maxy,maxz):BLANK=b_flag);
+  POI_FREE(#8,VEC(maxx,maxy,maxz):BLANK=b_flag);
+
+ENDMODULE

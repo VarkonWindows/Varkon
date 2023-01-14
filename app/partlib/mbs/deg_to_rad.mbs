@@ -1,0 +1,25 @@
+! ***************** deg_to_rad ****************************
+!
+! +++
+! Convert angle in degrees to angle in radians
+!
+! Revision history
+! ________________
+!
+! 1995-10-12 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Convert angle in degrees to angle in radians
+!sdescs Konvertering av grader till radianer
+
+BASIC  GEOMETRY MODULE deg_to_rad (
+    FLOAT   ang_d;    ! Angle in degrees  (input)
+VAR FLOAT   ang_r);   ! Angle in radians  (output)
+ 
+BEGINMODULE
+
+  ang_r:= ang_d*PI/180.0;
+
+ENDMODULE

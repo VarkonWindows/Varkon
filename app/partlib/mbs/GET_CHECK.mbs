@@ -1,0 +1,26 @@
+!********************* GET_CHECK  **************************************
+!
+! Purpose: Checks that input string is equal to "UNDEFINED"
+!
+! 1992-12-02  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE GET_CHECK  (
+     STRING  curve_type*20);        ! Curve type
+
+! Internal variables
+
+
+BEGINMODULE
+
+!                              1. Check
+!                             =========
+
+  IF  curve_type="UNDEFINED" THEN  !
+    ;                              ! Return
+  ELSE                             !
+    EXIT(curve_type +              ! Curve already defined
+       " already defined");        !
+  ENDIF;                           !
+
+ENDMODULE

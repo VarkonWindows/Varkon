@@ -1,0 +1,333 @@
+!*********************  eurosup1v0************************************
+! +++
+! The function creates a surface from a set of points.   
+!
+! Input data for this function is a text file with points. 
+! The format of the file is .... (very simple, refer to file !)
+! The input file must be on the active job directory. 
+! File name example: NEWWING.DEF or NEWFUSE.DEF
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-08-23 Gunnar Liden
+! 1996-08-28 End point always in the surface Gunnar Liden
+! 1996-08-30 End section, graphics modification Gunnar Liden
+! 1996-09-17 Demo comments         Gunnar Liden
+! 1996-11-05 scale added           Gunnar Liden
+! 
+!********************************************************************
+
+!sdesce Create a bicubic surface from EUROSUP point data
+!sdescs Skapa bikubisk yta från EUROSUP punkt data
+
+LOCAL  GEOMETRY MODULE  eurosup1v0 (
+STRING  ptdat*15 := "NEWFUSE.DEF" >"Point data (NEWWIMG or NEWFUSE)?";
+INT     i_s_s    :=  2            >"Start section ";
+INT     i_d_s    :=  1            >"Delta section ";
+INT     i_e_s    := 16            >"End   section ";
+INT     j_s_p    :=  1            >"Start point in section";
+INT     j_d_p    :=  1            >"Delta point in section";
+INT     j_e_p    := 19            >"End   point in section";
+INT     print    :=  1            >"0= No printout 1= Printout";
+INT     graphic  :=  2 >"0= None, 1= Surface , 2= All 3= Selected pts");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  STRING title*132;            ! Identification text       (Line 1)
+  INT    n_s;                  ! Number of sections        (Line 3)
+  INT    n_p;                  ! No of points in a section
+  INT    n_c;                  ! No of coordinates for pt
+
+  STRING header*132;           ! Header point data         (Line 3)
+  
+  VECTOR p_sur;                ! Point on surface          (Line i)
+  
+  INT    i_s;                  ! Loop index section
+  INT    j_p;                  ! Loop index point in section
+
+
+
+! ---
+
+  VECTOR poi_all(220,220);     ! All possible points for SUR_SPLARR
+  VECTOR poi(220,220);         ! Selected     points for SUR_SPLARR
+
+  STRING metod*15;             ! Method for tangent length calculation 
+                               ! ZEROTWIST_1 or ADINI_1
+
+  STRING f_name*132;           ! Full file name
+  FILE   pdat;                 ! File with points
+
+  INT    iu,iv;                ! Point number
+  INT    n_last;               ! Number of points for last V patch
+  INT    m_last;               ! Number of points for last U patch
+  INT    i_s_a;                ! Array adress corresp. to i_s
+
+  FLOAT  p_dist;               ! Distance between two consecutive points
+  FLOAT  c_dist;               ! Error criterion c_dist*p_dist
+
+  FLOAT  scale;                ! Scale factor
+      
+  STRING rad*132;              ! Dummy string
+
+  INT    b_val_s;              ! BLANK value surface
+
+  INT    DEBUG;                ! Debug
+  INT    DIST;                 ! Distance check parameter
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks of input data
+!
+!    Open input file with points
+
+  DEBUG := 0;                 ! Debug =1 or 0
+  DIST  := 0;                 ! Distance check
+
+  scale := 1000.0;            !
+    
+  IF   graphic = 0 THEN       ! Graphics
+    b_val_s:= 1;              !
+  ELIF graphic = 1 THEN       ! 
+    b_val_s:= 0;              !
+  ELIF graphic = 2 THEN       !
+    b_val_s:= 0;              !
+  ELIF graphic = 3 THEN       !
+    b_val_s:= 0;              !
+  ELSE                        !
+   EXIT("eurosup1v0 graphic"+ !
+         " not OK");          !
+  ENDIF;                      !
+
+  f_name:= ACT_JOBDIR() +     ! Full name for file on the
+     ptdat;                   ! active job directory
+
+  OPEN(pdat,"R",f_name);      ! Open file with data
+  IF IOSTAT(pdat) <> 0 THEN   !
+   EXIT(f_name+"failed");     !
+  ENDIF;                      !
+
+
+  title   := INLIN(pdat);    ! Identification text  (Line 1)   
+
+  n_s     := ININT(pdat);    ! No of sections       (Line 2) 
+  n_p     := ININT(pdat);    ! No of pts in section
+  n_c     := ININT(pdat);    ! No of pt components 
+  rad     := INLIN(pdat);    ! End of line to dummy string
+
+  header  := INLIN(pdat);    ! Header to point data (Line 3)   
+
+  n_last  := -1234;          ! Initialize to "undefined"
+  m_last  := -1234;          !
+  i_s_a   := -1234;          !  
+! +++
+! 1. Read points to array for SUR_SPLARR
+!
+! ---
+
+! +++
+! Check retrieved data from file (n_s, n_p, n_c)
+! ---
+
+  IF n_s < 1 THEN
+    EXIT("eurosup1v0 n_s < 1");
+  ENDIF;
+  IF n_p < 1 THEN
+    EXIT("eurosup1v0 n_p < 1");
+  ENDIF;
+  IF n_c <> 3 THEN
+    EXIT("eurosup1v0 n_c not equal 3");
+  ENDIF;
+
+  c_dist := 10.0;
+
+! +++
+!  Start loop i_s  = 1,2,3, ....., n_s     (sections)
+!     Start loop j_p  = 1,2,3, ....., n_p  (points)
+! ---
+
+  IF  DEBUG = 1 THEN
+    LST_INI("eurosu1v0 Debug");
+  ENDIF;
+  
+  FOR i_s   := 1 TO n_s    DO    ! Start loop sections      
+    FOR j_p   := 1 TO n_p  DO    ! Start loop points
+
+!+++
+!          Retrieve surface point data from file.                 
+!---
+
+      p_sur.x:= INFLT(pdat);     ! Retrieve X coordinate  (Line i)
+      IF IOSTAT(pdat)<>0 THEN    !
+      EXIT("eurosup1v0 X failed"+!
+       " pt "+STR(i_s,-1,0)+     !
+       ","  +STR(j_p,-1,0));     !
+      ENDIF;                     !
+      p_sur.y:= INFLT(pdat);     ! Retrieve Y coordinate
+      IF IOSTAT(pdat)<>0 THEN    !
+      EXIT("eurosup1v0 Y failed"+!
+       " pt "+STR(i_s,-1,0)+     !
+       ","  +STR(j_p,-1,0));     !
+      ENDIF;                     !
+      p_sur.z:= INFLT(pdat);     ! Retrieve Z coordinate
+      IF IOSTAT(pdat)<>0 THEN    !
+      EXIT("eurosup1v0 Z failed"+!
+       " pt "+STR(i_s,-1,0)+     !
+       ","  +STR(j_p,-1,0));     !
+      ENDIF;                     !
+      rad     := INLIN(pdat);    ! End of line to dummy string
+      
+      IF graphic = 2 THEN        ! Create point for graphic= 2
+       POI_FREE(#10,p_sur:PEN=3);!
+      ENDIF;                     !
+
+      p_sur := scale*p_sur;      ! Scale 
+      
+      poi_all(i_s,j_p):= p_sur;  ! Array all possible points
+      p_dist:= -1.2345;
+      IF  j_p = 2 AND DIST > 0 THEN           ! Check
+        p_dist :=                !
+        VECL(poi_all(i_s,j_p-1)- !
+             poi_all(i_s,j_p));  !
+      ELIF  j_p > 2 AND DIST >0 THEN         ! Check
+        IF                       !
+        VECL(poi_all(i_s,j_p-1)- !
+             poi_all(i_s,j_p)) > !
+            c_dist*p_dist   THEN !
+          EXIT("eurosp1v0 Distance");
+         ENDIF;            
+      ENDIF;                     !
+      
+      IF  DEBUG = 1 AND i_s < 3 THEN
+      LST_LIN("Section "+STR(i_s,3,0)+" Pt "+STR(j_p,3,0)+
+               "  "+STR(p_sur.x,8,2)+" "+STR(p_sur.y,8,2)+" "+STR(p_sur.z,8,2));
+      ENDIF;
+    ENDFOR;                      ! End   loop points
+  ENDFOR;                        ! End   loop sections
+
+!+++
+!     End   loop i_s  = 1,2,3   (parameter V)
+!  End   loop j_p  = 1,2,3      (parameter U)
+!
+!  Close input file with points
+!---
+  IF  DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+  CLOSE(pdat);                   ! Close file
+
+! +++
+! 2. Selection of points
+!
+! ---
+
+  IF    i_e_s  > n_s THEN                                      
+   EXIT("eurosup1v0 i_e_s > n_s= " + STR(n_s,-1,0));
+  ENDIF;
+  IF    j_e_p  > n_p  THEN                                      
+   EXIT("eurosup1v0 j_e_p > n_p= " + STR(n_p,-1,0));
+  ENDIF;
+
+! +++
+! Start loop i_s  = i_s_s, ..... , i_e_s with step i_d_s
+!   Start loop j_p  = j_s_p, ..... , j_e_p with step j_d_p
+! ---
+
+  iu := 0;     ! Adress in array (matrix) in U direction (start)
+
+  FOR i_s  := i_s_s TO i_e_s+i_d_s STEP i_d_s   DO   ! Start loop U points
+
+    IF  i_s = i_e_s+i_d_s THEN
+      i_s_a := -4321;
+      m_last := i_d_s;
+!      s:= INPMT("eurosupv0 i_s "+STR(i_s,-1,0)+" i_e_s "+STR(i_e_s,-1,0)+
+!                 " i_s_a "+STR(i_s_a,-1,0)," ",1);
+       GOTO  allsect;
+    ELIF i_s  <=  i_e_s  THEN   
+      i_s_a := i_s;     ! Array address
+      m_last := -4321;
+    ELSE
+     i_s_a := i_e_s;     ! Array address 
+     m_last := i_s - i_e_s;
+!     s:= INPMT("eurosupv0 i_s "+STR(i_s,-1,0)+" i_e_s "+STR(i_e_s,-1,0)+
+!                 " i_s_a "+STR(i_s_a,-1,0)," ",1);       
+    ENDIF;
+        
+    iu := iu + 1;     ! Next U 
+    iv := 0;          ! Adress in array (matrix) in V direction (start)
+    FOR j_p  := j_s_p TO j_e_p STEP j_d_p   DO   ! Start loop V points
+
+      iv := iv + 1;   ! Next V
+      poi(iu,iv):= poi_all(i_s_a,j_p);
+      IF graphic = 3 OR graphic= 2 THEN 
+       POI_FREE(#11,poi(iu,iv):PEN=4);  !
+      ENDIF;
+      IF  j_p  =  j_e_p  THEN           ! Handling of the last point (start)
+        ;                               ! Last point is already selected
+        n_last := j_d_p;                ! Delta no of points for last patch
+      ELIF j_p+j_d_p > j_e_p THEN       ! Next point will "miss" last point
+        iv := iv + 1;                   ! Next V for the last point
+        poi(iu,iv):= poi_all(i_s_a,j_e_p);! Add last point to array
+        IF graphic= 3 OR graphic= 2 THEN! Show last point
+         POI_FREE(#12,poi(iu,iv):PEN=4);!
+        ENDIF;                          !
+        n_last := j_e_p-j_p;            ! Delta no of points for last patch        
+      ENDIF;                            ! Handling of the last point (end)                           !
+    ENDFOR;
+  ENDFOR;
+
+! +++
+!   End   loop i_p  = i_s_p, ..... , i_e_p with step i_d_p
+! End   loop j_s  = j_s_s, ..... , j_e_s with step j_d_s
+! ---
+allsect:;
+
+! +++
+! 3. Create surface
+! ---
+
+
+!  metod := "ADINI_1";  
+  metod := "ZEROTWIST_1";  
+  SUR_SPLARR(#1,metod,iu,iv,poi:BLANK=b_val_s);
+
+! +++
+! 4. Printout of result to screen for print= 1
+! ---
+
+  IF print = 1 THEN  
+  LST_INI("eurosup1v0 Create a bicubic surface from eurosup point data");
+  LST_LIN("title  "+title);
+  LST_LIN("Header "+header);
+  LST_LIN("Number of sections            n_s "+STR(n_s,5,0)); 
+  LST_LIN("Number of points in a section n_p "+STR(n_p,5,0)); 
+  LST_LIN(" "); 
+  LST_LIN("Selected points which will be used for the definition of the surface: "); 
+  LST_LIN("Section start number (U) "+STR(i_s_s,5,0)+ " delta "+STR(i_d_s,5,0)
+                                                + " end "+STR(i_e_s,5,0)); 
+  LST_LIN("Point start number   (V) "+STR(j_s_p,5,0)+ " delta "+STR(j_d_p,5,0)
+                                                + " end "+STR(j_e_p,5,0)); 
+  LST_LIN("Delta number of points for last U patches "+STR(m_last,5,0));                                                       
+  LST_LIN("Delta number of points for last V patches "+STR(n_last,5,0));                                              
+  LST_LIN("Number of points for surface iu "  +STR(iu,  5,0)+ " iv "+STR(iv,  5,0)); 
+  LST_LIN(" ");
+  LST_LIN("Scale factor for the data    scale= "+STR(scale,10,5)); 
+  LST_LIN(" ");
+  LST_LIN("Surface created by Varkon module   "+ ACT_JOBNAM()); 
+  LST_EXI();
+  ENDIF;
+
+
+ENDMODULE

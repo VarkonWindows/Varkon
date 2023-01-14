@@ -1,0 +1,145 @@
+!********************* extbpla3v0 ***********************
+! +++
+! Extend a triangular B-plane defined by three points           
+!
+! Revision history
+! ________________
+!
+! 1996-01-27  Gunnar Liden
+! 
+! ---
+!*******************************************************
+
+!sdescs Extend a triangular B-plane defined by three points           
+!sdesce Extrapolera ett triangul{rt B-plan definierat av 3 punkter    
+
+GLOBAL GEOMETRY MODULE extbpla3v0(
+
+    VECTOR p1;        ! B-plane corner point 1
+    VECTOR p2;        ! B-plane corner point 2 (= point 3)
+    VECTOR p4;        ! B-plane corner point 4
+    FLOAT  dist;      ! Extend distance
+VAR VECTOR p1_e;      ! B-plane corner point 1 extended
+VAR VECTOR p2_e;      ! B-plane corner point 2 extended
+VAR VECTOR p4_e);     ! B-plane corner point 4 extended
+
+! Internal variables:
+
+  VECTOR     v1;                 ! v1  = p2 - p1
+  VECTOR     v3;                 ! v3  = p4 - p3
+  VECTOR     v4;                 ! v4  = p1 - p4
+
+  FLOAT      dist1;              ! Translation distance for point 1
+  FLOAT      dist2;              ! Translation distance for point 2
+  FLOAT      dist4;              ! Translation distance for point 4
+
+  VECTOR     vdist1;             ! Translation direction point 1
+  VECTOR     vdist2;             ! Translation direction point 2
+  VECTOR     vdist4;             ! Translation direction point 4
+
+  FLOAT      sin_alfa1;          ! Sinus   alfa point 1
+  FLOAT      cos_alfa1;          ! Cosinus alfa point 1
+  FLOAT      sin_alfa2;          ! Sinus   alfa point 2
+  FLOAT      cos_alfa2;          ! Cosinus alfa point 2
+  FLOAT      sin_alfa4;          ! Sinus   alfa point 4
+  FLOAT      cos_alfa4;          ! Cosinus alfa point 4
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+  DEBUG := 0;                        ! Change to 0 or 1
+
+  sin_alfa1 := -0.123456789;         ! Sinus   alfa point 1
+  cos_alfa1 := -0.123456789;         ! Cosinus alfa point 1
+  sin_alfa2 := -0.123456789;         ! Sinus   alfa point 2
+  cos_alfa2 := -0.123456789;         ! Cosinus alfa point 2
+  sin_alfa4 := -0.123456789;         ! Sinus   alfa point 4
+  cos_alfa4 := -0.123456789;         ! Cosinus alfa point 4
+
+  dist1     := -0.12345678;          ! Translation distance for point 1
+  dist2     := -0.12345678;          ! Translation distance for point 2
+  dist4     := -0.12345678;          ! Translation distance for point 4
+  vdist1    := VEC(0,0,0);           ! Translation direction point 1
+  vdist2    := VEC(0,0,0);           ! Translation direction point 2
+  vdist4    := VEC(0,0,0);           ! Translation direction point 4
+
+! +++
+! Calculate normalized edge vectors 
+! --- 
+
+  v1 := VECN(p2 - p1);
+  v3 := VECN(p4 - p2);
+  v4 := VECN(p1 - p4);
+
+! +++
+! Calculate translation vectors
+! --- 
+
+  vdist1 := VECN(v1 - v4); 
+  vdist2 := VECN(v3 - v1);    
+  vdist4 := VECN(v4 - v3);  
+
+! +++
+! Calculate distances
+! --- 
+
+  IF  VECL(vdist1+v1) < 0.001 THEN
+    EXIT("extbpla3v0 Three-pt vdist1+v1 zero vector");
+  ENDIF;
+  cos_alfa1 := (1.0 + vdist1*v1)/VECL(vdist1+v1);
+  sin_alfa1 := SQRT(1.0 - cos_alfa1*cos_alfa1);
+
+  IF  VECL(vdist2+v3) < 0.001 THEN
+    EXIT("extbpla3v0 Three-pt vdist2+v3 zero vector");
+  ENDIF;
+  cos_alfa2 := (1.0 + vdist2*v3)/VECL(vdist2+v3);
+  sin_alfa2 := SQRT(1.0 - cos_alfa2*cos_alfa2);
+
+  IF  VECL(vdist4+v4) < 0.001 THEN
+    EXIT("extbpla3v0 Three-pt vdist4+v4 zero vector");
+  ENDIF;
+  cos_alfa4 := (1.0 + vdist4*v4)/VECL(vdist4+v4);
+  sin_alfa4 := SQRT(1.0 - cos_alfa4*cos_alfa4);
+
+
+  IF   sin_alfa1 > 0.0001  THEN
+    dist1 := dist/sin_alfa1;
+  ELSE
+    EXIT("extbpla3v0 Three-pt B-plane not OK sin_alfa1= 0");
+  ENDIF;
+  IF   sin_alfa2 > 0.0001  THEN
+    dist2 := dist/sin_alfa2;
+  ELSE
+    EXIT("extbpla3v0 Three-pt B-plane not OK sin_alfa2= 0");
+  ENDIF;
+  IF   sin_alfa4 > 0.0001  THEN
+    dist4 := dist/sin_alfa4;
+  ELSE
+    EXIT("extbpla3v0 Three-pt B-plane not OK sin_alfa4= 0");
+  ENDIF;
+
+! +++
+! Corner points for the extended B-plane 
+! --- 
+
+
+  p1_e  := p1 - dist1*vdist1;
+  p2_e  := p2 - dist2*vdist2;
+  p4_e  := p4 - dist4*vdist4;
+
+
+ENDMODULE

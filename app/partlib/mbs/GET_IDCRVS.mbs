@@ -1,0 +1,705 @@
+!********************* GET_IDCRVS **************************************
+!
+! Purpose: Get references (# identity) for surface input curves
+!          defined as GROUPS with names LIM04, TAN08, PFN,
+!          MID09, SPINE ... etc.
+!
+!  Additional programming (modifications) necessary in the function:
+!  - At the moment are only 20 curves (19 strips) allowed. Just
+!    copy lines if 25 curves (24 strips) is needed ....
+!  - To start with first entity in GM (GETID with F) is not necessary
+!    Just call GETHDR with input part_id
+!  - The limit end_id should be replaced by the parameter nref,
+!    which gives the number of references in the part
+!
+! Output: Number of strips and arrays with curve types and curve id's
+!
+! 1992-08-23  Gunnar Liden
+! 1994-03-07  G_REFSEL  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE GET_IDCRVS (
+    REF     part_id;               ! Input surface is a part
+VAR INT     no_strips;             ! Number of strips in the surface
+VAR REF     spine_id;              ! Spine curve    (# id)
+VAR STRING  lim_type(25)*20;       ! Limit   curves types
+VAR REF     lim_id(25,4);          ! Limit   curves (# id's)
+VAR STRING  tan_type(25)*20;       ! Tangent curves types
+VAR REF     tan_id(25,4);          ! Tangent curves (# id's)
+VAR STRING  pfn_type(25)*20;       ! Pvalue  curve  types
+VAR REF     pfn_id(25,4);          ! Pvalue  curves (# id's)
+VAR STRING  mid_type(25)*20;       ! Mid     curve  types
+VAR REF     mid_id(25,4));         ! Mid     curves (# id's)
+
+! Internal variables
+
+  STRING    code*1;                ! Flag for GM routine GETID
+                                   ! F for first entity in GM
+                                   ! N for next  entity 
+                                   ! n for next  entity on same level
+                                   ! P for next  part
+  REF       id;                    ! Temporarely used id for GETID
+
+  REF       end_id;                ! Next entity in GM after part_id
+
+  INT       typ;                   ! Type of entity
+  INT       nref;                  ! Number of references
+  INT       blnk;                  !
+  INT       niv;                   !
+  INT       pen;                   !
+  INT       nm;                    !
+  INT       flag;                  ! ????
+
+  REF       gid(3);                !
+  REF       idvec(100);            !
+  STRING    gnam*20;               ! Group name
+
+  STRING    part_ids*132;          ! Input reference as a string
+
+  INT       no_iteration;          ! Number of iterations (program check)
+
+
+
+  INT       ix1,ix2;               ! Temporarely used loop index
+
+  STRING    s*1;                   ! For debug printout to screen
+
+
+BEGINMODULE
+
+!                         1. Initializations
+!                         ==================
+
+  no_strips := 0;                  ! Initialize output variables
+  FOR ix1:=1 TO 25 DO              ! 
+                                   !
+      lim_type(ix1):= "UNDEFINED"; !
+      tan_type(ix1):= "UNDEFINED"; !
+      pfn_type(ix1):= "UNDEFINED"; !
+      mid_type(ix1):= "UNDEFINED"; !
+                                   !
+      FOR ix2:=1 TO  4 DO          !
+          lim_id(ix1,ix2):= #0 ;   !
+          tan_id(ix1,ix2):= #0 ;   !
+          pfn_id(ix1,ix2):= #0 ;   !
+          mid_id(ix1,ix2):= #0 ;   !
+      ENDFOR;                      !
+                                   !
+  ENDFOR;                          !
+  spine_id:= #0;                   !
+                
+!  IF part_id <>                   ! Check input reference ......
+
+   PART(#110,G_REFSEL(part_id));   ! Add # if necessary
+   part_ids:=RSTR(part_id);        ! Convert input reference to string
+!QQQ   part_ids:="#"+part_ids;         ! Add # to reference
+   part_id := RVAL(part_ids);      ! Convert from string to refernce
+
+!              2. Find "limits" for the input part (surface)
+!              =============================================
+
+  code := "F";                     ! Flag for first entity in GM
+
+
+!  s:=INPMT("GET_IDCRVS: (0) "+     ! Debug printout to screen
+!  "Input part_id="                 !
+!   +rstr(part_id),"",1);           !
+
+start:                             ! Label to find the input part
+
+  id := GETID(code);               ! Get reference for next entity 
+
+!   s:=INPMT("GET_IDCRVS: (1)"+     ! Debug printout to screen
+!   " Retrieved id ="               !
+!    +rstr(id),"",1);               !
+
+  IF RSTR(id) = RSTR(part_id)THEN  ! M}ste det vara str{ng ?????????
+      code   := "n";               ! Flag for next entity on same level
+      end_id := GETID(code);       ! Get end reference (entity which not
+                                   ! is in input part (surface) part_id.
+      GOTO step3;                  ! Next scanning phase
+
+  ELIF id = #0 AND code = "P" THEN !
+      EXIT("GET_IDCRVS: "+         ! Programming error for id= #0
+       "No part_id");              !
+  ELSE
+      code := "P";                 ! Flag for next part in GM
+      GOTO  start;                 ! Continue scanning of GM
+  ENDIF;
+
+  EXIT("GET_IDCRVS: "+             ! Programming error
+   "No part_id in GM");            !
+
+
+!              3. Retrieve curve types and references
+!              =======================================
+
+step3:                             ! Retrieve GROUPS
+
+!   s:=INPMT("GET_IDCRVS: end_id="  ! Debug printout to screen
+!   +rstr(end_id),"",1);            !
+
+  no_iteration := 0;               ! Number of iterations as a check
+
+
+  code := "F";                     ! Flag for first entity in GM
+
+surface:                           ! Label to find entities in the surface
+
+  no_iteration := no_iteration+1;  ! Number of iterations as a check
+  IF no_iteration > 2000 THEN      !
+      EXIT("GET_IDCRVS: "+         ! Programming error
+      "no_iteration > 2000");      !
+  ENDIF;
+
+
+  id := GETID(code);               ! Get reference for next entity 
+  IF code = "F" THEN               !
+      code := "P";                 ! Flag for next part in GM
+  ENDIF;
+
+
+!   s:=INPMT("GET_IDCRVS: (2)"+    ! Debug printout to screen
+! " Retrieved id ="+rstr(id),"",1);!
+
+
+  IF RSTR(id) = RSTR(part_id)THEN  ! M}ste det vara str{ng ?????????
+                                   ! ???  IF id = part_id THEN
+                                   ! Retrieved entity (part) = input id ?
+
+!      s:=INPMT("GET_IDCRVS: (2)"+  ! Debug printout to screen
+!     " id = part_id ="             !
+!     +rstr(id),"",1);              !
+
+      code   := "N";               ! Flag for next entity in the surface
+      GOTO surface;                ! Start retrieving GROUPS
+  ELIF code = "P" THEN             !
+      GOTO surface;                ! Continue scanning for input part
+  ELIF RSTR(id) = RSTR(end_id) THEN!
+      GOTO check;                  ! All GROUPS (curves) retrieved
+  ENDIF;
+
+  IF id <> #0 THEN                 !
+      GETHDR(id,typ,nref,blnk,     ! Get header for retrieved entity id
+             niv,pen,gid);         !
+  ELSE                             !
+      EXIT("GET_IDCRVS: "+         ! Programming error for id= #0
+       "id= #0");                  !
+  ENDIF;
+
+
+!   s:=INPMT("GET_IDCRVS: typ="    !  Debug printout to screen
+!   +str(typ,-1,0),"",1);
+
+
+  IF typ = 4096 THEN               ! Is the entity a GROUP ?
+      GETGRP(id,gnam,nm,idvec);    ! Get data for entity GROUP
+                                   ! Check that nm=1 ......
+  ELSE
+      GOTO surface;                ! Continue scanning
+  ENDIF;                           !
+
+
+!   s:=INPMT("GET_IDCRVS: gnam= "  ! Debug printout to screen
+!    +gnam,"",1);                  !
+
+
+  IF   SUBSTR(gnam,1,3)="LIM" THEN ! Limit curve ?
+    IF   SUBSTR(gnam,4,2)="01"THEN ! Curve  1
+      PART( #1,GET_CHECK           !
+       (lim_type( 1)):SAVE=0);     !
+      lim_type( 1):= gnam;         ! Type of curve
+      lim_id( 1,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="02"THEN ! Curve  2
+      PART( #2,GET_CHECK           !
+       (lim_type( 2)):SAVE=0);     !
+      lim_type( 2):= gnam;         ! Type of curve
+      lim_id( 2,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="03"THEN ! Curve  3
+      PART( #3,GET_CHECK           !
+       (lim_type( 3)):SAVE=0);     !
+      lim_type( 3):= gnam;         ! Type of curve
+      lim_id( 3,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="04"THEN ! Curve  4
+      PART( #4,GET_CHECK           !
+       (lim_type( 4)):SAVE=0);     !
+      lim_type( 4):= gnam;         ! Type of curve
+      lim_id( 4,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="05"THEN ! Curve  5
+      PART( #5,GET_CHECK           !
+       (lim_type( 5)):SAVE=0);     !
+      lim_type( 5):= gnam;         ! Type of curve
+      lim_id( 5,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="06"THEN ! Curve  6
+      PART( #6,GET_CHECK           !
+       (lim_type( 6)):SAVE=0);     !
+      lim_type( 6):= gnam;         ! Type of curve
+      lim_id( 6,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="07"THEN ! Curve  7
+      PART( #7,GET_CHECK           !
+       (lim_type( 7)):SAVE=0);     !
+      lim_type( 7):= gnam;         ! Type of curve
+      lim_id( 7,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="08"THEN ! Curve  8
+      PART( #8,GET_CHECK           !
+       (lim_type( 8)):SAVE=0);     !
+      lim_type( 8):= gnam;         ! Type of curve
+      lim_id( 8,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="09"THEN ! Curve  9
+      PART( #9,GET_CHECK           !
+       (lim_type( 9)):SAVE=0);     !
+      lim_type( 9):= gnam;         ! Type of curve
+      lim_id( 9,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="10"THEN ! Curve 10
+      PART(#10,GET_CHECK           !
+       (lim_type(10)):SAVE=0);     !
+      lim_type(10):= gnam;         ! Type of curve
+      lim_id(10,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="11"THEN ! Curve 11
+      PART(#11,GET_CHECK           !
+       (lim_type(11)):SAVE=0);     !
+      lim_type(11):= gnam;         ! Type of curve
+      lim_id(11,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="12"THEN ! Curve 12
+      PART(#12,GET_CHECK           !
+       (lim_type(12)):SAVE=0);     !
+      lim_type(12):= gnam;         ! Type of curve
+      lim_id(12,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="13"THEN ! Curve 13
+      PART(#13,GET_CHECK           !
+       (lim_type(13)):SAVE=0);     !
+      lim_type(13):= gnam;         ! Type of curve
+      lim_id(13,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="14"THEN ! Curve 14
+      PART(#14,GET_CHECK           !
+       (lim_type(14)):SAVE=0);     !
+      lim_type(14):= gnam;         ! Type of curve
+      lim_id(14,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="15"THEN ! Curve 15
+      PART(#15,GET_CHECK           !
+       (lim_type(15)):SAVE=0);     !
+      lim_type(15):= gnam;         ! Type of curve
+      lim_id(15,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="16"THEN ! Curve 16
+      PART(#16,GET_CHECK           !
+       (lim_type(16)):SAVE=0);     !
+      lim_type(16):= gnam;         ! Type of curve
+      lim_id(16,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="17"THEN ! Curve 17
+      PART(#17,GET_CHECK           !
+       (lim_type(17)):SAVE=0);     !
+      lim_type(17):= gnam;         ! Type of curve
+      lim_id(17,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="18"THEN ! Curve 18
+      PART(#18,GET_CHECK           !
+       (lim_type(18)):SAVE=0);     !
+      lim_type(18):= gnam;         ! Type of curve
+      lim_id(18,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="19"THEN ! Curve 19
+      PART(#19,GET_CHECK           !
+       (lim_type(19)):SAVE=0);     !
+      lim_type(19):= gnam;         ! Type of curve
+      lim_id(19,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="20"THEN ! Curve 20
+      PART(#20,GET_CHECK           !
+       (lim_type(20)):SAVE=0);     !
+      lim_type(20):= gnam;         ! Type of curve
+      lim_id(20,1):= idvec(1) ;    ! Reference to curve
+    ELSE                           !
+       EXIT("GET_IDCRVS: "+        ! Programming error if curve > 20
+        "Limit curve no > 20");    !
+    ENDIF;                         !
+  
+
+  ELIF SUBSTR(gnam,1,3)="TAN" THEN ! Tangent curve ?
+    IF   SUBSTR(gnam,4,2)="01"THEN ! Curve  1
+      PART(#31,GET_CHECK           !
+       (tan_type( 1)):SAVE=0);     !
+      tan_type( 1):= gnam;         ! Type of curve
+      tan_id( 1,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="02"THEN ! Curve  2
+      PART(#32,GET_CHECK           !
+       (tan_type( 2)):SAVE=0);     !
+      tan_type( 2):= gnam;         ! Type of curve
+      tan_id( 2,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="03"THEN ! Curve  3
+      PART(#33,GET_CHECK           !
+       (tan_type( 3)):SAVE=0);     !
+      tan_type( 3):= gnam;         ! Type of curve
+      tan_id( 3,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="04"THEN ! Curve  4
+      PART(#34,GET_CHECK           !
+       (tan_type( 4)):SAVE=0);     !
+      tan_type( 4):= gnam;         ! Type of curve
+      tan_id( 4,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="05"THEN ! Curve  5
+      PART(#35,GET_CHECK           !
+       (tan_type( 5)):SAVE=0);     !
+      tan_type( 5):= gnam;         ! Type of curve
+      tan_id( 5,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="06"THEN ! Curve  6
+      PART(#36,GET_CHECK           !
+       (tan_type( 6)):SAVE=0);     !
+      tan_type( 6):= gnam;         ! Type of curve
+      tan_id( 6,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="07"THEN ! Curve  7
+      PART(#37,GET_CHECK           !
+       (tan_type( 7)):SAVE=0);     !
+      tan_type( 7):= gnam;         ! Type of curve
+      tan_id( 7,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="08"THEN ! Curve  8
+      PART(#38,GET_CHECK           !
+       (tan_type( 8)):SAVE=0);     !
+      tan_type( 8):= gnam;         ! Type of curve
+      tan_id( 8,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="09"THEN ! Curve  9
+      PART(#39,GET_CHECK           !
+       (tan_type( 9)):SAVE=0);     !
+      tan_type( 9):= gnam;         ! Type of curve
+      tan_id( 9,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="10"THEN ! Curve 10
+      PART(#40,GET_CHECK           !
+       (tan_type(10)):SAVE=0);     !
+      tan_type(10):= gnam;         ! Type of curve
+      tan_id(10,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="11"THEN ! Curve 11
+      PART(#41,GET_CHECK           !
+       (tan_type(11)):SAVE=0);     !
+      tan_type(11):= gnam;         ! Type of curve
+      tan_id(11,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="12"THEN ! Curve 12
+      PART(#42,GET_CHECK           !
+       (tan_type(12)):SAVE=0);     !
+      tan_type(12):= gnam;         ! Type of curve
+      tan_id(12,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="13"THEN ! Curve 13
+      PART(#43,GET_CHECK           !
+       (tan_type(13)):SAVE=0);     !
+      tan_type(13):= gnam;         ! Type of curve
+      tan_id(13,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="14"THEN ! Curve 14
+      PART(#44,GET_CHECK           !
+       (tan_type(14)):SAVE=0);     !
+      tan_type(14):= gnam;         ! Type of curve
+      tan_id(14,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="15"THEN ! Curve 15
+      PART(#45,GET_CHECK           !
+       (tan_type(15)):SAVE=0);     !
+      tan_type(15):= gnam;         ! Type of curve
+      tan_id(15,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="16"THEN ! Curve 16
+      PART(#46,GET_CHECK           !
+       (tan_type(16)):SAVE=0);     !
+      tan_type(16):= gnam;         ! Type of curve
+      tan_id(16,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="17"THEN ! Curve 17
+      PART(#47,GET_CHECK           !
+       (tan_type(17)):SAVE=0);     !
+      tan_type(17):= gnam;         ! Type of curve
+      tan_id(17,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="18"THEN ! Curve 18
+      PART(#48,GET_CHECK           !
+       (tan_type(18)):SAVE=0);     !
+      tan_type(18):= gnam;         ! Type of curve
+      tan_id(18,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="19"THEN ! Curve 19
+      PART(#49,GET_CHECK           !
+       (tan_type(19)):SAVE=0);     !
+      tan_type(19):= gnam;         ! Type of curve
+      tan_id(19,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="20"THEN ! Curve 20
+      PART(#50,GET_CHECK           !
+       (tan_type(20)):SAVE=0);     !
+      tan_type(20):= gnam;         ! Type of curve
+      tan_id(20,1):= idvec(1) ;    ! Reference to curve
+    ELSE                           !
+       EXIT("GET_IDCRVS: "+        ! Programming error if curve > 20
+        "Tangent curve no > 20");  !
+    ENDIF;                         !
+
+
+  ELIF SUBSTR(gnam,1,3)="PFN" THEN ! P function curve ?
+    IF   SUBSTR(gnam,4,2)="01"THEN ! Curve  1
+      PART(#61,GET_CHECK           !
+       (pfn_type( 1)):SAVE=0);     !
+      pfn_type( 1):= gnam;         ! Type of curve
+      pfn_id( 1,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="02"THEN ! Curve  2
+      PART(#62,GET_CHECK           !
+       (pfn_type( 2)):SAVE=0);     !
+      pfn_type( 2):= gnam;         ! Type of curve
+      pfn_id( 2,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="03"THEN ! Curve  3
+      PART(#63,GET_CHECK           !
+       (pfn_type( 3)):SAVE=0);     !
+      pfn_type( 3):= gnam;         ! Type of curve
+      pfn_id( 3,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="04"THEN ! Curve  4
+      PART(#64,GET_CHECK           !
+       (pfn_type( 4)):SAVE=0);     !
+      pfn_type( 4):= gnam;         ! Type of curve
+      pfn_id( 4,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="05"THEN ! Curve  5
+      PART(#65,GET_CHECK           !
+       (pfn_type( 5)):SAVE=0);     !
+      pfn_type( 5):= gnam;         ! Type of curve
+      pfn_id( 5,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="06"THEN ! Curve  6
+      PART(#66,GET_CHECK           !
+       (pfn_type( 6)):SAVE=0);     !
+      pfn_type( 6):= gnam;         ! Type of curve
+      pfn_id( 6,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="07"THEN ! Curve  7
+      PART(#67,GET_CHECK           !
+       (pfn_type( 7)):SAVE=0);     !
+      pfn_type( 7):= gnam;         ! Type of curve
+      pfn_id( 7,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="08"THEN ! Curve  8
+      PART(#68,GET_CHECK           !
+       (pfn_type( 8)):SAVE=0);     !
+      pfn_type( 8):= gnam;         ! Type of curve
+      pfn_id( 8,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="09"THEN ! Curve  9
+      PART(#69,GET_CHECK           !
+       (pfn_type( 9)):SAVE=0);     !
+      pfn_type( 9):= gnam;         ! Type of curve
+      pfn_id( 9,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="10"THEN ! Curve 10
+      PART(#70,GET_CHECK           !
+       (pfn_type(10)):SAVE=0);     !
+      pfn_type(10):= gnam;         ! Type of curve
+      pfn_id(10,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="11"THEN ! Curve 11
+      PART(#71,GET_CHECK           !
+       (pfn_type(11)):SAVE=0);     !
+      pfn_type(11):= gnam;         ! Type of curve
+      pfn_id(11,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="12"THEN ! Curve 12
+      PART(#72,GET_CHECK           !
+       (pfn_type(12)):SAVE=0);     !
+      pfn_type(12):= gnam;         ! Type of curve
+      pfn_id(12,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="13"THEN ! Curve 13
+      PART(#73,GET_CHECK           !
+       (pfn_type(13)):SAVE=0);     !
+      pfn_type(13):= gnam;         ! Type of curve
+      pfn_id(13,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="14"THEN ! Curve 14
+      PART(#74,GET_CHECK           !
+       (pfn_type(14)):SAVE=0);     !
+      pfn_type(14):= gnam;         ! Type of curve
+      pfn_id(14,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="15"THEN ! Curve 15
+      PART(#75,GET_CHECK           !
+       (pfn_type(15)):SAVE=0);     !
+      pfn_type(15):= gnam;         ! Type of curve
+      pfn_id(15,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="16"THEN ! Curve 16
+      PART(#76,GET_CHECK           !
+       (pfn_type(16)):SAVE=0);     !
+      pfn_type(16):= gnam;         ! Type of curve
+      pfn_id(16,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="17"THEN ! Curve 17
+      PART(#77,GET_CHECK           !
+       (pfn_type(17)):SAVE=0);     !
+      pfn_type(17):= gnam;         ! Type of curve
+      pfn_id(17,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="18"THEN ! Curve 18
+      PART(#78,GET_CHECK           !
+       (pfn_type(18)):SAVE=0);     !
+      pfn_type(18):= gnam;         ! Type of curve
+      pfn_id(18,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="19"THEN ! Curve 19
+      PART(#79,GET_CHECK           !
+       (pfn_type(19)):SAVE=0);     !
+      pfn_type(19):= gnam;         ! Type of curve
+      pfn_id(19,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="20"THEN ! Curve 20
+      PART(#80,GET_CHECK           !
+       (pfn_type(20)):SAVE=0);     !
+      pfn_type(20):= gnam;         ! Type of curve
+      pfn_id(20,1):= idvec(1) ;    ! Reference to curve
+    ELSE                           !
+       EXIT("GET_IDCRVS: "+        ! Programming error if curve > 20
+        "P fctn curve no > 20");   !
+    ENDIF;                         !
+
+
+
+  ELIF SUBSTR(gnam,1,3)="MID" THEN ! Mid curve ?
+    IF   SUBSTR(gnam,4,2)="01"THEN ! Curve  1
+      PART(#91,GET_CHECK           !
+       (mid_type( 1)):SAVE=0);     !
+      mid_type( 1):= gnam;         ! Type of curve
+      mid_id( 1,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="02"THEN ! Curve  2
+      PART(#92,GET_CHECK           !
+       (mid_type( 2)):SAVE=0);     !
+      mid_type( 2):= gnam;         ! Type of curve
+      mid_id( 2,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="03"THEN ! Curve  3
+      PART(#93,GET_CHECK           !
+       (mid_type( 3)):SAVE=0);     !
+      mid_type( 3):= gnam;         ! Type of curve
+      mid_id( 3,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="04"THEN ! Curve  4
+      PART(#94,GET_CHECK           !
+       (mid_type( 4)):SAVE=0);     !
+      mid_type( 4):= gnam;         ! Type of curve
+      mid_id( 4,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="05"THEN ! Curve  5
+      PART(#95,GET_CHECK           !
+       (mid_type( 5)):SAVE=0);     !
+      mid_type( 5):= gnam;         ! Type of curve
+      mid_id( 5,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="06"THEN ! Curve  6
+      PART(#96,GET_CHECK           !
+       (mid_type( 6)):SAVE=0);     !
+      mid_type( 6):= gnam;         ! Type of curve
+      mid_id( 6,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="07"THEN ! Curve  7
+      PART(#97,GET_CHECK           !
+       (mid_type( 7)):SAVE=0);     !
+      mid_type( 7):= gnam;         ! Type of curve
+      mid_id( 7,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="08"THEN ! Curve  8
+      PART(#98,GET_CHECK           !
+       (mid_type( 8)):SAVE=0);     !
+      mid_type( 8):= gnam;         ! Type of curve
+      mid_id( 8,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="09"THEN ! Curve  9
+      PART(#99,GET_CHECK           !
+       (mid_type( 9)):SAVE=0);     !
+      mid_type( 9):= gnam;         ! Type of curve
+      mid_id( 9,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="10"THEN ! Curve 10
+      PART(#100,GET_CHECK          !
+       (mid_type(10)):SAVE=0);     !
+      mid_type(10):= gnam;         ! Type of curve
+      mid_id(10,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="11"THEN ! Curve 11
+      PART(#101,GET_CHECK          !
+       (mid_type(11)):SAVE=0);     !
+      mid_type(11):= gnam;         ! Type of curve
+      mid_id(11,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="12"THEN ! Curve 12
+      PART(#102,GET_CHECK          !
+       (mid_type(12)):SAVE=0);     !
+      mid_type(12):= gnam;         ! Type of curve
+      mid_id(12,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="13"THEN ! Curve 13
+      PART(#103,GET_CHECK          !
+       (mid_type(13)):SAVE=0);     !
+      mid_type(13):= gnam;         ! Type of curve
+      mid_id(13,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="14"THEN ! Curve 14
+      PART(#104,GET_CHECK          !
+       (mid_type(14)):SAVE=0);     !
+      mid_type(14):= gnam;         ! Type of curve
+      mid_id(14,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="15"THEN ! Curve 15
+      PART(#105,GET_CHECK          !
+       (mid_type(15)):SAVE=0);     !
+      mid_type(15):= gnam;         ! Type of curve
+      mid_id(15,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="16"THEN ! Curve 16
+      PART(#106,GET_CHECK          !
+       (mid_type(16)):SAVE=0);     !
+      mid_type(16):= gnam;         ! Type of curve
+      mid_id(16,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="17"THEN ! Curve 17
+      PART(#107,GET_CHECK          !
+       (mid_type(17)):SAVE=0);     !
+      mid_type(17):= gnam;         ! Type of curve
+      mid_id(17,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="18"THEN ! Curve 18
+      PART(#108,GET_CHECK          !
+       (mid_type(18)):SAVE=0);     !
+      mid_type(18):= gnam;         ! Type of curve
+      mid_id(18,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="19"THEN ! Curve 19
+      PART(#109,GET_CHECK          !
+       (mid_type(19)):SAVE=0);     !
+      mid_type(19):= gnam;         ! Type of curve
+      mid_id(19,1):= idvec(1) ;    ! Reference to curve
+    ELIF SUBSTR(gnam,4,2)="20"THEN ! Curve 20
+      PART(#120,GET_CHECK          !
+       (mid_type(20)):SAVE=0);     !
+      mid_type(20):= gnam;         ! Type of curve
+      mid_id(20,1):= idvec(1) ;    ! Reference to curve
+    ELSE                           !
+       EXIT("GET_IDCRVS: "+        ! Programming error if curve > 20
+        "No mid curves > 20");     !
+    ENDIF;                         !
+
+  ELIF SUBSTR(gnam,1,5)="SPINE"THEN! Spine curve ?
+    IF spine_id = #0 THEN          !
+     spine_id := idvec(1);         ! Reference to curve
+    ELSE                           !
+     EXIT("Spine curve" +          ! Spine already defined
+      "already defined");          !
+    ENDIF;                         !
+
+  ELIF SUBSTR(gnam,1,3)="MOD" THEN ! Modified curve
+    GOTO  surface;                 ! Continue scanning in the surface
+  ELSE
+  
+     EXIT("GET_IDCRVS: "+          ! Programming error: Not a valid
+      "GROUP name not OK");        ! GROUP (curve) name
+  ENDIF;
+
+  GOTO  surface;                   ! Continue scanning in the surface
+
+
+!              4. Check that surface is fully defined
+!              =======================================
+
+check:                             ! Checking phase
+
+  FOR  ix1 := 1 TO 25 DO
+      IF  lim_type(ix1) = "UNDEFINED" THEN
+          IF  tan_type(ix1) = "UNDEFINED" AND
+              pfn_type(ix1) = "UNDEFINED" AND
+              mid_type(ix1) = "UNDEFINED"     THEN
+              no_strips := ix1 - 2 ;
+              GOTO check2;
+          ELSE
+              EXIT("Surface not fully defined");  ! Surface not 
+          ENDIF;                                  ! fully defined
+      ENDIF;
+  ENDFOR;
+
+check2:                            ! Continue checking ....
+
+  FOR  ix1 := 1 TO no_strips+1 DO  ! Check limit and tangent curves
+    IF  lim_type(ix1) =            ! 
+        "UNDEFINED" THEN           !
+         EXIT("Limit curve "+      ! Limit curve missing
+            STR(ix1,-1,0) +        !
+             "missing");           !
+    ENDIF;                         !
+    IF  tan_type(ix1) =            !
+       "UNDEFINED"        THEN     !
+         EXIT("Tangent crv "+      ! Tangent curve missing
+            STR(ix1,-1,0) +        !
+             "missing");           !
+    ENDIF;                         !
+  ENDFOR;                          !
+
+  FOR  ix1 := 1 TO no_strips  DO   ! Check P value functions
+    IF  pfn_type(ix1)="UNDEFINED"  !
+                AND                !
+        mid_type(ix1)="UNDEFINED"  !
+                THEN               !
+         EXIT("P-value crv "+      ! P-value curve missing
+            STR(ix1,-1,0) +        !
+             "missing");           !
+    ENDIF;                         !
+  ENDFOR;                          !
+
+  IF spine_id = #0 THEN            !
+     EXIT("Spine curve" +          ! Spine is not defined
+      "is not defined");           !
+  ENDIF;                           !
+
+ENDMODULE

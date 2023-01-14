@@ -1,0 +1,75 @@
+!******************** MINMAX ***********************************
+!
+! Tar reda p} maximala och minimala v{rden f|r en kurva
+!
+! In:
+!     nopoints  Antal punkter
+!     pcurve    Punkter p} kurva
+!
+! In and Out:
+!     minx, ..  Extrem v{rdena
+!
+! 1992-11-05 Gunnar Liden
+!
+! 
+!******************************************************************
+
+BASIC GEOMETRY MODULE MINMAX(
+
+    INT    nopoints;              ! Antal punkter (i  kurva)
+VAR VECTOR pcurve(200);           ! Punkter       (p} kurva)
+VAR FLOAT  minx;                  ! Minimum X value
+VAR FLOAT  maxx;                  ! Maximum X value
+VAR FLOAT  miny;                  ! Minimum Y value
+VAR FLOAT  maxy;                  ! Maximum Y value
+VAR FLOAT  minz;                  ! Minimum Z value
+VAR FLOAT  maxz);                 ! Maximum Z value
+
+! Internal variables:
+
+  INT     i_p;                    ! Loop index point in curve
+
+BEGINMODULE
+
+!               1. Initiering och kontroll av indata
+!               ====================================
+
+  IF nopoints > 200 THEN         ! Kontroll av antal punkter
+    EXIT("MINMAX: Mer {n 200"+   !
+         " punkter");            !
+  ENDIF;                         !
+  IF nopoints < 1   THEN         ! Kontroll av antal punkter
+    EXIT("MINMAX: Mindre {n en"+ !
+         " punkt");              !
+  ENDIF;                         !
+
+!               2. Uppdatera minx, miny, minz, etc
+!               ====================================
+
+  FOR i_p:=1 TO nopoints DO      ! Start loop points in curve
+
+    IF pcurve(i_p).x < minx THEN ! Minimum X value
+      minx := pcurve(i_p).x;     !
+    ENDIF;                       !
+    IF pcurve(i_p).x > maxx THEN ! Maximum X value
+      maxx := pcurve(i_p).x;     !
+    ENDIF;                       !
+
+    IF pcurve(i_p).y < miny THEN ! Minimum Y value
+      miny := pcurve(i_p).y;     !
+    ENDIF;                       !
+    IF pcurve(i_p).y > maxy THEN ! Maximum Y value
+      maxy := pcurve(i_p).y;     !
+    ENDIF;                       !
+
+    IF pcurve(i_p).z < minz THEN ! Minimum Z value
+      minz := pcurve(i_p).z;     !
+    ENDIF;                       !
+    IF pcurve(i_p).z > maxz THEN ! Maximum Z value
+      maxz := pcurve(i_p).z;     !
+    ENDIF;                       !
+
+  ENDFOR;                        ! End   loop points in curve
+
+
+ENDMODULE

@@ -1,0 +1,153 @@
+! ******************* getmbsv0  ******************************
+! +++ 
+!
+! Get MBS source code and put on active job directory
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-04-09  Gunnar Liden
+!
+! *************************************************************
+
+!sdesce Get MBS source code and put on current job directory
+!sdescs H{mta MBS kod till aktiva jobb katalogen
+
+
+MACRO  MODULE getmbsv0  (
+STRING  fname*10 := "cresurf"   >"Name of module");
+
+
+! Internal variables
+
+  STRING   o_s*4;               ! Operating system VAX/UNIX 
+  STRING   mbsdir*50;           ! Directory with fname.MBS
+  STRING   docdir*50;           ! Directory for  fname.DOC
+
+  STRING   infile*132;          ! Full name of input  file
+  STRING   bakfile*132;         ! Full name of backup file
+  STRING   jobfile*132;         ! Full name of job    file
+  STRING   logfile*132;         ! Full name of log    file
+
+  INT      status;              ! For TEST_FILE
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+
+  FILE     log;                 ! Log file
+
+  INT      DEBUG;               ! Debug flag
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! --
+
+! +++
+! 1. Check if MBS file already is on the active job directory
+! ---
+
+  jobfile := ACT_JOBDIR()+fname+".MBS";
+
+  status := TEST_FILE(jobfile,"X");
+  IF status = 1 THEN
+    EXIT("getmbsv0 "+fname+" is already on your job directory");
+  ENDIF;
+
+
+! +++
+! 2. Retrieve directory with MBS code (and directory for DOC file)
+! ---
+
+   o_s := "UNIX";              !
+   DEBUG := 0;                 !
+   PART(#1,m_extdir(fname,     ! Retrieve name of directory
+     mbsdir, docdir,           ! with fname.MBS and
+     o_s, DEBUG));             ! directory for fname.DOC
+
+   IF mbsdir="Undefined" THEN  !
+     EXIT("mbsgetv0: "     +   !
+          "Unable to find "+   !
+        fname+ ".MBS");        !
+   ENDIF;                      !
+
+   infile:= mbsdir+fname+      ! Full input file name
+            ".MBS";            !
+
+! +++
+! 3. Check if file has been checked out by somebody else
+! ---
+
+  logfile := mbsdir+"BAK/"+fname+".OUT";
+  status := TEST_FILE(logfile,"X");
+  IF status = 1 THEN
+    EXIT("getmbsv0 "+fname+" is checked out by somebody else");
+  ENDIF;
+
+! +++
+! 4. Register that the file is ...
+! ---
+
+  OPEN(log,"W",logfile);
+  OUTSTR(log,"The MBS file is used by ....");
+  OUTLIN(log);
+  CLOSE(log);
+
+! +++
+! 5. Backup file to BAK directory
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  bakfile := mbsdir+"BAK/"+fname+"."+
+  STR(year,-1,0);
+  IF month < 10 THEN
+    bakfile := bakfile + "0"  +STR(month, -1,0);
+  ELSE
+    bakfile := bakfile        +STR(month, -1,0);
+  ENDIF;
+  IF day   < 10 THEN
+    bakfile := bakfile + "0"  +STR(day  , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    bakfile := bakfile + "0"  +STR(hour , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    bakfile := bakfile + "0"  +STR(minute,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    bakfile := bakfile + "0"  +STR(second,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(second,-1,0);
+  ENDIF;
+
+
+  bakfile := bakfile + "_get";
+
+  COPY_FILE(infile,bakfile);
+
+
+! +++
+! 6. Copy file to the active job directory
+! ---
+
+  COPY_FILE(infile,jobfile);
+
+ENDMODULE

@@ -1,0 +1,451 @@
+!*********************  eurosup2v0************************************
+! +++
+! The function creates a composite intersect curve and lists data
+!
+! Revision history
+! ________________
+!
+! 1996-09-04 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Composite intersect in EUROSUP surface, list scaled curve
+!sdescs Sammansatt skärning i EUROSUP yta, lista skalad kurva
+
+GLOBAL GEOMETRY MODULE  eurosup2v0 (
+REF     sur_uf                    >"@t16 Select upper fuselage";
+REF     sur_lf                    >"@t16 Select lower fuselage";
+REF     sur_w                     >"@t16 Select wing";
+FLOAT   ystat    := 1500.0        >"Y station";
+INT     c_case :=  1              >"Eq. 1; Two wing intersects 2: Fuselage";
+INT     print    :=  1            >"0= No printout 1= Printout";
+INT     graphic  :=  2 >"0= None, 1= Curve, 2= All ");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  INT    no_branch_uf;         ! No branches in upper fuselage
+  INT    no_branch_lf;         ! No branches in lower fuselage
+  INT    no_branch_w;          ! No branches in wing
+
+! ---
+
+  REF    csys_id;              ! Reference to coordinate system
+  REF    b_id;                 ! Reference to B-plane  
+  REF    cur_uf;               ! Upper fuselage intersect curve
+  REF    cur_lf;               ! Lower fuselage intersect curve
+  REF    cur_w;                ! Wing           intersect curve
+
+  REF    cur_w_int1;           ! Wing           trimmed   curve
+
+  
+                               ! For GETCURH:
+  INT    font;                 ! Font
+  INT    length;               ! Length for dashed curve
+  INT    ns_uf;                ! No geometry  segments upper fuselage
+  INT    ns_lf;                ! No geometry  segments upper fuselage
+  INT    ns_w;                 ! No geometry  segments wing
+  INT    ns_w_1;                 ! No geometry  segments wing trimmed  
+  INT    ns_gra;               ! No graphical segments
+
+
+  INT    i_seg;                ! Loop index segment
+  FLOAT  minx;                 ! Minimum X value
+
+  INT    i_min;                ! Segment for min
+  VECTOR p_cur;                ! Point on curve
+
+  VECTOR p_int_1;              ! Intersect point 1
+  VECTOR p_int_2;              ! Intersect point 2  
+  FLOAT  u_lf_1;               ! Parameter value lower fuselage 1
+  FLOAT  u_lf_2;               ! Parameter value lower fuselage 2
+  FLOAT  u_w_1;                ! Parameter value wing 1
+  FLOAT  u_w_2;                ! Parameter value wing 2  
+  VECTOR p_1;                  ! Start point on curve
+  VECTOR p_2;                  ! Other point on curve
+
+  FLOAT  x_start;              ! Start of curve X         
+  FLOAT  z_start;              ! Start of curve Z         
+  FLOAT  x_end;                ! End   of curve           
+  FLOAT  scale_f;              ! Scale factor
+  REF    cur_upper;            ! Upper curve
+  REF    cur_lower;            ! Lower curve  
+  REF    cur_lower_1;          ! Lower curve 1
+  REF    cur_lower_2;          ! Lower curve 2
+  REF    cur_lower_3;          ! Lower curve 3
+  REF    cur_lower_4;          ! Lower curve 4
+  INT    ns_upper;             ! Number of segments in cur_upper
+  INT    ns_lower;             ! Number of segments in cur_lower  
+  INT    ns_lower_1;           ! Number of segments in cur_lower_1
+  INT    ns_lower_2;           ! Number of segments in cur_lower_2
+  INT    ns_lower_3;           ! Number of segments in cur_lower_3
+  INT    ns_lower_4;           ! Number of segments in cur_lower_4
+  FLOAT  u_par;                ! Current parameter value
+  FLOAT  x_s;                  ! Current scaled X value
+  FLOAT  z_s;                  ! Current scaled Z value
+  INT    i_tot;                ! Total number of points
+  
+  INT    b_val_c;              ! BLANK value curve   
+  INT    b_val_a;              ! BLANK value all other entities
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks of input data
+!
+!    Open input file with points
+
+  DEBUG := 0;                 ! Debug =1 or 0
+
+  IF   graphic = 0 THEN       ! Graphics
+    b_val_c:= 1;              !
+    b_val_a:= 1;              !
+  ELIF graphic = 1 THEN       ! 
+    b_val_c:= 0;              !
+    b_val_a:= 1;              !
+  ELIF graphic = 2 THEN       !
+    b_val_c:= 0;              !
+    b_val_a:= 0;              !
+  ELSE                        !
+   EXIT("eurosup2v0 graphic"+ !
+         " not OK");          !
+  ENDIF;                      !
+  cur_upper   := #0;
+  cur_lower   := #0;
+  cur_lower_1 := #0;
+  cur_lower_2 := #0;
+  cur_lower_3 := #0;
+  cur_lower_4 := #0;  
+  ns_upper    := -1234;
+  ns_lower    := -1234;
+  ns_lower_1  := -1234;
+  ns_lower_2  := -1234;
+  ns_lower_3  := -1234;
+  ns_lower_4  := -1234;
+    
+! +++
+! 1. Create intersect coordinate system         
+! ---
+
+  CSYS_1P(#2, "YSTAT_INT", VEC(0.0,ystat,0.0),90.0,0,0:BLANK=b_val_a);
+  csys_id := GLOBAL_REF(#2);
+
+  B_PLANE(#3, VEC(1000, ystat, 1000),
+              VEC(2000, ystat, 2000),
+              VEC(2000, ystat, 2000),
+              VEC(3000, ystat, 1000):PEN=3,BLANK=b_val_a);
+  
+  b_id := GLOBAL_REF(#3);
+  
+! +++
+! 2. Make intersects in the surface
+! ---
+
+  no_branch_uf := N_CUR_INT( sur_uf,b_id);
+  IF    no_branch_uf = 0   THEN   
+    EXIT("No intersect in upper fuselage "+RSTR(sur_uf));   
+  ELIF  no_branch_uf > 1   THEN   
+    EXIT("Upper fuselage branches "+STR(no_branch_uf,-1,0));   
+  ENDIF;                  
+  no_branch_lf := N_CUR_INT( sur_lf,b_id);
+  IF    no_branch_lf = 0   THEN   
+    EXIT("No intersect in upper fuselage "+RSTR(sur_lf));   
+  ELIF  no_branch_lf > 1   THEN   
+    EXIT("Upper fuselage branches "+STR(no_branch_lf,-1,0));   
+  ENDIF;                  
+  no_branch_w  := N_CUR_INT( sur_w ,b_id);
+  IF    no_branch_w  = 0   THEN   
+    EXIT("No intersect in upper fuselage "+RSTR(sur_w ));   
+  ELIF  no_branch_w  > 1   THEN   
+    EXIT("Upper fuselage branches "+STR(no_branch_w ,-1,0));   
+  ENDIF;                  
+
+  CUR_INT(#4, sur_uf,b_id, 1 :PEN=3, BLANK=b_val_a);
+  cur_uf := GLOBAL_REF(#4);
+  CUR_INT(#5, sur_lf,b_id, 1 :PEN=3, BLANK=b_val_a);
+  cur_lf := GLOBAL_REF(#5);
+  CUR_INT(#6, sur_w ,b_id, 1 :PEN=3, BLANK=b_val_a);
+  cur_w  := GLOBAL_REF(#6);
+
+! +++
+! Approximate to cubic curves
+! ---
+
+  CUR_APPROX(#14, cur_uf , "CUB_SEG", 1, 1 :PEN=1, BLANK=b_val_c);
+  cur_uf := GLOBAL_REF(#14);
+  CUR_APPROX(#15, cur_lf , "CUB_SEG", 1, 1 :PEN=1, BLANK=b_val_a);
+  cur_lf := GLOBAL_REF(#15);
+  CUR_APPROX(#16, cur_w  , "CUB_SEG", 1, 1 :PEN=1, BLANK=b_val_a);
+  cur_w := GLOBAL_REF(#16);
+
+! +++
+! Get number of segments
+! ---
+
+  GETCURH(cur_uf ,font,length, ns_uf , ns_gra); 
+  GETCURH(cur_lf ,font,length, ns_lf , ns_gra); 
+  GETCURH(cur_w  ,font,length, ns_w  , ns_gra); 
+
+! +++
+! 3. Reverse the upper fuslage curve if necessary
+! ---
+
+  p_1 :=  ON(cur_uf,0.0);
+  p_2 :=  ON(cur_uf,9.0);
+
+  IF p_1.x > p_1.x THEN
+    EXIT("eurosup2v0 Reverse cur_uf not yet implemented");
+  ENDIF;
+
+! +++
+! 4. Trim the wing curve
+! ---
+
+  minx := 50000.0;
+  FOR  i_seg := 1 TO ns_w DO
+    p_cur := ON(cur_w, i_seg-1);
+    IF  p_cur.x  < minx THEN
+      minx := p_cur.x;
+      i_min := i_seg;
+    ENDIF;
+  ENDFOR;
+
+  i_min := i_min -  4;  ! To make INV_ON work
+  
+  CUR_TRIM(#26, cur_w, i_min , 0.0 :PEN=2,BLANK=b_val_a);
+  cur_w_int1 := GLOBAL_REF(#26);
+
+! +++
+! 5. Reverse the lower fuslage curve if necessary
+! ---
+
+  p_1 :=  ON(cur_lf,0.0);
+  p_2 :=  ON(cur_lf,9.0);
+
+  IF p_1.x > p_1.x THEN
+    EXIT("eurosup2v0 Reverse cur_lf not yet implemented");
+  ENDIF;
+  
+
+! +++
+! 5. Make the intersects
+! ---
+
+  IF    c_case = 1 THEN
+    MODE_LOCAL(csys_id);
+    POI_FREE(#7, INTERSECT(cur_lf, cur_w_int1, 1):PEN=2,BLANK=b_val_a);
+    POI_FREE(#8, INTERSECT(cur_lf, cur_w_int1, 2):PEN=2,BLANK=b_val_a);
+    MODE_GLOBAL();
+    p_int_1 := ON(GLOBAL_REF(#7));
+    p_int_2 := ON(GLOBAL_REF(#8));
+      
+    u_lf_1 := INV_ON(cur_lf,p_int_1);
+    p_int_1 := ON(GLOBAL_REF(#7));
+    p_int_2 := ON(GLOBAL_REF(#8));
+      
+    u_lf_1 := INV_ON(cur_lf,p_int_1);
+    u_w_1  := INV_ON(cur_w_int1 ,p_int_1); 
+    u_lf_2 := INV_ON(cur_lf,p_int_2);
+    u_w_2  := INV_ON(cur_w_int1 ,p_int_2); 
+
+  ELIF  c_case = 2 THEN    
+    GOTO  fuselage;
+  ELIF  c_case = 3 THEN    
+    LIN_FREE(#40,ON(cur_w_int1,0.0), 
+                 ON(cur_w_int1,0.0)-
+         300.0*TANG(cur_w_int1,0.0):BLANK=1);
+         
+    MODE_LOCAL(csys_id);
+    POI_FREE(#41, INTERSECT(GLOBAL_REF(#40),cur_lf , -1):PEN=2,BLANK=b_val_a);
+    MODE_GLOBAL();
+    p_int_1 := ON(GLOBAL_REF(#41));
+      
+    u_lf_1 := INV_ON(cur_lf,p_int_1);    
+    GOTO wing;   
+  ELSE
+    EXIT("eurosup2v0 c_case not implemented");
+  ENDIF;
+  IF   VECL(p_int_1 - ON(cur_lf, u_lf_1)) > 0.1 THEN
+    POI_FREE(#101, p_int_1:PEN=4);
+    POI_FREE(#102, ON(cur_lf, u_lf_1):PEN=4);
+    EXIT("eurosup2v0 INV_ON u_lf_1");
+  ENDIF;
+    
+  IF   VECL(p_int_1 - ON(cur_w_int1, u_w_1)) > 0.1 THEN
+    POI_FREE(#103, p_int_1:PEN=4);
+    POI_FREE(#104, ON(cur_w_int1, u_w_1):PEN=4);  
+    EXIT("eurosup2v0 INV_ON u_lf_1");
+  ENDIF;
+    
+  IF   VECL(p_int_2 - ON(cur_lf, u_lf_2)) > 0.1 THEN
+    POI_FREE(#105, p_int_2:PEN=2);
+    POI_FREE(#106, ON(cur_lf, u_lf_2):PEN=2);
+    EXIT("eurosup2v0 INV_ON u_lf_2");
+  ENDIF;
+  IF   VECL(p_int_2 - ON(cur_w_int1, u_w_2)) > 0.1 THEN
+    POI_FREE(#107, p_int_2:PEN=2);
+    POI_FREE(#108, ON(cur_w_int1, u_w_2):PEN=2);  
+    EXIT("eurosup2v0 INV_ON u_lf_2");
+  ENDIF;
+  
+! +++
+! 6. Create upper and lower composite curve
+! ---
+  
+  fuselage:;
+ wing:;
+  
+  IF  c_case = 1 THEN
+    cur_upper := cur_uf;
+    ns_upper  := ns_uf;
+    CUR_TRIM(#31, cur_lf,      0.0   , u_lf_1 :PEN=4,BLANK=b_val_c);
+    cur_lower_1 := GLOBAL_REF(#31);
+    CUR_TRIM(#32, cur_w_int1, u_w_1  , u_w_2  :PEN=4,BLANK=b_val_c);       
+    cur_lower_2 := GLOBAL_REF(#32);
+    CUR_TRIM(#33, cur_lf,     u_lf_2 , ns_lf  :PEN=4,BLANK=b_val_c);
+    cur_lower_3 := GLOBAL_REF(#33);
+!  CUR_COMP(#34, GLOBAL_REF(#31),  GLOBAL_REF(#32), GLOBAL_REF(#33)
+!              :PEN=2,BLANK=b_val_c);  Problem med antal segment !!
+!  cur_lower := GLOBAL_REF(#34);
+    GETCURH(cur_lower_1,font,length, ns_lower_1, ns_gra); 
+    GETCURH(cur_lower_2,font,length, ns_lower_2, ns_gra); 
+    GETCURH(cur_lower_3,font,length, ns_lower_3, ns_gra); 
+    GETCURH(cur_upper,  font,length, ns_upper ,  ns_gra); 
+  ELIF   c_case = 2 THEN
+    cur_upper := cur_uf;
+    cur_lower := cur_lf;      
+    GETCURH(cur_upper,  font,length, ns_upper ,  ns_gra); 
+    GETCURH(cur_lower,  font,length, ns_lower ,  ns_gra); 
+  ELIF  c_case = 3 THEN
+    cur_upper := cur_uf;
+    ns_upper  := ns_uf;
+    CUR_TRIM(#42, cur_lf, 0.0 , u_lf_1 :PEN=4,BLANK=b_val_c);
+    cur_lower_1 := GLOBAL_REF(#42);
+    GETCURH(cur_lower_1,font,length, ns_lower_1, ns_gra);     
+    CUR_CONIC(#43,"FREE", 
+     ON(cur_lower_1,ns_lower_1),
+     ON(cur_lower_1,ns_lower_1)+ TANG(cur_lower_1,ns_lower_1),0.45,
+     ON(cur_w_int1, 0.0 ),
+     ON(cur_w_int1, 0.0 )+ TANG(cur_w_int1, 0.0 ):PEN=2,BLANK=b_val_a);  
+     CUR_APPROX(#53, GLOBAL_REF(#43) , "CUB_SEG", 1, 4 :PEN=2, BLANK=b_val_c);
+     cur_lower_2 := GLOBAL_REF(#53); 
+     GETCURH(cur_lower_2  ,font,length, ns_lower_2  , ns_gra);  
+     cur_lower_3 := cur_w_int1;
+    GETCURH(cur_lower_3,font,length, ns_lower_3, ns_gra); 
+    CUR_CONIC(#44,"FREE", 
+     ON(cur_lower_3,ns_lower_3),
+     ON(cur_lower_3,ns_lower_3)+ TANG(cur_lower_3,ns_lower_3),0.3,
+     ON(cur_lf, ns_lf ),
+     ON(cur_lf, ns_lf )+ TANG(cur_lf, ns_lf ):PEN=2,BLANK=b_val_a);      
+     CUR_APPROX(#54, GLOBAL_REF(#44) , "CUB_SEG", 1, 4 :PEN=2, BLANK=b_val_c);
+     cur_lower_4 := GLOBAL_REF(#54);    
+     GETCURH(cur_lower_4  ,font,length, ns_lower_4  , ns_gra); 
+  ELSE
+    EXIT("eurosup2v0 c_case not impl.");
+  ENDIF;
+  
+! +++
+! 7. Translation and scale factor
+! ---
+
+   p_1     := ON(cur_upper,  0.0   );
+   p_2     := ON(cur_upper,ns_upper);
+   x_start := p_1.x;
+   z_start := p_1.z;
+   x_end   := p_2.x;
+ 
+   IF   x_end - x_start > 0.1 THEN
+     scale_f := 1.0/(x_end-x_start);
+   ELSE
+     EXIT("eurosup2v0 scale_f");
+   ENDIF;
+
+! +++
+! 4. Printout of result to screen for print= 1
+! ---
+
+  IF print = 1 THEN  
+  LST_INI("eurosup2v0 Intersect curve data EUROSUP");
+  LST_LIN("X "+STR(x_start,10,2)+
+         " Station Y "+STR(ystat,10,2)+
+         " Z "+STR(z_start,10,2)+
+         "  Chord length C "+STR(x_end-x_start,10,2)); 
+  LST_LIN(" "); 
+  LST_LIN("    Upper curve  "); 
+  LST_LIN("     X/C           Z/C "); 
+  LST_LIN(" "); 
+  FOR  i_seg:= 1 to ns_upper+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_upper, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;
+  LST_LIN(" "); 
+  LST_LIN("    Lower curve  "); 
+  LST_LIN("     X/C           Z/C ");   
+  LST_LIN(" "); 
+  i_tot := 0;
+  IF  c_case = 1 OR c_case = 3 THEN
+  FOR  i_seg:= 1 to ns_lower_1+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_lower_1, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    i_tot := i_tot + 1;
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;
+  FOR  i_seg:= 1 to ns_lower_2+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_lower_2, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    i_tot := i_tot + 1;   
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;
+  FOR  i_seg:= 1 to ns_lower_3+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_lower_3, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    i_tot := i_tot + 1;    
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;
+  ELIF  c_case = 2 THEN
+  FOR  i_seg:= 1 to ns_lower+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_lower, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    i_tot := i_tot + 1;    
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;  
+  ENDIF;
+  IF  c_case = 3 THEN
+  FOR  i_seg:= 1 to ns_lower_4+1 DO
+    u_par := i_seg - 1.0;
+    p_cur := ON(cur_lower_4, u_par);
+    x_s   := scale_f*(p_cur.x - x_start);
+    z_s   := scale_f*(p_cur.z - z_start);
+    i_tot := i_tot + 1;    
+    LST_LIN(STR(x_s,10,6)+"    "+STR(z_s,10,6)); 
+  ENDFOR;
+  ENDIF;
+  
+  
+
+  LST_EXI();
+  ENDIF;
+
+
+ENDMODULE

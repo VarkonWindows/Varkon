@@ -1,0 +1,46 @@
+!**************** m_csys01   ***************************
+! +++
+! Create a global coordinate system for the active module
+! _______________________________________________________
+!
+! The function first checks that any other coordinate system
+! has been registered as the global system for the active module
+! 
+! Only a system defined in the coordinate system library (for
+! the given project) can be created. The function will skip the 
+! checks only if project None is given.
+!
+! Revision history
+! ________________
+!
+! 1996-02-08 Gunnar Liden
+! 
+! ---
+
+!sdesce Create a global coordinate system for the active module
+!sdescs Skapa ett globalt koordinatsystem f|r den aktiva modulen
+
+MACRO MODULE m_csys01   (
+
+STRING project*44  := "39"      >"Project (39, SF340, SIRIUS2, .. or None)";
+STRING csys*28     := "417"     >"Global coordinate system ";
+INT    grafik      :=   1       >"=0: System blanked =1: Show system");
+
+! Internal variables:
+
+  REF    id_csys_m;             ! Related to coordinate system (m)
+  REF    a_id;                  ! ADD_MBS identity
+
+BEGINMODULE 
+
+
+! 4. Create MBS statement
+! _______________________
+
+id_csys_m   :=  #0;                                                    
+
+a_id:= ADD_MBS("PART","csyscrev0",
+               CHR(34)+project+CHR(34), CHR(34)+csys+CHR(34), 
+                STR(grafik,-1,0), RSTR(id_csys_m));
+
+ENDMODULE 

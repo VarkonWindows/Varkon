@@ -1,0 +1,129 @@
+! ***************** IND_BOX    ********************************
+!
+! +++
+! Creates a scaled indication box.
+!
+! Created box will only be saved in GM for case=3.
+!
+! Revision history
+! _______________
+!
+! 1994-12-14 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Creates a scaled indication box.
+!sdescs Skapar en skalad indikerings box
+
+
+GLOBAL GEOMETRY MODULE IND_BOX    (
+
+  VECTOR      tp    := VEC(100,200,300) >"Indication point";
+  FLOAT       l_s   := 10.0             >"Size of box";
+  INT         case  := 1                >"=1: Repaint screen (y/n)";
+  INT         color := 3                >"Colour (pen number)");
+
+! Internal variables
+
+
+  INT       save_flag;           ! For SAVE=0 or SAVE=1
+
+  FLOAT     scale;               ! Current scale
+
+  FLOAT     d_box;               ! Scaled l_s value
+
+  VECTOR    p1;                  ! Corner point 1 for bottom
+  VECTOR    p2;                  ! Corner point 2 for bottom
+  VECTOR    p3;                  ! Corner point 3 for bottom
+  VECTOR    p4;                  ! Corner point 4 for bottom
+  VECTOR    p5;                  ! Corner point 5 for top
+  VECTOR    p6;                  ! Corner point 6 for top
+  VECTOR    p7;                  ! Corner point 7 for top
+  VECTOR    p8;                  ! Corner point 8 for top
+
+  STRING    s*1;                 ! For INPMT
+
+BEGINMODULE
+
+!+++
+! Algorithm
+! _________
+!---
+! 0. Initiations and checks      
+!
+
+  SET(PEN=color);              ! Pen number
+
+  IF case=1 OR case=2 THEN     ! Save case
+    save_flag:=0;              !
+  ELIF case=3         THEN     !
+    save_flag:=1;              !
+  ELSE                         !
+    save_flag:=0;              !
+  ENDIF;                       !
+
+!+++
+! 1. Scaled length for box              
+!---
+
+  scale:= ACT_SCL();           ! Get screen scale
+
+  IF ABS(scale)>0.000001 THEN  ! Scaled length for indication box
+    d_box:= l_s/scale;         !
+  ELSE                         !
+    d_box:=200.0;              !
+  ENDIF;                       !
+
+!+++
+! Create local system                  
+!---
+
+  CSYS_3P(#12,"Box",             ! Create coord. system
+     tp, tp+VEC(1,1,1),          !
+     tp+VEC(0,0,1):BLANK=1);     !
+
+!+++
+! Calculate corner points              
+!---
+
+  MODE_LOCAL(#12);               ! Activate local system
+  p1 :=VEC(  0  , d_box,-d_box); ! Corner point 1 for bottom
+  p2 :=VEC(  0  , d_box, d_box); ! Corner point 2 for bottom
+  p3 :=VEC(  0  ,-d_box, d_box); ! Corner point 3 for bottom
+  p4 :=VEC(  0  ,-d_box,-d_box); ! Corner point 4 for bottom
+  p5 :=VEC(d_box, d_box,-d_box); ! Corner point 5 for top
+  p6 :=VEC(d_box, d_box, d_box); ! Corner point 6 for top
+  p7 :=VEC(d_box,-d_box, d_box); ! Corner point 7 for top
+  p8 :=VEC(d_box,-d_box,-d_box); ! Corner point 8 for top
+
+!+++
+! 2. Create closed volume           
+!
+!---
+
+  B_PLANE(#1,p1,p4,p3,p2         ! Bottom side
+    :SAVE=save_flag  );          !
+  B_PLANE(#2,p6,p2,p3,p7         ! Right  side
+    :SAVE=save_flag  );          !
+  B_PLANE(#3,p5,p6,p7,p8         ! Upper  side
+    :SAVE=save_flag  );          !
+  B_PLANE(#4,p1,p5,p8,p4         ! Left   side
+    :SAVE=save_flag  );          !
+  B_PLANE(#5,p1,p2,p6,p5         ! Front  side
+    :SAVE=save_flag  );          !
+  B_PLANE(#6,p7,p3,p4,p8         ! Back   side
+    :SAVE=save_flag  );          !
+
+  MODE_GLOBAL();                 ! Activate global system
+
+  IF case = 1 THEN               ! Repaint screen for case=1
+     s:= INPMT("Repaint screen"  !
+       +" (y/n)"                 !
+      ,"y",1);                   !
+
+    IF s="Y" OR s="y" THEN       !
+      REP_VIEW();                ! Temporary BPLANE's (box) 
+     ENDIF;                      ! will disappear
+  ENDIF;                         !
+
+ENDMODULE

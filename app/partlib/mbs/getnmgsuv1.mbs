@@ -1,0 +1,493 @@
+! +++ ******************************************************************
+!
+! The function checks if the required surface(s) exist in the "VARKON
+! surface database" and, if not, start an NMG session to write the 
+! surfaces' definition data on an external file.
+!
+! Revision history
+! ________________
+!
+! 1995-04-11 Identical to getnmgsrf but with opsys added Gunnar Liden
+! 1996-01-19 opsys= 4 and opsys = 5 added                Gunnar Liden
+!
+! --- ******************************************************************
+
+BASIC GEOMETRY MODULE getnmgsuv1
+(
+    STRING tapein*44;      ! NMG project(s) (tapein1 [,tapein2,...])
+    INT    nsurf:=1;       ! Number of surfaces 
+VAR STRING surface(6)*28;  ! Surface identification
+    STRING datum*28:="";   ! Output datum (shift matrix)
+VAR STRING srftype(6)*1;   ! Surface type
+VAR STRING srffil(6)*80    ! Name of external data file (output)
+);
+
+!sdesce Start of NMG and retrieve surface from DDF
+!sdescs Start av NMG f|r h{mtning av yta fr}n DDF
+
+! Internal variables:
+
+FILE       fnmgpp,         ! pointer to the NMG part program
+           fpunfil,        ! pointer to the temporarily used punchfile
+           fsurf;          ! pointer to the external surface file
+STRING     answer*2,       ! temporarily used string
+           jobid*8,        ! job identification
+           line*132,       ! line read from the PUNCH file
+           nmgpp*27,       ! name of the NMG part program file 
+           project*44,     ! name of NMG project if TEST or GENERAL
+           punfil*28;      ! name of the temporarily used punchfile
+INT        acp,            ! eq 1: an aircraft project is found
+           beglin,         ! position to the beginning of the line
+           cursrf,         ! index to the current surface
+           datent,         ! eq 1: a datum (coordinate system) was entered
+           dattim(6),      ! year,month,day,hour,min,sec;
+           ixsurf,ix2,ix3, ! temporarily used indices
+           nfetch,         ! # of surfaces to be fetched
+           nlines,         ! # of lines to be read
+           fsurf_open,     ! 1: the surface data file is created
+           nmgpp_open;     ! 1: the NMG partprogram file is created
+
+INT        opsys;          ! Operating system
+                           ! Eq. 1: VMS         (VAX)
+                           ! Eq. 2: SCO UNIX    (PC)
+                           ! Eq. 3: SGI UNIX    (X server)
+           
+
+BEGINMODULE
+
+nfetch     := 0;
+nmgpp_open := 0;
+
+   IF (datum = "") OR (datum = " ") THEN
+     datent := 0;
+   ELSE
+     datent := 1;
+   ENDIF;
+
+! +++ -----------------------------------------------------------------
+! Get current operating system
+! --- ----------------------------------------------------------------
+
+   PART(#5,getopsys (opsys));
+
+! +++ -----------------------------------------------------------------
+! Check if the surface(s) exist in the "VARKON surface database"
+! If not, we have to execute NMG to fetch the surface(s).
+! --- -----------------------------------------------------------------
+
+   FOR ixsurf:=1 TO nsurf DO
+
+!    Check/Create the surface file name
+
+       IF srffil(ixsurf) = "" THEN
+         IF    opsys = 1       THEN  
+           srffil(ixsurf) := "v3$root:<surflib>";
+         ELIF  opsys = 2       THEN  
+           srffil(ixsurf) := "/u/surflib/";
+         ELIF  opsys = 3       THEN  
+           srffil(ixsurf) := "/home/auspex16/varkon/surflib/";
+         ELIF  opsys = 4       THEN  
+           srffil(ixsurf) := "/home/ultra4/varkon/surflib/";
+         ELIF  opsys = 5       THEN  
+           srffil(ixsurf) := "/home/orion/v3/surflib/";
+         ELSE
+           EXIT("getnmgsuv1 opsys= "+STR(opsys,-1,0));
+         ENDIF;
+ 
+           FOR ix2:=1 TO LENGTH(surface(ixsurf)) DO
+             ix3 := ASCII(SUBSTR(surface(ixsurf),ix2,1));
+
+               IF ((ix3 >= 48) AND (ix3 <=  57)) OR            ! 0 - 9
+                  ((ix3 >= 65) AND (ix3 <=  90)) OR            ! A - Z
+                  ((ix3 >= 97) AND (ix3 <= 122)) OR            ! a - z
+                   (ix3  = 45) OR  (ix3  =  95)  THEN          ! -_
+                 srffil(ixsurf) := srffil(ixsurf) + CHR(ix3);
+               ENDIF;
+           ENDFOR;
+
+         srffil(ixsurf) := srffil(ixsurf) + ".DAT";
+
+           IF datent > 0 THEN
+             srffil(ixsurf) := srffil(ixsurf) + "_" + datum;
+           ENDIF;
+       ENDIF;
+
+!    Open the surface file to check if it exists
+
+     OPEN(fsurf,"R",srffil(ixsurf));
+
+       IF IOSTAT(fsurf) = 0 THEN
+!        Read the 1st line to decide the surface type.
+
+         line := INLIN(fsurf);
+         ix2  := IOSTAT(fsurf);
+         CLOSE(fsurf);
+
+!        Consurf:  LINE  MOG1/U1                     
+!                     SECTION  5 POINTS
+!                     NORMAL    4700.0000       0.0000 ...
+!                       1.1   4700.0000      0.0000 ...
+!        Bicubic:  39-114-03                        29 
+!                      1   48    1    0 1001    0    0    2   30    0
+!                  5353.58980   350.00000  4213.33000   -66.98725 ...
+
+           IF ix2 = 0 THEN
+               IF FINDS(line,"LINE ") > 0 THEN
+                 srftype(ixsurf) := "c";
+               ELSE
+                 srftype(ixsurf) := "b";
+               ENDIF;
+
+             GOTO prepare_nmgpp_end;
+           ENDIF;
+       ENDIF;
+
+!    The surface file does not exist or is empty.
+!    Update the NMG partprogram. The 1st time we have to create the file.
+
+       IF nmgpp_open = 0 THEN
+
+!        Create an unique job identification string
+
+         TIME(dattim(1),dattim(2),dattim(3),dattim(4),dattim(5),dattim(6));
+
+         jobid:="";
+  
+            FOR ix2:=3 TO 6 DO
+              ix3 := TRUNC(dattim(ix2)/10);
+              jobid := jobid + CHR(ix3+48) +
+                               CHR((dattim(ix2)-(ix3*10))+48);
+            ENDFOR;
+
+          IF    opsys = 1       THEN  
+            nmgpp := "sys$scratch:" + jobid + ".TMP_PP";
+          ELIF  opsys = 2       THEN  
+            nmgpp := ACT_JOBDIR() + jobid + ".TMP_PP";
+          ELIF  opsys = 3       THEN  
+            nmgpp := ACT_JOBDIR() + jobid + ".TMP_PP";
+          ELIF  opsys = 4       THEN  
+            nmgpp := ACT_JOBDIR() + jobid + ".TMP_PP";
+          ELIF  opsys = 5       THEN  
+            nmgpp := ACT_JOBDIR() + jobid + ".TMP_PP";
+          ENDIF;
+ 
+          OPEN(fnmgpp,"W",nmgpp);
+
+             IF IOSTAT(fnmgpp) <> 0 THEN
+               EXIT("GETNMGSRF: Kan ej |ppna partprogramfilen.");
+             ENDIF;
+!                                        Convert to uppercase
+           PART(#1,tv_upcase(tapein));
+!                                        Locate the 1st comma
+           ix2 := FINDS(tapein,",");
+!                                        No comma found
+             IF ix2 = 0 THEN
+                 IF (tapein = "TEST") OR (tapein = "GENERAL") THEN
+                   acp := 0;
+                 ELSE
+                   acp := 1;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + tapein); OUTLIN(fnmgpp);
+
+!                                        Split the TAPEIN string
+             ELSE
+               acp  := 0;
+               line := tapein;
+               ix3  := LENGTH(line);
+nxt_project:;
+                 IF ix2 = 1 THEN
+                   EXIT("GETNMGSRF: Dubbla kommatecken");
+                 ENDIF;
+
+               project := SUBSTR(line,1,(ix2-1));
+
+                 IF acp = 0 THEN
+                   IF ((project <> "TEST") AND (project <> "GENERAL")) THEN
+                     tapein := project;
+                     acp    := 1;
+                   ENDIF;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + project); OUTLIN(fnmgpp);
+
+               ix3  := ix3 - ix2;
+
+                 IF ix3 <= 0 THEN
+                   EXIT("GETNMGSRF: Avslutande kommatecken");
+                 ENDIF;
+
+               line := SUBSTR(line,(ix2+1),ix3);
+               ix2  := FINDS(line,",");
+
+                 IF ix2 > 0 THEN
+                   goto nxt_project;
+                 ENDIF;
+!                                        Last project name found
+                 IF acp = 0 THEN
+                   IF ((line <> "TEST") AND (line <> "GENERAL")) THEN
+                     tapein := line;
+                     acp    := 1;
+                   ENDIF;
+                 ENDIF;
+
+               OUTSTR(fnmgpp,"TAPEIN " + line); OUTLIN(fnmgpp);
+             ENDIF;
+
+!          Get the project name to decide if Military or Civil DDF.
+
+             IF acp = 0 THEN
+               project := INPMT("Ange flygplansprojekt: ","39",44);
+
+                 IF project <> "" THEN
+                   PART(#2,tv_upcase(project));
+                   tapein := project;
+                 ENDIF;
+             ENDIF;
+
+           OUTSTR(fnmgpp,"PRINT"); OUTLIN(fnmgpp);
+           OUTSTR(fnmgpp,"  OFF"); OUTLIN(fnmgpp);
+           nmgpp_open := 1;
+
+             IF datent > 0 THEN
+               PART(#3,tv_upcase(datum));
+             ENDIF;
+       ENDIF;
+
+!    Display the menu or confirm input and decide if CONSURF or BICUBIC
+
+     PART(#4,tv_upcase(surface(ixsurf)));
+
+       IF (srftype(ixsurf) = "") OR (srftype(ixsurf) = " ") THEN
+         PSH_MEN(303);
+         answer := GET_ALT("Ange yttyp f|r " + surface(ixsurf) + " !");
+         POP_MEN();
+
+           IF answer = "a1" THEN
+             srftype(ixsurf) := "c";
+           ELIF answer = "a2" THEN
+             srftype(ixsurf) := "b";
+           ELSE
+             srftype(ixsurf) := SUBSTR(answer,1,1);
+           ENDIF;
+       ENDIF;
+!                                              Append the partprogram
+       IF srftype(ixsurf) = "c" THEN
+         OUTSTR(fnmgpp,"SURFLIST"); OUTLIN(fnmgpp);
+         OUTSTR(fnmgpp,"  ULIST PUNCH"); OUTLIN(fnmgpp);
+
+           IF datent = 0 THEN
+             OUTSTR(fnmgpp,"*  " + surface(ixsurf));
+           ELSE
+             OUTSTR(fnmgpp,"*  " + surface(ixsurf) + " DATUM " + datum);
+           ENDIF;
+       ELIF srftype(ixsurf) = "b" THEN
+
+           IF datent = 0 THEN
+             OUTSTR(fnmgpp,"SPUNCH"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"   KDATA"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  " + surface(ixsurf));
+           ELSE
+             OUTSTR(fnmgpp,"DATUM D1"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"   ORIGIN 0 0 0"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"MOVDAT SH"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  " + datum); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  D1"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"EDIT YTA"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  " + surface(ixsurf)); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  SH/1"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"   SHIFT"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"SPUNCH"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"   KDATA"); OUTLIN(fnmgpp);
+             OUTSTR(fnmgpp,"*  YTA/1");
+           ENDIF;
+       ELSE
+         CLOSE(fnmgpp);
+         EXIT("GETNMGSRF: Fel yttyp: " + answer);
+       ENDIF;
+     
+     OUTLIN(fnmgpp);
+     nfetch := nfetch + 1;
+
+prepare_nmgpp_end:;
+   ENDFOR;
+
+! +++ -----------------------------------------------------------------
+! Start an NMG session if the surface file(s) don't exist
+! --- -----------------------------------------------------------------
+
+   IF nmgpp_open <> 0 THEN
+     CLOSE(fnmgpp);
+
+       IF nfetch = 1 THEN
+
+!        Set P3 to "jobid" instead of to "nmgpp" to avoid the OS command
+!        string to exceed 132 characters. The command procedure assumes
+!        SYS$SCRATCH: and .TMP_PP if omitted.
+
+         psh_pmt("H{mtar ytan " + surface(1) + " fr}n NMG... ");
+
+         IF    opsys = 1       THEN  
+           OS("@APT$BATCH:NMGVARKON.COM/OUTPUT=sys$scratch:" + jobid + ".LOG "+
+            tapein + " " + jobid + " " + jobid  + " " + srffil(1),0);
+         ELSE
+           EXIT("getnmgsuv1 NMG cannot be started from AIX, IRIX, PC or SGI");
+         ENDIF;
+
+         pop_pmt();
+
+!        Verify if the NMG surface exists. The punch file must not be empty.
+
+         OPEN (fsurf,"R",srffil(1));
+
+           IF IOSTAT(fsurf) <> 0 THEN
+             PART(#11,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGSRF: \ppningsfel, NMG's PUNCH-fil");
+           ENDIF;
+
+         line := INLIN(fsurf);
+         ix2  := IOSTAT(fsurf);
+         CLOSE (fsurf);
+
+           IF ix2 = -1 THEN
+             PART(#12,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("Ytan " + surface(1) + " finns inte i NMG.");
+           ELIF ix2 <> 0 THEN
+             PART(#13,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGSRF: L{sfel, PUNCH-filen (" + CHR(ix2) + ").");
+           ENDIF;
+!                          More than one surface to be fetched
+       ELSE
+         punfil := "sys$scratch:" + jobid + ".TMP_PUN";
+
+         psh_pmt("H{mtar ytorna fr}n NMG... ");
+
+         OS("@APT$BATCH:NMGVARKON.COM/OUTPUT=sys$scratch:" + jobid + ".LOG "+
+            tapein + " " + jobid + " " + nmgpp  + " " + punfil,0);
+
+         pop_pmt();
+
+!        Split the punch file into surface data files.
+
+         fsurf_open := 0;
+         cursrf := 0;
+         ixsurf := 1;                       ! Index in the SURFACE table
+         OPEN (fpunfil,"U",punfil);         ! U to use SEEK later
+
+           IF IOSTAT(fpunfil) <> 0 THEN
+             PART(#21,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("GETNMGSRF: \ppningsfel, NMG's PUNCH-fil");
+           ENDIF;
+
+!        Read the 1st line   "(LINE) surface"
+
+         line := INLIN(fpunfil);
+         ix2  := IOSTAT(fpunfil);
+
+           IF ix2 <> 0 THEN
+             PART(#22,lstlogfil("sys$scratch:" + jobid + ".LOG"));
+             EXIT("Ytan/ytorna finns troligen inte i NMG.");
+           ENDIF;
+
+!        Locate the surface name in the surface table
+
+split_nxt_surface:;
+
+           IF FINDS(line,surface(ixsurf)) = 0 THEN
+             ixsurf := ixsurf + 1;
+
+               IF ixsurf > nsurf THEN
+                 CLOSE (fpunfil);
+                 EXIT("GETNMGSRF: Odef. Yta i LINE-raden.");
+               ELSE
+                 GOTO split_nxt_surface;
+               ENDIF;
+           ENDIF;
+
+!        Create the surface file. Always if bicubic, only for the 1st
+!        section line in each surface if consurf.
+
+           IF cursrf <> ixsurf THEN
+               IF fsurf_open = 1 THEN
+                 CLOSE (fsurf);
+               ENDIF;
+
+             OPEN (fsurf,"W",srffil(ixsurf));
+
+               IF IOSTAT(fsurf) <> 0 THEN
+                 CLOSE (fpunfil);
+                 EXIT("GETNMGSRF: Kan ej |ppna ytfilen.");
+               ENDIF;
+
+             fsurf_open := 1;
+             cursrf := ixsurf;
+           ENDIF;
+                                              
+         OUTSTR(fsurf,line); OUTLIN(fsurf);      ! Write "(LINE) surface"
+         beglin := FPOS(fpunfil);
+
+!        Decide the # of lines to be read for the current LINE/Patch
+
+           IF srftype(ixsurf) = "c" THEN
+
+!            Parse the line "SECTION npoints POINTS". Decide the # of
+!            lines to be read in the current section line.
+
+             line:=INSTR(fpunfil,10);
+             nlines:=ININT(fpunfil);
+             nlines := nlines*3 + 1;
+
+           ELIF srftype(ixsurf) = "b" THEN
+
+!            Parse the KDATA-line. Fetch the # of U- and V-lines.
+!            There are 10 lines to each patch.
+
+             line:=INSTR(fpunfil,38);
+             ix2:=ININT(fpunfil); ix3:=ININT(fpunfil);
+             nlines := (ix2-1)*(ix3-1)*10 - 1;
+           ENDIF;
+
+!        Write the next SECTION (if CONSURF) or the PATCHes (if BICUBIC).
+                                              
+         SEEK(fpunfil,beglin);               ! Beginning of the line
+         line:=INLIN(fpunfil);
+         OUTSTR(fsurf,line); OUTLIN(fsurf);  ! Write "SECTON ..." or "KDATA"
+
+           FOR ix3:=1 TO nlines DO
+             line := INLIN(fpunfil);
+             ix2  := IOSTAT(fpunfil);
+
+               IF ix2 = 0 THEN
+                 OUTSTR(fsurf,line); OUTLIN(fsurf);
+               ELSE
+                 CLOSE (fpunfil);
+
+                   IF fsurf_open = 1 THEN
+                     CLOSE (fsurf);
+                   ENDIF;
+
+                 EXIT("GETNMGSRF: L{sfel, PUNCH-fil (" + CHR(ix2) + ").");
+               ENDIF;
+           ENDFOR;
+
+!        Read the next line from the punchfil  "(LINE) surface"
+
+         line := INLIN(fpunfil);
+         ix2  := IOSTAT(fpunfil);
+
+           IF ix2 = 0 THEN
+             goto split_nxt_surface;
+           ELIF ix2 = -1 THEN
+             CLOSE (fpunfil);
+
+               IF fsurf_open = 1 THEN
+                 CLOSE (fsurf);
+               ENDIF;
+           ELSE
+             EXIT("GETNMGSRF: L{sfel, PUNCH-fil (" + CHR(ix2) + ").");
+           ENDIF;
+       ENDIF;
+   ENDIF;
+
+ENDMODULE
+
