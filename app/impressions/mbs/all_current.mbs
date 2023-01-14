@@ -1,0 +1,46 @@
+GLOBAL GEOMETRY MODULE all_current( 
+INT    shell_color := 3 >"Shell color";
+INT    graphic := 1 >"Graphic 0: None 1: Shell");
+  INT    b_val_plane;      ! Blank value planes
+ 
+BEGINMODULE
+ 
+  IF   graphic = 0 THEN
+    b_val_plane  := 1;
+  ELIF graphic = 1 THEN
+    b_val_plane  := 0;
+  ELSE 
+    b_val_plane  := 1;
+  ENDIF;
+
+  SET(BLANK=b_val_plane, PEN=shell_color);
+
+  PART(#1   , current_1()); 
+  PART(#2   , current_2()); 
+  PART(#3   , current_3()); 
+  PART(#4   , current_4()); 
+  PART(#5   , current_5()); 
+  PART(#6   , current_6()); 
+  PART(#7   , current_7()); 
+  PART(#8   , current_8()); 
+  PART(#9   , current_9()); 
+  PART(#10  , current_10()); 
+  PART(#11  , current_11()); 
+  PART(#12  , current_12()); 
+  PART(#13  , current_13()); 
+  PART(#14  , current_14()); 
+  PART(#15  , current_15()); 
+  PART(#16  , current_16()); 
+  PART(#17  , current_17()); 
+  PART(#18  , current_18()); 
+  PART(#19  , current_19()); 
+  PART(#20  , current_20()); 
+  PART(#21  , current_21()); 
+  PART(#22  , current_22()); 
+  PART(#23  , current_23()); 
+  PART(#24  , current_24()); 
+  PART(#25  , current_25()); 
+  PART(#26  , current_26()); 
+  PART(#27  , current_27()); 
+
+ENDMODULE

@@ -1,0 +1,6 @@
+GLOBAL GEOMETRY MODULE current_10();
+ 
+BEGINMODULE
+ 
+;! Color is not set
+ENDMODULE

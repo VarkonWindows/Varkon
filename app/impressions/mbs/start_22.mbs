@@ -1,0 +1,6 @@
+GLOBAL GEOMETRY MODULE start_22();
+ 
+BEGINMODULE
+ 
+;! Color is not set
+ENDMODULE
