@@ -1,0 +1,213 @@
+Ej f{rdig !!!!!
+!**************** l_anclopt  ***************************
+!s+++
+! N{rmaste punkt
+! ______________
+!
+! Funktionen ber{knar n{rmaste punkt p} yta eller kurva till 
+! en yttre punkt. Parameterv{rden och avst}nd skrivs ut.
+! kod     (INT)    - Kriterium f|r hur n{rmaste punkterna
+!                    ska sorteras
+!                    = 1: Sortera efter kortaste R*3 
+!                         avst}nd till givna punkten
+!                    = 2: Sortera efter kortaste U,V 
+!                         avst}nd till givna U,V 
+!                         startpunkten (uv_near)
+!                    = kod (enligt ovan) + 1000:
+!                    MBS programmet stoppar ej om
+!                    l|sning saknas.
+! sno     (INT)    - \nskad l|sning nummer
+!
+!s---
+!e+++
+! Closest point
+! _____________
+!
+! The function calculates the closest point on curve or a surface  
+! to an external point. Parameter values and distance will be    
+! output from the function.
+!
+!e---
+
+! Revision history
+! ________________
+!
+! 1995-01-20 Gunnar Liden
+
+MACRO MODULE l_anclopt();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING sexpt*80;               ! External point as string
+  STRING sexptx*25;              ! External point X component as string
+  STRING sexpty*25;              ! External point Y component as string
+  STRING sexptz*25;              ! External point Z component as string
+
+  STRING snear*80;               ! Start point as string
+  STRING snearu*25;              ! Start point X component as string
+  STRING snearv*25;              ! Start point Y component as string
+
+  STRING scode*25;               ! Code as string
+
+  STRING ssoln*25;               ! Solution number as string
+
+  STRING s_invon*132;            ! INV_ON_SUR statement as string
+
+  STRING select*30;              ! Select prompt string
+  STRING p_exptx*50;             ! External X  prompt string
+  STRING p_expty*50;             ! External Y  prompt string
+  STRING p_exptz*50;             ! External Z  prompt string
+
+  STRING p_code*50;              ! Code as prompt string
+
+  STRING p_soln*50;              ! Solution number as prompt string
+
+  STRING p_nearu*25;             ! Start U  prompt string
+  STRING p_nearv*25;             ! Start V  prompt string
+  STRING p_near*50;              ! Start pt prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface "+    !
+            or curve";           !
+  p_exptx:="External point " +   !
+       "X component";            !
+  p_expty:="External point " +   !
+       "Y component";            !
+  p_exptz:="External point " +   !
+       "Z component";            !
+  p_code :="Ordering case " +    !
+       "1= ... 2= ...";          !
+  p_soln :="Requested " +        !
+       "solution number";        !
+  p_nearu:="Start U pt" +        !
+       " <CR>= no start point";  !
+  p_nearv:="Start V pt" +        !
+       " ";                      !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta eller "+ !
+          "kurva";               !
+  p_exptx:="Yttre punkt " +      !
+       "X komponent";            !
+  p_expty:="Yttre punkt " +      !
+       "Y komponent";            !
+  p_exptz:="Yttre punkt " +      !
+       "Z komponent";            !
+  p_code :="Sorterings fall" +   !
+       "1= ... 2= ...";          !
+  p_soln :="\nskad " +           !
+       "l|sning nummerr";        !
+  p_nearu:="Start U pkt" +       !
+    " <CR>= ingen start punkt";  !
+  p_nearv:="Start V pkt" +       !
+       " ";                      !
+ELSE                             !
+  EXIT("l_anclopt: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(2+4+8+16);          ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+! 3. External point      
+! _________________       
+
+sexptx:= INPMT(p_exptx,"",25);   ! Interactive input of X component
+IF sexptx = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sexpty:= INPMT(p_expty,"",25);   ! Interactive input of Y component
+IF sexpty = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sexptz:= INPMT(p_exptz,"",25);   ! Interactive input of Z component
+IF sexptz = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+sexpt:="VEC("+sexptx+","         ! External point       
+             +sexpty+","         !
+             +sexptz+")";        !
+
+! 4. Ordering case       
+! ________________        
+
+!Q scode := INPMT(p_code ,"",25);   ! Interactive input of code
+scode := "1";                    ! 
+IF scode  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Requested solution  
+! _____________________        
+
+!Qssoln := INPMT(p_soln ,"",25);   ! Interactive input of solution no
+ssoln := "1";                    ! Solution number
+IF ssoln  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. Start U,V point     
+! __________________       
+
+!Qsnearu:= INPMT(p_nearu,"",25);   ! Interactive input of U component
+snearu := "";                    !
+IF snearu = "" THEN              !
+  snearv := "";                  !
+  snear  := "";                  !
+  GOTO nostart;                  !
+ENDIF;                           !
+snearv:= INPMT(p_nearv,"",25);   ! Interactive input of V component
+IF snearv = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+snear:="VEC("+snearu+","         ! UV start point       
+             +snearv+")";        !
+
+nostart:;                        ! Label: No start point
+
+! 7. INV_ON_SUR statement  
+! _______________________       
+
+IF snear = "" THEN               !
+ s_invon:=  "INV_ON_SUR("+s_ids+ !
+ "," + sexpt+ ","+scode+","+     !
+ ssoln+")";                      !
+ELSE                             !
+ s_invon:=  "INV_ON_SUR("+s_ids+ !
+ "," + sexpt+ ","+scode+","+     !
+ ssoln+","+snear+")";            !
+ENDIF;                           !
+
+s_invon:= "ON(" + s_ids  + "," + !
+              s_invon+")";       !
+
+! 8. Output to screen    
+! ___________________
+
+a_id:= ADD_MBS("POI_FREE",        ! Create MBS statement 
+                 s_invon);        !
+
+ENDMODULE 
+

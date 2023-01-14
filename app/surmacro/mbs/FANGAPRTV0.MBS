@@ -1,0 +1,356 @@
+! ***************** fangaprtv0 ****************************
+!
+! +++
+! The function calculates FANGA curves for a surface.
+!
+! Scaled FANGA curves will be shown in a local coordinate
+! system. Scale factors are input to the module.
+! 
+! The X axis of the FANGA curve system will be the start tangent
+! of the spine, the Y axis will be (close to) the Y axis of the
+! global system and the origin will be the spine start point 
+! translated a given distance in the Y axis direction.
+! 
+! The energy or the arclength will as options be calculated for 
+! the FANGA curves. The energy or arclength values will be registered 
+! with modules:
+! fanga_obj1 for curve chord start-end silhouette
+! fanga_obj2 for curve chord start-mid silhouette
+! fanga_obj3 for curve chord   mid-end silhouette
+! fanga_obj4 for curve angle start-end silhouette
+! fanga_obj5 for curve angle start-mid silhouette
+! fanga_obj6 for curve angle   mid-end silhouette
+!
+! Revision history
+! ________________
+!
+! 1995-06-26 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create FANGA curves and calculate energy of curves
+!sdescs Skapa FANGA kurvor och ber{kna energi f|r kurvorna
+
+GLOBAL GEOMETRY MODULE fangaprtv0 (
+
+REF    s_id                > "@t16 Select surface";
+REF    c_id                > "@t8  Select spine curve for surface";
+VECTOR sdir1:= VEC(0,1.1,1)>"Direction for start silhouette";
+VECTOR sdir2:= VEC(0,1.2,1)>"Direction for end   silhouette";
+INT    ivstart  :=   2     >"Start strip number (start limit curve number)";
+INT    ivend    :=   4     >"End strip number (Eq. start strip no ==> one strip)";
+FLOAT  startu   :=  -1.0   > "@ Start U section value ( <CR> ==> Whole surface)";
+FLOAT  endu     :=  -1.0   > "@ End   U section value (= -1 <==> not defined)";
+FLOAT  ydelta   :=-100.0   >"Delta y for FANGA system";
+FLOAT  cscale   :=  20.0   >"Scale factor for chord curves";
+FLOAT  ascale   :=  30.0   >"Scale factor for angle curves";
+INT    f_energy :=   0     >"@ Eq. 0: Nothing Eq. 1: Energy Eq. 2: Arclength";
+INT    b_cur1   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv chord start-end silhouette";
+INT    b_cur2   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv chord start-mid silhouette";
+INT    b_cur3   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv chord   mid-end silhouette";
+INT    b_cur4   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv angle start-end silhouette";
+INT    b_cur5   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv angle start-mid silhouette";
+INT    b_cur6   :=   0     >"@ Eq. 1: Blank Eq. 0: Show crv angle   mid-end silhouette";
+INT    f_output :=   0     >"Flag for output =0: No list =1: List ");
+
+
+! Internal variables
+
+  VECTOR origin;                 ! Origin for FANGA system
+  VECTOR xaxis;                  ! X axis for FANGA system
+  VECTOR yaxis;                  ! Y axis for FANGA system
+
+  VECTOR transl;                 ! Translation of FANGA curves
+
+  INT    n_poi;                  ! Accuracy of energy calculation
+                                 ! (no pts within curve segment)
+  INT    f_show;                 ! Plot flag =0: Do not show curves
+
+  FLOAT  e_1;                    ! Energy of curve 1
+  FLOAT  e_2;                    ! Energy of curve 2
+  FLOAT  e_3;                    ! Energy of curve 3
+  FLOAT  e_4;                    ! Energy of curve 4
+  FLOAT  e_5;                    ! Energy of curve 5
+  FLOAT  e_6;                    ! Energy of curve 6
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! 0. Initiations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF b_cur1 = 1 AND              !
+     b_cur2 = 1 AND              !
+     b_cur3 = 1 AND              ! Show any of the curves ?
+     b_cur4 = 1 AND              !
+     b_cur5 = 1 AND              !
+     b_cur6 = 1 THEN             !
+    f_show := 0;                 !
+  ELSE                           !
+    f_show := 1;                 !
+  ENDIF;                         !
+
+  n_poi := 4;                    ! Accuracy of energy calculation
+
+! +++
+! 1. Create FANGA curves. 
+! 
+! Calculate six curves (instances). 
+! ---
+
+
+  CUR_FANGA(#1 ,s_id , sdir1, sdir2, ivstart, ivend, startu, endu);
+
+! +++
+! Blank unscaled FANGA curves 
+! ---
+
+  BLANK(GLOBAL_REF(#1.1));       ! Blank unscaled curve 1
+  BLANK(GLOBAL_REF(#1.2));       ! Blank unscaled curve 2
+  BLANK(GLOBAL_REF(#1.3));       ! Blank unscaled curve 3
+  BLANK(GLOBAL_REF(#1.4));       ! Blank unscaled curve 4
+  BLANK(GLOBAL_REF(#1.5));       ! Blank unscaled curve 5
+  BLANK(GLOBAL_REF(#1.6));       ! Blank unscaled curve 6
+
+! +++
+! 2. Transformate and scale curves if any of the curves shall be shown
+! ---
+
+  IF  f_show = 0  THEN           !
+    GOTO noplot;                 !
+  ENDIF;                         !
+
+! +++
+! Calculate translation vector for the FANGA curves
+! ---
+
+  IF startu < 0.0 THEN           ! Start point spine
+    origin:= ON(s_id,VEC(0.0,0));!
+  ELSE                           !
+    origin:= ON(s_id,            !
+             VEC(startu,0));     !
+  ENDIF;                         !
+
+  transl:=VEC(origin.x,ydelta,0);! 
+
+
+! +++
+! Create transformation (scaling) matrice          
+! ---
+
+  TFORM_MOVE(#8,                 ! Create translating matrix chord
+   VEC(0,0,0), transl,           !
+   1.0,1.0,1.0);                 !
+
+  TFORM_MOVE(#9 ,                ! Create scaling matrix angle
+   VEC(0,0,0), VEC(0,0,0),       !
+   1.0,ascale,1.0);              !
+  TFORM_MOVE(#10,                ! Create scaling matrix chord
+   VEC(0,0,0), VEC(0,0,0),       !
+   1.0,cscale,1.0);              !
+
+! +++
+! Scale curves
+! ---
+
+  TCOPY(#11,GLOBAL_REF(#1.1)     ! Scale curve 1
+           ,GLOBAL_REF(#10 ));   !
+  TCOPY(#12,GLOBAL_REF(#1.2)     ! Scale curve 2
+           ,GLOBAL_REF(#10 ));   !
+  TCOPY(#13,GLOBAL_REF(#1.3)     ! Scale curve 3
+           ,GLOBAL_REF(#10 ));   !
+  TCOPY(#14,GLOBAL_REF(#1.4)     ! Scale curve 4
+           ,GLOBAL_REF(#9  ));   !
+  TCOPY(#15,GLOBAL_REF(#1.5)     ! Scale curve 5
+           ,GLOBAL_REF(#9  ));   !
+  TCOPY(#16,GLOBAL_REF(#1.6)     ! Scale curve 6
+           ,GLOBAL_REF(#9  ));   !
+
+! +++
+! Translate curves
+! ---
+
+  TCOPY(#21,GLOBAL_REF(#11)      ! Translate curve 1
+           ,GLOBAL_REF(#8  ));   !
+  TCOPY(#22,GLOBAL_REF(#12)      ! Translate curve 2
+           ,GLOBAL_REF(#8  ));   !
+  TCOPY(#23,GLOBAL_REF(#13)      ! Translate curve 3
+           ,GLOBAL_REF(#8  ));   !
+  TCOPY(#24,GLOBAL_REF(#14)      ! Translate curve 4
+           ,GLOBAL_REF(#8  ));   !
+  TCOPY(#25,GLOBAL_REF(#15)      ! Translate curve 5
+           ,GLOBAL_REF(#8  ));   !
+  TCOPY(#26,GLOBAL_REF(#16)      ! Translate curve 6
+           ,GLOBAL_REF(#8  ));   !
+
+! +++
+! Give the scaled and translated curves (GROUP) names
+! ---
+
+  GROUP(#31,"Chord_s_e",#21);    ! Register curve 1
+  GROUP(#32,"Chord_s_m",#22);    ! Register curve 2
+  GROUP(#33,"Chord_m_e",#23);    ! Register curve 3
+  GROUP(#34,"Angle_s_e",#24);    ! Register curve 4
+  GROUP(#35,"Angle_s_m",#25);    ! Register curve 5
+  GROUP(#36,"Angle_m_e",#26);    ! Register curve 6
+
+! +++
+! 3. Graphical representation of result
+! 
+! Unblank scaled and translated FANGA curve if 
+! blank flag b_curi, i=1,2,3,4,5,6 is zero (0)
+! ---
+
+  IF   b_cur1   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#21));    ! Unblank scaled curve 1
+  ENDIF;                         !
+  IF   b_cur2   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#22));    ! Unblank scaled curve 2
+  ENDIF;                         !
+  IF   b_cur3   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#23));    ! Unblank scaled curve 3
+  ENDIF;                         !
+  IF   b_cur4   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#24));    ! Unblank scaled curve 4
+  ENDIF;                         !
+  IF   b_cur5   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#25));    ! Unblank scaled curve 5
+  ENDIF;                         !
+  IF   b_cur6   =  0  THEN       !
+    UNBLANK(GLOBAL_REF(#26));    ! Unblank scaled curve 6
+  ENDIF;                         !
+
+! +++
+! 4. Calculate curve energy
+!
+noplot:;                         ! Label: No plot of curves
+! ---
+
+  IF    f_energy =  0 THEN       ! Goto noenergy if f_flag = 0  
+    e_1 := 0.0;                  !
+    e_2 := 0.0;                  !
+    e_3 := 0.0;                  !
+    e_4 := 0.0;                  !
+    e_5 := 0.0;                  !
+    e_6 := 0.0;                  !
+    GOTO  noenergy;              !
+  ELIF  f_energy =  1 THEN       ! Check flag
+    ;                            !
+  ELIF  f_energy =  2 THEN       !
+    ;                            !
+  ELSE                           !
+    EXIT("fangaprtv0 f_energy "  !
+       + "not OK" );             !
+  ENDIF;                         !
+
+! +++
+! Calculate energy of unscaled curves if f_flag= 1
+! ---
+
+  IF    f_energy =  1 THEN       ! Energy    
+    PART(#41, c_energyv0 (       ! Energy in unscaled curve 1
+     GLOBAL_REF(#1.1),n_poi,e_1) ! 
+     :SAVE=0);                   !
+    PART(#42, c_energyv0 (       ! Energy in unscaled curve 2
+     GLOBAL_REF(#1.2),n_poi,e_2) ! 
+     :SAVE=0);                   !
+    PART(#43, c_energyv0 (       ! Energy in unscaled curve 3
+     GLOBAL_REF(#1.3),n_poi,e_3) ! 
+     :SAVE=0);                   !
+    PART(#44, c_energyv0 (       ! Energy in unscaled curve 4
+     GLOBAL_REF(#1.4),n_poi,e_4) ! 
+     :SAVE=0);                   !
+    PART(#45, c_energyv0 (       ! Energy in unscaled curve 5
+     GLOBAL_REF(#1.5),n_poi,e_5) ! 
+     :SAVE=0);                   !
+    PART(#46, c_energyv0 (       ! Energy in unscaled curve 6
+     GLOBAL_REF(#1.6),n_poi,e_6) ! 
+     :SAVE=0);                   !
+  ENDIF;                         !
+
+! +++
+! Calculate arclength of unscaled curves if f_flag= 2
+! ---
+
+  IF    f_energy =  2 THEN       ! Arclength 
+    e_1:=ARCL(GLOBAL_REF(#1.1)); ! 
+    e_2:=ARCL(GLOBAL_REF(#1.2)); ! 
+    e_3:=ARCL(GLOBAL_REF(#1.3)); ! 
+    e_4:=ARCL(GLOBAL_REF(#1.4)); ! 
+    e_5:=ARCL(GLOBAL_REF(#1.5)); ! 
+    e_6:=ARCL(GLOBAL_REF(#1.6)); ! 
+  ENDIF;                         !
+
+
+
+! +++
+! Registrate energy or arclength (objective function) values
+! ---
+
+  PART(#51,fanga_obj1 ( e_1 ));  ! Curve chord start-end silhouette
+  PART(#52,fanga_obj2 ( e_2 ));  ! Curve chord start-mid silhouette
+  PART(#53,fanga_obj3 ( e_3 ));  ! Curve chord   mid-end silhouette
+  PART(#54,fanga_obj4 ( e_4 ));  ! Curve angle start-end silhouette
+  PART(#55,fanga_obj5 ( e_5 ));  ! Curve angle start-mid silhouette
+  PART(#56,fanga_obj6 ( e_6 ));  ! Curve angle   mid-end silhouette
+
+
+! +++
+! Result to screen          
+! ---
+
+  IF f_output =  1   THEN        !
+    PART(#5,fangalstv0 (         ! Write to LST_window
+       s_id, c_id, sdir1, sdir2, !
+       ivstart, ivend,           !
+       startu, endu, n_poi,      !
+       GLOBAL_REF(#1.1),         !
+       GLOBAL_REF(#1.2),         !
+       GLOBAL_REF(#1.3),         !
+       GLOBAL_REF(#1.4),         !
+       GLOBAL_REF(#1.5),         !
+       GLOBAL_REF(#1.6),         !
+      e_1,e_2,e_3,e_4,e_5,e_6,   !
+        f_energy)                !
+       :SAVE=0);                 !
+  ENDIF;                         !
+
+noenergy:;                       ! Label: No energy calculation
+
+! +++
+! 5. Delete entities
+! ---
+
+  IF DEBUG = 0 THEN              ! Erase only for No Debug
+    DEL(GLOBAL_REF(#1.1));       ! 
+    DEL(GLOBAL_REF(#1.2));       ! 
+    DEL(GLOBAL_REF(#1.3));       ! 
+    DEL(GLOBAL_REF(#1.4));       ! 
+    DEL(GLOBAL_REF(#1.5));       ! 
+    DEL(GLOBAL_REF(#1.6));       ! 
+
+    IF  f_show = 1 THEN          !
+      DEL(GLOBAL_REF(#11));      !
+      DEL(GLOBAL_REF(#12));      !
+      DEL(GLOBAL_REF(#13));      !
+      DEL(GLOBAL_REF(#14));      !
+      DEL(GLOBAL_REF(#15));      !
+      DEL(GLOBAL_REF(#16));      !
+
+
+      DEL(GLOBAL_REF(#8 ));      !
+      DEL(GLOBAL_REF(#9 ));      !
+      DEL(GLOBAL_REF(#10));      !
+    ENDIF;                       !
+  ENDIF;                         !
+
+ENDMODULE

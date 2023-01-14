@@ -1,0 +1,211 @@
+!**************** ma_curappr ***************************
+!s+++
+! CUR_APPROX
+! ________
+!
+! Bildar en ny kurva genom approximation av en tidigare skapad  
+! kurva. Funktionen kan till exempel anv{ndas f|r att approximera
+! en UV-kurva (en kurva p} en yta) med en kurva enbart best}ende
+! av kubiska segment.
+! 
+! Modultyp: DRAWING och GEOMETRY
+!
+! Anrop: CUR_APPROX(identitet,kurva,typ,metod,extra1,extra2 :attribut)
+!
+! Obligatoriska parametrar:
+!
+! kurva   (REF)    - Tidigare skapad kurva
+!
+! typ     (STRING) - \nskad typ av segment i kurvan
+!                    CUB_SEG/CUBIC eller RAT_SEG/RATIONAL
+! metod   (INT)    - Approximationsmetod
+!                    metod = 1: Antal nya segment {r indata         
+!                    metod = 3: Segment f}r bara l{ggas till        
+! extra1  (FLOAT)  - Extra data f|r ber{kningen
+!                    extra1 = \nskat antal segment f|r metod= 1
+!                    extra1 = Koordinat tolerans   f|r metod= 3
+!
+! Optionella parameterar:   
+!
+! extra2  (FLOAT)  - Extra data f|r ber{kningen
+!                    extra2 = Tangent (vinkel) tolerans f|r metod= 3
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+! 
+! CUR_APPROX( #10, #5, "CUBIC", 1, 4 );
+! 
+! Skapar en ny kurva (#10) som approximerar en tidigare skapad       
+! kurva #5. Antalet segment blir fyra g}nger det ursprungliga
+! antalet segment i kurvan.
+!s---
+!e+++
+! CUR_APPROX
+! ________
+!
+! The function creates an approximated curve. Input is a      
+! previously defined curve. 
+!
+! The function can for instance be used to approximate a UV curve
+! (a curve on a surface) with a curve with cubic segments.
+!
+! Module type: DRAWING and GEOMETRY
+!
+! MBS syntax: CUR_APPROX(identity,curve,typ,metod,extra1,extra2 :attribut)
+!
+! Parameters:
+!
+! curve   (REF)    - Previously defined curve  
+!
+! typ     (STRING) - Requested type of segments in the curve
+!                    CUB_SEG/CUBIC or RAT_SEG/RATIONAL
+! metod   (INT)    - Approximation method
+!                    metod = 1: Number of segments is input         
+!                    metod = 3: Add only segments                   
+! extra1  (FLOAT)  - Extra data for the computation
+!                    extra1 = Requested number of segments for metod= 1
+!                    extra1 = Coordinate tolerance   for metod= 3
+!
+! Optionella parameterar:   
+!
+! extra2  (FLOAT)  - Extra data for the computation
+!                    extra2 = Tangent (angle) tolerance for metod= 3
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Example:
+! 
+! CUR_APPROX( #10, #5, "CUBIC", 1, 4 );
+! 
+! Skapar en ny kurva (#10) som approximerar en tidigare skapad       
+! kurva #5. Antalet segment blir fyra g}nger det ursprungliga
+! antalet segment i kurvan.
+! Creates a new curve (#10) which approximates a previously   
+! created curve #5 with cubic segments. The number of segments
+! will be four times the number of segments for the old curve.
+!e---
+
+!sdesce Add CUR_APPROX statement to active module (approximate a curve)
+!sdescs Addera CUR_APPROX sats till aktiva modulen (approximera en kurva)    
+
+! Revision history
+! ________________
+!
+! 1995-12-31 Originally written    Gunnar Liden
+
+MACRO MODULE ma_curappr ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    c_id;                   ! Surface identity
+  STRING c_ids*132;              ! Surface identity as string
+
+  STRING select*30;              ! Select prompt string
+
+  STRING p_typ*80;               ! Type of curve  prompt string
+  STRING p_met*80;               ! Approx. method prompt string
+  STRING p_e1*80;                ! Extra data 1   prompt string
+  STRING p_e2*80;                ! Extra data 2   prompt string
+  STRING s_typ*80;               ! Type of curve 
+  STRING s_met*80;               ! Approx. method as string
+  STRING s_e1*25;                ! Extra data 1   as string
+  STRING s_e2*25;                ! Extra data 2   as string
+
+  STRING str_in*132;             ! Input string to CUR_GL
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select curve";       !
+  p_typ:="Requested type "+      !
+    "(CUBSEG, RATSEG ..)";       !
+  p_met:="Approximation method "+!
+  "(=1 No of segments is input)";!
+  p_e1:="Extra data 1";          !
+  p_e2:="Extra data 2 ";         !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} kurva";      !
+  p_typ:="\nskad typ "+          !
+    "(CUBSEG, RATSEG ..)";       !
+  p_met:="Approximations metod "+!
+  "(=1 Antal segment {r indata)";!
+  p_e1:="Extra data 1  ";        !
+  p_e2:="Extra data 2  ";        !
+ELSE                             !
+  EXIT("ma_curappr: " +          !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select curve  
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+c_id:= IDENT(2+4+8);             ! Interactive curve selection
+POP_PMT();                       ! Erase message to screen
+
+c_ids:= RSTR(c_id);              ! Surface identity as string
+IF c_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+c_ids:= "GLOBAL_REF("+c_ids+")"; ! Global reference
+
+! 3. Approximation data
+! ______________________
+
+s_typ:= INPMT(p_typ,             ! Interactive input of curve type
+    "CUB_SEG",25);               !
+IF s_typ   = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+s_typ:= CHR(34)+s_typ+CHR(34);   !
+
+s_met:= INPMT(p_met,             ! Interactive input of method      
+    "1",      25);               !
+IF s_met   = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+IF s_met = "1" THEN              !
+  s_e1 := INPMT(p_e1,            ! Interactive input of extra data 1
+    "4",   25);                  !
+ELSE                             !
+  s_e1 := INPMT(p_e1,            ! 
+    "0.05",25);                  !
+ENDIF;                           !
+IF s_e1    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+IF s_met = "1" THEN              !
+  s_e2 := "-0.123456789";        !
+ELSE                             !
+  s_e2 := INPMT(p_e2,            ! Interactive input of extra data 2
+    "0.1", 25);                  !
+ENDIF;                           !
+IF s_e2    = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+! 4. Create MBS statement
+! _______________________
+
+IF s_met = "1" THEN              !
+  a_id:= ADD_MBS("CUR_APPROX",   ! Create MBS statement 
+     c_ids, s_typ, s_met, s_e1); !
+ELSE                             !
+  a_id:= ADD_MBS("CUR_APPROX",   ! 
+     c_ids, s_typ, s_met, s_e1,  !
+     s_e2 );                     !
+ENDIF;                           !
+
+ENDMODULE 
+

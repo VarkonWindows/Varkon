@@ -1,0 +1,123 @@
+!**************** ma_tcopy   ***************************
+!s+++
+! TCOPY   
+! ________
+!
+! Funktionen skapar nya storheter genom att transformera
+! en tidigare storhet.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: TCOPY (identitet,e_id, t_id :attribut)
+!
+! Obligatoriska parametrar:
+!
+! e_id    (REF)    - Tidigare skapad storhet
+! t_id    (REF)    - Transformation(s matris)
+!
+! Attribut: mode
+!
+! Exempel:
+! 
+! TCOPY ( #10, #5, #7 );
+! 
+! Skapar en ny storhet (#10) med transformationsmatrisen #7
+! och en tidigare skapad storhet #5.
+!s---
+!e+++
+! TCOPY   
+! ________
+!
+! The function creates new transformed entities.
+!
+! Module type: GEOMETRY
+!
+! Anrop: TCOPY (identity ,e_id, t_id :attribute)
+!
+! Parameters:
+!
+! e_id    (REF)    - Previously defined entity
+! t_id    (REF)    - Transformation (matrix)
+!
+! Attribut: mode
+!
+! Exempel:
+! 
+! TCOPY ( #10, #5, #7 );
+! 
+! Creates a new entity (#10) with transformation matrix #7
+! and a previously defined entity #5.
+!e---
+
+!sdesce Add TCOPY statement to active module (transformate and copy an entity )
+!sdescs Addera TCOPY sats till aktiva modulen (transformera/kopiera storhet)    
+
+! Revision history
+! ________________
+!
+! 1995-01-18 Originally written Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+
+MACRO MODULE ma_tcopy   ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    e_id;                   ! Surface identity
+  STRING e_ids*132;              ! Surface identity as string
+
+  STRING select*30;              ! Select prompt string
+
+  STRING p_tra*80;               ! Transformation prompt string
+  STRING s_tra*25;               ! Transformation as string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select entity";      !
+  p_tra:="Transformation "+      !
+   "reference (# identity)";     !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} storhet";    !
+  p_tra:="Transformation "+      !
+   "referens (# identitet)";     !
+ELSE                             !
+  EXIT("ma_tcopy  : " +          !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select entity 
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+e_id:= IDENT(65535);             ! Interactive entity selection
+POP_PMT();                       ! Erase message to screen
+
+e_ids:= RSTR(e_id);              ! Entity identity as string
+IF e_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+! 3. Transformation matrix
+! ________________________
+
+s_tra:= INPMT(p_tra,             ! Interactive input of transformation
+    "",25);                      !
+IF s_tra   = "" THEN             !
+      EXIT();                    !
+ENDIF;                           !
+
+! 4. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("TCOPY",          ! Create MBS statement 
+       e_ids, s_tra );           !
+
+ENDMODULE 
+

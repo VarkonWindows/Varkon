@@ -1,0 +1,366 @@
+!**************** ma_fanga   ***************************
+!s+++
+! CUR_FANGA     
+! _________
+!
+! Funktionen analyserar kvaliten hos en yta av typ LFT_SUR.   
+! FANGA analys kan egentligen g|ras p} vilken typ av yta som
+! helst. Men ber{kningen blir snabbare och stabilare f|r en
+! "conic lofting" yta. 
+!
+! Tv} vektorer {r, f|rutom ytan, indata till funktionen.
+! Dessa vektorer definierar tv} stycken silhuette funktioner,  
+! som ber{knas med CUR_SILH funktionen. Se beskrivningen
+! av denna funktion (ber{kningsfall 3).
+! 
+! Utdata fr}n funktionen {r sex stycken FANGA (2D) kurvor, 
+! d{r X {r b}gl{ngden f|r "spine" kurvan och d{r Y= F(X) {r
+! korda l{ngd eller vinkel m{tt mot den f|rsta indata vektorn.
+! F|ljande kurvor skapas (antag identitet {r #2):
+!   Kurva                  Beskrivning
+!   #2.1   Kordal{ngd mellan start och slut  silhuette kurva
+!   #2.2   Kordal{ngd mellan start och mitt  silhuette kurva
+!   #2.3   Kordal{ngd mellan mitt  och slut  silhuette kurva
+!   #2.4   Vinkel     mellan start och slut  silhuette kurva
+!   #2.5   Vinkel     mellan start och mitt  silhuette kurva
+!   #2.6   Vinkel     mellan mitt  och slut  silhuette kurva
+! 
+! Denna funktion bryter mot m|nster i VARKON. Det finns ingen
+! annan funktion i systemet som skapar fler storheter f|r ett
+! anrop. Eventuellt kommer denna funktion i framtiden att   
+! ist{llet skapa en "part" (modul) av en ny typ. Framf|r 
+! g{rna f|rslag ..........
+! 
+! Modultyp: GEOMETRY 
+!
+! Anrop: CUR_FANGA(identitet,yta,v1,v2, vs,ve,us,ue : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta         (REF)    - Identitet f|r tidigare skapad yta
+! v1          (VECTOR) - Definierar riktning f|r start silhouette 
+! v2          (VECTOR) - Definierar riktning f|r slut  silhouette 
+! vs  ve      (INT)    - Definierar start och slut V "strip":
+!                        vs= -1   ==> hela ytan i V riktningen
+!                        vs = ve  ==> En "strip"
+! us  ue      (FLOAT)  - Definierar del av yta i U riktning:     
+!                        us= -1.0 ==> hela ytan i U riktningen
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+!
+! CUR_FANGA (#43,GLOBAL_REF(#36),VEC(0,1.1,1),VEC(0,1.2,1),1,3,-1.0,-1.0);
+! 
+! 
+!s---
+!e+++
+! CUR_FANGA
+! _____
+!
+! The function analysis the quality of a LFT_SUR surface.    
+! The FANGA analysis method can be used for any type of 
+! surface. But the calculation will be faster and more
+! stable for a conic lofting surface.
+!
+! The FANGA analysis is based on three silhouette curves.
+! Two of the silhouettes are defined by two input (viewing) 
+! direction vectors. The third direction (silhouette) is
+! the mid vector.
+!
+! The silhouette curves are calculated with the CUR_SIL
+! function (case 3). See description of this function.
+! 
+! Output data from the function is six FANGA (2D) curves,  
+! where X is the arclength of the spine curve and where    
+! Y= F(X) is a chord length or an angle (to the first 
+! input direction vector). The following curves are
+! created by the function (assume identity #2):  
+!   Curve                  Description
+!   #2.1   Chord length between start and mid silhouette curve
+!   #2.2   Chord length between start and mid silhouette curve
+!   #2.3   Chord length between mid   and end silhouette curve
+!   #2.4   Angle        between start and end silhouette curve
+!   #2.5   Angle        between start and mid silhouette curve
+!   #2.6   Angle        between mid   and end silhouette curve
+! 
+!
+!
+! Module type: GEOMETRY
+!
+! Call:  CUR_FANGA(identity,surf,v1,v2,vs,ve,us,ue : attribute)
+!
+! Parameters:
+!
+! surf        (REF)    - Identity for previously created surface
+! v1          (VECTOR) - Defines start silhouette 
+! v2          (VECTOR) - Defines end   silhouette 
+! vs  ve      (INT)    - Defines start and end V line
+!                        vs= -1   ==> Whole surface in V direction
+!                        vs = ve  ==> One strip
+! us  ue      (FLOAT)  - Defines part of surface in U direction
+!                        us= -1.0 ==> Whole surface in U direction
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Example:
+!
+! CUR_FANGA (#43,GLOBAL_REF(#36),VEC(0,1.1,1),VEC(0,1.2,1),1,3,-1.0,-1.0);
+! 
+!e---
+
+! Revision history
+! ________________
+!
+! 1994-10-13 Originally written    Gunnar Liden
+! 1994-12-03 Comments added        Gunnar Liden
+! 1995-05-16 sdesc added           Gunnar Liden
+! 1995-06-17 CUR_FANGA implemented Gunnar Liden
+
+!sdesce Add CUR_FANGA statement to active module (analyse LFT_SUR)
+!sdescs Addera CUR_FANGA sats till aktiva modulen (analysera LFT_SUR)    
+
+MACRO MODULE ma_fanga   ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING select*30;              ! Select prompt string
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+
+  STRING p_vie1x*50;             ! View X  prompt string
+  STRING p_vie1y*50;             ! View Y  prompt string
+  STRING p_vie1z*50;             ! View Z  prompt string
+  STRING svie1*80;               ! Viewing   direction as string
+  STRING svie1x*25;              ! Viewing X direction as string
+  STRING svie1y*25;              ! Viewing Y direction as string
+  STRING svie1z*25;              ! Viewing Z direction as string
+  STRING p_vie2x*50;             ! View X  prompt string
+  STRING p_vie2y*50;             ! View Y  prompt string
+  STRING p_vie2z*50;             ! View Z  prompt string
+  STRING svie2*80;               ! Viewing   direction as string
+  STRING svie2x*25;              ! Viewing X direction as string
+  STRING svie2y*25;              ! Viewing Y direction as string
+  STRING svie2z*25;              ! Viewing Z direction as string
+
+  STRING s_ivstart*5;            ! Start V line (strip no) as string
+  STRING p_ivstart*50;           ! Start V line (strip no) prompt string
+  STRING s_ivend*5;              ! End   V line (strip no) as string
+  STRING p_ivend*50;             ! End   V line (strip no) prompt string
+  STRING s_startu*5;             ! Start spine value as string
+  STRING p_startu*50;            ! Start spine value prompt string
+  STRING s_endu*5;               ! End   spine value as string
+  STRING p_endu*50;              ! End   spine value prompt string
+  STRING p_stripno*50;           ! Possible strip numbers
+
+  INT    stype;                  ! Type of surface
+  VECTOR vstart;                 ! Viewing direction 1 (limit)
+  VECTOR vend;                   ! Viewing direction 2 (limit)
+
+  STRING ermess1*50;             ! Error not a LFT_SUR   
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select surface" +    !
+  " (must be LFT_SUR surface)";  !
+  ermess1:="FANGA only for a " + !
+  "LFT_SUR (SUR_CONIC) surface"; !
+  p_vie1x:="Silhouette " +       !
+  "direction 1 X component";     !
+  p_vie1y:="Silhouette " +       !
+  "direction 1 Y component";     !
+  p_vie1z:="Silhouette " +       !
+  "direction 1 Z component";     !
+  p_vie2x:="Silhouette " +       !
+  "direction 2 X component";     !
+  p_vie2y:="Silhouette " +       !
+  "direction 2 Y component";     !
+  p_vie2z:="Silhouette " +       !
+  "direction 2 Z component";     !
+  p_ivstart:="Start V line" +    !
+  " (V strip number ";           !
+  p_ivend  :="End   V line" +    !
+  " (V strip number ";           !
+  p_startu :="Start pt spine "+  !
+  " (< 0 ==> start spine curve)";!
+  p_endu   :="End   pt spine "+  !
+  " (< 0 ==> end   spine curve)";!
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} yta" +       !
+  " (m}ste vara en LFT_SUR)";    !
+  ermess1:="FANGA bara f|r " +   !
+  "SUR_CONIC (LFT_SUR) yta";     !
+  p_vie1x:="Silhouette " +       !
+  "riktning  1 X komponent";     !
+  p_vie1y:="Silhouette " +       !
+  "riktning  1 Y komponent";     !
+  p_vie1z:="Silhouette " +       !
+  "riktning  1 Z komponent";     !
+  p_vie2x:="Silhouette " +       !
+  "riktning  2 X komponent";     !
+  p_vie2y:="Silhouette " +       !
+  "riktning  2 Y komponent";     !
+  p_vie2z:="Silhouette " +       !
+  "riktning  2 Z komponent";     !
+  p_ivstart:="Start V linje" +   !
+  " (V strip nummer ";           !
+  p_ivend  :="Slut  V linje" +   !
+  " (V strip nummer ";           !
+  p_startu :="Start pkt spine "+ !
+  " (< 0 ==> start spine kurva)";!
+  p_endu   :="Slut  pkt spine "+ !
+  " (< 0 ==> slut  spine kurva)";!
+ELSE                             !
+  EXIT("ma_fanga  :"+            !
+       "Language error");        !
+ENDIF;                           !
+
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+s_ids:= "GLOBAL_REF("+s_ids+")"; !
+
+GETSURH(s_id,"NPATU"   ,npatu);  ! Retrieve number of U patches
+GETSURH(s_id,"NPATV"   ,npatv);  ! Retrieve number of V patches
+GETSURH(s_id,"SUR_TYPE",stype);  ! Retrieve number of V patches
+IF  stype <> 3 THEN              ! Check that it is LFT_SUR surface
+EXIT("CUR_FANGA "+ermess1);      !
+ENDIF;                           !
+
+! 3. Viewing direction 1
+! _______________________
+
+! Finns ingen 3D punkt meny ???? PART(#1,ma_pos(pm1,pm2,svie1,0));
+
+vstart:=EVAL(s_id,"DRDV",        !
+  VEC(npatu/2,npatv-0.3,0));     !
+vend  :=EVAL(s_id,"DRDV",        !
+    VEC(npatu/2,npatv-0.2,0));   !
+vstart:= -VECN(vstart);          !
+vend  := -VECN(vend);            !
+svie1x:= INPMT(p_vie1x,          !
+    STR(vstart.x,-7,3),25);      ! Interactive input of X component
+IF svie1x = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+svie1y:= INPMT(p_vie1y,          ! Interactive input of Y component
+    STR(vstart.y,-7,3),25);      ! 
+IF svie1y = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+svie1z:= INPMT(p_vie1z,          ! Interactive input of Z component
+    STR(vstart.z,-7,3),25);      ! 
+IF svie1z = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+svie1:="VEC("+svie1x+","         ! Viewing vector
+             +svie1y+","         !
+             +svie1z+")";        !
+
+! 4. Viewing direction 2
+! _______________________
+
+! Finns ingen 3D punkt meny ???? PART(#1,ma_pos(pm1,pm2,svie1,0));
+
+svie2x:= INPMT(p_vie2x,          ! Interactive input of X component
+    STR(vend.x,-7,3),25);        ! 
+IF svie2x = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+svie2y:= INPMT(p_vie2y,          ! Interactive input of Y component
+    STR(vend.y,-7,3),25);        ! 
+IF svie2y = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+svie2z:= INPMT(p_vie2z,          ! Interactive input of Z component
+    STR(vend.z,-7,3),25);        ! 
+IF svie2z = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+svie2:="VEC("+svie2x+","         ! Viewing vector
+             +svie2y+","         !
+             +svie2z+")";        !
+
+! 5. Start strip
+! ______________
+
+  p_stripno:=" 1 - "             ! Optional strips            
+  +STR(npatv,-1,0) + ")";        ! 
+p_ivstart:= p_ivstart + " "+     !
+            p_stripno;           !
+s_ivstart:=INPMT(p_ivstart       !
+      ,"1",5);                   ! Input of integer as string
+IF s_ivstart = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6  End   strip
+! ______________
+
+p_ivend  := p_ivend   + " "+     !
+            p_stripno;           !
+s_ivend  :=INPMT(p_ivend  ,      !
+  STR(npatv,-1,0),5);            ! Input of integer as string
+IF s_ivend   = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+
+! 7. Start spine
+! ______________
+
+s_startu :=INPMT(p_startu ,      !
+       "-1.0",5);                ! Input of float as string
+IF s_startu  = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+
+! 8. End   spine
+! ______________
+
+s_endu   :=INPMT(p_endu   ,      !
+      "-1.0",5);                 ! Input of float as string
+IF s_endu    = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+
+  LST_INI("CUR_FANGA");
+  LST_LIN("CUR_FANGA, "+ s_ids +", "+svie1+", "+svie2);
+  LST_LIN(", "+s_ivstart+", "+s_ivend+", "+s_startu+", "+s_endu);
+  LST_EXI();
+
+! 6. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("CUR_FANGA",      ! Create MBS statement 
+s_ids, svie1, svie2,             !
+s_ivstart, s_ivend,              !
+s_startu, s_endu );              !
+
+ENDMODULE 
+
+

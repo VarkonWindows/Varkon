@@ -1,0 +1,144 @@
+!**************** ma_onsur   ***************************
+!s+++
+! ON (yta) 
+! ________
+!
+! Funktionen skapar en punkt p} en yta.                    
+! Detta {r en tillf{llig funktion tills ytor finns i   
+! ordinarie positions menyn.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: ON (identitet, yta, uv_pt : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+! uv_pt   (VECTOR) - Parameter punkt      
+!
+! Attribut: PEN, LEVEL, BLANK, ??                
+!
+! Exempel:
+! 
+! ON (#10, VEC(2.3,6.4) );
+! 
+! Skapar en punkt (#10) f|r parameter punkten (2.3,6.4).      
+!s---
+!e+++
+! ON (surface)
+! ____________
+!
+! The function creates a point on a surface.
+! This is a temporary function ....
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: ON (identity, surf, uv_pt : attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Previously defined surface
+! uv_pt   (VECTOR) - Parameter point      
+!
+! Attribute: PEN, LEVEL, BLANK, ??
+!
+! Example:
+! 
+! ON (#10, VEC(2.3,6.4) );
+! 
+! Creates a point (#10) for parameter point (2.3,6.4).      
+!e---
+
+!sdesce Add  ON statement to active module (create a point on a surface)
+!sdescs Addera ON sats till aktiva modulen (skapa en punkt p} en yta)    
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+! 1995-06-21 Prompt strings     Gunnar Liden
+
+MACRO MODULE ma_onsur ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING suvpt*80;               ! UV point as string
+  STRING suvptx*25;              ! UV point X component as string
+  STRING suvpty*25;              ! UV point Y component as string
+
+  STRING s_on*132;               ! ON statement as string
+
+  STRING select*30;              ! Select prompt string
+  STRING p_uvptx*50;             ! UVpt X  prompt string
+  STRING p_uvpty*50;             ! UVpt Y  prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface";     !
+  p_uvptx:="UV point " +         !
+       "U component";            !
+  p_uvpty:="UV point " +         !
+       "V component";            !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta";        !
+  p_uvptx:="UV punkt " +         !
+       "U komponent";            !
+  p_uvpty:="UV punkt " +         !
+       "V komponent";            !
+ELSE                             !
+  EXIT("ma_onsur : " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+! 3. UV point      
+! ___________       
+
+suvptx:= INPMT(p_uvptx,"",25);   ! Interactive input of X component
+IF suvptx = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+suvpty:= INPMT(p_uvpty,"",25);   ! Interactive input of Y component
+IF suvpty = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+suvpt:="VEC("+suvptx+","         ! UV point       
+             +suvpty+")";        !
+
+! 4. ON statement  
+! _______________       
+
+s_on:=  "ON("+s_ids+"," +        !
+            suvpt+ ")";          !
+
+! 7. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("POI_FREE",s_on); ! Create MBS statement 
+
+ENDMODULE 
+

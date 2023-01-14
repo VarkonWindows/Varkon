@@ -1,0 +1,72 @@
+!***************** surlinint  ****************************
+!
+! +++
+! Intersect between a straight line and a surface
+!
+! Revision history
+! ________________
+!
+! 1995-06-06 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Intersect between a straight line and a surface
+!sdescs Sk{rning mellan r{t linje och yta
+
+GLOBAL GEOMETRY MODULE surlinint (
+REF  s_id       > "@t16 Select surface";
+REF  l_id       > "@t2  Select line";
+INT  s_no := 1  > "Requested solution number");
+
+
+! Internal variables
+
+  STRING str_in*132;             ! String for CUR_GL
+
+  REF    p_id;                   ! Point   identity
+  VECTOR v_proj;                 ! Projection vector
+  VECTOR s_uv;                   ! Start point on surface
+  VECTOR i_uv;                   ! Intersect point
+
+BEGINMODULE
+
+! +++
+! 1. External point and projection vector
+! ---
+
+  POI_FREE(#2,ON(l_id, 0.0):BLANK=1);
+  POI_FREE(#3,ON(l_id, 1.0):BLANK=1);
+  p_id := GLOBAL_REF(#2);
+
+  v_proj:= ON(#3,0.0) - ON(#2,0.0);
+
+
+! +++
+! 2. Calculate intersect (CUR_GL case LINSUR).
+! ---
+
+  s_uv.x := -1.0;                   ! Undefined start point
+  s_uv.y := -1.0;                   !
+  s_uv.z := -1.0;                   ! 
+
+  str_in:= "LINSUR "  +             ! To string
+  STR(v_proj.x,-12,4) + " " +       ! Projection vector
+  STR(v_proj.y,-12,4) + " " +       !
+  STR(v_proj.z,-12,4) + " " +       ! 
+  STR(s_uv.x,-3,1)    + " " +       ! Start point
+  STR(s_uv.y,-3,1)    + " " +       ! 
+  RSTR(p_id)          + " " +       ! External point
+  STR(s_no,-1,0);                   !
+
+  CUR_GL(#4,s_id ,str_in:BLANK=1);  ! LINSUR        
+  i_uv := ON(GLOBAL_REF(#4),0.0);
+
+! +++
+! 3. Create R*3 point
+! ---
+
+  SET(PEN=2);
+
+  POI_FREE(#1,ON(s_id,i_uv));
+
+ENDMODULE

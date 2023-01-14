@@ -1,0 +1,127 @@
+!**************** ma_surlin  ***************************
+!s+++
+! INTERSECT: Sk{rningspunkt yta och r{t linje 
+! ____________________________________________
+!
+! Funktionen skapar en punkt som {r sk{rning mellan en yta och
+! en r{t linje.                                               
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: .... INTERSECT ... 
+!       Johan ska acceptera yta som indata anropa sur161 ...
+!
+! Tills vidare anv{nds:    
+!
+! CUR_GL  (#10, #5, "LINSUR", .....         );
+! 
+!s---
+!e+++
+! INTERSECT: Intersect between a straight line and a surface
+! __________________________________________________________
+!
+! The function creates a point.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax:  ....  INTERSECT ....                                        
+!             For Johan to add in this function (call of sur161)
+!
+! CUR_GL  (#10, #5, "LINSUR", .....         ); is used temporarely
+! 
+!e---
+
+!sdesce Add surlinint part call to active module (intersect pt surface/line)
+!sdescs Addera surlinint part till aktiva modulen (sk{rningspkt yta/linje)   
+
+! Revision history
+! ________________
+!
+! 1995-06-06 Originally written Gunnar Liden
+
+MACRO MODULE ma_surlin  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  REF    l_id;                   ! Line    identity
+  STRING l_ids*132;              ! Line    identity as string
+
+  STRING pm1*80,pm2*80;
+  STRING p_solpoi*50;            ! Branch  prompt string
+
+  STRING s_solut*25;             ! Requested branch as string
+ 
+  STRING select*30;              ! Select prompt string
+  STRING select2*30;             ! Select prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select := "Select surface";    !
+  select2:= "Select line";       !
+  p_solpoi:= "Requested soluti"+ !
+    "on number ";                !
+ELIF language = 2 THEN           ! Swedish
+  select := "Peka p} yta";       !
+  select2:= "Peka p} linje";     !
+  p_solpoi:= "Nummer f|r "+      !
+  " |nskad l|sning ";            !
+ELSE                             !
+  EXIT("ma_surlin: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:= "GLOBAL_REF("+s_ids+")"; !
+
+! 3. Select line   
+! ______________   
+
+PSH_PMT(select);                 ! Select string to screen
+l_id:= IDENT(2);                 ! Interactive line selection
+POP_PMT();                       ! Erase message to screen
+
+l_ids:= RSTR(l_id);              ! Line identity as string
+IF l_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+l_ids:= "GLOBAL_REF("+l_ids+")"; !
+
+
+! 4. Requested solution 
+! _____________________
+
+s_solut:= INPMT(p_solpoi,"",25); ! Interactive input of solution no
+IF s_solut = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("PART",           ! Create MBS statement 
+"surlinint",                     !
+s_ids,l_ids, s_solut);           !
+
+ENDMODULE 
+

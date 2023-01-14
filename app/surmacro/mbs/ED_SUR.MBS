@@ -1,0 +1,78 @@
+!**************** ed_sur *******************************
+!s+++
+! Med funktionen kan indata till en skapad yta {ndras.
+! 
+! Det finns en {ndringsrutin f|r varje s{tt som en yta
+! skapats. Funktionen anropar denna funktion efter att
+! f|rst ha tagit reda hur ytan skapats.
+!s---
+!e+++
+! The function modifies the input data for a surface.
+!
+! There is one edit funtion for each surface creation 
+! method (MBS function). The function determines first
+! how the surface was created and it then switches to
+! the right edit function.
+!e---
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1995-05-16 Comments added Gunnar Liden
+!
+!******************************************************
+
+!sdesce Change a surface                    
+!sdescs [ndra en yta
+
+MACRO MODULE ed_sur (
+REF  s_id           >"Select surface / Peka p} yta");
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING s_type*20;              ! Surface function type
+
+  STRING error1*30;              ! Error message 1
+
+BEGINMODULE 
+
+! 1. Definition of prompt and error strings
+! _________________________________________
+
+IF   language = 1 THEN           ! English
+  error1:= "Unknown surface "+   !
+    "creation type";             !
+ELIF language = 2 THEN           ! Swedish
+  error1:= "Ok{nd yt-skapande "+ !
+    "funktion";                  !
+ELSE                             !
+  EXIT("ed_sur: Language error");!
+ENDIF;                           !
+
+
+! 2. Determine surface creation method
+! ____________________________________
+
+s_type:=GETP_MBS(s_id,0);        ! Retrieve MBS procedure name
+
+! 3. Switch to the corresponding edit procedure
+! _____________________________________________
+
+IF s_type = "SUR_CONIC"    THEN  ! SUR_CONIC
+     EXIT(error1);
+! PART(#1,ed_surc(s_id));        !
+ELIF s_type = "SUR_EXDEF"  THEN  ! SUR_EXDEF 
+  PART(#2,ed_sure(s_id));        !
+ELIF s_type = "SUR_OFFS"   THEN  ! SUR_OFFS
+  PART(#3,ed_suro(s_id));        !
+ELIF s_type = "SUR_POINTS" THEN  ! SUR_POINTS
+     EXIT(error1);               !
+ELSE                             !
+     EXIT(error1);               !
+ENDIF;                           !
+
+ENDMODULE 
+

@@ -1,0 +1,157 @@
+! ***************** fangalstv0 ****************************
+!
+! +++
+! The function lists energy values for FANGA curves. 
+! (Objectice function values for an optimization).
+!
+! 1995-06-26 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce List energy of FANGA curves (LST_ window)
+!sdescs Lista energy f|r FANGA kurvor (LST_ f|nster)
+
+GLOBAL GEOMETRY MODULE fangalstv0 (
+
+REF    s_id;               ! Surface
+REF    c_id;               ! Spine curve for surface
+VECTOR sdir1;              ! Direction for start silhouette
+VECTOR sdir2;              ! Direction for end   silhouette
+INT    ivstart;            ! Start V line (start strip no)
+INT    ivend;              ! End   V line
+FLOAT  startu;             ! End spine value
+FLOAT  endu;               ! End spine value
+INT    n_poi;              ! Accuracy of energy calculation
+                           ! (no pts within curve segment)
+
+REF    i_1;                ! Reference to curve 1
+REF    i_2;                ! Reference to curve 2
+REF    i_3;                ! Reference to curve 3
+REF    i_4;                ! Reference to curve 4
+REF    i_5;                ! Reference to curve 5
+REF    i_6;                ! Reference to curve 6
+
+FLOAT  e_1;                ! Energy of curve 1
+FLOAT  e_2;                ! Energy of curve 2
+FLOAT  e_3;                ! Energy of curve 3
+FLOAT  e_4;                ! Energy of curve 4
+FLOAT  e_5;                ! Energy of curve 5
+FLOAT  e_6;                ! Energy of curve 6
+INT    f_energy);          ! Flag for objective function
+                           ! Eq. 1: Energy
+                           ! Eq. 2: Arclength
+
+
+! Internal variables
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! 0. Initiations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+! +++
+! 1. FANGA curves energies to LST_ window
+! ---
+
+
+  IF   f_energy = 1 THEN         !
+    LST_INI("Energy of "+        ! Initiate printout to screen
+     "FANGA curves. Surface "+   !
+     RSTR(s_id) +                !
+     " Spine "+                  !
+     RSTR(c_id));                !
+  ELIF f_energy = 2 THEN         !
+    LST_INI("Arclength of "+     !
+     "FANGA curves. Surface "+   !
+     RSTR(s_id) +                !
+     " Spine "+                  !
+     RSTR(c_id));                !
+  ELSE                           !
+    EXIT("fangalstv0 f_energy "+ !
+         "not OK");              !
+  ENDIF;                         !
+
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN(" Start silhouette " + !
+   STR(sdir1.x   ,-12,8)+" "+    !
+   STR(sdir1.y   ,-12,8)+" "+    !
+   STR(sdir1.z   ,-12,8));       !
+  LST_LIN("  ");                 ! Empty line
+
+  LST_LIN(" End   silhouette " + !
+   STR(sdir2.x   ,-12,8)+" "+    !
+   STR(sdir2.y   ,-12,8)+" "+    !
+   STR(sdir2.z   ,-12,8));       !
+  LST_LIN("  ");                 ! Empty line
+
+  LST_LIN("  ");                 ! Empty line
+
+  IF   f_energy = 1 THEN         !
+    LST_LIN("     Curve id   "+  ! Header for table  
+     "    FANGA curve "+         !
+   "                          "+ !
+            " Energy     "+      !
+            "          ");       !
+  ELIF f_energy = 2 THEN         !
+    LST_LIN("     Curve id   "+  ! 
+     "    FANGA curve "+         !
+   "                          "+ !
+            " Arclength  "+      !
+            "          ");       !
+  ENDIF;                         !
+  LST_LIN("  ");                 ! Empty line
+
+
+  LST_LIN("   " +                ! Energy in curve 1
+   RSTR(i_1)              +      !
+   "   Chord length start to "+  !
+   "end silhouette    " +        !
+            str(e_1  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("   " +                ! Energy in curve 2
+   RSTR(i_2)              +      !
+   "   Chord length start to "+  !
+   "mid silhouette    " +        !
+            str(e_2  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("   " +                ! Energy in curve 3
+   RSTR(i_3)              +      !
+   "   Chord length mid   to "+  !
+   "end silhouette    " +        !
+            str(e_3  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("   " +                ! Energy in curve 4
+   RSTR(i_4)              +      !
+   "   Angle        start to "+  !
+   "end silhouette    " +        !
+            str(e_4  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("   " +                ! Energy in curve 5
+   RSTR(i_5)              +      !
+   "   Angle        start to "+  !
+   "mid silhouette    " +        !
+            str(e_5  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("   " +                ! Energy in curve 6
+   RSTR(i_6)              +      !
+   "   Angle        mid   to "+  !
+   "end silhouette    " +        !
+            str(e_6  ,-25,10));  !
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("  ");                 ! Empty line
+  LST_LIN("  ");                 ! Empty line
+
+
+  LST_EXI();                      ! Close alfa-numeric screen 
+
+ENDMODULE

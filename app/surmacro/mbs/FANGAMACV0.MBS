@@ -1,0 +1,231 @@
+! ***************** fangamacv0 ****************************
+!
+! +++
+! Change FANGA analysis part fangaprtv0 with a panel (Xwindow)
+! 
+! Revision history
+! ________________
+!
+! 1995-06-21 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Change FANGA analysis part fangaprtv0 with a panel (Xwindow)
+!sdescs [ndra FANGA analys part fangaprtv0 i en panel (Xwindow)  
+
+MACRO MODULE fangamacv0 (
+
+REF    prt_id     > "@t16384 Select FANGA analysis part (fangaprtv0)");
+
+! Internal variables
+
+                        ! For function GETPRT:
+  STRING namn*10;       ! Name of part
+  INT    mtyp;          ! Module type
+                        ! Eq. 2: DRAWING
+                        ! Eq. 3: GEOMETRY
+  INT    mattr;         ! Module attribute
+                        ! Eq. 1: LOCAL
+                        ! Eq. 2: GLOBAL
+                        ! Eq. 3: BASIC
+  REF    kid;           ! Global identity for the
+                        ! coordinate system which has 
+                        ! been used to position a
+                        ! module of type LOCAL
+  INT    np;            ! Number of parameters in the part
+  INT    mant;          ! Number of entities in the part
+  REF    idm(5);        ! Array with global identities to
+                        ! all entities in the part (if 
+                        ! (there is space for all of them)
+
+  REF    sur_id;        ! Surface
+  REF    spine_id;      ! Spine curve for surface (#0 for no spine)
+  VECTOR sdir1;         ! Direction for start silhouette
+  VECTOR sdir2;         ! Direction for end   silhouette
+  INT    ivstart;       ! Start strip number (start limit curve number)
+  INT    ivend;         ! End strip number (Eq. start strip no ==> one strip)
+  FLOAT  startu;        ! Start U section value ( <CR> ==> Whole surface)
+  FLOAT  endu;          ! End   U section value (= -1 <==> not defined)
+  FLOAT  ydelta;        ! Delta y for FANGA system
+  FLOAT  cscale;        ! Scale factor for chord curves
+  FLOAT  ascale;        ! Scale factor for angle curves
+  INT    f_energy;      ! Eq. 1: Calculate energy for the curves
+  INT    b_cur1;        ! Eq. 1: Blank Eq. 0: Show crv chord start-end silhouette
+  INT    b_cur2;        ! Eq. 1: Blank Eq. 0: Show crv chord start-mid silhouette
+  INT    b_cur3;        ! Eq. 1: Blank Eq. 0: Show crv chord   mid-end silhouette
+  INT    b_cur4;        ! Eq. 1: Blank Eq. 0: Show crv angle start-end silhouette
+  INT    b_cur5;        ! Eq. 1: Blank Eq. 0: Show crv angle start-mid silhouette
+  INT    b_cur6;        ! Eq. 1: Blank Eq. 0: Show crv angle   mid-end silhouette
+  INT    f_output;      ! Flag for output =0: No list =1: List
+
+  STRING c_flag*3;      ! Eq NO: No calculation
+  STRING w_case*9;      ! Window case 
+
+  INT    mode;          ! Mode for UPDPP_PP
+                        ! Eq. 2: Change the parameter only
+                        ! Eq. 1: Change and update part   
+                        ! Eq. 0: Change and update whole active 
+                        !        module if part is referenced
+
+  STRING prt_id_s*50;   ! Reference to prt_name as string
+  REF    prt_id_f;      ! Tempory fixed id
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Retrieve current parameter values from the input part
+! ---
+
+GETPRT(prt_id,namn,mtyp,mattr,kid,np,mant,idm);! Retrieve data for the part
+
+IF namn <> "fangaprtv0"   THEN                 ! Check part name
+  EXIT("fangamacv0 Not a fangaprtv0 part");    !
+ENDIF;                                         !
+
+sur_id   := GETREF(prt_id, 1);     ! Get all parameter values
+spine_id := GETREF(prt_id, 2);     !
+sdir1    := GETVEC(prt_id, 3);     !
+sdir2    := GETVEC(prt_id, 4);     !
+ivstart  := GETINT(prt_id, 5);     !
+ivend    := GETINT(prt_id, 6);     !
+startu   := GETFLT(prt_id, 7);     !
+endu     := GETFLT(prt_id, 8);     !
+ydelta   := GETFLT(prt_id, 9);     !
+cscale   := GETFLT(prt_id,10);     !
+ascale   := GETFLT(prt_id,11);     !
+f_energy := GETINT(prt_id,12);     !
+b_cur1   := GETINT(prt_id,13);     !
+b_cur2   := GETINT(prt_id,14);     !
+b_cur3   := GETINT(prt_id,15);     !
+b_cur4   := GETINT(prt_id,16);     !
+b_cur5   := GETINT(prt_id,17);     !
+b_cur6   := GETINT(prt_id,18);     !
+f_output := GETINT(prt_id,19);     !
+
+! +++
+! 2. Retrieve changed (input) data in panel (Xwindow) from user
+! ---
+
+w_case   := "p_nofile";                       ! Do not read .MENUE file
+
+PART(#2, fangawinv0 (                         ! Get input from X window
+sdir1, sdir2, ivstart, ivend,                 !
+startu, endu, ydelta,                         !
+cscale, ascale, f_energy,                     !
+b_cur1, b_cur2, b_cur3,                       !
+b_cur4, b_cur5, b_cur6,                       !
+c_flag, f_output,                             !
+sur_id, spine_id,                             !
+w_case));                                     !
+IF  c_flag = "NO"    THEN                     ! Cancel calculation ?
+EXIT();                                       !
+ENDIF;                                        !
+
+
+! +++
+! 3. Change all parameter values and update (run) the part
+! ---
+
+prt_id_s := RSTR(prt_id);                     ! Temporary fix of UPDPP_MBS bug
+IF SUBSTR(prt_id_s,1,2) = "##" THEN           !
+  prt_id_s   := SUBSTR(prt_id_s,2);           !
+  prt_id_f   := RVAL(prt_id_s);               !
+ELSE                                          !
+  prt_id_f   := prt_id;                       !
+ENDIF;                                        !
+
+mode := 2;                                    ! Change only parameter
+
+!QPART(#1, fangaprtv0 (            ! FANGA analysis
+!Qsur_id, spine_id,                !
+!Qsdir1, sdir2, ivstart, ivend,    !
+!Qstartu, endu, ydelta,            !
+!Qcscale, ascale, f_energy,        !
+!Qb_cur1, b_cur2, b_cur3,          !
+!Qb_cur4, b_cur5, b_cur6,          !
+!Qf_output));                      !
+                                              ! sur_id   cannot yet be updated ... 
+                                              ! spine_id cannot yet be updated ...
+
+UPDPP_MBS(prt_id_f, 3,                        ! Change parameter  3 in part
+"VEC("+STR(sdir1.x,-15,10)+","+               !
+       STR(sdir1.y,-15,10)+","+               !
+       STR(sdir1.z,-15,10)+")"                !
+, mode);                                      ! 
+UPDPP_MBS(prt_id_f, 4,                        ! Change parameter  4 in part
+"VEC("+STR(sdir2.x,-15,10)+","+               !
+       STR(sdir2.y,-15,10)+","+               !
+       STR(sdir2.z,-15,10)+")"                !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f, 5,                        ! Change parameter  5 in part
+       STR(ivstart, -1, 0)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f, 6,                        ! Change parameter  6 in part
+       STR(ivend  , -1, 0)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f, 7,                        ! Change parameter  7 in part
+       STR(startu ,-15,10)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f, 8,                        ! Change parameter  8 in part
+       STR(endu   ,-15,10)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f, 9,                        ! Change parameter  9 in part
+       STR(ydelta ,-15,10)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,10,                        ! Change parameter 10 in part
+       STR(cscale ,-15,10)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,11,                        ! Change parameter 11 in part
+       STR(ascale ,-15,10)                    !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,12,                        ! Change parameter 12 in part
+       STR(f_energy, -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,13,                        ! Change parameter 13 in part
+       STR(b_cur1  , -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,14,                        ! Change parameter 14 in part
+       STR(b_cur2  , -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,15,                        ! Change parameter 15 in part
+       STR(b_cur3  , -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,16,                        ! Change parameter 16 in part
+       STR(b_cur4  , -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,17,                        ! Change parameter 17 in part
+       STR(b_cur5  , -1, 0)                   !
+, mode);                                      ! 
+
+UPDPP_MBS(prt_id_f,18,                        ! Change parameter 18 in part
+       STR(b_cur6  , -1, 0)                   !
+, mode);                                      ! 
+
+mode := 0;                                    ! Change, update part or active module
+
+UPDPP_MBS(prt_id_f,19,                        ! Change parameter 19 in part
+       STR(f_output, -1, 0)                   !
+, mode);                                      ! 
+
+ENDMODULE

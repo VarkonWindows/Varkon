@@ -1,0 +1,197 @@
+!**************** ma_cursil  ***************************
+!s+++
+! CUR_SIL 
+! ________
+!
+! Funktionen skapar en silhuette kurva p} en yta dvs den kurva
+! som ser ut att vara ytans rand eller kant n{r man tittar p}
+! i en viss riktning.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: CUR_SIL (identitet, yta, riktn, typ, gren : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+! riktn   (VECTOR) - Betraktelse riktning
+! typ     (INT)    - 1 = Perspektiv 2 = O{ndligt avst}nd
+!                    3 = Special f|r LFT_SUR (o{ndligt avst}nd)
+! gren    (INT)    - \nskad gren av silhuette kurva  
+!                    Om 1000 l{ggs till gren erh}lls
+!                    kurvans U,V representation
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+! 
+! CUR_SIL (#10, #5, VEC(0.0,1.3,1.0), 2 , 1 );
+! 
+! Skapar en silhuette kurva (#10) p} ytan #5 som man ser n{r man
+! betraktar ytan i riktningen (0.0,1.3,1.0) fr}n l}ngt avst}nd.
+! Gren 1 av silhuette kurvan |nskas.
+!s---
+!e+++
+! CUR_SIL 
+! ________
+!
+! The function creates a silhouette curve on a surface.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: CUR_SIL (identity, surf, direct, type, branch : attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Previously defined surface
+! direct  (VECTOR) - Betraktelse riktning
+! type    (INT)    - 1 = Perspective 2 = Infinite distance
+!                    3 = Special for LFT_SUR (infinite distance)
+! branch  (INT)    - Requested branch of the silhouette curve.
+!                    If 1000 is added to branch will output
+!                    be the U,V curve
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Example:
+! 
+! CUR_SIL (#10, #5, VEC(0.0,1.3,1.0), 2 , 1 );
+! 
+! Creates a silhouette curve (#10) on surface #5. Eye point is at an
+! infinite distance and viewing direction is (0 , 1.3 , 1). The first
+! curve branch is requested.
+!e---
+
+!sdesce Add CUR_SIL statement to active module (create silhouette curve)
+!sdescs Addera CUR_SIL sats till aktiva modulen (skapa silhuette kurva)    
+
+! Revision history
+! ________________
+!
+! 1994-10-13 Originally written Gunnar Liden
+! 1995-03-15 GLOBAL_REF         Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+
+MACRO MODULE ma_cursil  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING pm1*80,pm2*80;
+  STRING p_branch*50;            ! Branch  prompt string
+  STRING p_viewx*50;             ! View X  prompt string
+  STRING p_viewy*50;             ! View Y  prompt string
+  STRING p_viewz*50;             ! View Z  prompt string
+  STRING p_type*50;              ! Type    prompt string
+
+  STRING sview*80;               ! Viewing   direction as string
+  STRING sviewx*25;              ! Viewing X direction as string
+  STRING sviewy*25;              ! Viewing Y direction as string
+  STRING sviewz*25;              ! Viewing Z direction as string
+  STRING sbranch*25;             ! Requested branch as string
+  STRING stype*25;               ! Requested type as string
+ 
+  STRING select*30;              ! Select prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface";     !
+  p_viewx:="Viewing direction " +!
+       "or point: X component";  !
+  p_viewy:="Viewing direction " +!
+       "or point: Y component";  !
+  p_viewz:="Viewing direction " +!
+       "or point: Z component";  !
+  p_type:="Type Eq. 1: " +       !
+  "Perspective Eq. 2: Infinite "+!
+  "Eq. 3: Special LFT_SUR";      !
+  p_branch:= "Requested branch"+ !
+    " number ";                  !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta";        !
+  p_viewx:="Betraktelse riktni" +!
+       "ng/punkt: X komponent";  !
+  p_viewy:="Betraktelse riktni" +!
+       "ng/punkt: Y komponent";  !
+  p_viewz:="Betraktelse riktni" +!
+       "ng/punkt: Z komponent";  !
+  p_type:="Typ =1: " +           !
+  "Perspektiv  =2: O{ndligt "+   !
+  "=3: Special LFT_SUR";         !
+  p_branch:= "Nummer f|r "+      !
+  " |nskad gren av silhuette ";  !
+ELSE                             !
+  EXIT("ma_cursil: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:= "GLOBAL_REF("+s_ids+")"; !
+
+! 3. Viewing direction
+! ____________________
+
+! Finns ingen 3D punkt meny ???? PART(#1,ma_pos(pm1,pm2,sview,0));
+
+sviewx:= INPMT(p_viewx,"",25);   ! Interactive input of X component
+IF sviewx = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sviewy:= INPMT(p_viewy,"",25);   ! Interactive input of Y component
+IF sviewy = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sviewz:= INPMT(p_viewz,"",25);   ! Interactive input of Z component
+IF sviewy = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+sview:="VEC("+sviewx+","         ! Viewing vector
+             +sviewy+","         !
+             +sviewz+")";        !
+
+! 4. Requested type     
+! __________________
+
+stype:= INPMT(p_type,"",25);     ! Interactive input of branch 
+IF stype  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+
+! 5. Requested branch   
+! _____________________
+
+sbranch:= INPMT(p_branch,"",25); ! Interactive input of branch 
+IF sbranch = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("CUR_SIL",        ! Create MBS statement 
+s_ids,sview,stype,sbranch);      !
+
+ENDMODULE 
+

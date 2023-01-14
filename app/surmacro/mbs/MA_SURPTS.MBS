@@ -1,0 +1,542 @@
+!**************** ma_surpts  ***************************
+!s+++
+! SUR_POINTS
+! __________
+!
+! Funktionen skapar en en bikubisk yta fr}n en punktm{ngd.
+! Den skapade ytan blir lutningskontinuerlig eller 
+! kr|kningskontnuerlig ({nnu inte implementerat).
+! 
+! Punktm{ngden m}ste bilda ett rektangul{rt n{t, dvs lika
+! m}nga punkter i U och V riktningen. Alla punkter beh|ver
+! emellertid inte vara definierade (ha n}gra v{rden). Med 
+! funktionen kan man v{lja ut en delm{ngd punkter och det
+! {r bara dessa punkter som beh|ver ha v{rden.
+!
+! Funktionen kan skapa degenererade "patches" (triangul{ra
+! "patches") om punkter sammanfaller p} randen av ytan.
+!
+! Funktionen kan g|ra yta p} bara punkter, men om det finns
+! annan data kan funktionen {ven utnyttja detta. Med f|ljande
+! kombinationer av indata kan yta skapas:
+! - Endast koordinater                  ({nnu ej implementerat)
+! - Koordinater och U och V tangenter
+! - Koordinater och ytnormaler          ({nnu ej implementerat)
+! - Koordinater, tangenter och kr|kning ({nnu ej implementerat)
+! 
+! Flera olika m|jligheter (kombinationer) finns f|r att best{mma 
+! tangentvektorl{ngder och s} kallade twistvektorer:
+! - Twistvektorer noll 
+! - Twistvektorer ber{knade med Adinis metod
+! - Twistvektorer ber{knade med ....
+! - Tangentl{ngder .....
+!
+! Det finns en modul surptsfil som visar hur data ska skrivas ut till
+! en fil.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_POINTS (identitet, fname, b_fall, 
+!                    iu_s,iv_s,iu_d,iv_d,iu_e,iv_e,f_p 
+!                    : attribut)
+!
+! SUR_POINTS {r {nnu inte implementerat som MBS sats
+! och anropet till funktionen g|rs nu med:
+!
+! Anrop: CUR_GL(identitet, "POISUR", fname, b_fall, ....
+!
+! Obligatoriska parametrar:
+!
+! fname   (STRING) - Namn p} fil med data eller
+!         (REF)    - Identitet till PART med punkter
+! b_fall  (INT)    - Ber{kningsfall     
+!                    =1: Twistvektorer noll, tangentl{ngder ...
+!                    =2: Twistvektorer med Adinis metod
+! iu_s    (INT)    - Start U punkt
+! iv_s    (INT)    - Start V punkt
+! iu_d    (INT)    - Delta U 
+! iv_d    (INT)    - Delta V
+! iu_e    (INT)    - Start U punkt
+! iv_e    (INT)    - Slut  V punkt
+! f_p     (INT)    - Flagga f|r sluten eller ej sluten yta
+!                    = -1: Ytan {r inte sluten
+!                    =  1: Ytan {r sluten i U riktningen
+!                    =  2: Ytan {r sluten i V riktningen
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_POINTS(#10,"/u/odin/job/SODIN49X256", 1 ,
+!                 1, 1, 1, 2, 7, 256, 2);
+! 
+! Skapar en ny yta (#10) med punkterna IU= 1,2,3,4,5,7 och
+! IV= 1,3,5,....,256. Ytan {r sluten i V riktningen och 
+! twistvektorerna {r noll.
+!
+! Format p} fil med punkter (i form av ett exempel):
+!
+! total    3                     129                  
+! 
+!    .
+!    .
+! pointadr 2                     129                  
+! xyz      619.84680000000026    0.00000000000002      461.12312000000190   
+! drdu     0.71792596832134      0.00000000000000      0.69611946101935     
+! drdv     0.00006674778606      0.99999999465380      -0.00007897546754    
+! d2rdudv  0.00000000000001      0.00000000000000      0.00000000000001     
+! normal   -0.69611945731509     0.00010316297186      0.71792596450104     
+! kappamin 0.00000000000000     
+! kappamax 0.00000000000000     
+! r3min    0.00000000000000      0.00000000000000      0.00000000000000     
+! r3max    0.00000000000000      0.00000000000000      0.00000000000000     
+!    .
+!    .
+!
+! EOF      387                  
+!
+!
+! F|ljande MBS satser kan anv{ndas f|r att skriva data:  
+!
+! OUTSTR(f,"total    "   +   STR(       nu  ,-21,0 )+
+!                  " "   +   STR(       nv  ,-21,0 ));
+! OUTLIN(f);
+! 
+! OUTSTR(f,"pointadr "   +   STR(       iu  ,-21,0 )+
+!                  " "   +   STR(       iv  ,-21,0 ));
+! OUTLIN(f);
+! OUTSTR(f,"xyz      "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"drdu     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"drdv     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdu2   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdv2   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdudv  "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"normal   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"dndu     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"dndv     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"kappamin "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"kappamax "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"gaussian "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"mean     "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"r3min    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"r3max    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"uvmin    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"uvmax    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14));
+! OUTLIN(f);
+! 
+! 
+! OUTSTR(f,"EOF      "   +   STR(      npts ,-21,0 ));
+! OUTLIN(f);
+! 
+! 
+!
+!s---
+!e+++
+! SUR_POINTS
+! __________
+!
+! The function creates a bicubic surface from a grid of points. 
+! Optionally with tangents and/or surface normals and/or curvature.
+!
+! The created surface will be continuous in slope or in curvature.
+! (curvature continuous not yet implemented).
+!
+! The grid of points must be rectangular, i.e. the number
+! of points must be equal in U and V directions. But all  
+! points need not to be defined (have values). A sub grid  
+! of points may be selected and only these points need to
+! have values.
+!
+! The function can create degenerated (triangular) patches
+! provided that the degenerated point is on the boundary
+! of the surface.
+!
+! The following combinations of data can be used as input  
+! data to a surface:
+! - Coordinates only                    (not yet implemented)  
+! - Coordinates and U and V tangents 
+! - Coordinates and ytnormaler          (not yet implemented)  
+! - Coordinates, tangents and curvature (not yet implemented)  
+! 
+! There are many options for the calculation of tangent vectors  
+! and twist vectors and the lengths for these vectors:
+! - Twist vectors  zero 
+! - Twist vectors  calculated with Adini's method
+! - Twist vectors  calculated with ......  method
+! - Tangent lengths with ....
+!
+! There is a module surptsfil which shows how data is written to a file.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_POINTS(identity, fname, c_case, 
+!                    iu_s,iv_s,iu_d,iv_d,iu_e,iv_e,f_p 
+!                    : attributes)
+!
+! Parameters:
+!
+! fname   (STRING) - Namn of file with data
+!         (REF)    - Identity to PART with points
+! c_case  (INT)    - Computation case   
+!                    =1: Twistvectors zero tangent lengths ....
+!                    =2: Twistvectors with Adinis method
+! iu_s    (INT)    - Start U point
+! iv_s    (INT)    - Start V point
+! iu_d    (INT)    - Delta U 
+! iv_d    (INT)    - Delta V
+! iu_e    (INT)    - Start U point
+! iv_e    (INT)    - Slut  V point
+! f_p     (INT)    - Flag for open or closed surface
+!                    = -1: Surface is not closed 
+!                    =  1: Surface is closed in U direction
+!                    =  2: Surface is closed in V direction
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Example:
+! 
+! SUR_POINTS(#10,"/u/odin/job/SODIN49X256", 1 ,
+!                 1, 1, 1, 2, 7, 256, 2);
+! 
+! Creates a new surface (#10) with points IU= 1,2,3,4,5,7 and 
+! IV= 1,3,5,....,256. The surface is closed in the V direction
+! and the twist vectors are zero.
+!
+! Format for the point grid file (an example):
+!
+! total    3                     129                  
+! 
+!    .
+!    .
+! pointadr 2                     129                  
+! xyz      619.84680000000026    0.00000000000002      461.12312000000190   
+! drdu     0.71792596832134      0.00000000000000      0.69611946101935     
+! drdv     0.00006674778606      0.99999999465380      -0.00007897546754    
+! d2rdudv  0.00000000000001      0.00000000000000      0.00000000000001     
+! normal   -0.69611945731509     0.00010316297186      0.71792596450104     
+! kappamin 0.00000000000000     
+! kappamax 0.00000000000000     
+! r3min    0.00000000000000      0.00000000000000      0.00000000000000     
+! r3max    0.00000000000000      0.00000000000000      0.00000000000000     
+!    .
+!    .
+!
+! EOF      387                  
+!
+!
+! The following MBS statements can be used to write the data:  
+!
+! OUTSTR(f,"total    "   +   STR(       nu  ,-21,0 )+
+!                  " "   +   STR(       nv  ,-21,0 ));
+! OUTLIN(f);
+! 
+! OUTSTR(f,"pointadr "   +   STR(       iu  ,-21,0 )+
+!                  " "   +   STR(       iv  ,-21,0 ));
+! OUTLIN(f);
+! OUTSTR(f,"xyz      "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"drdu     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"drdv     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdu2   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdv2   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"d2rdudv  "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"normal   "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"dndu     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"dndv     "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"kappamin "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"kappamax "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"gaussian "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"mean     "   +   STR(      d_a.x,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"r3min    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"r3max    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14)+
+!                  " "   +   STR(      d_a.z,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"uvmin    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14));
+! OUTLIN(f);
+! OUTSTR(f,"uvmax    "   +   STR(      d_a.x,-21,14)+
+!                  " "   +   STR(      d_a.y,-21,14));
+! OUTLIN(f);
+! 
+! 
+! OUTSTR(f,"EOF      "   +   STR(      npts ,-21,0 ));
+! OUTLIN(f);
+! 
+!e---
+
+!sdesce Add SUR_POINTS statement to active module (create surface from points)
+!sdescs Addera SUR_POINTS sats till aktiva modulen (skapa yta med punkter)    
+
+! Revision history
+! ________________
+!
+! 1994-06-27 Originally written Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+! 1996-06-20 Comments added     Gunnar Liden
+
+MACRO MODULE ma_surpts  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING fname*50;               ! Full name for file
+  STRING p_fname*50;             ! File name prompt string
+
+  STRING s_case*5;               ! Computation case as string
+  STRING p_case*50;              ! Computation case prompt string
+
+  STRING s_iu_s*5;               ! Start U point as string
+  STRING p_iu_s*50;              ! Start U point prompt string
+  STRING s_iv_s*5;               ! Start V point as string
+  STRING p_iv_s*50;              ! Start V point prompt string
+  STRING s_iu_d*5;               ! Delta U point as string
+  STRING p_iu_d*50;              ! Delta U point prompt string
+  STRING s_iv_d*5;               ! Delta V point as string
+  STRING p_iv_d*50;              ! Delta V point prompt string
+  STRING s_iu_e*5;               ! End   U point as string
+  STRING p_iu_e*50;              ! End   U point prompt string
+  STRING s_iv_e*5;               ! End   V point as string
+  STRING p_iv_e*50;              ! End   V point prompt string
+
+  STRING s_f_p*5;                ! Close flag    as string
+  STRING p_f_p*50;               ! Close flag    prompt string
+
+  STRING str_in*132;             ! Input string to CUR_GL
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  p_fname:= "Full name for" +    !
+  " SUR_POINTS file with point"+ !
+  " data";                       !
+  p_case:="Case Eq. 1: Zero "+   !
+   "twist  Eq. 2: Adinis method";!
+  p_iu_s:="Start U point";       !
+  p_iv_s:="Start V point";       !
+  p_iu_d:="Delta U      ";       !
+  p_iv_d:="Delta V      ";       !
+  p_iu_e:="End   U point";       !
+  p_iv_e:="End   V point";       !
+  p_f_p:="Close flag Eq. -1: "+  !
+   "Not closed Eq. 1: Closed"+   !
+   " U dir. "+                   !
+   "Eq. 2: Closed V dir.";       !
+ELIF language = 2 THEN           ! Swedish strings
+  p_fname:= "Fullst{ndigt " +    !
+  " namn p} SUR_POINTS fil med"+ !
+  " punkt data";                 !
+  p_case:="Fall =1: Noll "+      !
+   "twist  =2: Adinis metod";    !
+  p_iu_s:="Start U punkt";       !
+  p_iv_s:="Start V punkt";       !
+  p_iu_d:="Delta U      ";       !
+  p_iv_d:="Delta V      ";       !
+  p_iu_e:="End   U punkt";       !
+  p_iv_e:="End   V punkt";       !
+  p_f_p:="Flagga   = -1: "+      !
+   "Ej sluten yta =1: Sluten i"+ !
+   " U riktn. "+                 !
+   "=2: Sluten i V riktn.";      !
+ELSE                             !
+  EXIT("ma_surpts: "+            !
+       "Language error");        !
+ENDIF;                           !
+
+! fname   (STRING) - Namn p} fil med data eller
+!         (REF)    - Identitet till PART med punkter
+! b_fall  (INT)    - Ber{kningsfall     
+!                    =1: Twistvektorer noll, tangentl{ngder ...
+!                    =2: Twistvektorer med Adinis metod
+! iu_s    (INT)    - Start U punkt
+! iv_s    (INT)    - Start V punkt
+! iu_d    (INT)    - Delta U 
+! iv_d    (INT)    - Delta V
+! iu_e    (INT)    - Start U punkt
+! iv_e    (INT)    - Slut  V punkt
+! f_p     (INT)    - Flagga f|r sluten eller ej sluten yta
+!                    = -1: Ytan {r inte sluten
+!                    =  1: Ytan {r sluten i U riktningen
+! 2. File name     
+! ____________
+
+fname:= INPMT(p_fname,           ! Input of file name
+"",50);                          !
+IF fname   = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 3. Computation case
+! ___________________
+
+s_case:= INPMT(p_case,           ! Input of file name
+"",5);                           !
+IF s_case  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 4. Start U point
+! ________________
+
+s_iu_s:= INPMT(p_iu_s,           ! Input of integer  
+"",5);                           !
+IF s_iu_s  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 4. Start V point
+! ________________
+
+s_iv_s:= INPMT(p_iv_s,           ! Input of integer  
+"",5);                           !
+IF s_iv_s  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+
+! 5. Delta U point
+! ________________
+
+s_iu_d:= INPMT(p_iu_d,           ! Input of integer  
+"",5);                           !
+IF s_iu_d  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. Delta V point
+! ________________
+
+s_iv_d:= INPMT(p_iv_d,           ! Input of integer  
+"",5);                           !
+IF s_iv_d  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 7. End   U point
+! ________________
+
+s_iu_e:= INPMT(p_iu_e,           ! Input of integer  
+"",5);                           !
+IF s_iu_e  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 8. End   V point
+! ________________
+
+s_iv_e:= INPMT(p_iv_e,           ! Input of integer  
+"",5);                           !
+IF s_iv_e  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 9. Close flag   
+! ________________
+
+s_f_p := INPMT(p_f_p ,           ! Input of integer  
+"",5);                           !
+IF s_f_p   = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 10. Create MBS statement
+! _______________________
+
+ str_in:= "POISUR " +            ! To CUR_GL string
+          fname  + " " +         !
+          s_case + " " +         !
+          s_iu_s + " " +         !
+          s_iv_s + " " +         !
+          s_iu_d + " " +         !
+          s_iv_d + " " +         !
+          s_iu_e + " " +         !
+          s_iv_e + " " +         !
+          s_f_p  + " " ;         !
+  str_in:=CHR(34)+str_in+CHR(34);!
+
+! CUR_GL(#1,#0  ,str_in);           ! Write surface data to file   
+
+a_id:= ADD_MBS("CUR_GL","#0",    ! Create MBS statement 
+                str_in);
+
+ENDMODULE 
+

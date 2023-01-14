@@ -1,0 +1,1221 @@
+!****************************************************
+! +++
+! Input X window for FANGA analysis
+!
+!  Revision history
+!  ________________
+!
+!  1995-06-27  Gunnar Liden
+! ---
+!
+!****************************************************
+
+BASIC MODULE fangawinv0 (
+
+VAR VECTOR sdir1;    ! Direction for start silhouette
+VAR VECTOR sdir2;    ! Direction for end   silhouette
+VAR INT    ivstart;  ! Start strip number (start limit curve number)
+VAR INT    ivend;    ! End strip number (Eq. start strip no ==> one strip)
+VAR FLOAT  startu;   ! Start U section value ( <CR> ==> Whole surface)
+VAR FLOAT  endu;     ! End   U section value (= -1 <==> not defined)
+VAR FLOAT  ydelta;   ! Delta y for FANGA system
+VAR FLOAT  cscale;   ! Scale factor for chord curves
+VAR FLOAT  ascale;   ! Scale factor for angle curves
+VAR INT    f_energy; ! Eq. 1: Calculate energy for all the FANGA curves
+VAR INT    b_cur1;   ! Eq. 1: Blank Eq. 0: Show crv chord start-end silhouette
+VAR INT    b_cur2;   ! Eq. 1: Blank Eq. 0: Show crv chord start-mid silhouette
+VAR INT    b_cur3;   ! Eq. 1: Blank Eq. 0: Show crv chord   mid-end silhouette
+VAR INT    b_cur4;   ! Eq. 1: Blank Eq. 0: Show crv angle start-end silhouette
+VAR INT    b_cur5;   ! Eq. 1: Blank Eq. 0: Show crv angle start-mid silhouette
+VAR INT    b_cur6;   ! Eq. 1: Blank Eq. 0: Show crv angle   mid-end silhouette
+VAR STRING c_flag*3; ! Eq NO: No calculation
+VAR INT    graphic;  !  (not yet implemented)
+    REF    sur_id;   ! Surface identity
+    REF    spine_id; ! Spine   identity
+    STRING w_case*9);! Window case 
+                     ! s_nofile: Statement CUR_FANGA, do not read .MENUE data
+                     ! s_rdfile: Statement CUR_FANGA, read        .MENUE data
+                     ! p_nofile: Part fangaprtv0    , do not read .MENUE data
+                     ! p_rdfile: Part fangaprtv0    , read        .MENUE data
+
+!sdesce Input X window for FANGA analysis with CUR_FANGA or fangaprtv0
+!sdescs Inmatning av data f|r FANGA analys med CUR_FANGA eller fangaprtv0
+
+
+! +++
+! Internal variables
+! __________________
+
+   VECTOR main_pos;             ! Main window position
+   FLOAT  main_dx;              ! Main window dimension 
+   FLOAT  main_dy;              !
+! ---
+   INT    w_leng;               ! Length of word
+   INT    i_s;                  ! Space loop index
+
+   INT    opsys;                ! Operating system
+                                ! Eq. 1: VMS           (VAX)
+                                ! Eq. 2: SCO UNIX      (PC)
+                                ! Eq. 3: SGI UNIX      (X server)
+
+   FILE   idat;                 ! Input data file
+   STRING f_name*132;           ! Full input filename
+   STRING rad*132;              ! Dummy string
+
+
+   INT    n_lin;                ! Number of lines (data) 
+   FLOAT  n_d;                  ! Delta  pixel
+   FLOAT  n_h;                  ! Height pixel
+   FLOAT  col1_dx;              ! Columne 1 delta x     
+   FLOAT  col2_dx;              ! Columne 2 delta x     
+   FLOAT  col3_dx;              ! Columne 3 delta x     
+   FLOAT  col_w;                ! Columne width         
+
+   INT    main_id;              ! Main window identity   
+
+   STRING language*1;           ! Eq. e: English   
+                                ! Eq. s: Swedish   
+
+   STRING header*50;            ! String for main window
+   STRING s_edit1*50;           ! String for edit1 
+   STRING s_edit2*50;           ! String for edit2 
+   STRING s_edit3*50;           ! String for edit3 
+   STRING s_edit4*50;           ! String for edit4 
+   STRING s_edit5*50;           ! String for edit5 
+   STRING s_edit6*50;           ! String for edit6 
+   STRING s_edit7*50;           ! String for edit7 
+   STRING s_edit8*50;           ! String for edit8 
+   STRING s_edit9*50;           ! String for edit9 
+   STRING s_edit10*50;          ! String for edit10 
+   STRING s_edit11*50;          ! String for edit11 
+   STRING s_edit12*50;          ! String for edit12 
+   STRING s_edit13*50;          ! String for edit13 
+   STRING s_edit14*50;          ! String for edit14 
+   STRING s_edit15*50;          ! String for edit15 
+   STRING s_bid1*50;            ! String for bid1  
+   STRING s_bid2*50;            ! String for bid2  
+   STRING s_bid3j*50;           ! String for bid3 yes
+   STRING s_bid3n*50;           ! String for bid3 no 
+   STRING s_bid4j*50;           ! String for bid4 yes
+   STRING s_bid4n*50;           ! String for bid4 no 
+   STRING s_bid5j*50;           ! String for bid5 yes
+   STRING s_bid5n*50;           ! String for bid5 no 
+   STRING s_bid6j*50;           ! String for bid6 yes
+   STRING s_bid6n*50;           ! String for bid6 no 
+   STRING s_bid7j*50;           ! String for bid7 yes
+   STRING s_bid7n*50;           ! String for bid7 no 
+   STRING s_bid8j*50;           ! String for bid8 yes
+   STRING s_bid8n*50;           ! String for bid8 no 
+   STRING s_on*10;              ! Strings for  bidi, i=3,4,5,6,7,8
+   STRING s_off*10;             ! 
+
+   STRING ermess1*50;           ! Error message var_name
+   STRING ermess2*50;           ! Error message obj_name
+
+   INT    rubr1,rubr2,rubr3;    ! Id's for edit headers
+   INT    rubr4,rubr5,rubr6;    !
+   INT    rubr7,rubr8,rubr9;    !
+   INT    rubr10,rubr11,rubr12; !
+   INT    rubr13,rubr14,rubr15; !
+   INT    bid1  ;               ! Id. window OK
+   INT    bid2;                 ! Id. button AVBRYT
+   INT    bid3;                 ! Id. button kurva 1
+   INT    bid4;                 ! Id. button kurva 2
+   INT    bid5;                 ! Id. button kurva 3
+   INT    bid6;                 ! Id. button kurva 4
+   INT    bid7;                 ! Id. button kurva 5
+   INT    bid8;                 ! Id. button kurva 6
+   INT    edit1,edit2,edit3;    ! sdir1
+   INT    edit4,edit5,edit6;    ! sdir2
+   INT    edit7;                ! f_scale
+   INT    edit8;                !
+   INT    edit9;                !
+   INT    edit10;               !
+   INT    edit11;               !
+   INT    edit12;               !
+   INT    edit13;               ! 
+   INT    edit14;               ! ascale
+
+   INT    bidx;                 ! Identity of event  
+
+  STRING p_stripno*50;           ! Possible strip numbers
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+   INT    DEBUG;                ! Debug
+   STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+
+! +++
+!  0. Initializations
+! ---
+
+!  Don't use non-initialized variables in if statements !!!
+!  (It will result in strange errors ... )
+
+   main_id := -1;
+
+   rubr1 := -1; rubr2 := -1; 
+   rubr3 := -1; rubr4 := -1; 
+   rubr5 := -1; rubr6 := -1; 
+   rubr7 := -1; rubr8 := -1; 
+   rubr9 := -1; rubr10:= -1;
+   rubr11:= -1; rubr12:= -1;
+   rubr13:= -1; rubr14:= -1;
+   rubr15:= -1;
+
+   bid1  := -1;  bid2 := -1; 
+   bid3  := -1;  bid4 := -1;
+   bid5  := -1;  bid6 := -1;
+   bid7  := -1;  bid8 := -1;
+
+   bidx := -1;
+
+   edit1 := -1; edit2 := -1; 
+   edit3 := -1; edit4 := -1; 
+   edit5 := -1; edit6 := -1; 
+   edit7 := -1; edit8 := -1; 
+   edit9 := -1; edit10:= -1;
+   edit11:= -1; edit12:= -1;
+   edit13:= -1; edit14:= -1;
+
+! +++
+!  1. Retrieve input data from previous input
+!  
+!  Data is on file fangawinv0.MENY on the active job directory
+!  A file will be created if not existent.
+! ---
+
+   DEBUG:= 1;
+
+   c_flag:= "YES";                            ! Calculation flag
+
+   f_name:= ACT_JOBDIR()                      ! Full filename (UNIX)
+             +"fangawinv0.MENUE";             ! 
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("f_name "+f_name,"n",1);        !
+     IF s = "n" THEN                          !
+        EXIT();                               !
+     ENDIF;                                   !
+   ENDIF;                                     !
+
+
+   IF   w_case= "s_nofile" OR                 ! Use input values ?
+        w_case= "p_nofile"     THEN           !
+     GOTO  nofile;                            !
+   ENDIF;                                     !
+
+newfile:;                                     ! New file
+
+   OPEN(idat,"R",f_name);                     ! Open input file R 
+   IF IOSTAT(idat) <> 0 THEN                  !
+     OPEN(idat,"W",f_name);                   ! Open input file W 
+
+     sdir1:= VEC(0,-10,1);                    ! Start silhouette direct.
+     sdir2:= VEC(0, -5,1);                    ! End   silhouette direct.
+     ivstart  :=  -1;                         ! Start strip number
+     ivend    :=  -1;                         ! End strip number
+     startu   :=  -1.0;                       ! Start U section value
+     endu     :=  -1.0;                       ! End   U section value
+     ydelta   :=-100.0;                       ! Delta y for FANGA system
+     cscale   :=  20.0;                       ! Scale factor chord curves
+     ascale   :=  30.0;                       ! Scale factor angle curves
+     f_energy :=   0;                         ! Eq. 1: Calculate energy
+     b_cur1   :=   0;                         ! Blank: Crv chord start-end 
+     b_cur2   :=   0;                         ! Blank: Crv chord start-mid
+     b_cur3   :=   0;                         ! Blank: Crv chord   mid-end
+     b_cur4   :=   0;                         ! Blank: Crv angle start-end
+     b_cur5   :=   0;                         ! Blank: Crv angle start-mid
+     b_cur6   :=   0;                         ! Blank: Crv angle   mid-end
+     graphic  :=   0;                         ! (not yet implemented)");
+
+     OUTFLT(idat, sdir1.x, 15,10);            !
+     OUTFLT(idat, sdir1.y, 15,10);            !
+     OUTFLT(idat, sdir1.z, 15,10);            !
+     OUTSTR(idat, "    Direction 1");         !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, sdir2.x, 15,10);            !
+     OUTFLT(idat, sdir2.y, 15,10);            !
+     OUTFLT(idat, sdir2.z, 15,10);            !
+     OUTSTR(idat, "    Direction 2");         !
+     OUTLIN(idat);                            !
+     OUTINT(idat, ivstart );                  !
+     OUTINT(idat, ivend   );                  !
+     OUTSTR(idat, "    Strips     ");         !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, startu , 15,10);            !
+     OUTFLT(idat, endu   , 15,10);            !
+     OUTSTR(idat, "    U values   ");         !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, ydelta , 15,10);            !
+     OUTSTR(idat, "    Delta y    ");         !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, cscale , 15,10);            !
+     OUTSTR(idat, "    Chord scale");         !
+     OUTLIN(idat);                            !
+     OUTFLT(idat, ascale , 15,10);            !
+     OUTSTR(idat, "    Angle scale");         !
+     OUTLIN(idat);                            !
+     OUTINT(idat, f_energy);                  !
+     OUTSTR(idat, "    Flag energy");         !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur1  );                  !
+     OUTSTR(idat, "    Plot curve 1");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur2  );                  !
+     OUTSTR(idat, "    Plot curve 2");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur3  );                  !
+     OUTSTR(idat, "    Plot curve 3");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur4  );                  !
+     OUTSTR(idat, "    Plot curve 4");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur5  );                  !
+     OUTSTR(idat, "    Plot curve 5");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, b_cur6  );                  !
+     OUTSTR(idat, "    Plot curve 6");        !
+     OUTLIN(idat);                            !
+     OUTINT(idat, graphic );                  !
+     OUTSTR(idat, "    Graphic     ");        !
+     OUTLIN(idat);                            !
+
+     CLOSE(idat);                             !
+     GOTO  newfile;                           ! Goto newfile
+   ENDIF;                                     !
+
+   sdir1.x  := INFLT(idat);                   ! Start silhouette direct.
+   sdir1.y  := INFLT(idat);                   ! 
+   sdir1.z  := INFLT(idat);                   !
+   rad      := INLIN(idat);                   ! Rest of line
+   sdir2.x  := INFLT(idat);                   ! End   silhouette direct.
+   sdir2.y  := INFLT(idat);                   !
+   sdir2.z  := INFLT(idat);                   !
+   rad      := INLIN(idat);                   ! Rest of line
+   ivstart  := ININT(idat);                   ! Start strip number
+   ivend    := ININT(idat);                   ! End strip number
+   rad      := INLIN(idat);                   ! Rest of line
+   startu   := INFLT(idat);                   ! Start U section value
+   endu     := INFLT(idat);                   ! End   U section value
+   rad      := INLIN(idat);                   ! Rest of line
+   ydelta   := INFLT(idat);                   ! Delta y for FANGA system
+   rad      := INLIN(idat);                   ! Rest of line
+   cscale   := INFLT(idat);                   ! Scale factor chord curves
+   rad      := INLIN(idat);                   ! Rest of line
+   ascale   := INFLT(idat);                   ! Scale factor angle curves
+   rad      := INLIN(idat);                   ! Rest of line
+   f_energy := ININT(idat);                   ! Eq. 1: Calculate energy
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur1   := ININT(idat);                   ! Blank: Crv chord start-end 
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur2   := ININT(idat);                   ! Blank: Crv chord start-mid
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur3   := ININT(idat);                   ! Blank: Crv chord   mid-end
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur4   := ININT(idat);                   ! Blank: Crv angle start-end
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur5   := ININT(idat);                   ! Blank: Crv angle start-mid
+   rad      := INLIN(idat);                   ! Rest of line
+   b_cur6   := ININT(idat);                   ! Blank: Crv angle   mid-end
+   rad      := INLIN(idat);                   ! Rest of line
+   graphic  := ININT(idat);                   ! (not yet implemented)");
+   rad      := INLIN(idat);                   ! Rest of line
+
+   CLOSE(idat);                               ! Close file
+
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("sdir1 "+                       !
+               STR(sdir1.x,10,4)+" "+         !
+               STR(sdir1.y,10,4)+" "+         !
+               STR(sdir1.z,10,4)+" "          !
+              ," ",1);                        !
+   ENDIF;                                     !
+
+nofile:                                       ! Label: Use input values
+
+! +++
+!  2. Skapa start f|nster med alla knappar och subf|nster
+! ---
+
+   main_pos:= VEC(125,10);                    ! Main window position
+
+                                              ! Main window dimension 
+   PART(#1, getopsys ( opsys ):SAVE=0);       ! Operating system
+   IF    opsys = 1 THEN                       ! VMS (VAX)
+     main_dx := 500;                          ! 
+   ELIF  opsys = 2 THEN                       ! SCO UNIX (PC) 
+     main_dx := 500;                          ! 
+   ELIF  opsys = 3 THEN                       ! SGI UNIX (X server) 
+     main_dx := 800;                          ! 
+   ELSE                                       !
+     main_dx := 500;                          ! 
+   ENDIF;                                     ! 
+
+   n_d     := 0.060*main_dx;                  ! Delta  pixel
+   n_h     := 0.056*main_dx;                  ! Height pixel
+   n_lin   := 12;                             ! Number of lines
+   main_dy := n_d + (n_lin+3)*n_d;            !
+
+   col1_dx := 0.02*main_dx;                   ! Columne 1 delta x     
+   col2_dx := 0.34*main_dx;                   ! Columne 2 delta x     
+   col3_dx := 0.66*main_dx;                   ! Columne 3 delta x     
+   col_w   := 0.34*main_dx;                   ! Columne width         
+
+! +++
+!  Headers for main window, all edit fields and buttocks
+! ---
+
+   language := "e";                             ! Language
+
+   IF   language = "s" THEN                     !
+     header:=  "INDATA TILL FANGA ANALYS";      ! String for main window
+     s_edit1:= "Riktning f|r silhuette 1";      ! String for edit1 
+     s_edit2:= " ";                             ! String for edit2 
+     s_edit3:= " ";                            ;! String for edit3 
+     s_edit4:= "Riktning f|r silhuette 2";      ! String for edit4 
+     s_edit5:= " ";                             ! String for edit5 
+     s_edit6:= " ";                             ! String for edit6 
+     s_edit7:= "=0: Inget "  +                  ! String for edit7 
+               "=1: Energi =2: B}gl{ngd";       ! 
+     s_edit8:= "Start strip nummer (-1= alla)"; ! String for edit8 
+     s_edit9:= "Start U v{rde spine (-1= hela)";! String for edit9 
+     s_edit10:="Skalfaktor korda kurvor";       ! String for edit10
+     s_edit11:="Delta f|r FANGA system";        ! String for edit11
+     s_edit12:="Slut strip nummer (";           ! String for edit12
+     s_edit13:="Slut  U v{rde spine";           ! String for edit13
+     s_edit14:="Skalfaktor vinkel kurvor";      ! String for edit14
+     s_edit15:="Plottning av kurva:";           ! String for edit15
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2  :="AVBRYT";                        ! String for bid2  
+     s_bid3j :="1: Ja ";                        ! String for bid3j 
+     s_bid3n :="1: Nej";                        ! String for bid3n 
+     s_bid4j :="2: Ja ";                        ! String for bid4j 
+     s_bid4n :="2: Nej";                        ! String for bid4n 
+     s_bid5j :="3: Ja ";                        ! String for bid5j 
+     s_bid5n :="3: Nej";                        ! String for bid5n 
+     s_bid6j :="4: Ja ";                        ! String for bid6j 
+     s_bid6n :="4: Nej";                        ! String for bid6n 
+     s_bid7j :="5: Ja ";                        ! String for bid7j 
+     s_bid7n :="5: Nej";                        ! String for bid7n 
+     s_bid8j :="6: Ja ";                        ! String for bid8j 
+     s_bid8n :="6: Nej";                        ! String for bid8n 
+     ermess1 :="Variabel modul ej definierad";  ! Error var_name    
+     ermess2 :="M}lfktn modul ej definierad";   ! Error var_name    
+   ELIF language = "e" THEN                     !
+     header:=  "INPUT DATA TO FANGA ANALYSIS";  ! String for main window
+     s_edit1:= "Direction for silhouette 1";    ! String for edit1 
+     s_edit2:= " ";                             ! String for edit2 
+     s_edit3:= " ";                             ! String for edit3 
+     s_edit4:= "Direction for silhouette 2";    ! String for edit4 
+     s_edit5:= " ";                             ! String for edit5 
+     s_edit6:= " ";                             ! String for edit6 
+     s_edit7:= "=0: None "  +                   ! String for edit7 
+               "=1: Energy =2: Arclength";      ! 
+     s_edit8:= "Start strip number (-1= all)";  ! String for edit8 
+     s_edit9:= "Start U value spine (-1=whole)";! String for edit9 
+     s_edit10:="Scale factor chord curves";     ! String for edit10
+     s_edit11:="Delta for FANGA system";        ! String for edit11
+     s_edit12:="End  strip number (";           ! String for edit12
+     s_edit13:="End   U value spine";           ! String for edit13
+     s_edit14:="Scale factor angle curves";     ! String for edit14
+     s_edit15:="Plotting of curve:";            ! String for edit15
+     s_bid1  :="OK";                            ! String for bid1  
+     s_bid2:=  "CANCEL";                        ! String for bid2  
+     s_bid3j :="1: Yes";                        ! String for bid3j 
+     s_bid3n :="1: No ";                        ! String for bid3n 
+     s_bid4j :="2: Yes";                        ! String for bid4j 
+     s_bid4n :="2: No ";                        ! String for bid4n 
+     s_bid5j :="3: Yes";                        ! String for bid5j 
+     s_bid5n :="3: No ";                        ! String for bid5n 
+     s_bid6j :="4: Yes";                        ! String for bid6j 
+     s_bid6n :="4: No ";                        ! String for bid6n 
+     s_bid7j :="5: Yes";                        ! String for bid7j 
+     s_bid7n :="5: No ";                        ! String for bid7n 
+     s_bid8j :="6: Yes";                        ! String for bid8j 
+     s_bid8n :="6: No ";                        ! String for bid8n 
+     ermess1 :="Variable module not defined  "; ! Error var_name    
+     ermess2 :="Objective fctn module not def.";! Error var_name    
+   ENDIF;                                       !
+
+GETSURH(sur_id,"NPATU"   ,npatu);  ! Retrieve number of U patches
+GETSURH(sur_id,"NPATV"   ,npatv);  ! Retrieve number of V patches
+
+   p_stripno:=" 1 - " +STR(npatv,-1,0) + ")";   ! Optional strips
+   s_edit12 := s_edit12 + p_stripno;
+
+! +++
+!  Create main window
+! ---
+
+   main_id:=CRE_WIN(main_pos,main_dx,main_dy, ! Create main window
+                      header );               !
+
+
+   rubr1:=CRE_BUTTON(main_id,                   ! sdir1      
+         VEC( 0.01*main_dx, 0.01*main_dx),      ! Position
+           col_w,                               ! Width  in pixels
+   0.04*main_dx,                                ! Height in pixels
+              0,                                ! Thickness in pixels
+            s_edit1,                            ! Text for status = on
+             "",                                ! Text for status = off
+             "",                                ! Text font   (optional)
+             6);                                ! Text colour (optional)
+
+   rubr4:=CRE_BUTTON(main_id,                   ! sdir2         
+        VEC( 0.01*main_dx,0.08*main_dx+n_d*1 ), !
+           col_w,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit4,                            !
+             "",                                !
+             "",                                !
+             6);                                !
+
+   rubr5:= -1;                                  !
+
+   rubr6:= -1;                                  !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   rubr7:= -1;                                  !
+ ELSE                                           !
+   rubr7:=CRE_BUTTON(main_id,                   ! f_energy
+        VEC( 0.01*main_dx,0.08*main_dx+n_d*3 ),                      !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit7,                            !
+             "",                                !
+             "",                                !
+             6);                                !
+ ENDIF;                                        !
+
+   rubr8:=CRE_BUTTON(main_id,                   ! ivstart        
+   VEC( 0.01*main_dx,0.08*main_dx+n_d*5 ),      ! 
+   1.06*col_w   ,                               !
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit8,                            !
+             "",                                !
+             "",                                !
+             6);                                !
+
+
+   rubr9:=CRE_BUTTON(main_id,                   ! startu
+   VEC( 0.01*main_dx,0.08*main_dx+n_d*7),       !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit9,                            !
+             "",                                !
+             "",                                !
+             6);                                !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   rubr10:= -1;                                 !
+ ELSE                                           !
+   rubr10:=CRE_BUTTON(main_id,                  ! cscale
+   VEC( 0.01*main_dx,0.08*main_dx+n_d*9 ),      !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit10,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+ ENDIF;                                        !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   rubr11:= -1;                                 !
+ ELSE                                           !
+   rubr11:=CRE_BUTTON(main_id,                  ! ydelta
+   VEC( 0.51*main_dx,0.08*main_dx+n_d*3 ),      !
+           col_w,                               !
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit11,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+ ENDIF;                                        !
+
+   rubr12:=CRE_BUTTON(main_id,                  ! ivend
+   VEC( 0.51*main_dx,0.08*main_dx+n_d*5 ),      !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit12,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+
+   rubr13:=CRE_BUTTON(main_id,                  ! endu 
+   VEC( 0.51*main_dx,0.08*main_dx+n_d*7 ),      !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit13,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   rubr14:= -1;                                 !
+ ELSE                                           !
+   rubr14:=CRE_BUTTON(main_id,                  ! ascale
+   VEC( 0.51*main_dx,0.08*main_dx+n_d*9 ),      !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit14,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+ ENDIF;                                        !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   rubr15:= -1;                                 !
+ ELSE                                           !
+   rubr15:=CRE_BUTTON(main_id,                  ! Plot curve
+   VEC(0.1*main_dx,0.08*main_dx+n_d*11),        !
+   1.18*col_w   ,                               ! 
+   0.04*main_dx,                                !
+              0,                                !
+            s_edit15,                           !
+             "",                                !
+             "",                                !
+             6);                                !
+ ENDIF;                                        !
+
+
+! +++
+!  Buttock for OK and CANCEL
+! ---
+
+   bid1:=CRE_BUTTON(main_id,                  ! Knapp OK      
+     VEC(col1_dx,main_dy-0.10*main_dx),       ! 
+       0.09*main_dx,                          ! Bredd i pixels
+       0.08*main_dx,                          ! H|jd  i pixels
+        0.01*main_dx,                         ! Ramens tjocklek
+     s_bid1,                                  ! Text f|r status = p}
+     s_bid1,                                  ! Text f|r status = av
+      "",                                     ! Text font    (optionell)
+       6);                                    ! Textens f{rg (optionell)
+
+   bid2:=CRE_BUTTON(main_id,                  ! Knapp AVBRYT
+     VEC( 0.16*main_dx,main_dy-0.09*main_dx), ! \vre v{nstra h|rnets l{ge
+       0.10*main_dx,                          ! Bredd i pixels
+       0.07*main_dx,                          ! H|jd  i pixels
+        0.002*main_dx,                        ! Ramens tjocklek
+     s_bid2,                                  ! Text f|r status = p}
+     s_bid2,                                  ! Text f|r status = av
+      "",                                     ! Text font    (optionell)
+       6);                                    ! Textens f{rg (optionell)
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   bid3:=  -1;                                  !
+   bid4:=  -1;                                  !
+   bid5:=  -1;                                  !
+   bid6:=  -1;                                  !
+   bid7:=  -1;                                  !
+   bid8:=  -1;                                  !
+ ELSE                                           !
+   IF  b_cur1 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid3j;                          !
+     s_off := s_bid3n;                          !
+   ELSE                                         !
+     s_on  := s_bid3n;                          !
+     s_off := s_bid3j;                          !
+   ENDIF;                                       !
+   bid3:=CRE_BUTTON(main_id,                  ! Kurva 1       
+     VEC( 0.10*main_dx,0.06*main_dx+n_d*12 ),   ! 
+       0.09*main_dx,                          ! 
+       0.08*main_dx,                          !
+        0.004*main_dx,                        !
+     s_on   ,                                 !
+     s_off  ,                                 !
+      "",                                     !
+       6);                                    !
+
+   IF  b_cur2 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid4j;                          !
+     s_off := s_bid4n;                          !
+   ELSE                                         !
+     s_on  := s_bid4n;                          !
+     s_off := s_bid4j;                          !
+   ENDIF;                                       !
+   bid4:=CRE_BUTTON(main_id,                    ! Kurva 2       
+     VEC(0.20*main_dx,n_d+n_d*12 ),             ! 
+       0.09*main_dx,                            !
+       0.08*main_dx,                            !
+        0.004*main_dx,                          !
+     s_on ,                                     !
+     s_off  ,                                   !
+      "",                                       !
+       6);                                      !
+
+   IF  b_cur3 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid5j;                          !
+     s_off := s_bid5n;                          !
+   ELSE                                         !
+     s_on  := s_bid5n;                          !
+     s_off := s_bid5j;                          !
+   ENDIF;                                       !
+   bid5:=CRE_BUTTON(main_id,                    ! Kurva 3       
+     VEC(0.30*main_dx,n_d+n_d*12 ),             ! 
+       0.09*main_dx,                            !
+       0.08*main_dx,                            !
+        0.004*main_dx,                          !
+     s_on   ,                                   !
+     s_off  ,                                   !
+      "",                                       !
+       6);                                      !
+
+   IF  b_cur4 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid6j;                          !
+     s_off := s_bid6n;                          !
+   ELSE                                         !
+     s_on  := s_bid6n;                          !
+     s_off := s_bid6j;                          !
+   ENDIF;                                       !
+   bid6:=CRE_BUTTON(main_id,                    ! Kurva 4       
+     VEC(0.4*main_dx,n_d+n_d*12 ),              ! 
+       0.09*main_dx,                            !
+       0.08*main_dx,                            !
+        0.004*main_dx,                          !
+     s_on   ,                                   !
+     s_off  ,                                   !
+      "",                                       !
+       6);                                      !
+
+   IF  b_cur5 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid7j;                          !
+     s_off := s_bid7n;                          !
+   ELSE                                         !
+     s_on  := s_bid7n;                          !
+     s_off := s_bid7j;                          !
+   ENDIF;                                       !
+   bid7:=CRE_BUTTON(main_id,                    ! Kurva 5       
+     VEC(0.5*main_dx,n_d+n_d*12 ),              ! 
+       0.09*main_dx,                            !
+       0.08*main_dx,                            !
+        0.004*main_dx,                          !
+     s_on   ,                                   !
+     s_off  ,                                   !
+      "",                                       !
+       6);                                      !
+
+   IF  b_cur6 =  0          THEN                ! Plot (blank) flag 
+     s_on  := s_bid8j;                          !
+     s_off := s_bid8n;                          !
+   ELSE                                         !
+     s_on  := s_bid8n;                          !
+     s_off := s_bid8j;                          !
+   ENDIF;                                       !
+   bid8:=CRE_BUTTON(main_id,                    ! Kurva 6       
+     VEC(0.6*main_dx,n_d+n_d*12 ),              ! 
+       0.09*main_dx,                            !
+       0.08*main_dx,                            !
+        0.004*main_dx,                          !
+     s_on   ,                                   !
+     s_off  ,                                   !
+      "",                                       !
+       6);                                      !
+ ENDIF;                                         ! End  w_case="s_nofile" w_case="s_rdfile"
+
+
+! +++
+!  Input of ...
+! ---
+
+   edit1:=CRE_EDIT(main_id,                   ! sdir1 
+        VEC(col1_dx,n_d),                     !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir1.x,15,8),                    !
+          25);                                !
+   edit2:=CRE_EDIT(main_id,                   !
+        VEC(col2_dx,n_d),                     !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir1.y,15,8),                    !
+          25);                                !
+   edit3:=CRE_EDIT(main_id,                   !
+        VEC(col3_dx,n_d),                     !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir1.z,15,8),                    !
+          25);                                !
+
+   edit4:=CRE_EDIT(main_id,                   ! sdir2
+        VEC(col1_dx,n_d+n_d*2 ),              !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir2.x,15,8),                    !
+          25);                                !
+   edit5:=CRE_EDIT(main_id,                   !
+        VEC(col2_dx,n_d+n_d*2 ),              !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir2.y,15,8),                    !
+          25);                                !
+   edit6:=CRE_EDIT(main_id,                   !
+        VEC(col3_dx,n_d+n_d*2 ),              !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(sdir2.z,15,8),                    !
+          25);                                !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   edit7:= -1;                                !
+ ELSE                                         !
+   edit7:=CRE_EDIT(main_id,                   ! f_energy
+        VEC(col1_dx,n_d+n_d*4 ),              !
+        0.2*main_dx,n_h,0.008*main_dx,        ! 
+        " "+STR(f_energy,1,0) ,               !
+          80);                                !
+ ENDIF;                                        !
+
+   edit8:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx ,n_d+n_d*6 ),             !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        " "+STR(ivstart,1,0),                 !
+          11);                                !
+
+   edit9:=CRE_EDIT(main_id,                   !
+        VEC(col1_dx ,n_d+n_d*8 ),              !
+        0.3*main_dx,n_h,0.008*main_dx,        !
+        STR(startu,10,6),                     !
+          16);                                !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   edit10:= -1;                                 !
+ ELSE                                           !
+   edit10:=CRE_EDIT(main_id,                  !
+        VEC(col1_dx,n_d+n_d*10),              !
+        0.3*main_dx,n_h,0.008*main_dx,        ! 
+        STR(cscale,10,5),                     !
+          80);                                !
+ ENDIF;                                       !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   edit11:= -1;                                 !
+ ELSE                                           !
+   edit11:=CRE_EDIT(main_id,                  !
+        VEC(0.52*main_dx,n_d+n_d*4 ),         !
+        0.3*main_dx,n_h,0.008*main_dx,        ! 
+        STR(ydelta,-10,4),                    !
+          11);                                !
+ ENDIF;                                        !
+
+   edit12:=CRE_EDIT(main_id,                  !
+        VEC(0.52*main_dx,n_d+n_d*6 ),          !
+        0.3*main_dx,n_h,0.008*main_dx,        ! 
+        " "+STR(ivend ,1,0),                  !
+          11);                                !
+
+   edit13:=CRE_EDIT(main_id,                  !
+        VEC(0.52*main_dx,n_d+n_d*8 ),          !
+        0.3*main_dx,n_h,0.008*main_dx,        ! 
+        STR(endu  ,10,6),                     !
+          16);                                !
+
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   edit14:= -1;                                 !
+ ELSE                                           !
+   edit14:=CRE_EDIT(main_id,                  !
+        VEC(0.52*main_dx,n_d+n_d*10),          !
+        0.3*main_dx,n_h,0.008*main_dx,        ! 
+        STR(ascale,10,5),                     !
+          16);                                !
+ ENDIF;                                        !
+
+! +++
+!  Show result on the screen. 
+! ---
+
+   SHOW_WIN(main_id);                         ! Show start window 
+
+! +++
+!  3. Input of (modifications of) data in the X window
+! ---
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("rubr1  "+STR(rubr1,-1,0)+ " "  !
+             +"rubr2  "+STR(rubr2,-1,0)+ " "  !
+             +"rubr3  "+STR(rubr3,-1,0)+ " "  !
+             +"rubr4  "+STR(rubr4,-1,0)+ " "  !
+             +"rubr5  "+STR(rubr5,-1,0)+ " "  !
+             +"rubr6  "+STR(rubr6,-1,0)+ " "  !
+         ,"",1);                              !
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  !
+         ,"",1);                              !
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+! +++
+loop:     ! Label: Continue input (change) of data 
+! ---
+
+   bidx:=WAIT_WIN(main_id);                   ! Wait for an event
+
+   IF DEBUG = 2 THEN                          !
+     s:=INPMT("edit1  "+STR(edit1,-1,0)+ " "  !
+             +"edit2  "+STR(edit2,-1,0)+ " "  !
+             +"edit3  "+STR(edit3,-1,0)+ " "  !
+             +"edit4  "+STR(edit4,-1,0)+ " "  !
+             +"edit5  "+STR(edit5,-1,0)+ " "  !
+             +"edit6  "+STR(edit6,-1,0)+ " "  !
+         ,"",1);                              !
+     s:=INPMT("bid1   "+STR(bid1  ,-1,0)+" "  !
+             +"bid2   "+STR(bid2  ,-1,0)+" "  !
+             +"bidx   "+STR(bidx  ,-1,0)+" "  !
+         ,"",1);                              !
+   ENDIF;                                     !
+
+! +++
+!  Knapp AVBRYT: Sluta (med EXIT) utan att ta hand om inmatad data
+! ---
+
+   IF bidx = bid2 THEN                        ! H{ndelse i bid2  
+     c_flag:= "NO";                           ! Flag: No calculation 
+     DEL_WIN(main_id);                        ! Radera huvudf|nster
+     EXIT();                                  ! Exit ("fel")
+
+! +++
+!  Edit-f{lt 
+! ---
+
+   ELIF bidx = edit1 THEN                     ! Event in edit 1
+     rad     := GET_EDIT(main_id,edit1);      ! Get input data    
+     sdir1.x :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit1);                  ! Erase subwindow  
+     edit1:=CRE_EDIT(main_id,                 ! sdir1 
+        VEC(col1_dx,n_d),                           !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir1.x,15,8),                    !
+          25);                                !
+     GOTO loop;                               ! Back to loop
+
+   ELIF bidx = edit2 THEN                     ! Event in edit 2
+     rad     := GET_EDIT(main_id,edit2);      ! Get input data    
+     sdir1.y :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit2);                  ! 
+     edit2:=CRE_EDIT(main_id,                 !
+        VEC(col2_dx,n_d),                          !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir1.y,15,8),                    !
+          25);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit3 THEN                     ! Event in edit 3
+     rad     := GET_EDIT(main_id,edit3);      ! 
+     sdir1.z :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit3);                  !
+     edit3:=CRE_EDIT(main_id,                 !
+        VEC(col3_dx,n_d),                          !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir1.z,15,8),                    !
+          25);                                !
+     GOTO loop;                               !
+
+
+   ELIF bidx = edit4 THEN                     !
+     rad     := GET_EDIT(main_id,edit4);      ! 
+     sdir2.x :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit4);                  ! 
+     edit4:=CRE_EDIT(main_id,                 ! sdir2
+        VEC(col1_dx,n_d+n_d*2 ),                    !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir2.x,15,8),                    !
+          25);                                !
+     GOTO loop;                               ! 
+   ELIF bidx = edit5 THEN                     ! 
+     rad     := GET_EDIT(main_id,edit5);      ! 
+     sdir2.y :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit5);                  ! 
+     edit5:=CRE_EDIT(main_id,                 !
+        VEC(col2_dx,n_d+n_d*2 ),                   !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir2.y,15,8),                    !
+          25);                                !
+     GOTO loop;                               !
+   ELIF bidx = edit6 THEN                     ! 
+     rad     := GET_EDIT(main_id,edit6);      ! 
+     sdir2.z :=        VAL(rad) ;             !
+     DEL_WIN(main_id,edit6);                  ! 
+     edit6:=CRE_EDIT(main_id,                 !
+        VEC(col3_dx,n_d+n_d*2 ),                   !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(sdir2.z,15,8),                    !
+          25);                                !
+     GOTO loop;                               !
+
+   ELIF bidx = edit7 THEN                     ! Event in edit 7
+     rad    := GET_EDIT(main_id,edit7);       ! 
+     f_energy :=ROUND(VAL(rad));              !
+     DEL_WIN(main_id,edit7);                  !
+     edit7:=CRE_EDIT(main_id,                 ! f_energy
+        VEC(col1_dx,n_d+n_d*4 ),                    !
+        0.2*main_dx,n_h,0.008*main_dx,         !
+        " "+STR(f_energy,1,0) ,               !
+          80);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit8 THEN                     ! Event in edit 8
+     rad      := GET_EDIT(main_id,edit8);     ! 
+     ivstart  :=ROUND(VAL(rad));              !
+     DEL_WIN(main_id,edit8);                  !
+     edit8:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*6 ),                   !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        " "+STR(ivstart,1,0),                 !
+          11);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit9 THEN                     ! Event in edit 9
+     rad      := GET_EDIT(main_id,edit9);     ! 
+     startu   :=      VAL(rad) ;              !
+     DEL_WIN(main_id,edit9);                  !
+     edit9:=CRE_EDIT(main_id,                 !
+        VEC(col1_dx ,n_d+n_d*8 ),                   !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(startu,10,6),                     !
+          16);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit10 THEN                    ! Event in edit 10
+     rad      := GET_EDIT(main_id,edit10);    ! 
+     cscale   :=      VAL(rad) ;              !
+     DEL_WIN(main_id,edit10);                 !
+     edit10:=CRE_EDIT(main_id,                !
+        VEC(col1_dx,n_d+n_d*10),                    !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(cscale,10,5),                     !
+          80);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit11 THEN                    ! Event in edit 11
+     rad      := GET_EDIT(main_id,edit11);    ! 
+     ydelta   :=      VAL(rad) ;              !
+     DEL_WIN(main_id,edit11);                 !
+     edit11:=CRE_EDIT(main_id,                !
+        VEC(0.52*main_dx,n_d+n_d*4 ),                !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(ydelta,-10,4),                    !
+          11);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit12 THEN                    ! Event in edit 12
+     rad      := GET_EDIT(main_id,edit12);    ! 
+     ivstart  :=ROUND(VAL(rad));              !
+     DEL_WIN(main_id,edit12);                 !
+     edit12:=CRE_EDIT(main_id,                !
+        VEC(0.52*main_dx,n_d+n_d*6 ),                !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        " "+STR(ivend ,1,0),                  !
+          11);                                !
+
+     GOTO loop;                               !
+
+   ELIF bidx = edit13 THEN                    ! Event in edit 13
+     rad      := GET_EDIT(main_id,edit13);    ! 
+     endu     :=      VAL(rad) ;              !
+     DEL_WIN(main_id,edit13);                 !
+     edit13:=CRE_EDIT(main_id,                !
+        VEC(0.52*main_dx,n_d+n_d*8 ),                !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(endu  ,10,6),                     !
+          16);                                !
+
+     GOTO loop;                               !
+
+
+   ELIF bidx = edit14 THEN                    ! Event in edit 14
+     rad      := GET_EDIT(main_id,edit14);    ! 
+     ascale   :=      VAL(rad) ;              !
+     DEL_WIN(main_id,edit14);                 !
+     edit14:=CRE_EDIT(main_id,                !
+        VEC(0.52*main_dx,n_d+n_d*10),                !
+        0.3*main_dx,n_h,0.008*main_dx,         !
+        STR(ascale,10,5),                     !
+          16);                                !
+
+     GOTO loop;                               !
+
+! +++
+!  Buttons for blank (plot) flags
+! ---
+
+   ELIF bidx = bid3   THEN                    ! Event in bid3    
+     IF  b_cur1 =  0          THEN            ! Plot (blank) flag 
+       b_cur1 := 1;                           !
+     ELSE                                     !
+       b_cur1 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+   ELIF bidx = bid4   THEN                    ! Event in bid4    
+     IF  b_cur2 =  0          THEN            ! Plot (blank) flag 
+       b_cur2 := 1;                           !
+     ELSE                                     !
+       b_cur2 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+   ELIF bidx = bid5   THEN                    ! Event in bid5    
+     IF  b_cur3 =  0          THEN            ! Plot (blank) flag 
+       b_cur3 := 1;                           !
+     ELSE                                     !
+       b_cur3 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+   ELIF bidx = bid6   THEN                    ! Event in bid6    
+     IF  b_cur4 =  0          THEN            ! Plot (blank) flag 
+       b_cur4 := 1;                           !
+     ELSE                                     !
+       b_cur4 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+   ELIF bidx = bid7   THEN                    ! Event in bid7    
+     IF  b_cur5 =  0          THEN            ! Plot (blank) flag 
+       b_cur5 := 1;                           !
+     ELSE                                     !
+       b_cur5 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+   ELIF bidx = bid8   THEN                    ! Event in bid8    
+     IF  b_cur6 =  0          THEN            ! Plot (blank) flag 
+       b_cur6 := 1;                           !
+     ELSE                                     !
+       b_cur6 := 0;                           !
+     ENDIF;                                   !
+     GOTO loop;                               !
+
+! +++
+!  Edit window OK
+! ---
+
+   elif bidx = bid1   THEN                    ! Event in bid1    
+     rad     := GET_EDIT(main_id,edit1);      ! 
+     sdir1.x :=        VAL(rad) ;             !
+     rad     := GET_EDIT(main_id,edit2);      !
+     sdir1.y :=        VAL(rad) ;             !
+     rad     := GET_EDIT(main_id,edit3);      ! 
+     sdir1.z :=        VAL(rad) ;             !
+     rad     := GET_EDIT(main_id,edit4);      ! 
+     sdir2.x :=        VAL(rad) ;             !
+     rad     := GET_EDIT(main_id,edit5);      ! 
+     sdir2.y :=        VAL(rad) ;             !
+     rad     := GET_EDIT(main_id,edit6);      ! 
+     sdir2.z :=        VAL(rad) ;             !
+ IF w_case="s_nofile" OR w_case="s_rdfile" THEN !
+   ;                                            !
+ ELSE                                           !
+     rad     := GET_EDIT(main_id,edit7);      ! 
+     f_energy :=ROUND(VAL(rad));              !
+     rad      := GET_EDIT(main_id,edit10);    ! 
+     cscale   :=      VAL(rad) ;              !
+     rad      := GET_EDIT(main_id,edit11);    ! 
+     ydelta   :=      VAL(rad) ;              !
+     rad      := GET_EDIT(main_id,edit14);    ! 
+     ascale   :=      VAL(rad) ;              !
+ ENDIF;                                        !
+     rad      := GET_EDIT(main_id,edit8);     ! 
+     ivstart  :=ROUND(VAL(rad));              !
+     rad      := GET_EDIT(main_id,edit9);     ! 
+     startu   :=      VAL(rad) ;              !
+     rad      := GET_EDIT(main_id,edit12);    ! 
+     ivstart  :=ROUND(VAL(rad));              !
+     rad      := GET_EDIT(main_id,edit13);    ! 
+     endu     :=      VAL(rad) ;              !
+     DEL_WIN(main_id);                        ! Erase main window  
+     GOTO slut;                               ! End of data input
+
+   ELSE
+     GOTO loop;                               ! Back to loop
+   ENDIF;
+
+! +++
+slut:;                                        ! Label: Input finished
+! ---
+
+! +++
+!  4. Write data to file .MENUE
+! ---
+
+   OPEN(idat,"W",f_name);                     ! Open MENUE file  W
+
+
+
+   OUTFLT(idat, sdir1.x, 15,10);              !
+   OUTFLT(idat, sdir1.y, 15,10);              !
+   OUTFLT(idat, sdir1.z, 15,10);              !
+   OUTSTR(idat, "    Direction 1");           !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, sdir2.x, 15,10);              !
+   OUTFLT(idat, sdir2.y, 15,10);              !
+   OUTFLT(idat, sdir2.z, 15,10);              !
+   OUTSTR(idat, "    Direction 2");           !
+   OUTLIN(idat);                              !
+   OUTINT(idat, ivstart );                    !
+   OUTINT(idat, ivend   );                    !
+   OUTSTR(idat, "    Strips     ");           !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, startu , 15,10);              !
+   OUTFLT(idat, endu   , 15,10);              !
+   OUTSTR(idat, "    U values   ");           !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, ydelta , 15,10);              !
+   OUTSTR(idat, "    Delta y    ");           !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, cscale , 15,10);              !
+   OUTSTR(idat, "    Chord scale");           !
+   OUTLIN(idat);                              !
+   OUTFLT(idat, ascale , 15,10);              !
+   OUTSTR(idat, "    Angle scale");           !
+   OUTLIN(idat);                              !
+   OUTINT(idat, f_energy);                    !
+   OUTSTR(idat, "    Flag energy");           !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur1  );                    !
+   OUTSTR(idat, "    Plot curve 1");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur2  );                    !
+   OUTSTR(idat, "    Plot curve 2");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur3  );                    !
+   OUTSTR(idat, "    Plot curve 3");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur4  );                    !
+   OUTSTR(idat, "    Plot curve 4");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur5  );                    !
+   OUTSTR(idat, "    Plot curve 5");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, b_cur6  );                    !
+   OUTSTR(idat, "    Plot curve 6");          !
+   OUTLIN(idat);                              !
+   OUTINT(idat, graphic );                    !
+   OUTSTR(idat, "    Graphic     ");          !
+   OUTLIN(idat);                              !
+  
+
+   CLOSE(idat);                               ! Close MENUE file
+
+
+ENDMODULE

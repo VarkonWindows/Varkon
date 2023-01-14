@@ -1,0 +1,25 @@
+! ***************** fanga_obj2  ****************************
+!
+! +++
+! This module "registrates" an objective function value for an
+! optimization algorithm. Objective function in this case is:
+! Energy for FANGA curve chord start-mid silhouette
+!
+! Revision history
+! ________________
+!
+! 1995-06-21 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Registrates energy for FANGA curve chord start-mid silhouette
+!sdescs Registrerar energi f|r FANGA kurva korda start-mitt sihuette
+
+GLOBAL GEOMETRY MODULE fanga_obj2  (
+FLOAT    energy  :=   300.0        >"Energy for curve");
+
+BEGINMODULE
+
+; ! No calculations
+
+ENDMODULE

@@ -1,0 +1,250 @@
+!**************** ma_curiso  ***************************
+!s+++
+! CUR_ISO 
+! ________
+!
+! Funktionen skapar en kurva p} en yta d{r kurvan har ett  
+! konstant parameterv{rde. Detta kallas en isoparameter
+! kurva.
+! 
+! Isoparameter kurvor finns i de flesta system, men de
+! {r egentligen en typ av kurvor man b|r undvika att
+! anv{nda. I en perfekt yta (t.ex ett plan) kan iso-
+! parameterkurvorna mycket v{l oscillera och det kan 
+! finnas steg (glapp) i kurvorna trots att det inte
+! {r n}got glapp i ytan (ytan {r bra). Det senare 
+! kontrolleras, eftersom kurvor med glapp inte 
+! accepteras i systemet.
+!
+! I en del fall kan isoparameterkurvorna emellertid vara
+! bra att anv{nda. I systemet anv{nds de till exempel f|r
+! den grafiska representationen av ytor. F|r heltalsv{rden
+! (V= 0, 1, ... ) i en SUR_CONIC yta {r de identiska med
+! indata kurvorna till ytan och alla konstant U kurvor
+! (U= 0.1, 2.8, ..) {r sammansatt, plan k{gelsnittskurva
+! dvs CUR_CONIC(#.. , "PROJ", .... )
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: CUR_ISO (identitet, yta, riktn, isov, start, slut : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+! riktn   (STRING) - "U" = Konstant U,  "V" = konstant V
+! isov    (FLOAT)  - Parameter v{rde f|r isoparameter
+! start   (FLOAT)  - Parameter v{rde f|r start punkt 
+! slut    (FLOAT)  - Parameter v{rde f|r slut  punkt 
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+! 
+! CUR_ISO (#10, #5, "U", 3.0, 0.0, 7.0 );
+! 
+! Skapar en kurva (#10) som har det konstanta parameterv{rdet 
+! U= 3.0 p} yta (#5). Kurvan startar i punkten V= 0.0 och slutar 
+! i punkt V= 7.0
+!s---
+!e+++
+! CUR_ISO 
+! ________
+!
+! The function creates a curve on a surface with a constant parameter
+! value. Such a curve is called an isoparametric curve.
+!
+! The use of isoparametric curves shall be avoided.              
+! The reason is that the quality of the curves may be 
+! very poor. This may be the case also for a high 
+! quality surface. It is actually more likely that the
+! isoparametric curves will be bad in a high quality
+! surface. Sophisticated surface creation algorithms
+! are sometimes based on reparametrisation which often
+! will result in highly oscillating isoparametrics, 
+! isoparametrics with steps, etc.
+! 
+! Isoparametrics (curves in general) with steps are
+! not accepted in the system. The function will check
+! this.
+!
+! There is however cases when the isoparametric curves
+! can (and should be) used. The Varkon system uses them 
+! for instance for the graphical representation of surfaces.
+! For a SUR_CONIC (LFT_SUR) surface will all constant 
+! U curves (U= 0.3, 4.8, ..) be composite, planar conic
+! curves, i.e CUR_CONIC(#.. , "PROJ", ... ) curves. And
+! integer V curves (V= 0.0, 1.0, 2.0, .. ) will be identical
+! to the SUR_CONIC input curves.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: CUR_ISO (identity, surf, direct, isov, start, end : attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Previously defined surface
+! direct  (STRING) - "U" = Constant U,  "V" = Constant V
+! isov    (FLOAT)  - Parameter value for isoparameter
+! start   (FLOAT)  - Parameter value for start point 
+! end     (FLOAT)  - Parameter value for end   point 
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Example:
+! 
+! CUR_ISO (#10, #5, "U", 3.0, 0.0, 7.0 );
+! 
+! Creates a curve (#10) which has the constant parameter value
+! U= 3.0 on the surface (#5). The curve starts in point V= 0.0
+! and ends in point V= 7.0
+!e---
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Originally written        Gunnar Liden
+! 1995-01-20 Surface limits as default Gunnar Liden
+! 1995-03-15 GLOBAL_REF                Gunnar Liden
+! 1995-05-16 sdesc added               Gunnar Liden
+
+!sdesce Add CUR_ISO statement to active module (create isoparametric)
+!sdescs Addera CUR_ISO sats till activa modulen (skapa isoparameterlinje)    
+
+MACRO MODULE ma_curiso  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING sisod*10;               ! Type of isoparameter
+  STRING sisoval*25;             ! Isoparameter value as string
+  STRING sstart*25;              ! Start        value as string
+  STRING send*25;                ! End          value as string
+ 
+
+  STRING select*40;              ! Select prompt string
+  STRING p_isod*40;              ! Iso direction prompt string
+  STRING p_isov*40;              ! Isoparameter prompt string
+  STRING p_start*40;             ! Start point  prompt string
+  STRING p_end*40;               ! End   point  prompt string
+  STRING p_isovlim*40;           ! Isov  limit  prompt string
+  STRING p_isoelim*40;           ! Isoe  limit  prompt string
+
+  STRING ermess1*40;             ! Error iso type      
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface";     !
+  p_isod:= "Isoparameter " +     !
+    "direction (U or V)";        !
+  p_isov:= "Isoparameter value"; !
+  p_start:= "Parameter for " +   !
+    "start point";               !
+  p_end  := "Parameter for " +   !
+    "end point";                 !
+  ermess1:="Isoparameter "+      !
+       "direction not U or V";   !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta";        !
+  p_isod:= "Isoparameter " +     !
+    "riktning (U eller V)";      !
+  p_isov:= "Isoparameter v{rde"; !
+  p_start:= "Parameter f|r " +   !
+    "start punkt";               !
+  p_end  := "Parameter f|r " +   !
+    "slut punkt";                !
+  ermess1:="Isoparameter "+      !
+    "riktning inte U eller V";   !
+ELSE                             !
+  EXIT("ed_curiso: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:= "GLOBAL_REF("+s_ids+")"; !
+
+GETSURH(s_id,"NPATU",npatu);     ! Retrieve number of U patches
+GETSURH(s_id,"NPATV",npatv);     ! Retrieve number of V patches
+
+! 3. Isoparameter type
+! ____________________
+
+sisod := INPMT(p_isod,           ! Interactive input of iso type
+"U",30);                         !
+IF sisod  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+IF   sisod="V" OR sisod="v" THEN !
+  p_isovlim:=" (0.0 - "          ! Isov  limit  prompt string
+  +STR(npatv,-4,1) + ")";        ! 
+  p_isoelim:=                    ! Isoe  limit  prompt string
+  +STR(npatu,-4,1);              ! 
+ELIF sisod="U" OR sisod="u" THEN !
+  p_isovlim:=" (0.0 - "          ! Isov  limit  prompt string
+  +STR(npatu,-4,1) + ")";        ! 
+  p_isoelim:=                    ! Isoe  limit  prompt string
+  +STR(npatv,-4,1);              ! 
+ELSE                             !
+  EXIT( ermess1 );               !
+ENDIF;                           !
+
+sisod:=CHR(34)+sisod+CHR(34);    ! Add " for string
+
+! 4. Isoparameter value
+! _____________________
+
+sisoval:= INPMT(p_isov+p_isovlim,! Interactive input of isoval
+"",25);                          !
+IF sisoval = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Start parameter value
+! _________________________
+
+sstart:= INPMT(p_start,          ! Interactive input of start value
+"0.0",25);                       !
+IF sstart = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. End   parameter value
+! _________________________
+
+send  := INPMT(p_end  ,          ! Interactive input of end   value
+p_isoelim,25);                   !
+IF send   = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 7. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("CUR_ISO",        ! Create MBS statement 
+s_ids, sisod, sisoval,           !
+sstart, send);                   !
+
+ENDMODULE 
+

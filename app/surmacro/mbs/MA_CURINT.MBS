@@ -1,0 +1,185 @@
+!**************** ma_curint  ***************************
+!s+++
+! CUR_INT 
+! ________
+!
+! Funktionen skapar en sk{rningskurva mellan en yta och ett
+! plan. Planet kan vara ett B_PLANE eller X/Y planet i ett
+! koordinatsystem.
+! 
+! N{r b}da ytorna {r B-plan bildas en r{t linje. Linjens
+! begr{nsningar best{ms av B-planens begr{nsningar. F|r   
+! normalfallet (gren= 1) inneb{r detta att linjen ligger
+! innanf|r b}da planens begr{nsningspolygon. Men som option
+! kan begr{nsningpolygon 1 (gren= -1) eller polygon 2 (gren= -2)
+! v{ljas f|r att begr{nsa linjen.
+!
+! N{r b}da ytorna {r av typ FAC_SUR blir ska{rningsresultatet 
+! r{ta (osorterade) linjer. \nskad gren av sk{rningskurva kan
+! ej ges f|r detta fall.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: CUR_INT (identitet, yta1, yta2, gren : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta1    (REF)    - Tidigare skapad yta eller B-plan
+! yta2    (REF)    - Tidigare skapad yta, B-plan eller koordinatsystem
+! gren    (INT)    - \nskad gren av sk{rningskurva   
+!                    Om 1000 l{ggs till gren erh}lls
+!                    kurvans U,V representation
+!                    F|r B-plan sk{rning kan -1 och -2 ges f|r att
+!                    bara begr{nsa linjen med polygon 1 eller 2
+!
+! Attribut: PEN, LEVEL, BLANK, CFONT och CDASHL
+!
+! Exempel:
+! 
+! CUR_INT (#10, #5, #6, 1 );
+! 
+! Skapar en kurva (#10) som {r sk{rningen mellan yta #5 och #6.
+! Gren 1 av sk{rningen |nskas.
+!s---
+!e+++
+! CUR_INT 
+! ________
+!
+! The function creates an intersect curve between a surface and a plane.
+! The plane can be a B_PLANE or the X/Y plane of a coordinate system.
+!
+! When both surfaces are bounded planes (B_PLANE's) will the output
+! intersect be a straight line. The limits of the line is defined
+! by the two (three or four points) polygons for the planes. As
+! options may only polygon 1 (branch= -1) or polygon 2 (branch= -2)
+! limit the curve.
+!
+! When both surfaces are of type FAC_SUR will the resulting intersect
+! be a set of straight lines. 
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: CUR_INT (identity, surf1, surf2, branch : attribute)
+!
+! Parameters:
+!
+! surf1   (REF)    - Previously defined surface or B-plane
+! surf2   (REF)    - Previously defined B-plane or coord. system
+! branch  (INT)    - Requested branch of the intersect  
+!                    If 1000 is added to branch will output
+!                    be the U,V curve.
+!                    The limit of a B-planes intersect will be defined
+!                    by polygon 1 for branch= -1 and polygon 2 for 
+!                    branch= -2.
+!                    
+!
+! Attribute: PEN, LEVEL, BLANK, CFONT and CDASHL
+!
+! Example:
+! 
+! CUR_INT (#10, #5, #6, 1 );
+! 
+! Creates a curve (#10) which is the intersect between surface #5
+! and plane #6 (B_PLANE or the XY-plane of a coordinate system. 
+! The first intersect curve branch is requested.
+!e---
+
+!sdesce Add CUR_INT statement to active module (calculate intersect)
+!sdescs Addera CUR_INT sats till aktiva modulen (ber{kna sk{rning)    
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Originally written    Gunnar Liden
+! 1995-03-15 GLOBAL_REF            Gunnar Liden
+! 1995-05-16 sdesc added           Gunnar Liden
+! 1996-01-06 B-plane 32678 added   Gunnar Liden
+
+MACRO MODULE ma_curint  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id1;                  ! Surface 1 identity
+  STRING s_id1s*132;             ! Surface 1 identity as string
+  REF    s_id2;                  ! Surface 2 identity
+  STRING s_id2s*132;             ! Surface 2 identity as string
+
+
+  STRING sbranch*25;             ! Requested branch as string
+ 
+
+  STRING select*50;              ! Select 1 prompt string
+  STRING select2*50;             ! Select 2 prompt string
+  STRING p_branch*50;            ! Branch  prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface or "+ !
+           "b-plane";            !
+  select2:= "Select plane " +    !
+   "(coord. system or b-plane)"; !
+  p_branch:= "Requested branch"+ !
+    " number ";                  !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta eller "+ !
+           "b-plan";             !
+  select2:= "Peka p} plan (" +   !
+  "koord. system eller b-plan)"; !
+  p_branch:= "Nummer f|r "+      !
+  " |nskad gren av sk{rningen "; !
+ELSE                             !
+  EXIT("ma_curint: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface 1
+! ___________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id1:= IDENT(16+32768);         ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_id1s:= RSTR(s_id1);            ! Surface identity as string
+IF s_id1s = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_id1s:="GLOBAL_REF("+s_id1s+")";!
+
+! 3. Select surface 2
+! ___________________
+
+PSH_PMT(select2);                ! Select string to screen
+s_id2:= IDENT(8192+32768);       ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_id2s:= RSTR(s_id2);            ! Surface identity as string
+IF s_id2s = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_id2s:="GLOBAL_REF("+s_id2s+")";!
+
+! 4. Requested branch   
+! ____________________
+
+sbranch:= INPMT(p_branch,        ! Interactive input of branch 
+"",25);                          !
+IF sbranch = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("CUR_INT",        ! Create MBS statement 
+s_id1s, s_id2s, sbranch);        !
+
+ENDMODULE 
+

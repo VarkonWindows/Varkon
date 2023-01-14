@@ -1,0 +1,149 @@
+!**************** ed_sure *******************************
+!s+++
+! Med funktionen kan indata till en importerad yta    
+! {ndras.
+!s---
+!
+!e+++
+! The function modifies the input data for an imported
+! surface.
+!e---
+!
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1995-05-16 Comments added Gunnar Liden
+!
+!******************************************************
+
+!sdesce Change input data to surface defined by SUR_EXDEF
+!sdescs [ndra indata till yta definierad med SUR_EXDEF
+
+MACRO MODULE ed_sure (
+REF  s_id           >"Select imported surface / Peka p} importerad yta");
+
+CONSTANT INT language= 1;         ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING s_type*20;               ! Surface function type
+
+  STRING error1*30;               ! Error message 1
+
+  STRING menueh*30;               ! Menue header    
+  STRING menue1*30;               ! Menue 1
+  STRING menue2*30;               ! Menue 2
+  STRING menue3*30;               ! Menue 3
+  
+  STRING p_alt*30;                ! Prompt for menue alternative
+  STRING p_sur_n*80;              ! Prompt  for new     surface type
+  STRING p_sur_c*80;              ! Message for current surface type
+  STRING p_typ_n*80;              ! Prompt  for new     file   type
+  STRING p_typ_c*80;              ! Message for current file   type
+  STRING p_nam_n*80;              ! Prompt  for new     file   name 
+  STRING p_nam_c*80;              ! Message for current file   name 
+
+  INT    pnum;                    ! Parameter number
+  STRING par*80;                  ! Parameter value as string
+  STRING alt*2;                   ! Menue alternative
+
+BEGINMODULE 
+
+! 1. Definition of prompt and error strings
+! _________________________________________
+
+IF   language = 1 THEN            ! English
+  error1:= "Not a SUR_EXDEF "+    !
+    "surface";                    !
+  menueh:= "SUR_EXDEF";           !
+  menue1:= "input file";          !
+  menue2:= "type of file";        !
+  menue3:= "surface type";        !
+  p_alt := "Select edit option";  !
+  p_nam_n:=" New input file ";    !
+  p_nam_c:="Current input " +     ! 
+           "file is ";            !
+  p_sur_n:=" New surface type   ";!
+  p_sur_c:="Current surface " +   ! 
+           "type is ";            !
+  p_typ_n:=" New file type ";     !
+  p_typ_c:="Current file "+       !
+           "type is ";            !
+ELIF language = 2 THEN            ! Swedish
+  error1:= "Inte en SUR_EXDEF "+  !
+    "yta";                        !
+  menueh:= "SUR_EXDEF";           !
+  menue1:= "indata fil";          !
+  menue2:= "typ av fil";          !
+  menue3:= "yt-typ";              !
+  p_alt := "Vad skall {ndras ? "; !
+  p_nam_n:=" Ny indata fil ";     !
+  p_nam_c:="Nuvarande fil " +     ! 
+           "{r ";                 !
+  p_sur_n:=" Ny typ av ut-yta ";  !
+  p_sur_c:="Nuvarande ut-yta {r ";! 
+  p_typ_n:=" Ange ny typ av fil ";!
+  p_typ_c:="Nuvarande filtyp "+   !
+           "{r ";                 !
+ELSE                              !
+  EXIT("ed_sure: Language error");!
+ENDIF;                            !
+
+
+! 2. Check surface creation method
+! ________________________________
+
+s_type:=GETP_MBS(s_id,0);         ! Retrieve MBS procedure name
+
+IF  s_type <> "SUR_EXDEF"  THEN   ! SUR_EXDEF ?
+     EXIT(error1);                !
+ENDIF;                            !
+
+! 3. Definition of edit menue
+! ___________________________
+
+CRE_MEN(100, menueh,              ! Create menue 100
+             menue1,"a1",         !
+             menue2,"a2",         !
+             menue3,"a3");        !
+
+
+! 4. Interactive input of edit data
+! _________________________________
+
+PSH_MEN(100);                     ! Show menue
+
+alt:=GET_ALT(p_alt);              ! Get edit alternative
+ 
+IF   alt = "a1" THEN              ! File name
+  pnum:=1;                        ! Parameter no 1
+  par:=GETP_MBS(s_id,pnum);       ! Current parameter value
+  PSH_PMT(p_nam_c+par+p_nam_n);   ! Prompting message
+  par:=INPMT(p_nam_n,par,80);     ! Get file name
+ELIF alt = "a2" THEN              ! File type
+  pnum:=2;                        ! Parameter no 2
+  par:=GETP_MBS(s_id,pnum);       ! Current parameter value
+  PSH_PMT(p_typ_c+par);           ! Prompting message
+  par:=INPMT(p_typ_n,par,80);     ! Get file type
+ELIF alt = "a3" THEN              ! Surface type
+  pnum:=3;                        ! Parameter no 1
+  par:=GETP_MBS(s_id,pnum);       ! Current parameter value
+  PSH_PMT(p_sur_c+par+p_sur_n);   ! Prompting message
+  par:=INPMT(p_sur_n,par,80);     ! Get surface type
+ELSE                              ! No alternative was selected
+  POP_MEN();                      ! Erase menue
+  EXIT();                         ! Exit (no error message)
+ENDIF;                            !
+
+POP_MEN();                        ! Erase menue
+POP_PMT();                        ! Erase prompting message
+
+! 5. Modify MBS statement
+! ______________________
+
+IF par <> "" THEN                 ! Update MBS if par not is empty
+  UPDP_MBS(s_id,pnum,par);        !
+ENDIF;                            !
+
+ENDMODULE 

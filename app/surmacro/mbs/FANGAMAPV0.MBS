@@ -1,0 +1,258 @@
+!**************** fangamapv0 ***************************
+!s+++
+! FANGA analys av en yta med modulen fangaprtv0
+! _____________________________________________
+!
+! Funktionen l{gger till ett anrop av modulen fangaprtv0 sist
+! i den aktiva modulen.
+!
+! Modulen fangaprtv0 analyserar kvaliten hos en LFT_SUR yta.   
+! 
+!s---
+!e+++
+! FANGA analysis of a surface with module fangaprtv0
+! __________________________________________________
+!
+! This module adds a call of module fangaprtv0 as the last
+! statement in the active module.
+!
+! The module fangaprtv0 analysis the quality of a LFT_SUR surface.    
+!e---
+
+! Revision history
+! ________________
+!
+! 1995-10-21 Gunnar Liden
+
+!sdesce Add part fangaprtv0 to active module (analyse LFT_SUR)
+!sdescs Addera fangaprtv0 anrop till aktiva modulen (analysera LFT_SUR)    
+
+MACRO MODULE fangamapv0 ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING select*50;              ! Select prompt string 1
+  STRING select2*50;             ! Select prompt string 2
+  STRING svie1*80;               ! Viewing   direction as string
+  STRING svie2*80;               ! Viewing   direction as string
+  STRING s_ivstart*5;            ! Start V line (strip no) as string
+  STRING s_ivend*5;              ! End   V line (strip no) as string
+  STRING s_startu*5;             ! Start spine value as string
+  STRING s_endu*5;               ! End   spine value as string
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+  STRING spine_id_s*132;         ! Spine   identity as string
+
+
+  INT    stype;                  ! Type of surface
+
+  STRING ermess1*50;             ! Error not a LFT_SUR   
+
+  REF    a_id;                   ! ADD_MBS identity
+
+  VECTOR sdir1;                  ! Direction for start silhouette
+  VECTOR sdir2;                  ! Direction for end   silhouette
+  INT    ivstart;                ! Start strip number (start limit curve number)
+  INT    ivend;                  ! End strip number (Eq. start strip no ==> one strip)
+  FLOAT  startu;                 ! Start U section value ( <CR> ==> Whole surface)
+  FLOAT  endu;                   ! End   U section value (= -1 <==> not defined)
+  FLOAT  ydelta;                 ! Delta y for FANGA system
+  FLOAT  cscale;                 ! Scale factor for chord curves
+  FLOAT  ascale;                 ! Scale factor for angle curves
+  INT    f_energy;               ! Eq. 1: Calculate energy for all the FANGA curves
+  INT    b_cur1;                 ! Eq. 1: Blank Eq. 0: Show crv chord start-end silhouette
+  INT    b_cur2;                 ! Eq. 1: Blank Eq. 0: Show crv chord start-mid silhouette
+  INT    b_cur3;                 ! Eq. 1: Blank Eq. 0: Show crv chord   mid-end silhouette
+  INT    b_cur4;                 ! Eq. 1: Blank Eq. 0: Show crv angle start-end silhouette
+  INT    b_cur5;                 ! Eq. 1: Blank Eq. 0: Show crv angle start-mid silhouette
+  INT    b_cur6;                 ! Eq. 1: Blank Eq. 0: Show crv angle   mid-end silhouette
+  STRING c_flag*3;               ! Eq NO: No calculation
+  INT    f_output;               ! Flag for output =0: No list =1: List ");
+  INT    graphic;                !  (not yet implemented)
+  REF    sur_id;                 ! Surface identity
+  REF    spine_id;               ! Spine   identity
+  STRING w_case*9;               ! Window case 
+                                 ! s_nofile: Statement CUR_FANGA, do not read .MENUE data
+                                 ! s_rdfile: Statement CUR_FANGA, read        .MENUE data
+                                 ! p_nofile: Part fangaprtv0    , do not read .MENUE data
+                                 ! p_rdfile: Part fangaprtv0    , read        .MENUE data
+
+  STRING  s_ydelta*20;           ! Delta y for FANGA system as string
+  STRING  s_cscale*20;           ! Scale factor for chord curves as string
+  STRING  s_ascale*20;           ! Scale factor for angle curves as string
+  STRING  s_f_energy*20;         ! Calculate energy for the curves as string
+  STRING  s_b_cur1*20;           ! Show crv chord start-end silhouette as string
+  STRING  s_b_cur2*20;           ! Show crv chord start-mid silhouette as string
+  STRING  s_b_cur3*20;           ! Show crv chord   mid-end silhouette as string
+  STRING  s_b_cur4*20;           ! Show crv angle start-end silhouette as string
+  STRING  s_b_cur5*20;           ! Show crv angle start-mid silhouette as string
+  STRING  s_b_cur6*20;           ! Show crv angle   mid-end silhouette as string
+  STRING  s_f_output*20;         ! Flag for output as string
+
+BEGINMODULE 
+
+! Definition of prompt strings
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select surface" +    !
+  " (must be a LFT_SUR surface)";!
+  select2:= "Select spine curve"+!
+  " (#0 for no spine)";          !
+  ermess1:="FANGA only for a " + !
+  "LFT_SUR (SUR_CONIC) surface"; !
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} yta" +       !
+  " (m}ste vara en LFT_SUR)";    !
+  select2:= "Peka p} spine"+     !
+  " (#0 for no spine)";          !
+  ermess1:="FANGA bara f|r " +   !
+  "SUR_CONIC (LFT_SUR) yta";     !
+ELSE                             !
+  EXIT("fangamapv0: "+           !
+       "Language error");        !
+ENDIF;                           !
+
+
+! Select surface
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+s_ids:= "GLOBAL_REF("+s_ids+")"; !
+s_id := GLOBAL_REF(s_id);        !
+
+GETSURH(s_id,"SUR_TYPE",stype);  ! Retrieve surface type
+IF  stype <> 3 THEN              ! Check that it is LFT_SUR surface
+EXIT("CUR_FANGA "+ermess1);      !
+ENDIF;                           !
+
+
+! Select spine curve
+
+PSH_PMT(select2);                ! Select string to screen
+spine_id:= IDENT(8);             ! Interactive curve selection
+POP_PMT();                       ! Erase message to screen
+
+spine_id_s:= RSTR(spine_id);     ! Spine curve identity as string
+IF spine_id_s  = "#0.1" THEN     !
+  ;                              ! 
+ELSE                             !
+spine_id_s:=                     !
+"GLOBAL_REF("+spine_id_s+")";    !
+spine_id := GLOBAL_REF(spine_id);!
+ENDIF;                           !
+
+w_case   := "p_rdfile";          ! Read .MENUE file with previous input
+
+PART(#2, fangawinv0 (            ! Get input from X window
+sdir1, sdir2, ivstart, ivend,    !
+startu, endu, ydelta,            !
+cscale, ascale, f_energy,        !
+b_cur1, b_cur2, b_cur3,          !
+b_cur4, b_cur5, b_cur6,          !
+c_flag, graphic, s_id, spine_id, !
+w_case));                        !
+IF  c_flag = "NO"    THEN        ! Cancel calculation ?
+EXIT();                          !
+ENDIF;                           !
+
+
+! Viewing direction 1
+svie1:="VEC( " +                 !
+   STR(sdir1.x,15,8)+ ", "+      !
+   STR(sdir1.y,15,8)+ ", "+      !
+   STR(sdir1.z,15,8)+ " )";      !
+
+! Viewing direction 2
+svie2:="VEC( " +                 !
+   STR(sdir2.x,15,8)+ ", "+      !
+   STR(sdir2.y,15,8)+ ", "+      !
+   STR(sdir2.z,15,8)+ " )";      !
+
+! Start strip
+s_ivstart:= STR(ivstart,-1,0);   !
+
+! End   strip
+s_ivend  := STR(ivend  ,-1,0);   !
+
+! Start spine
+s_startu := STR(startu,-15,8);   !
+
+! End   spine
+s_endu   := STR(endu  ,-15,8);   !
+
+
+! Delta y for FANGA system
+s_ydelta := STR(ydelta,15,8); 
+
+! Scale factor for chord curves 
+s_cscale := STR(cscale,15,8);
+
+! Scale factor for angle curves 
+s_ascale := STR(ascale,15,8);
+
+! Calculate energy for the curves
+s_f_energy := STR(f_energy,1,0);
+
+! Show crv chord start-end silhouette
+s_b_cur1   := STR(b_cur1,1,0);
+! Show crv chord start-mid silhouette
+s_b_cur2   := STR(b_cur2,1,0);
+! Show crv chord   mid-end silhouette
+s_b_cur3   := STR(b_cur3,1,0);
+! Show crv angle start-end silhouette
+s_b_cur4   := STR(b_cur4,1,0);
+! Show crv angle start-mid silhouette
+s_b_cur5   := STR(b_cur5,1,0);
+! Show crv angle   mid-end silhouette
+s_b_cur6   := STR(b_cur6,1,0);
+
+! Flag for output
+s_f_output := "1";
+
+
+! LST_INI("fangamapv0 Debug");
+! LST_LIN(s_ids);
+! LST_LIN(spine_id_s);
+! LST_LIN(svie1     );
+! LST_LIN(svie2     );
+! LST_LIN(s_ivstart );
+! LST_LIN(s_ivend   );
+! LST_LIN(s_startu  );
+! LST_LIN(s_endu    );
+! LST_LIN(s_ydelta  );
+! LST_LIN(s_cscale  );
+! LST_LIN(s_ascale  );
+! LST_LIN(s_f_energy);
+! LST_LIN(s_b_cur1  );
+! LST_LIN(s_b_cur2  );
+! LST_LIN(s_b_cur3  );
+! LST_LIN(s_b_cur4  );
+! LST_LIN(s_b_cur5  );
+! LST_LIN(s_b_cur6  );
+! LST_LIN(s_f_output);
+! LST_EXI();
+
+! Create MBS statement
+a_id:= ADD_MBS("PART",           ! Create MBS statement 
+"fangaprtv0",                    !
+s_ids, spine_id_s, svie1, svie2, !
+s_ivstart, s_ivend,              !
+s_startu, s_endu,                !
+s_ydelta, s_cscale, s_ascale,    !
+s_f_energy,                      !
+s_b_cur1, s_b_cur2, s_b_cur3,    !
+s_b_cur4, s_b_cur5, s_b_cur6,    !
+s_f_output );                    !
+
+ENDMODULE 
+

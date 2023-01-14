@@ -1,0 +1,285 @@
+!**************** ma_invons  ***************************
+!s+++
+! INV_ON_SUR
+! __________
+!
+! Funktionen INV_ON_SUR ber{knar U,V v{rdet f|r den punkt som ligger
+! n{rmast p} ytan till en "yttre" punkt. Denna funktion skapar en punkt 
+! f|r detta U,V v{rde.
+!
+! Om ett startpunkt f|r ber{kningen ges som indata kommer s|kandet
+! efter l|sningar begr{nsas. F|rst s|ker funktionen bara i den
+! "patch" d{r startpunkten finns. Om det finns en n{rmaste punkt
+! i denna "patch" avbryts ber{kningen. Om ingen punkt finns d{r 
+! forts{tter letandet i "tv} lager" omgivande "patches". Hela
+! ytan s|ks allts} aldrig igenom om en start punkt ges (om inte
+! ytan {r liten ..).
+!
+! Detta {r en ganska tung (l}ngsam) ber{kning (i alla fall om
+! ingen startpunkt ges). Att f|rst ta reda p} hur m}nga l|sningar
+! som finns med N_INV_ON_SUR (finns {nnu inte som MBS sats) skulle
+! i m}nga fall ta oacceptabelt l}ng tid (N_INV_ON_SUR ber{kningen
+! {r identisk med INV_ON_SUR). D{rf|r finns m|jligheten att g|ra
+! INV_ON_SUR ber{kningen utan att exekveringen av MBS programmet
+! stoppas om l|sning saknas. Det enda som d} h{nder {r att tredje
+! komponenten i utdata vektorn f}r ett negativt v{rde.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: INV_ON_SUR (identitet,yta,ext_pt,kod,sno,uv_near : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Tidigare skapad yta
+! ext_pt  (VECTOR) - Yttre punkt          
+! kod     (INT)    - Kriterium f|r hur n{rmaste punkterna
+!                    ska sorteras
+!                    = 1: Sortera efter kortaste R*3 
+!                         avst}nd till givna punkten
+!                    = 2: Sortera efter kortaste U,V 
+!                         avst}nd till givna U,V 
+!                         startpunkten (uv_near)
+!                    = kod (enligt ovan) + 1000:
+!                    MBS programmet stoppar ej om
+!                    l|sning saknas.
+! sno     (INT)    - \nskad l|sning nummer
+!
+! Optionell parameter:  
+!
+! uv_near (VECTOR) - Start U,V punkt f|r ber{kningen
+!
+! Attribut: PEN, LEVEL, BLANK, ??                
+!
+! Exempel:
+! 
+! INV_ON_SUR (#5 , VEC(4000.0,100.0,3500.0) , 1 , 1 );
+! 
+! Ber{knar U,V v{rdet f|r den punkt p} ytan #5 som {r n{rmast
+! punkten VEC(4000.0,100.0,3500.0). Ingen startpunkt har givits 
+! och funktionen kommer att leta efter l|sningar p} hela ytan.
+!s---
+!e+++
+! INV_ON_SUR
+! __________
+!
+! The function INV_ON_SUR calculates the U,V value for the point on
+! a surface which is closest to an external point. This function 
+! creates the closest point (with the POI_FREE statement).
+!
+! If a start point is given as input to the calculation will the
+! function limit the search area. The function will first only try 
+! to find the solution in the give
+! .......
+!
+! The third (z) component of the output vector (U,V point) will be
+! negative if the calculation fails.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: INV_ON_SUR (identity, surf, ext_pt, code, sno, uv_near : attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Previously defined surface
+! ext_pt  (VECTOR) - External point       
+! kod     (INT)    - Criterion for the ordering of solution points
+! sno     (INT)    - Requested solution number
+!
+! Optional parameter:  
+!
+! uv_near (VECTOR) - Start U,V point for the calculation
+!
+! Attribute: PEN, LEVEL, BLANK, ??
+!
+! Example:
+! 
+! INV_ON_SUR (#5 , VEC(4000.0,100.0,3500.0) , 1 , 1 );
+! 
+! Calculates the U,V value for the point on surfacce #5 which is 
+! closest to the external point VEC(4000.0,100.0,3500.0). 
+! No start point is given. The function will search for solutions
+! in the whole surface.
+!e---
+
+!sdesce Add INV_ON_SUR statement to active module (calculate closest pt)
+!sdescs Addera INV_ON_SUR sats till aktiva modulen (ber{kna n{rmaste pkt)    
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1994-10-08 Ordering of points, .... Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+
+MACRO MODULE ma_invons();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING sexpt*80;               ! External point as string
+  STRING sexptx*25;              ! External point X component as string
+  STRING sexpty*25;              ! External point Y component as string
+  STRING sexptz*25;              ! External point Z component as string
+
+  STRING snear*80;               ! Start point as string
+  STRING snearu*25;              ! Start point X component as string
+  STRING snearv*25;              ! Start point Y component as string
+
+  STRING scode*25;               ! Code as string
+
+  STRING ssoln*25;               ! Solution number as string
+
+  STRING s_invon*132;            ! INV_ON_SUR statement as string
+
+  STRING select*30;              ! Select prompt string
+  STRING p_exptx*50;             ! External X  prompt string
+  STRING p_expty*50;             ! External Y  prompt string
+  STRING p_exptz*50;             ! External Z  prompt string
+
+  STRING p_code*50;              ! Code as prompt string
+
+  STRING p_soln*50;              ! Solution number as prompt string
+
+  STRING p_nearu*25;             ! Start U  prompt string
+  STRING p_nearv*25;             ! Start V  prompt string
+  STRING p_near*50;              ! Start pt prompt string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English 
+  select:= "Select surface";     !
+  p_exptx:="External point " +   !
+       "X component";            !
+  p_expty:="External point " +   !
+       "Y component";            !
+  p_exptz:="External point " +   !
+       "Z component";            !
+  p_code :="Ordering case " +    !
+       "1= ... 2= ...";          !
+  p_soln :="Requested " +        !
+       "solution number";        !
+  p_nearu:="Start U pt" +        !
+       " <CR>= no start point";  !
+  p_nearv:="Start V pt" +        !
+       " ";                      !
+ELIF language = 2 THEN           ! Swedish
+  select:= "Peka p} yta";        !
+  p_exptx:="Yttre punkt " +      !
+       "X komponent";            !
+  p_expty:="Yttre punkt " +      !
+       "Y komponent";            !
+  p_exptz:="Yttre punkt " +      !
+       "Z komponent";            !
+  p_code :="Sorterings fall" +   !
+       "1= ... 2= ...";          !
+  p_soln :="\nskad " +           !
+       "l|sning nummerr";        !
+  p_nearu:="Start U pkt" +       !
+    " <CR>= ingen start punkt";  !
+  p_nearv:="Start V pkt" +       !
+       " ";                      !
+ELSE                             !
+  EXIT("ma_invons: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+! 3. External point      
+! _________________       
+
+sexptx:= INPMT(p_exptx,"",25);   ! Interactive input of X component
+IF sexptx = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sexpty:= INPMT(p_expty,"",25);   ! Interactive input of Y component
+IF sexpty = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+sexptz:= INPMT(p_exptz,"",25);   ! Interactive input of Z component
+IF sexptz = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+sexpt:="VEC("+sexptx+","         ! External point       
+             +sexpty+","         !
+             +sexptz+")";        !
+
+! 4. Ordering case       
+! ________________        
+
+scode := INPMT(p_code ,"",25);   ! Interactive input of code
+IF scode  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 5. Requested solution  
+! _____________________        
+
+ssoln := INPMT(p_soln ,"",25);   ! Interactive input of solution no
+IF ssoln  = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+! 6. Start U,V point     
+! __________________       
+
+snearu:= INPMT(p_nearu,"",25);   ! Interactive input of U component
+IF snearu = "" THEN              !
+  snearv := "";                  !
+  snear  := "";                  !
+  GOTO nostart;                  !
+ENDIF;                           !
+snearv:= INPMT(p_nearv,"",25);   ! Interactive input of V component
+IF snearv = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+snear:="VEC("+snearu+","         ! UV start point       
+             +snearv+")";        !
+
+nostart:;                        ! Label: No start point
+
+! 7. INV_ON_SUR statement  
+! _______________________       
+
+IF snear = "" THEN               !
+ s_invon:=  "INV_ON_SUR("+s_ids+ !
+ "," + sexpt+ ","+scode+","+     !
+ ssoln+")";                      !
+ELSE                             !
+ s_invon:=  "INV_ON_SUR("+s_ids+ !
+ "," + sexpt+ ","+scode+","+     !
+ ssoln+","+snear+")";            !
+ENDIF;                           !
+
+s_invon:= "ON(" + s_ids  + "," + !
+              s_invon+")";       !
+
+! 8. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("POI_FREE",        ! Create MBS statement 
+                 s_invon);        !
+
+ENDMODULE 
+

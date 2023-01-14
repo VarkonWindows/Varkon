@@ -1,0 +1,239 @@
+! ***************** surptsfil ****************************
+!
+! +++
+! Calculate points and derivatives on a surface and write data 
+! to a text file in SUR_POINTS format.
+! 
+! This a function to be used for testing
+!
+! Revision history
+! ________________
+!
+! 1995-06-21 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Calculate and write surface point data SUR_POINTS format 
+!sdescs Ber{kna och skriv ytpunktdata i SUR_POINTS format
+
+GLOBAL GEOMETRY MODULE surptsfil  (
+
+REF    s_id                  > "@t16 Select surface";
+STRING fname*20:="OUTFILE"   > "Outfile name (.DAT is added)";
+INT    list    :=   1        > "Eq.0 : No list Eq. 1: List number of points");
+
+! Internal variables
+
+  STRING fout_name*132;          ! Output file name
+  FILE   f;                      !
+
+  INT    npts;                   ! Total no of output pts
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    i_patu;                 ! Loop index U point
+  INT    i_patv;                 ! Loop index V point
+
+  VECTOR uv;                     ! UV point    
+  VECTOR d_a;                    ! Output from EVAL
+
+  VECTOR s_pt;                   ! Point on surface
+  VECTOR utan;                   ! Tangent in U direction
+  VECTOR vtan;                   ! Tangent in V direction
+  VECTOR twist;                  ! Twist vector           
+  VECTOR s_n;                    ! Normal for surface point s_pt
+  VECTOR kap1;                   ! Principal curvature direction
+  VECTOR kap2;                   ! Principal curvature direction
+  FLOAT  k1;                     ! Principal curvature
+  FLOAT  k2;                     ! Principal curvature
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+!                        Algorithm
+!                        =========
+! ---
+
+! 0. Initiations and checks      
+
+  DEBUG := 0;                        ! Debug printout
+
+!+++
+!  Retrieve number of patches. Calls of GETSURH.
+!---
+
+
+  GETSURH(s_id,"NPATU",npatu);       ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);       ! Retrieve number of V patches
+
+! +++
+! Open file. Error if file already exists
+! ---
+
+  fout_name:= ACT_JOBDIR()+ fname +  ! Full file name
+              ".DAT";
+  OPEN(f      ,"R",fout_name);       ! Error if file exists     
+  IF IOSTAT(f      ) <> 0 THEN       !
+   ;                                 !
+  ELSE                               !
+   CLOSE(f      );                   !
+   EXIT("surptsfil "+fout_name+      !
+         ".DAT exists");             !
+  ENDIF;                             !
+
+  OPEN(f      ,"W",fout_name);       ! Open file for output data
+  IF IOSTAT(f      ) <> 0 THEN       !
+   EXIT(fout_name+" failed");        !
+  ENDIF;                             !
+
+! +++
+! Number of points in U and V direction to output file
+! ---
+
+  OUTSTR(f      ,"total    "         !
+   +STR( npatu+1 ,-21,0 )+ " "       !
+   +STR( npatv+1 ,-21,0 ));          !
+  OUTLIN(f      );                   !
+
+! +++
+! Loop for all patch corner points
+!    i. Evaluate coordinates and derivatives
+!   ii. Write point record to file
+! ---
+
+  npts := 0;                         ! Output number of points
+  kap1 := VEC(0,0,0);                ! Curvature values
+  kap2 := VEC(0,0,0);                !
+  k1   := 0.0;                       !
+  k2   := 0.0;                       !
+
+  FOR i_patv:= 0 TO npatv  DO        ! Start loop V patches
+   FOR i_patu:= 0 TO npatu  DO       ! Start loop U patches
+
+    uv:= VEC(i_patu,i_patv);         ! Current parameter point
+
+    s_pt:=EVAL(s_id,"xyz" ,uv);      ! Point   
+    utan:=EVAL(s_id,"drdu",uv);      ! Tangent in U direction
+    utan:=VECN(utan);                !
+    vtan:=EVAL(s_id,"drdv",uv);      ! Tangent in V direction
+    vtan:=VECN(vtan);                !
+    s_n :=EVAL(s_id,"normal",uv);    ! Surface normal
+    twist:=EVAL(s_id,"d2rdudv",uv);  ! Twist vector  
+
+    npts := npts + 1;                ! An additional point
+
+                                     ! Surface point address iu,iv
+
+    OUTSTR(f,"pointadr "   +   STR( i_patu + 1 ,-21,0 )+
+                     " "   +   STR( i_patv + 1 ,-21,0 ));
+    OUTLIN(f);
+
+                                     ! Surface point s_pt 
+
+    OUTSTR(f,"xyz      "   +   STR(     s_pt.x,-21,14)+
+                     " "   +   STR(     s_pt.y,-21,14)+
+                     " "   +   STR(     s_pt.z,-21,14));
+    OUTLIN(f);
+
+                                     ! Tangent in U direction
+
+    OUTSTR(f,"drdu     "   +   STR(     utan.x,-21,14)+
+                     " "   +   STR(     utan.y,-21,14)+
+                     " "   +   STR(     utan.z,-21,14));
+    OUTLIN(f);
+
+                                     ! Tangent in V direction
+
+    OUTSTR(f,"drdv     "   +   STR(     vtan.x,-21,14)+
+                     " "   +   STR(     vtan.y,-21,14)+
+                     " "   +   STR(     vtan.z,-21,14));
+    OUTLIN(f);
+
+                                     ! Twist vector       
+
+    OUTSTR(f,"d2rdudv  "   +   STR(    twist.x,-21,14)+
+                     " "   +   STR(    twist.y,-21,14)+
+                     " "   +   STR(    twist.z,-21,14));
+    OUTLIN(f);
+
+                                     ! Surface normal s_n 
+
+    OUTSTR(f,"normal   "   +   STR(      s_n.x,-21,14)+
+                     " "   +   STR(      s_n.y,-21,14)+
+                     " "   +   STR(      s_n.z,-21,14));
+    OUTLIN(f);
+
+                                     ! Principal curvatures k1 and k2
+                                     ! Principal curvature directions kap1 and kap2
+
+    IF  ABS(k1) <= ABS(k2) THEN
+
+    OUTSTR(f,"kappamin "   +   STR(       k1  ,-21,14));
+    OUTLIN(f);
+
+
+    OUTSTR(f,"kappamax "   +   STR(       k2  ,-21,14));
+    OUTLIN(f);
+
+
+    OUTSTR(f,"r3min    "   +   STR(     kap1.x,-21,14)+
+                     " "   +   STR(     kap1.y,-21,14)+
+                     " "   +   STR(     kap1.z,-21,14));
+    OUTLIN(f);
+
+    OUTSTR(f,"r3max    "   +   STR(     kap2.x,-21,14)+
+                     " "   +   STR(     kap2.y,-21,14)+
+                     " "   +   STR(     kap2.z,-21,14));
+    OUTLIN(f);
+
+    ELSE
+
+    OUTSTR(f,"kappamin "   +   STR(       k2  ,-21,14));
+    OUTLIN(f);
+
+
+    OUTSTR(f,"kappamax "   +   STR(       k1  ,-21,14));
+    OUTLIN(f);
+
+
+    OUTSTR(f,"r3min    "   +   STR(     kap2.x,-21,14)+
+                     " "   +   STR(     kap2.y,-21,14)+
+                     " "   +   STR(     kap2.z,-21,14));
+    OUTLIN(f);
+
+    OUTSTR(f,"r3max    "   +   STR(     kap1.x,-21,14)+
+                     " "   +   STR(     kap1.y,-21,14)+
+                     " "   +   STR(     kap1.z,-21,14));
+    OUTLIN(f);
+
+    ENDIF;
+
+   ENDFOR;                           ! End   loop U patches
+  ENDFOR;                            ! End   loop V patches
+
+! +++
+! Write total number of points in file
+! Close file
+! ---
+
+  OUTSTR(f      ,"EOF      "   +   STR(      npts ,-21,0 ));
+  OUTLIN(f      );
+  CLOSE(f      );                    ! Close output file
+
+! +++
+! List result on screen
+! ---
+
+  IF  list = 1 THEN  
+    LST_INI("surptsfil Create file with point data in SUR_POINTS format");
+    LST_LIN("Number of points in U direction "+STR(npatu+1,5,0));
+    LST_LIN("Number of points in V direction "+STR(npatv+1,5,0));
+    LST_LIN("Total number of point records   "+STR(npts   ,5,0));
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE

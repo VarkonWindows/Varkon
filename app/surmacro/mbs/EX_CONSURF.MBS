@@ -1,0 +1,385 @@
+!******************** ex_consurf  *************************************
+!s+++
+! ex_consurf
+! __________
+!
+! Funktionen konverterar en VARKON yta av LFT_SUR typ till en
+! CONSURF yta. Data kommer att skrivas p} NMG's F07 format .
+!
+! Konverteringen {r en approximation, men den b|r i de flesta
+! fall vara av acceptabel kvalitet. 
+! 
+! P v{rden f|r generatrissegmenten {r riktiga. Detta g{ller {ve
+! derivatan dP/ds eftersom P v{rdesfunktionen {r en skal{r funktion
+! av b}gl{ngden f|r ytans "spine".
+!
+! P v{rden s{tts till 0.5 f|r l{ngsg}ende kurvor. De skulle kunna
+! ber{knas och bli riktiga om de {r "Ball's generalised conic" 
+! segment. Orkar inte g|ra detta just nu .....
+!
+! Val av NP eller PP parameterisering p}verkar naturligtvis 
+! approximationen. Anv{ndaren f}r sj{lv v{lja detta.
+!s---
+!e+++
+! Printout of a VARKON LFT_SUR surface as a NMG CONSURF surface
+!
+! Output: A text file surname.DAT in the Consurf F07 (NMG) format
+!e---
+!
+! Author: Gunnar Liden
+!
+! Revisions
+! ---------
+!
+! 1995-02-18 Originally written
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE ex_consurf  (
+
+REF       s_id                 >"@t16 Select a LFT_SUR surface";
+
+STRING datum*28 := "79"        >"Local coordinate system name";
+
+STRING tapein*8 := "SF340"     >"NMG TAPEIN name (project) ";
+
+STRING surname*8:="D54302"     >"NMG Part Program Name (File name)";
+
+INT    ocase      := 1         >"Output case =1: Patch boundaries";
+
+FLOAT  s_start    := 0.0       >"Start parameter for spine (0-1)"     ;
+                                  
+FLOAT  s_delta    := 0.05      >"Delta parameter for spine (>0 & <1)" ;
+
+FLOAT  s_end      := 1.0       >"End   parameter for spine (0-1)"     ;
+
+INT    graphic    := 1         >"@ =2: Display points and c-systems" );
+
+!sdesce Printout of a LFT_SUR surface as a CONSURF surface (F07 format)
+!sdescs Utskrift av en LFT_SUR yta som en CONSURF yta (F07 format)   
+
+
+! Internal variables:
+
+  CONSTANT INT language= 1;     ! 1: English Eq. 2: Swedish
+
+  FILE   dat;                   ! Output (F07) file
+
+  INT    typ;                   ! Type of surface
+  INT    npatu;                 ! No patches in U direction
+  INT    npatv;                 ! No patches in V direction
+  INT    no_strips;             ! No of strips in surface
+
+  FLOAT  u_par;                 ! Surface U parameter value
+  FLOAT  v_par;                 ! Surface V parameter value
+  VECTOR uv;                    ! Surface U,V point
+  INT    m_flag;                ! =1: P-value =2: Mid curve
+
+  VECTOR  psektI(26);           ! Points        for generatrix crv
+  VECTOR vpsektI(26);           ! Tangents to curve definition points
+  VECTOR  tpsektI(26);          ! Tangentpoints for generatrix crv
+  VECTOR vtpsektI(26);          ! Tangents to curve tangent def. points
+  FLOAT   pvalsektI(26);        ! P values      for generatrix crv
+  FLOAT  dpvalsektI(26);        ! Curve dP/dS values
+  VECTOR  mpsektI(26);          ! Mid points    for generatrix crv
+  STRING curname*28;            ! Name of curve
+  VECTOR   pspine;              ! Spine (coreline) point
+  VECTOR  vpspine;              ! Spine (coreline) point
+
+
+  FLOAT   pval_lim(26);         ! P value for limit   curves
+  FLOAT   pval_tan(26);         ! P value for tangent curves
+
+
+  VECTOR mid_point;             ! Mid point          
+  VECTOR mid_tangent;           ! Mid tangent        
+  VECTOR mid_flagpt;            ! Mid flag point     
+
+  INT     l_s;                  ! Length of a string
+  INT     i_s;                  ! Loop index character
+
+  INT     blank_flag;           ! Input to BLANK= defined by graphic
+
+  FLOAT   c_param;              ! Current parameter value on spine
+
+  INT     no_sekt;              ! Number of sections
+
+  INT     isekt;                ! Loop index: Generatrix number
+
+  INT     iseg;                 ! Loop index: Segment in generatrix
+
+  STRING   ermess1*40;          ! Error message
+  STRING   ermess2*40;          ! Error message
+  STRING   ermess3*40;          ! Error message
+  STRING   ermess4*40;          ! Error message
+
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+!s+++
+! Algoritm
+!s---
+
+!e+++
+! Algorithm
+!e---
+
+!e+++
+! 1. Initializations and check of input data
+!e---
+
+!s+++
+! 1. Initieringar och kontroll av indata
+!s---
+
+IF   language = 1 THEN           ! English strings
+  ermess1:=surname+".DAT exists";!
+  ermess2:="Open "+surname+      !
+           ".DAT failed";        !
+  ermess3:="Case "+              !
+     STR(ocase,-1,0)+            !
+      " not implemented";        !
+  ermess4:="Not a"+              !
+      " LFT_SUR surface";        !
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:=surname+".DAT "+      !
+            "existerar";         !
+  ermess2:="\ppnandet av "+      !
+   surname+ ".DAT misslyckades"; !
+  ermess3:="Fall "+              !
+     STR(ocase,-1,0)+            !
+      " ej implementerat";       !
+  ermess4:="Ej en"+              !
+      " LFT_SUR yta";            !
+ELSE                             !
+  EXIT("ma_surexdf: " +          !
+       "Language error");        !
+ENDIF;                           !
+
+
+!e+++
+! Open file. Exit with error if file already exists on 
+! the active JOB directory
+!e---
+
+!s+++
+! \ppna fil. Fel om filen redan finns p} aktiva JOB katalogen
+!s---
+
+  OPEN(dat,"r",act_jobdir()     ! Check if file already exists
+  +surname+".DAT");             !
+  IF (IOSTAT(dat) <> 0 ) THEN   !
+!     OK, file does not exist   !
+      ;                         !
+  ELSE                          !
+    EXIT("ex_consurf " +        !
+          ermess1 );            !
+  ENDIF;                        !
+
+  OPEN(dat,"w",act_jobdir()+    ! Open output .DAT (F07) file
+        surname+".DAT");        !
+  IF (IOSTAT(dat) <> 0 ) THEN   ! Check (program error)
+    EXIT("ex_consurf " +        !
+          ermess2 );            !
+  ENDIF;                        !
+
+!e+++
+! Check case (only ocase= 1 is implemented)
+!e---
+!s+++
+! Kontrollera fall (bara ocase= 1 {r implementerad)
+!s---
+
+  IF  ocase  <> 1 THEN          !
+     EXIT("ex_consurf "+        !
+           ermess3 );           !
+  ENDIF;                        !
+
+  IF ocase = 1 THEN             ! No delta
+    GOTO nodelta;               !
+  ENDIF;                        !
+
+!+++
+! Check arclength parameter values. 
+!---
+
+  IF s_delta < 0.0 THEN         ! Step in arclength
+     EXIT("ex_consurf: Delta "+ !
+    "arclength less than zero");!
+  ENDIF;                        !
+  IF s_start >= s_end THEN      ! Start and end arclength
+   EXIT("ex_consurf: Start less"!
+    +" than end arclength");    !
+  ENDIF;                        !
+  IF s_start < 0.0 THEN         ! Start arclength
+     EXIT("ex_consurf: Start "+ !
+    "arclength less than zero");!
+  ENDIF;                        !
+  IF s_end > 1.0 THEN           ! End arclength
+     EXIT("ex_consurf: End "+   !
+  "arclength greater than one");!
+  ENDIF;                        !
+
+nodelta:;                       ! Label: No delta sections
+
+  IF graphic = 2 THEN           ! Graphical representation
+    blank_flag:= 0;             !
+  ELSE                          !
+    blank_flag:= 1;             !
+  ENDIF;                        !
+
+!e+++
+! Retrieve surface type and number of patches in U and V direction
+!e---
+!s+++
+! H{mta yttyp och antal "patches" i U och V riktningen
+!s---
+
+ GETSURH(s_id,"SUR_TYPE",typ);  ! Type
+ GETSURH(s_id,"NPATU",npatu);   ! No U patches
+ GETSURH(s_id,"NPATV",npatv);   ! No V patches
+
+  IF  typ <> 3      THEN        ! Not a LFT_SUR surface
+   EXIT("ex_consurf " +         !
+         ermess4  );            !
+  ENDIF;
+ no_strips := npatv;            !
+  IF no_strips > 24 THEN        ! no_strips > 24
+    EXIT("ex_consurf: no_strips"!
+       +" > 24 ");              !
+  ENDIF;
+
+
+!e+++
+! 3. Create generatrix curves for ocase= 1
+!e---
+!s+++
+! 3. Skapa generatris kurvor f|r ocase= 1
+!s---
+
+
+  no_sekt := 0;                 ! Initialize number of sections
+
+
+  FOR isekt:=1 TO npatu+1 DO    ! Start outer loop: All sections
+
+    no_sekt := no_sekt+1;       ! Number of output sections
+
+    u_par  := isekt - 1.0;      ! Current U value
+
+    uv:= VEC(u_par,0.0,0.0);    !
+    pspine:=                    ! Spine (coreline) point
+      EVAL(s_id,"SP_XYZ" ,uv);  !
+    vpspine:=                   ! Spine (coreline) tangent
+      EVAL(s_id,"SP_DRDU",uv);  !
+    vpspine:= VECN(vpspine);    !
+
+    FOR iseg:=1 TO npatv   DO   ! Start inner loop: Segments in
+                                ! the generatrix curve (all 
+                                ! strips in the surface)
+
+      v_par  := iseg - 0.5;     ! Current V value (mid in patch)
+
+      uv := VEC(u_par,v_par,0); ! Current U,V point
+
+      psektI(iseg):=            ! Limit start curve pt
+      EVAL(s_id,"LS_XYZ" ,uv);  !
+
+      vpsektI(iseg):=           ! Limit start curve tangent
+      EVAL(s_id,"LS_DRDT",uv);  !
+      vpsektI(iseg):=           !
+         VECN(vpsektI(iseg));   !
+
+      tpsektI(iseg):=           ! Tangent start curve point   
+      EVAL(s_id,"TS_XYZ" ,uv);  !
+
+      vtpsektI(iseg):=          ! Tangent start curve tangent 
+      EVAL(s_id,"TS_DRDT",uv);  !
+      vtpsektI(iseg):=          !
+          VECN(vtpsektI(iseg)); !
+
+                                ! Borde ber{knas men d} m}ste
+                                ! ocks} n{sta segment tas in
+                                ! samtidigt. Kr}ngligt !!!
+      pval_lim(iseg):= 0.5;     ! P value for limit   curves
+      pval_tan(iseg):= 0.5;     ! P value for tangent curves
+
+      mid_flagpt :=             ! Mid curve flag
+      EVAL(s_id,"M_FLAG",uv);   !
+      m_flag :=                 !
+          ROUND(mid_flagpt.x);  !
+      mid_point  :=             ! Mid point  
+      EVAL(s_id,"M_XYZ" ,uv);   !
+        mid_tangent:=           ! Mid tangent
+      EVAL(s_id,"M_DRDT",uv);   !
+      IF m_flag = 1 THEN        ! P-value segment
+          pvalsektI(iseg):=     !
+             mid_point.y;       !
+        IF ABS(mid_tangent.x) > !
+            0.0000001 THEN      !
+          dpvalsektI(iseg):=    !
+            mid_tangent.y/      !
+            mid_tangent.x;      !
+        ELSE                    !
+            dpvalsektI(iseg):=  !
+             50000000.0;        !
+        ENDIF;                  !
+      ELSE                      ! Mid curve
+          mpsektI(iseg):=       !
+            mid_point;          !
+          pvalsektI(iseg):=     !
+          -0.123456789;         !
+          dpvalsektI(iseg):=    !
+          -0.123456789;         !
+      ENDIF;                    !
+          
+      IF iseg = npatv THEN      ! Last strip start
+        psektI(iseg+1):=        ! Limit end   curve pt
+        EVAL(s_id,"LE_XYZ" ,uv);!
+
+        vpsektI(iseg+1):=       ! Limit end   curve tangent
+        EVAL(s_id,"LE_DRDT",uv);!
+        vpsektI(iseg+1):=       !
+         VECN(vpsektI(iseg+1)); !
+
+        tpsektI(iseg+1):=       ! Tangent end   curve point   
+        EVAL(s_id,"TE_XYZ" ,uv);!
+
+        vtpsektI(iseg+1):=      ! Tangent end   curve tangent 
+        EVAL(s_id,"TE_DRDT",uv);!
+        vtpsektI(iseg+1):=      !
+         VECN(vtpsektI(iseg+1));!
+        pval_lim(iseg+1):= 0.5; ! P value for limit   curves
+        pval_tan(iseg+1):= 0.5; ! P value for tangent curves
+      ENDIF;                    ! Last strip end
+
+    ENDFOR;                     ! End inner loop: All strips in surface
+
+
+    curname:=surname+"-U/"+     ! F|r sectf07
+         STR(no_sekt ,-1,0);    !
+    l_s := LENGTH(curname);     !
+    FOR i_s:= l_s TO 28 DO      !
+     curname:= curname + " ";   !
+    ENDFOR;                     !
+
+    PART (#7, sectf07 (dat,     !
+        curname,datum,          !
+        no_strips+1,            !
+        pspine,vpspine,         !
+        psektI,vpsektI,         !
+        tpsektI,vtpsektI,       !
+        pval_lim,pval_tan,      !
+        pvalsektI,dpvalsektI)); !
+
+  ENDFOR;                       ! End outer loop: Sections
+
+!                          Exit
+!                          ====
+
+
+  CLOSE(dat);                   ! Close F07 file
+
+
+ENDMODULE

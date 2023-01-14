@@ -1,0 +1,370 @@
+!**************** ma_surappr ***************************
+!s+++
+! SUR_APPROX
+! __________
+!
+! Funktionen approximerar en given yta. N{r en yta ska 
+! exporteras till ett annat system kan det vara n|dv{ndigt
+! att g|ra en approximativ yta, dvs konvertera en VARKON yta
+! till en annan yttyp. Ibland kan en s}dan konvertering g|ras
+! exakt men mer vanligt {r att man m}ste approximera.
+!
+! En yta kan ocks} approximeras med fasetter. Denna yta har
+! ingen grafisk representation.
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_APPROX (identitet, yta, s_typ, metod, extra1, extra2 : attribut)
+!
+! Obligatoriska parametrar:
+!
+! yta     (REF)    - Identitet f|r tidigare skapad yta
+! s_typ   (STRING) - Yttyp som ytan ska approximeras till
+!                    =CUB_SUR: Till bikubisk yta      
+!                    =FAC_SUR: Fasetter f|r dolda konturer  
+!                    =RAT_SUR: .. ej implementerat ...      
+!                    =LFT_SUR: .. ej implementerat ...      
+!
+! metod   (INT)    - Approximationsmetod
+!                    =1: Antal "patches" best{ms av anv{ndaren
+!                        extra1= antal nya "patches" i U riktningen
+!                        extra2= antal nya "patches" i V riktningen
+!                        (utel{mnat extra1 medf|r att extra2= extra1)
+!                    =2: Funktionen ber{knar n|dv. antal "patches"         
+!                        extra1= offset f|r fasetter (FAC_SUR)        
+!                        extra2= tjocklek f|r dubbla fasetter (FAC_SUR)        
+!                    =3: Antal "patches" best{ms av anv{ndaren (bara FAC_SUR)
+!                        extra1= antal nya fasetter i U och V riktningen
+!                        extra2= offset f|r fasetter                   
+!                    =11: Som 1 men dubbla motv{nda "patches"
+!                    =12: Som 2 men dubbla motv{nda "patches"
+!                    =13: Som 3 men dubbla motv{nda "patches"
+!                    F|r n{rvarande {r bara kombinationerna:
+!                    CUB_SUR/metod=1 och FAC_SUR/metod=2 till}tna
+! extra1  (FLOAT)  - Koordinat tolerans f|r approximationen ({nnu ej impl.)
+!                    eller antal "patches" i U riktning.
+!                    
+!
+! Optionella parametrar:
+!
+! extra2  (FLOAT)  - Ytnormal  tolerans f|r approximationen ({nnu ej impl.)
+!                    eller antal "patches" i V riktning
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_APPROX(#10,#5, "CUB_SUR", 1, 5 ):   
+! 
+! Skapar en ny bikubisk yta (#10) med fem nya "patches" i 
+! U riktningen och fem i V riktningen, dvs varje "patch"
+! i ursprungsytan blir 25 "patches" i den skapade bikubiska
+! ytan. N}gra kontroller av toleranser g|rs inte vid 
+! approximationen.
+!
+!s---
+!e+++
+! SUR_APPROX
+! __________
+!
+! The function approximates a given surface from one type to 
+! another surface type.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_APPROX(identity,surf,s_typ,method,extra1,extra2:attribute)
+!
+! Parameters:
+!
+! surf    (REF)    - Identity for previously created surface
+! s_typ   (STRING) - Approximation to surface type:
+!                    =CUB_SUR: Bicubic surface
+!                    =FAC_SUR: Triangular B-planes          
+!                    =RAT_SUR: .. not yet implemented ...   
+!                    =LFT_SUR: .. not yet implemented ...   
+!
+! method  (INT)    - Approximation method
+!                    =1: Number of patches is defined by the user.
+!                        extra1= No of new patches in U direction 
+!                        extra2= No of new patches in V direction 
+!                        (if extra2 not is defined ==> extra2= extra1)
+!                    =2: Function calculates the necessary no. of patches
+!                    =3: Number of patches is defined by the user (only FAC_SUR)
+!                        extra1= No of facets in U and V direction        
+!                        extra2= offset for facets                     
+!                    =11: As 1 but double patches
+!                    =12: As 2 but double patches
+!                    =13: As 3 but double patches
+!
+! extra1  (FLOAT)  - Coordinate tolerance for the approximation (not yet impl.)
+!                    or number of patches in U direction
+!
+! Optional parameters:
+!
+! extra2  (FLOAT)  - Surface normal tolerance for the approximation (not yet impl.)
+!                    or number of patches in V direction.
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Example:
+! 
+! SUR_APPROX(#10,#5, "CUB_SUR", 1, 5 ):   
+! 
+! Creates a new bicubic surface (#10) with five new patches in
+! the U direction and five new patches in the V direction, e.g
+! there will be 25 new patches for each patch of the input
+! surface. There are no checks of tolerances 
+!
+!e---
+
+!sdesce Add  SUR_APPROX statement to active module (approx. surface)
+!sdescs Addera SUR_APPROX sats till aktiva modulen (approx. yta)    
+
+! Revision history
+! ________________
+!
+! 1994-06-27 Gunnar Liden
+! 1995-03-10 SUR_APPROX     
+! 1995-05-16 sdesc added          Gunnar Liden
+! 1996-01-06 FAC_SUR added        Gunnar Liden
+! 1996-01-31 Changes for FAC_SUR  Gunnar Liden
+! 1996-02-11 Case 3, 13 added     Gunnar Liden
+
+MACRO MODULE ma_surappr ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING select*30;              ! Select prompt string
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+
+  STRING s_type*7;               ! Surface type as string
+  STRING s_type_a*9;             ! Surface type as string
+  STRING p_type*50;              ! Surface type as prompt string
+  STRING s_method*2;             ! Approximation method as string
+  STRING p_method*50;            ! Approximation method as prompt string
+  STRING s_npu*3;                ! No U patches as string
+  STRING p_npu*50;               ! No U patches as prompt string
+  STRING s_npv*3;                ! No V patches as string
+  STRING p_npv*50;               ! No V patches as prompt string
+  STRING p_npuv*50;              ! No U and V facets as prompt string
+  STRING s_ofs*10;               ! Offset as string
+  STRING p_ofs*50;               ! Offset as prompt string
+  STRING s_thi*10;               ! Thickness as string
+  STRING p_thi*50;               ! Thickness as prompt string
+
+  STRING s_ctol*30;              ! Coordinate tolerance as string
+  STRING s_ntol*30;              ! Normal     tolerance as string
+
+  STRING ermess1*50;             ! Error message: Method          
+  STRING ermess2*50;             ! Error message: Method - FAC_SUR
+
+  STRING str_in*132;             ! Input string to CUR_GL
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  select:= "Select surface";     !
+  p_type:= "Output surface type"+!
+  " (CUB_SUR, FAC_SUR, BOX_SUR)";!
+  p_method:="Approximation "+    !
+  "method (1, 2, 3, 11, 12, 13)";! 
+  p_npu:="Number of U patches"+  !
+  " (1, 2, 3, ...)";             !
+  p_npv:="Number of V patches "+ !
+  "(0 ==> same as in U direct.)";!
+  p_npuv:="Number of U and V "+  !
+  "facets  (1, 2, 3, ...)";      !
+  ermess1:="Method= 1 (CUB_SUR)"+!
+ "and =1,2,11,12 (FAC_SUR) are "+!
+  "implemented";                 !
+  ermess2:="Method= 1 and = 13 "+!
+ "only for FAC_SUR";             !
+  p_ofs:= "Offset for patches";  !
+  p_thi:= "Thickness between "+  !
+    "double patches";            ! 
+ELIF language = 2 THEN           ! Swedish strings
+  select:= "Peka p} yta";        !
+  p_type:= "\nskad yttyp f|r ut"+!
+   "yta (CUB_SUR, FAC_SUR, "+    !
+   "BOX_SUR)";                   !
+  p_method:="Approximations"+    !
+  "metod (1, 2, 3, 11, 12, 13)"; !
+  p_npu:="Antal U patches" +     !
+  " (1, 2, 3, ...)";             !
+  p_npv:="Antal V patches (0 ="+ !
+  "=> samma som i U riktningen)";!
+  p_npuv:="Antal U och V " +     !
+  " fasetter (1, 2, 3, ...)";    !
+  ermess1:="Metod= 1 (CUB_SUR) "+!
+  "= 1,2,11,12 (FAC_SUR) "+      !
+  "implementerade";              !
+  ermess2:="Method= 1 och = 13 "+!
+ "bara f|r FAC_SUR";             !
+  p_ofs:= "Offset f|r patches";  !
+  p_thi:= "Tjocklek mellan "+    !
+    "dubbla patches";            ! 
+ELSE                             !
+  EXIT("ma_surappr:"+            !
+       "Language error");        !
+ENDIF;                           !
+
+s_ctol   := "Undef";             !
+s_ntol   := "Undef";             !
+s_npu    := "Undef";             !
+s_npv    := "Undef";             !
+s_type   := "Undef";             !
+s_type_a := "Undef";             !
+s_ofs    := "Undef";             ! 
+s_thi    := "Undef";             ! 
+
+! 2. Select surface
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+s_id:= IDENT(16);                ! Interactive surface selection
+POP_PMT();                       ! Erase message to screen
+
+s_ids:= RSTR(s_id);              ! Surface identity as string
+IF s_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+s_ids:="GLOBAL_REF("+s_ids+")";  !
+
+! 3. Surface type     
+! _______________    
+
+s_type := INPMT(p_type,          ! Interactive input of type
+"CUB_SUR",7);                    !
+IF s_type  = "" THEN             !
+  EXIT();                        !
+ENDIF;                           !
+
+! 4. Approximation method
+! _______________________
+
+IF    s_type = "CUB_SUR" THEN    !
+    s_method := "1";             !
+ELIF  s_type = "FAC_SUR" THEN    !
+s_method:= INPMT(p_method,       ! 
+"12",2);                         !
+IF s_method  = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+ELSE                             !
+s_method:= INPMT(p_method,       ! Interactive input of method
+"1",2);                          !
+IF s_method  = "" THEN           !
+  EXIT();                        !
+ENDIF;                           !
+ENDIF;                           !
+
+IF    s_method =  "3" OR         !
+      s_method = "13"     THEN   !
+  IF    s_type <> "FAC_SUR" THEN !
+    EXIT(ermess2);               !
+  ENDIF;                         !
+ENDIF;                           !
+
+! 5. Coordinate tolerance, no of extra U or offset
+! _______________________________________________
+
+IF    s_method =  "1" OR         !
+      s_method = "11" THEN       !
+  s_npu   := INPMT(p_npu ,       ! Interactive input of number of patches
+  "2",3);                        !
+  IF s_npu   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ELIF  s_method =  "3" OR         !
+      s_method = "13" THEN       !
+  s_npu   := INPMT(p_npuv,       ! Interactive input of number of patches
+  "2",3);                        !
+  IF s_npu   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ELIF  (s_method = "2" OR         !
+       s_method = "12")  AND     !
+      s_type = "FAC_SUR" THEN    !
+  s_ofs   := INPMT(p_ofs ,       ! Interactive input of number of patches
+  "5",3);                        !
+  IF s_ofs   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ELSE                             !
+  EXIT(ermess1);                 !
+ENDIF;                           !
+
+! 6. Surface normal tolerance
+! ___________________________
+
+IF s_method = "1" OR             !
+   s_method = "11"   THEN        !
+  s_npv   := INPMT(p_npv ,       ! 
+  "0",3);                        !
+  IF s_npv   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ELIF  (s_method = "3" OR         !
+       s_method = "13")  AND     !
+      s_type = "FAC_SUR" THEN    !
+  s_ofs   := INPMT(p_ofs ,       ! 
+  "5",10);                       !
+  IF s_ofs   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ELIF  (s_method = "2" OR         !
+       s_method = "12")  AND     !
+      s_type = "FAC_SUR" THEN    !
+  s_thi   := INPMT(p_thi ,       ! 
+  "5",10);                       !
+  IF s_thi   = "" THEN           !
+    EXIT();                      !
+  ENDIF;                         !
+ENDIF;                           !
+
+! 7. Create MBS statement
+! _______________________
+
+
+s_type_a:=CHR(34)+s_type+CHR(34);! Add " " 
+
+IF  (s_method = "1" OR           !
+     s_method = "11") AND        !
+     s_npv =  "0"        THEN    !
+  a_id:= ADD_MBS("SUR_APPROX",   ! Create MBS statement 
+     s_ids, s_type_a , s_method, !
+       s_npu);                   !
+ELIF (s_method =  "1" OR         !
+      s_method = "11") AND       !
+     s_npv <> "0"        THEN    !
+  a_id:= ADD_MBS("SUR_APPROX",   !
+       s_ids, s_type_a, s_method,!
+       s_npu, s_npv);            !
+ELIF (s_method = "2" OR          !
+     s_method = "12") AND        !
+     s_type =  "FAC_SUR"   THEN  !
+  a_id:= ADD_MBS("SUR_APPROX",   ! 
+       s_ids, s_type_a, s_method,!
+       s_ofs, s_thi);            !
+ELIF (s_method = "3" OR          !
+     s_method = "13") AND        !
+     s_type =  "FAC_SUR"   THEN  !
+  a_id:= ADD_MBS("SUR_APPROX",   ! 
+       s_ids, s_type_a, s_method,!
+       s_npu, s_ofs);            !
+ELSE                             !
+  EXIT("Programming error");     !
+ENDIF;                           !
+
+ENDMODULE 
+

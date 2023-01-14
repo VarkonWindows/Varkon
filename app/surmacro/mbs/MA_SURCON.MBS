@@ -1,0 +1,375 @@
+!**************** ma_surcon  ***************************
+!s+++
+! SUR_CONIC
+! ________
+!
+! Funktionen skapar en yta av typen LFT_SUR. Indata {r     
+! l{ngsg}ende kurvor kallade direktriser, tangent definitions
+! kurvor och mittkurvor eller P v{rdes funktioner.
+!
+! Resultatet {r en yta d{r varje isoparameterkurva i V riktningen
+! {r ett sammansatt (plant) k{gelsnitt.
+! 
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_CONIC(identitet, spine,lim1,tan1,MP,lim2,tan2,...
+!                  : attribut)
+!
+! Obligatoriska parametrar:
+!
+! spine   (REF)    - Spine kurva f|r ytan  
+! lim1    (REF)    - Direktris (begr{nsningskurva) 1
+! tan1    (REF)    - Tangent definitionskurva      1
+! MP      (STRING) - "M" = mellanliggande kurva,  
+!                    "P" = P v{rdes kurva
+! mid1    (REF)    - Mellanliggande kurva          1
+! lim2    (REF)    - Direktris (begr{nsningskurva) 2
+! tan2    (REF)    - Tangent definitionskurva      1
+! MP      (STRING) - "M" = mellanliggande kurva,  
+! mid3    (REF)    - Mellanliggande kurva          1
+! lim3    (REF)    - Direktris (begr{nsningskurva) 2
+! tan3    (REF)    - Tangent definitionskurva      1
+!                    "P" = P v{rdes kurva
+!  .
+!  .
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_CONIC#10, #1, #2, #3, "M", #4, #5, #6, "P", #7, #8, #9);
+! 
+! Skapar en yta (#10) av typ LFT_SUR best}ende av 2 "strippar"
+! Ytan har kurvan #1 som spine, .....
+!
+! Anm{rkning:
+!
+! Funktionen {r {nnu inte f{rdig. N{r kurvreferenserna (str{ngen) 
+! blir l{ngre {n 132 tecken kan funktionen inte hantera detta.
+!
+! Dessutom {r det f|rberett f|r att skriva ut indata till en
+! fil med namnet SUR_CONIC.INP till exempel. Alla referenser
+! finns i arrayer och tanken {r att programmet ska titta p}
+! katalog .job om en .INP fil finns f|r denna funktion. Om 
+! s} {r fallet ska funktionen l{sa denna fil och ha detta 
+! som f|rst{llda v{rden. Anv{ndare vill g{rna se sina senast
+! inmatade data (g{ller {ven egenskapade parts). Kanske ska
+! man ha ett speciell katalog f|r dessa filer ?
+!s---
+
+!e+++
+! SUR_CONIC
+! ________
+!
+! The function creates a conic lofting surface (LFT_SUR).
+!
+! A lofting modeller is a procedural type of surface modeller.
+! A procedure, i.e. an algorithm, uses a number of 
+! longitudinal curves and scalar functions to define sweeping
+! cross-section curves. For the SUR_CONIC lofting modeller these
+! curves are (planar CUR_CONIC) conics.
+!
+! The conic lofting type of modeller has many advantages such
+! as the following:
+! 
+! - Any types of longtudinal curves (CUR_CONIC, CUR_STIFF, ..)
+!   can be used.
+! - The amount of input data is less compared with for instance
+!   the polynomial type of surface.
+! - The amount of input data which defines the surface is small
+!   since the surface is fully defined by the input curves.
+! - The surface is robust. There will be no (small) problems with 
+!   the parameterisation of input curves, no approximations are
+!   made, .....
+!   
+! - The quality of the surface is satisfactory in one direction.
+!   The conic cross-section curves are of high quality.
+! - The input curves or sections are easy and "natural" to use.
+!
+!
+! The algorithm for the evaluation of a point U,V on the 
+! SUR_CONIC surface contains the following steps:
+!
+! Step 1: Compute point and derivatives for the given U on the
+!         spine curve. The plane for the conic section passes
+!         through the point and the normal to the plane is the
+!         tangent to the spine curve.
+!  
+! Step 2: Make intersections with the longitudinal limit curves
+!         and tangent definition curves and calculate derivatives.
+!
+! Step 3: Compute a P value, i.e. the fullness of the curve, and
+!         the derivatives or intersect a mid curve and calculate
+!         derivatives.
+!
+! Step 4: Create a (CUR_CONIC) conic defined by two limit points
+!         two tangent definition points and a P value. Calculate
+!         point and derivatives for the given V value.
+!
+! Step 5: Calculate the derivatives with respect to U, i.e. the
+!         parameter for the spine. An analytic formula is quite
+!         complex for a straigth line. For a curved spine the
+!         formulae would be many pages. In Varkon is therefore
+!         the derivatives with respect to U calculated with help
+!         of a conic at an epsilon distance in the U direction.
+!         differences.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_CONIC(identity,spine,lim1,tan1,MP,lim2,tan2,..
+!                       : attribute)
+!
+! Parameters:
+!
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Example:
+! 
+! SUR_CONIC#10, #1, #2, #3, "M", #4, #5, #6, "P", #7, #8, #9);
+! 
+! Creates surface (#10) of type LFT_SUR ... 
+! The surface spine curve is #1 .....
+!e---
+
+!sdesce Add SUR_CONIC statement to active module (create  LFT_SUR)
+!sdescs Addera SUR_CONIC sats till aktiva modulen (skapa LFT_SUR)    
+
+! Revision history
+! ________________
+!
+! 1994-06-26 Gunnar Liden
+! 1994-11-27 Documentation  G Liden
+! 1995-03-12 Prompt strings G Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+
+MACRO MODULE ma_surcon  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    c_id;                   ! Curve identity
+  STRING c_ids*30;               ! Curve identity as string
+  STRING s_type*30;              ! Mid curve type as string
+
+  STRING p_spin*80;              ! Spine         prompt string
+  STRING p_lims*80;              ! Limit   start prompt string
+  STRING p_tans*80;              ! Tangent start prompt string
+  STRING p_midc*80;              ! Mid curve     prompt string
+  STRING p_type*80;              ! Mid type      prompt string
+  STRING p_lime*80;              ! Limit   end   prompt string
+  STRING p_tane*80;              ! Tangent end   prompt string
+  STRING p_ende*80;              ! End input     prompt string
+
+  STRING s_curdat*132;           ! All curve data as string
+  INT    l_curdat;               ! No characters in s_curdat
+
+  REF    spi_id;                 ! Identity   for spine       curve
+  REF    lim_id(25);             ! Identities for all limit   curves
+  REF    tan_id(25);             ! Identities for all tangent curves
+  REF    mid_id(25);             ! Identities for all mid     curves
+  STRING mid_ct(25)*1;           ! Mid curve types
+
+  INT    i_s;                    ! Loop index strip
+  STRING strip*4;                ! Strip number as string
+
+  INT    no_strip;               ! Number of strips in surface
+
+  REF    a_id;                   ! ADD_MBS identity
+
+  INT    DEBUG;                  ! For Debug
+  STRING s*1;                    !
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings and initiations
+! _______________________________________________
+
+DEBUG := 0;                      ! Change to 0 or 1
+
+IF   language = 1 THEN           ! English 
+  p_spin:= "Select spine " +     !
+         "curve";                !
+  p_type:= "Mid curve type " +   !
+           " (M or P)";          !
+  p_lims:= "Select limit " +     !
+           "curve number ";      !
+  p_tans:= "Select tangent " +   !
+           "curve number ";      !
+  p_midc:= "Select mid " +       !
+           "curve number ";      !
+  p_lime:= "Select limit " +     !
+           "curve number ";      !
+  p_tane:= "Select tangent " +   !
+           "curve number ";      !
+  p_ende:= " <CR> for end of" +  !
+           " input";             !
+ELIF language = 2 THEN           ! Swedish
+  p_spin:= "Peka p} spine " +    !
+         "kurva";                !
+  p_type:= "Typ av mitt kurva "+ !
+           " (M eller P)";       !
+  p_lims:= "Peka p} limit" +     !
+           " kurva nummer ";     !
+  p_tans:= "Peka p} tangent " +  !
+           " kurva nummer ";     !
+  p_midc:= "Peka p} mitt" +      !
+           " kurva nummer ";     !
+  p_lime:= "Peka p} limit" +     !
+           " kurva nummer ";     !
+  p_tane:= "Peka p} tangent " +  !
+           " kurva nummer ";     !
+  p_ende:= " Avsluta med " +     !
+           "<CR>";               !
+ELSE                             !
+  EXIT("ma_surcon: " +           !
+  "Language error");             !
+ENDIF;                           !
+
+s_curdat:= "";                   ! Initiate curve data string
+no_strip:= 0;                    ! Initiate number of strips
+
+! 2. Select spine curve
+! ______________________
+
+PSH_PMT(p_spin);                 ! Select string to screen
+c_id:= IDENT(8);                 ! Interactive curve selection
+POP_PMT();                       ! Erase message to screen
+
+c_ids:= RSTR(c_id);              ! Curve identity as string
+IF c_ids  = "#0.1" THEN          !
+  EXIT();                        !
+ENDIF;                           !
+
+spi_id:= c_id;                   ! Identity to spi_id
+
+s_curdat:= s_curdat + c_ids;     ! Add to curve data string
+
+l_curdat:= LENGTH(s_curdat);     ! No char's in s_curdat
+IF l_curdat > 110 THEN           !
+ EXIT("ma_surcons String>110");  !
+ENDIF;                           !
+
+IF DEBUG = 1 THEN                ! Debug
+ s:=INPMT("e=end "+ s_curdat,    !
+ "c",1);                         !
+ IF s = "e" THEN                 !
+  EXIT();                        !
+ ENDIF;                          !
+ENDIF;                           !
+
+! 3. Select limit, tangent and mid curves
+! _______________________________________
+
+FOR i_s:= 1 TO 24 DO             ! Start loop strips in surface
+
+
+  strip:=STR(i_s,3,0);           ! Strip number as string
+
+                                 ! Start limit curve in strip
+  PSH_PMT(p_lims+strip);         ! Select string to screen
+  c_id:= IDENT(8);               ! Interactive curve selection
+  POP_PMT();                     ! Erase message to screen
+  c_ids:= RSTR(c_id);            ! Curve identity as string
+  IF c_ids  = "#0.1" THEN        ! 
+    EXIT();                      !
+  ENDIF;                         !
+  lim_id(1):= c_id;              ! Identity to lim_id
+  s_curdat:=s_curdat+","+c_ids;  ! Add to curve data string
+  l_curdat:= LENGTH(s_curdat);   ! No char's in s_curdat
+  IF l_curdat > 110 THEN         !
+   EXIT("ma_surcons String>110");!
+  ENDIF;                         !
+
+  IF DEBUG = 1 THEN              ! Debug
+   s:=INPMT("e=end "+ s_curdat,  !
+   "c",1);                       !
+   IF s = "e" THEN               !
+    EXIT();                      !
+   ENDIF;                        !
+  ENDIF;                         !
+
+                                 ! Start tangent curve in strip
+  PSH_PMT(p_tans+strip);         ! Select string to screen
+  c_id:= IDENT(8);               ! Interactive curve selection
+  POP_PMT();                     ! Erase message to screen
+  c_ids:= RSTR(c_id);            ! Curve identity as string
+  IF c_ids  = "#0.1" THEN        !
+    EXIT();                      !
+  ENDIF;                         !
+  tan_id(1):= c_id;              ! Identity to lim_id
+  s_curdat:=s_curdat+","+c_ids;  ! Add to curve data string
+  l_curdat:= LENGTH(s_curdat);   ! No char's in s_curdat
+  IF l_curdat > 110 THEN         !
+   EXIT("ma_surcons String>110");!
+  ENDIF;                         !
+
+  IF DEBUG = 1 THEN              ! Debug
+   s:=INPMT("e=end "+ s_curdat,  !
+   "c",1);                       !
+   IF s = "e" THEN               !
+    EXIT();                      !
+   ENDIF;                        !
+  ENDIF;                         !
+
+
+  s_type:= INPMT(p_type+p_ende,  ! Input of mid curve type
+  "",1);                         !
+  IF s_type = "" THEN            ! No more curves for surface
+    GOTO nomore;                 !
+  ENDIF;                         !
+  mid_ct(i_s):= s_type;          ! Mid curve types
+  s_type:=CHR(34)+s_type+CHR(34);! Add " for string
+  s_curdat:=s_curdat+","+s_type; ! Add to curve data string
+  l_curdat:= LENGTH(s_curdat);   ! No char's in s_curdat
+  IF l_curdat > 110 THEN         !
+   EXIT("ma_surcons String>110");!
+  ENDIF;                         !
+
+  IF DEBUG = 1 THEN              ! Debug
+   s:=INPMT("e=end "+ s_curdat,  !
+   "c",1);                       !
+   IF s = "e" THEN               !
+    EXIT();                      !
+   ENDIF;                        !
+  ENDIF;                         !
+
+                                 ! Mid curve in strip
+  PSH_PMT(p_midc+strip);         ! Select string to screen
+  c_id:= IDENT(8);               ! Interactive curve selection
+  POP_PMT();                     ! Erase message to screen
+  c_ids:= RSTR(c_id);            ! Curve identity as string
+  IF c_ids  = "#0.1" THEN        !
+    EXIT();                      !
+  ENDIF;                         !
+  mid_id(1):= c_id;              ! Identity to lim_id
+  s_curdat:=s_curdat+","+c_ids;  ! Add to curve data string
+  l_curdat:= LENGTH(s_curdat);   ! No char's in s_curdat
+  IF l_curdat > 110 THEN         !
+   EXIT("ma_surcons String>110");!
+  ENDIF;                         !
+
+  IF DEBUG = 1 THEN              ! Debug
+   s:=INPMT("e=end "+ s_curdat,  !
+   "c",1);                       !
+   IF s = "e" THEN               !
+    EXIT();                      !
+   ENDIF;                        !
+  ENDIF;                         !
+
+  no_strip:= no_strip + 1;       ! An additional strip
+
+ENDFOR;                          ! End   loop strips in surface
+
+nomore:;                         ! Label: No more curves in surface
+
+
+! 7. Create MBS statement
+! _______________________
+
+a_id:= ADD_MBS("SUR_CONIC",      ! Create MBS statement 
+       s_curdat );               !
+
+ENDMODULE 
+

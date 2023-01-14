@@ -1,0 +1,111 @@
+! ***************** fangatmpv0 ****************************
+!
+! +++
+! Temporary (curves only in GM) FANGA analysis of a surface 
+! 
+! The function is equal to fangaprtv0 except that input data
+! data is given in a panel (Xwindow).
+! 
+! Refer to fangaprtv0 for description of the analysis.    
+!
+! This module shall be called from a .MDF menue file with
+! code r, which means that the created geometry (FANGA curves)
+! will be saved in GM but there will be no call of the part
+! added in the active module. The FANGA curves will disappear
+! from GM and the screen when the whole active module is updated.
+!
+! Revision history
+! ________________
+!
+! 1995-06-21 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Temporary (curves only in GM) FANGA analysis of a surface 
+!sdescs Tempor{r (kurvor sparas bara i GM) FANGA analys av en yta
+
+GLOBAL GEOMETRY MODULE fangatmpv0 (
+
+REF    sur_id     > "@t16 Select surface";
+REF    spine_id   > "@t8  Select spine curve for surface (#0 for no spine)");
+
+! Internal variables
+
+
+  VECTOR sdir1;         ! Direction for start silhouette
+  VECTOR sdir2;         ! Direction for end   silhouette
+  INT    ivstart;       ! Start strip number (start limit curve number)
+  INT    ivend;         ! End strip number (Eq. start strip no ==> one strip)
+  FLOAT  startu;        ! Start U section value ( <CR> ==> Whole surface)
+  FLOAT  endu;          ! End   U section value (= -1 <==> not defined)
+  FLOAT  ydelta;        ! Delta y for FANGA system
+  FLOAT  cscale;        ! Scale factor for chord curves
+  FLOAT  ascale;        ! Scale factor for angle curves
+  INT    f_energy;      ! Eq. 1: Calculate energy for the curves
+  INT    b_cur1;        ! Eq. 1: Blank Eq. 0: Show crv chord start-end silhouette
+  INT    b_cur2;        ! Eq. 1: Blank Eq. 0: Show crv chord start-mid silhouette
+  INT    b_cur3;        ! Eq. 1: Blank Eq. 0: Show crv chord   mid-end silhouette
+  INT    b_cur4;        ! Eq. 1: Blank Eq. 0: Show crv angle start-end silhouette
+  INT    b_cur5;        ! Eq. 1: Blank Eq. 0: Show crv angle start-mid silhouette
+  INT    b_cur6;        ! Eq. 1: Blank Eq. 0: Show crv angle   mid-end silhouette
+  INT    f_output;      ! Flag for output =0: No list =1: List
+
+  STRING c_flag*3;      ! Eq NO: No calculation
+  STRING w_case*9;      ! Window case 
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Retrieve input data in panel (Xwindow) from user
+! ---
+
+w_case   := "p_rdfile";          ! Read .MENUE file with previous input
+
+PART(#2, fangawinv0 (            ! Get input from X window
+sdir1, sdir2, ivstart, ivend,    !
+startu, endu, ydelta,            !
+cscale, ascale, f_energy,        !
+b_cur1, b_cur2, b_cur3,          !
+b_cur4, b_cur5, b_cur6,          !
+c_flag, f_output,                !
+sur_id, spine_id,                !
+w_case));                        !
+IF  c_flag = "NO"    THEN        ! Cancel calculation ?
+EXIT();                          !
+ENDIF;                           !
+
+
+! +++
+! 2. Create FANGA curves. 
+! 
+! Calculate six curves (instances) and show result on screen. 
+! Call of fangaprtv0.
+! ---
+
+IF f_energy = 1 THEN             !
+  f_output := 1;                 ! List result on screen
+ELSE                             !
+  f_output := 0;                 ! 
+ENDIF;                           !
+
+PART(#1, fangaprtv0 (            ! FANGA analysis
+sur_id, spine_id,                !
+sdir1, sdir2, ivstart, ivend,    !
+startu, endu, ydelta,            !
+cscale, ascale, f_energy,        !
+b_cur1, b_cur2, b_cur3,          !
+b_cur4, b_cur5, b_cur6,          !
+f_output));                      !
+
+
+
+
+ENDMODULE

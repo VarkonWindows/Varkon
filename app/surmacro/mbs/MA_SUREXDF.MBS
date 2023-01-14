@@ -1,0 +1,263 @@
+!**************** ma_surexdf ***************************
+!s+++
+! SUR_EXDEF
+! _________
+!
+! Funktionen skapar en yta med data fr}n en extern fil.   
+! 
+! Detta {r en s} kallad "interface" funktion f|r att importera 
+! ytor definierade i andra system.
+!
+! Funktionen kan hantera f|ljande filformat (ytor):
+!
+! - Bikubisk yta fr}n NMG 
+!   Ytan blir exakt som i NMG
+!
+! - Consurf  yta fr}n NMG 
+!   Filen med Consurf data m}ste modifieras s} att "Core line"
+!   blir v{ldefinierad. Ytan blir bara approximativt lika 
+!   ursprunget. VARKON's LFT_SUR {r en sann "conic lofting"
+!   modellerare medan Consurf g|r en del approximationer 
+!   (av prestandask{l).
+!   
+!
+! Modultyp: GEOMETRY
+!
+! Anrop: SUR_EXDEF(identitet, filnamn, filtyp, yttyp, us,ue,vs,ve : attribut)
+!
+! Obligatoriska parametrar:
+!
+! filnamn (STRING)    - Filens fullst{ndiga namn
+! filtyp  (STRING)    - Typ av fil (NMG_F07)
+! yttyp   (STRING)    - Typ av yta som ska skapas (LFT_SUR, CUB_SUR, RAT_SUR)
+!
+! Optionella parametrar ({nnu bara implementerade f|r CUB_SUR):
+!
+! us      (FLOAT)     - F|rsta patch i U riktning, f|rst{llt = 1
+! ue      (FLOAT)     - Sista  patch i U riktning, f|rst{llt = alla
+! vs      (FLOAT)     - F|rsta patch i V riktning, f|rst{llt = 1
+! ve      (FLOAT)     - Sista  patch i V riktning, f|rst{llt = alla
+!
+! Attribut: PEN, LEVEL, BLANK, SFONT och SDASHL
+!
+! Exempel:
+! 
+! SUR_EXDEF(#1,"DISK$KCI:<VARKON.SURFLIB>SF340-543-02.DAT_438", 
+!              "NMG_F07", "LFT_SUR");
+! 
+! L{ser in ytan fr}n fil SF340-543.02.DAT_438 som finns p} katalog
+! DISK$KCI:<VARKON.SURFLIB>. Den skapade ytan blir av typen LFT_SUR
+! (Obs! Det {r normalt n|dv{ndigt att f|rst modifiera "core line points").
+!s---
+!e+++
+! SUR_EXDEF
+! ________
+!
+! The function creates a surface with data from an external file.
+! 
+! This is a so called interface function for importing surfaces 
+! defined in other systems.       
+!
+! The function can handle the following file formats (surfaces):
+!
+! - Bicubic surface from NMG 
+!   The surface will be exactly as in NMG (no approximation)
+!
+! - Consurf surface from NMG 
+!   The file with Consurf data must be modified in order to get 
+!   a well defined "Core line".
+!   The surface will only approximately be equal to the original
+!   surface in NMG. The LFT_SUR in VARKON is a "true" conic 
+!   lofting modeller. In NMG is the section curve not exactly a 
+!   conic.
+!
+! Module type: GEOMETRY
+!
+! MBS syntax: SUR_EXDEF(identity, file_name, file_type, sur_type, 
+!                       us,ue,vs,ve : attribute)
+!
+! Parameters:
+!
+! file_name (STRING)  - Full name of file        
+! file_type (STRING)  - Type of file (NMG_F07)
+! sur_type  (STRING)  - Type of created surface (LFT_SUR, CUB_SUR, RAT_SUR)
+!
+! Optional parameters (only implemented for CUB_SUR):
+!
+! us      (FLOAT)     - First patch in U direction, default = 1
+! ue      (FLOAT)     - Last  patch in U direction, default = all 
+! vs      (FLOAT)     - First patch in V direction, default = 1
+! ve      (FLOAT)     - Last  patch in V direction, default = all 
+!
+!
+! Attribute: PEN, LEVEL, BLANK, SFONT and SDASHL
+!
+! Exemple:
+! 
+! SUR_EXDEF(#1,"DISK$KCI:<VARKON.SURFLIB>SF340-543-02.DAT_438", 
+!              "NMG_F07", "LFT_SUR");
+! 
+! Retrieves surface data from file SF340-543.02.DAT_438 on directory
+! DISK$KCI:<VARKON.SURFLIB>. The created surface will be of type LFT_SUR.
+! (Note that it normally is necessary to modify the core line points).
+!e---
+
+!sdesce Add SUR_EXDEF statement to active module (import a surface)
+!sdescs Addera SUR_EXDEF sats till aktiva modulen (importera en yta)    
+
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1994-11-26 Trimming of bicubic surfaces Gunnar Liden
+! 1995-05-16 sdesc added        Gunnar Liden
+
+MACRO MODULE ma_surexdf ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING p_file*80;              ! File name prompt string
+  STRING s_file*80;              ! Full file name
+
+  STRING p_type*80;              ! File type prompt string
+  STRING s_type*80;              ! File type     
+
+  STRING p_surf*80;              ! Surface prompt string
+  STRING s_surf*80;              ! Surface type         
+
+  STRING p_trim*80;              ! Trim surface  prompt string
+  STRING p_su*80;                ! Start U value prompt string
+  STRING p_eu*80;                ! End   U value prompt string
+  STRING p_sv*80;                ! Start V value prompt string
+  STRING p_ev*80;                ! End   V value prompt string
+  STRING s_trim*1;               ! Trim surface  answer 
+  FLOAT  su;                     ! Start U value
+  STRING s_su*25;                ! Start U value as string
+  FLOAT  eu;                     ! End   U value
+  STRING s_eu*25;                ! End   U value as string
+  FLOAT  sv;                     ! Start V value
+  STRING s_sv*25;                ! Start V value as string
+  FLOAT  ev;                     ! End   V value
+  STRING s_ev*25;                ! End   V value as string
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! 1. Definition of prompt strings
+! _______________________________
+
+IF   language = 1 THEN           ! English strings
+  p_file:= "Full name for file"; !
+  p_type:= "Type of file" +      !
+  " (NMG_F07)";                  !
+  p_surf:= "Type of surface " +  !
+  "(CUB_SUR, RAT_SUR, LFT_SUR)"; !
+  p_su:="Start U value";         !
+  p_eu:="End   U value";         !
+  p_sv:="Start V value";         !
+  p_ev:="End   V value";         !
+  p_trim:="Only part of imported"!
+   + " surface (y/n) ?";         !
+ELIF language = 2 THEN           ! Swedish strings
+  p_file:= "Fullt namn f|r fil"; !
+  p_type:= "Typ av fil";         !
+  p_surf:= "Typ av yta " +       !
+  "(CUB_SUR, RAT_SUR, LFT_SUR)"; !
+  p_su:="Start U v{rde ";        !
+  p_eu:="Slut  U v{rde ";        !
+  p_sv:="Start V v{rde ";        !
+  p_ev:="Slut  V v{rde ";        !
+  p_trim:="Ska importerade ytan "!
+   + "trimmas (j/n) ?";          !
+ELSE                             !
+  EXIT("ma_surexdf: " +          !
+       "Language error");        !
+ENDIF;                           !
+
+! 2. File name
+! _____________
+
+s_file := INPMT(p_file,          ! Interactive input of file name
+"",80);                          !
+IF s_file = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+s_file:=CHR(34)+s_file+CHR(34);  ! Add " for string
+
+! 3. File type
+! ____________
+
+s_type := INPMT(p_type,          ! Interactive input of file type
+"NMG_F07",80);                   !
+IF s_type = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+s_type:=CHR(34)+s_type+CHR(34);  ! Add " for string
+
+! 4. Surface type
+! _______________
+
+s_surf := INPMT(p_surf,          ! Interactive input of surface type
+"CUB_SUR",80);                   !
+IF s_surf = "" THEN              !
+  EXIT();                        !
+ENDIF;                           !
+
+
+! 5. Trimming of surface
+! ______________________
+
+IF s_surf = "CUB_SUR" OR         !
+   s_surf = "cub_sur"    THEN    !
+  s_trim:= INPMT(p_trim,"",1);   ! Trimming ?
+  IF s_trim="Y" OR s_trim="y" OR !
+   s_trim="J" OR s_trim="j" THEN !
+    s_su := INPMT(p_su,          ! Interactive input of start U
+    "",25);                      !
+    IF s_su    = "" THEN         !
+      EXIT();                    !
+    ENDIF;                       !
+    s_eu := INPMT(p_eu,          ! Interactive input of end   U
+    "",25);                      !
+    IF s_eu    = "" THEN         !
+      EXIT();                    !
+    ENDIF;                       !
+    s_sv := INPMT(p_sv,          ! Interactive input of start V
+    "",25);                      !
+    IF s_sv    = "" THEN         !
+      EXIT();                    !
+    ENDIF;                       !
+    s_ev := INPMT(p_ev,          ! Interactive input of end   V
+    "",25);                      !
+    IF s_ev    = "" THEN         !
+      EXIT();                    !
+    ENDIF;                       !
+  ENDIF;                         !
+ENDIF;                           !
+
+
+s_surf:=CHR(34)+s_surf+CHR(34);  ! Add " for string
+
+
+! 6. Create MBS statement
+! _______________________
+
+
+IF s_trim="Y" OR s_trim="y" OR   !
+ s_trim="J" OR s_trim="j" THEN   !
+  a_id:= ADD_MBS("SUR_EXDEF",    ! Create MBS statement 
+       s_file,s_type,s_surf,     ! for part of surface
+       s_su,s_eu,s_sv,s_ev);     !
+ELSE                             !
+  a_id:= ADD_MBS("SUR_EXDEF",    ! Create MBS statement 
+       s_file,s_type,s_surf);    ! for whole surface
+ENDIF;                           !
+
+ENDMODULE 
+

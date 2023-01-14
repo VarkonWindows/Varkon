@@ -1,0 +1,131 @@
+!**************** ed_suro *******************************
+!s+++
+! Med funktionen kan indata till en skapad offset yta 
+! {ndras.
+!s---
+!
+!e+++
+! The function modifies the input data for an offset 
+! surface.
+!e---
+!
+! Revision history
+! ________________
+!
+! 1994-06-25 Gunnar Liden
+! 1995-05-16 Comments added Gunnar Liden
+!
+!******************************************************
+
+!sdesce Change input data to surface defined by SUR_OFFSET
+!sdescs [ndra indata till yta definierad med SUR_OFFSET
+
+MACRO MODULE ed_suro (
+REF  s_id           >"Select offset surface / Peka p} offset yta");
+
+CONSTANT INT language= 1;         ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  STRING s_type*20;               ! Surface function type
+
+  STRING error1*30;               ! Error message 1
+
+  STRING menueh*30;               ! Menue header    
+  STRING menue1*30;               ! Menue 1
+  STRING menue2*30;               ! Menue 2
+  
+  STRING p_alt*30;                ! Prompt for menue alternative
+  STRING p_sur_n*30;              ! Prompt  for new     surface
+  STRING p_sur_c*30;              ! Message for current surface
+  STRING p_off_n*30;              ! Prompt  for new     offset
+  STRING p_off_c*30;              ! Message for current offset
+
+  INT    pnum;                    ! Parameter number
+  STRING par*80;                  ! Parameter value as string
+  STRING alt*2;                   ! Menue alternative
+
+BEGINMODULE 
+
+! 1. Definition of prompt and error strings
+! _________________________________________
+
+IF   language = 1 THEN            ! English
+  error1:= "Not a SUR_OFFS "+     !
+    "surface";                    !
+  menueh:= "SUR_OFFS";            !
+  menue1:= "surface";             !
+  menue2:= "offset";              !
+  p_alt := "Select edit option";  !
+  p_sur_n:=" Select new surface ";!
+  p_sur_c:="Current surface is "; ! 
+  p_off_n:=" New surface offset ";!
+  p_off_c:="Current surface "+    !
+           "offset is ";          !
+ELIF language = 2 THEN            ! Swedish
+  error1:= "Inte en SUR_OFFS "+   !
+    "yta";                        !
+  menueh:= "SUR_OFFS";            !
+  menue1:= "yta";                 !
+  menue2:= "avst}nd";             !
+  p_alt := "Vad skall {ndras ? "; !
+  p_sur_n:=" Ange ny yta ";       !
+  p_sur_c:="Nuvarande yta {r ";   ! 
+  p_off_n:=" Ange nytt avst}nd "; !
+  p_off_c:="Nuvarande avst}nd "+  !
+           "{r ";                 !
+ELSE                              !
+  EXIT("ed_suro: Language error");!
+ENDIF;                            !
+
+
+! 2. Check surface creation method
+! ________________________________
+
+s_type:=GETP_MBS(s_id,0);         ! Retrieve MBS procedure name
+
+IF  s_type <> "SUR_OFFS"   THEN   ! SUR_OFFS ?
+     EXIT(error1);                !
+ENDIF;                            !
+
+! 3. Definition of edit menue
+! ___________________________
+
+CRE_MEN(100, menueh,              ! Create menue 100
+             menue1,"a1",         !
+             menue2,"a2");        !
+
+
+! 4. Interactive input of edit data
+! _________________________________
+
+PSH_MEN(100);                     ! Show menue
+
+alt:=GET_ALT(p_alt);              ! Get edit alternative
+ 
+IF   alt = "a1" THEN              ! Surface
+  pnum:=1;                        ! Parameter no 1
+  par:=GETP_MBS(s_id,pnum);       ! Current parameter value
+  PSH_PMT(p_sur_c+par+p_sur_n);   ! Prompting message
+  par:=RSTR(IDENT(16));           ! Get surface identity as string
+ELIF alt = "a2" THEN              ! Offset
+  pnum:=2;                        ! Parameter no 2
+  par:=GETP_MBS(s_id,pnum);       ! Current offset value
+  PSH_PMT(p_off_c+par);           ! Prompting message
+  par:=INPMT(p_off_n,par,30);     ! Get offset as string
+ELSE                              ! No alternative was selected
+  POP_MEN();                      ! Erase menue
+  EXIT();                         ! Exit (no error message)
+ENDIF;                            !
+
+POP_MEN();                        ! Erase menue
+POP_PMT();                        ! Erase prompting message
+
+! 5. Modify MBS statement
+! ______________________
+
+IF par <> "" THEN                 ! Update MBS if par not is empty
+  UPDP_MBS(s_id,pnum,par);        !
+ENDIF;                            !
+
+ENDMODULE 

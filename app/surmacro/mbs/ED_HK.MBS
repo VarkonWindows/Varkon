@@ -1,0 +1,131 @@
+!**************** ed_hk ********************************
+!s+++
+! [ndra storhet
+! _____________
+!
+! Detta {r bas-modulens {ndra-funktionen f|r enskilda storheter.       
+! Den |nskade storheten anges med h}rkorset varefter VARKON 
+! presenterar en meny (m100) med {ndringsm|jligheter beroende p}
+! vilken typ av storhet det var och hur den ursprungligen skapades.
+! Genom att v{lja alternativ i menyn kan man s}lunda {ndra t.ex 
+! en cirkels radie, l{get f|r en text, en parallell linjes avst}nd osv.
+!
+! Storheter som kan {ndras {r: Punkt, linje, cirkel, kurva, yta,
+! koordinatsystem och text.
+! 
+! Funktionsnummer: Modulen ed_hk (inget nummer)
+! Ing}r i:         Bas 2D och bas 3D
+! MBS sats:        Den gamla satsen {ndras  
+!s---
+
+!e+++
+! Change entity
+! _____________
+!
+! This is a change  function for a VARKON entity.
+! After selection of an entity will the function   
+! determine the type of entity and switch to the 
+! corresponding edit function.
+!
+! Entities which can be changed are: Point, line, arc, curve,         
+! surface, coordinate system and text.
+! 
+! Funktion number: Module ed_hk (no number)
+! MBS statement:   The old statement will be modified
+!e---
+
+! Revision history
+! ________________
+!
+! (C)microform ab 6/5/92 J. Kjellander
+! 1994-06-25 Dokumentation, spr}k tillagt  Gunnar Liden
+! 1995-05-16 Documentation added           Gunnar Liden
+!
+!*******************************************************
+
+!sdesce Change a VARKON entity
+!sdescs [ndra en VARKON storhet
+
+MACRO MODULE ed_hk  ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    id;                     ! Identity for entity
+  STRING ids*132;                ! Identity as string
+
+  STRING select*30;              ! Select prompt string
+  STRING error1*30;              ! Error message 1
+
+  INT    typ,vers,blnk,niv,pen;  ! Header data
+  REF    gid(3);                 !
+
+BEGINMODULE
+
+! 1. Definition of prompt and error strings
+! _________________________________________
+
+IF   language = 1 THEN           ! Prompt strings
+  select:= "Select entity";      !
+  error1:= "Unknown entity "+    !
+    "type";                      !
+ELIF language = 2 THEN           !
+  select:= "Peka p} storhet";    !
+  error1:= "Ok{nd typ av "+      !
+    "storhet";                   !
+ELSE                             !
+  EXIT("ed_hk: Language error"); !
+ENDIF;                           !
+
+
+! 2. Select entity 
+! _________________
+
+PSH_PMT(select);                 ! Select string to screen
+id:= IDENT(65535);               ! Interactive selection
+POP_PMT();                       ! Erase message to screen
+ids:= RSTR(id);                  ! Entity identity as string
+IF ids  = "#0.1" THEN            !
+  EXIT();                        !
+ENDIF;                           !
+
+
+! 3. Switch to the corresponding edit procedure
+! _____________________________________________
+
+GETHDR(GLOBAL_REF(id,1),typ,     ! Retrieve header data
+    vers,blnk,niv,pen,gid);      !
+
+IF   typ=1 THEN                  ! Point
+     part(#1,ed_poi(id));        !
+ELIF typ=2 THEN                  ! Line
+     part(#2,ed_lin(id));        ! 
+ELIF typ=4 THEN                  ! Arc
+     part(#3,ed_arc(id));        ! 
+ELIF typ=8 THEN                  ! Curve
+    part(#4,ed_cur(id));         !
+ELIF typ=16 THEN                 ! Surface
+     part(#5,ed_sur(id));        !
+ELIF typ=32 THEN                 ! Text
+     part(#6,ed_text(id));       !
+ELIF typ=64 THEN                 ! Xhatch
+     part(#7,ed_xht(id));        !
+ELIF typ=128 THEN                !
+     part(#8,ed_ldm(id));        !
+ELIF typ=256 THEN                !
+     part(#9,ed_cdm(id));        !
+ELIF typ=512 THEN                !
+     part(#10,ed_rdm(id));       !
+ELIF typ=1024 THEN               !
+     part(#11,ed_adm(id));       !
+ELIF typ=8192 THEN               !
+     part(#12,ed_csy(id));       !
+ELIF typ=32768 THEN              !
+     part(#13,ed_bpl(id));       !
+ELSE                             !
+     EXIT(error1);               !
+ENDIF;                           !
+
+ENDMODULE 
+
