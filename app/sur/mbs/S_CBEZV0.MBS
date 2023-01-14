@@ -1,0 +1,186 @@
+! ***************** s_cbezv0   ****************************
+!
+! +++
+! Creates Bezier polygon points for a cubic curve
+!
+! There is an option to registrate the Bezier polygon point
+! as a part, by inputting a name of the part and writing a
+! module with the same name. The parameters for this module
+! shall be:
+!
+! 1. Bezier polygon point   (VECTOR)
+! 2. Weight for the point   (FLOAT)
+! 3. Point number (0,1,2,3) (INT)
+! 4. Segment number         (INT)
+!
+! There is an existing module s_rcbez
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-11-19 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Creates Bezier polygon points for a cubic curve
+!sdescs Skapar Bezier polygon for en kubisk kurva 
+
+
+GLOBAL GEOMETRY MODULE s_cbezv0   (
+
+REF    cur_id         > "@t8 Select curve";
+STRING reg_name*10 := "s_rcbez" >"Registrate as parts";
+INT    graphic :=  1  > "=0: Nothing =1: Lines =2: Add points");
+
+
+! Internal variables
+
+  INT    i_seg;                  ! Loop index segment address
+  STRING out_file*132;           ! Output file
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! No of geometrical segments
+  INT    ns_gra;                 ! No of graphical   segments
+  INT    fnt;                    ! Font type, subtype
+  FLOAT  sl;                     ! Dash length 
+
+  VECTOR r0;                     ! Bezier polygon point 1
+  VECTOR r1;                     ! Bezier polygon point 2
+  VECTOR r2;                     ! Bezier polygon point 3
+  VECTOR r3;                     ! Bezier polygon point 4
+
+  STRING str_seg*10;             ! Segment number as string
+
+  INT    graphic_p;              ! Graphic s_bbezv0
+
+  INT    c_pen;                  ! Pen (color) number
+
+  REF    r0_id;
+  REF    r1_id;
+  REF    r2_id;
+  REF    r3_id;
+
+  FILE   dat;                    ! Output data 
+
+  INT    b_val_p;                ! Blank flag for p
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    b_val_p   := 1;
+    graphic_p := 0;
+  ELIF graphic = 1 THEN
+    b_val_p   := 0;
+    graphic_p := 0;
+  ELIF graphic = 2 THEN
+    b_val_p   := 0;
+    graphic_p := 1;
+  ELSE
+    EXIT("s_cbezv0  graphic not 0, 1 or 2");
+  ENDIF;
+
+! +++
+! Full name for output file
+! --
+
+  out_file := ACT_JOBDIR()+"s_cbezv0.DAT";
+
+! +++
+! Open file
+! --
+
+  OPEN(dat,"w", out_file );
+  IF (IOSTAT(dat) <> 0  ) THEN
+    EXIT("s_cbezv0 Open file failed" ); 
+  ENDIF;
+
+! +++
+! 2. Retrieve surface data 
+!
+! Retrieve number of segments. Call of GETCURH.
+! ---
+
+! Get number of segments 
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra); 
+
+
+! +++
+! 5. Bezier lines                 
+! ---
+
+  FOR  i_seg := 1 TO ns_geo   DO
+
+     PART(#10, s_bbezv0 ( cur_id, i_seg, reg_name, graphic_p));
+     c_pen := c_pen + 1;
+     IF  c_pen > 4 THEN
+       c_pen := 1;
+     ENDIF;
+     SET(PEN=c_pen);
+     r0_id := GLOBAL_REF(REFC(10,i_seg,1,1));
+     r1_id := GLOBAL_REF(REFC(10,i_seg,2,1));
+     r2_id := GLOBAL_REF(REFC(10,i_seg,3,1));
+     r3_id := GLOBAL_REF(REFC(10,i_seg,4,1));
+
+     r0 := ON(r0_id);
+     OUTFLT(dat, r0.x,12,4);
+     OUTFLT(dat, r0.y,12,4);
+     OUTFLT(dat, r0.z,12,4);
+     OUTSTR(dat,"   r0"+"  i_seg   "+STR(i_seg,4,0));
+     OUTLIN(dat);
+
+     r1 := ON(r1_id);
+     OUTFLT(dat, r1.x,12,4);
+     OUTFLT(dat, r1.y,12,4);
+     OUTFLT(dat, r1.z,12,4);
+     OUTSTR(dat,"   r1"+"  i_seg   "+STR(i_seg,4,0));
+     OUTLIN(dat);
+
+     r2 := ON(r2_id);
+     OUTFLT(dat, r2.x,12,4);
+     OUTFLT(dat, r2.y,12,4);
+     OUTFLT(dat, r2.z,12,4);
+     OUTSTR(dat,"   r2"+"  i_seg   "+STR(i_seg,4,0));
+     OUTLIN(dat);
+
+     r3 := ON(r3_id);
+     OUTFLT(dat, r3.x,12,4);
+     OUTFLT(dat, r3.y,12,4);
+     OUTFLT(dat, r3.z,12,4);
+     OUTSTR(dat,"   r3"+"  i_seg   "+STR(i_seg,4,0));
+     OUTLIN(dat);
+
+
+     IF  VECL(r0-r1) > 0.01 THEN
+       LIN_FREE(#1, r0 , r1 :BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(r1 - r2) > 0.01 THEN
+       LIN_FREE(#2, r1, r2 :BLANK=b_val_p);  
+     ENDIF;
+     IF  VECL(r2 - r3) > 0.01 THEN
+       LIN_FREE(#3, r2, r3 :BLANK=b_val_p);  
+     ENDIF;
+
+  ENDFOR;
+
+! +++
+! Close file
+! ---
+
+  CLOSE(dat);
+
+ENDMODULE

@@ -1,0 +1,368 @@
+!************************* s_kvoffv0 ****************************
+! +++                                              		*
+! Create a deformation function for a surface.			*
+!								*
+! The deformation function f_deform can be interpreted and used *
+! as a variable offset function.				*
+! 								*
+! A deformation function f_deform (function from R*2 to R), 	*
+! with the same number of patches as the input surface, is 	*
+! calculated in this module. The output deformation surface is	*	
+! the "sum of the input surface and the deformation function 	*
+! in the direction of the surface normal n_input (normalized) 	*
+! for the input surface:					*	
+!								*
+! r_deformed(u,v) = r_input(u,v) + f_deform(u,v)*n_input(u,v)	*
+!								*
+! The deformation function can also be interpreted and used as  *
+! a variable offset surface.					*
+! 								*
+! Note that the input surface must be of type bicubic.		*
+! Adding patches (with function SUR_APPROX) will make the 	*
+! approximate deformation function more accurate 		*
+! (hopefully ....) 						*
+!								*
+! ---                                              		*
+! Revision history				   		*
+! _________________				   		*
+!						   		*
+! 1997-01-27 Elsa Rydman			   		*
+!						   		*
+!****************************************************************
+
+!sdesce Create deformation (variable offset) function
+
+!sdescs Skapa deformations- (variabel offset) funktion
+
+
+GLOBAL GEOMETRY MODULE s_kvoffv0 (
+
+REF prt_id      > "@t16384 Registered relative arclength deformation surface";
+REF sur_id      > "@t16    Surface";
+STRING defname*24:= "SLASK" >"Name of deformation function/fil .DAT added";
+INT graphic:= 1 > "Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+! Internal variables
+
+  FLOAT   eps;                  ! Epsilon for slope calculation
+
+  FLOAT   vleng;                ! Length of vectors (for tests)
+    
+  INT     sur_type;             ! Eq. 1: Surface is bicubic
+  INT     n_patu;               ! Number of patches in U direction
+  INT     n_patv;               ! Number of patches in V direction
+  INT     i_patu;               ! Loop index patch  in U direction
+  INT     j_patv;               ! Loop index patch  in V direction
+
+  REF     def_id;               ! Relative arclength deformation surface
+  
+  STRING  w_case*10;            ! Case: header or patch
+  REF     p_id;                 ! A CUB_SUR surface with one patch
+  INT     nopat;                ! Patch number in file
+  REF     t_id;                 ! Translation/scaling matrix
+  REF     s_id;                 ! Scaled and translated patch
+  
+  FLOAT   u_00,v_00;            ! U,V for corner point 0,0 in current patch
+  FLOAT   u_01,v_01;            ! U,V for corner point 0,1 in current patch
+  FLOAT   u_10,v_10;            ! U,V for corner point 1,0 in current patch
+  FLOAT   u_11,v_11;            ! U,V for corner point 1,1 in current patch
+
+  FLOAT   d_00, d_00u, d_00v;   ! Deformation and slope in point 0,0
+  FLOAT   d_10, d_10u, d_10v;   ! Deformation and slope in point 1,0
+  FLOAT   d_01, d_01u, d_01v;   ! Deformation and slope in point 0,1
+  FLOAT   d_11, d_11u, d_11v;   ! Deformation and slope in point 1,1
+  
+  VECTOR  v_00u;                ! Tangent for bicubic patch
+  VECTOR  v_10u;                ! Tangent for bicubic patch
+  VECTOR  v_01u;                ! Tangent for bicubic patch
+  VECTOR  v_11u;                ! Tangent for bicubic patch
+  VECTOR  v_00v;                ! Tangent for bicubic patch
+  VECTOR  v_10v;                ! Tangent for bicubic patch
+  VECTOR  v_01v;                ! Tangent for bicubic patch
+  VECTOR  v_11v;                ! Tangent for bicubic patch
+  VECTOR  v_00uv;               ! Twist vector
+  VECTOR  v_10uv;               ! Twist vector
+  VECTOR  v_01uv;               ! Twist vector
+  VECTOR  v_11uv;               ! Twist vector
+  VECTOR  r_00;                 ! Corner pt  bicubic patch
+  VECTOR  r_10;                 ! Corner pt  bicubic patch
+  VECTOR  r_01;                 ! Corner pt  bicubic patch
+  VECTOR  r_11;                 ! Corner pt  bicubic patch 
+        
+  STRING  indata*80;            ! String for CUR_GL(..BICPAT..)
+  REF     poi_id;               ! Reference to part with bicubic patch points
+  INT     r_case;               ! Case for CUR_GL(..BICPAT..)
+
+
+  INT     graphic_eval;         ! Graphic for s_rbvoffv0
+  INT     graphic_def;          ! Graphic for s_svoffv0
+     
+  INT     bvalue_a;             ! Blank value for all entities
+   
+  STRING  s*1;                  ! For INPMT   	
+  INT     DEBUG;               	! Debug
+ 
+  
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+  
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG := 0;
+
+! +++
+! Epsilon for slope calculation eps= 0.005
+! ---
+
+  eps := 0.005;
+  
+  graphic_eval := 0;
+  graphic_def  := 0;
+    
+! +++
+! Check that the input surface is bicubic
+! ---
+   
+  GETSURH(sur_id, "SUR_TYPE", sur_type);
+  IF  sur_type <> 1 THEN
+    EXIT("s_kvoffv0 Not a bicubic surface "+RSTR(sur_id));
+  ENDIF;
+  
+
+  
+  IF   graphic = 0 THEN
+    bvalue_a := 1;
+  ELIF graphic = 1 THEN
+    bvalue_a := 1;
+  ELIF graphic = 2 THEN
+    bvalue_a := 0;
+  ELSE
+    EXIT("s_kvoffv0 graphic not OK");
+  ENDIF;
+  
+! +++
+! Retrieve the number of patches in the input surface
+! ---
+
+  GETSURH(sur_id, "NPATU", n_patu);
+  GETSURH(sur_id, "NPATV", n_patv);
+
+! +++
+! 2. Create an approximate deformation surface from (prt_id) curves
+! ---
+
+  PART(#2, s_svoffv0 ( prt_id, graphic_def));
+  def_id := GLOBAL_REF(#2#2#1);  
+
+! +++
+! 3. Create the deformation function 
+! ---
+
+! +++
+! Write the header in the output surface file
+! ---
+
+
+  w_case := "HEADER";
+  s_id   := #0;
+  i_patu :=  0;
+  j_patv :=  0;
+  nopat  :=  0;
+  
+
+  PART(#17, s_nvoffv0( n_patu,n_patv,w_case,s_id,i_patu,j_patv,nopat,defname ));
+
+
+! +++
+! Start loop all patches in U and V direction
+! ---
+
+  w_case := "PATCH";  
+  
+  
+  FOR  j_patv:= 1 TO n_patv DO
+    FOR  i_patu:= 1 TO n_patu DO
+    
+      
+
+! +++
+!     Parameter values for the corner points of the current patch
+! ---
+
+      u_00 := i_patu-1.0;
+      u_10 := i_patu;
+      u_01 := i_patu-1.0;
+      u_11 := i_patu;
+
+      v_00 := j_patv-1.0;
+      v_10 := j_patv-1.0;
+      v_01 := j_patv;
+      v_11 := j_patv;      
+          
+      IF  DEBUG = 1 AND graphic = 2  THEN
+        POI_FREE(#21, ON(sur_id, VEC(u_00,v_00)):PEN=1);
+        POI_FREE(#22, ON(sur_id, VEC(u_00,v_10)):PEN=2);
+        POI_FREE(#23, ON(sur_id, VEC(u_10,v_00)):PEN=3);
+        POI_FREE(#24, ON(sur_id, VEC(u_10,v_11)):PEN=4);
+        s:= INPMT("s_kvoffv0 i_patu "+STR(i_patu,-1,0)+ 
+                           " j_patv "+STR(j_patv,-1,0)+
+                              " <CR>= Continue"," ",1);
+      ENDIF;
+
+! +++
+!     Calculate deformation (offset) values for the corner points
+! ---
+
+      PART(#3, s_rbvoffv0(sur_id, def_id, u_00, v_00, graphic_eval, d_00));
+      PART(#4, s_rbvoffv0(sur_id, def_id, u_10, v_10, graphic_eval, d_10));
+      PART(#5, s_rbvoffv0(sur_id, def_id, u_01, v_01, graphic_eval, d_01));
+      PART(#6, s_rbvoffv0(sur_id, def_id, u_11, v_11, graphic_eval, d_11));
+
+      r_00 := VEC(0.0,0.0,d_00);
+      r_10 := VEC(1.0,0.0,d_10);
+      r_01 := VEC(0.0,1.0,d_01);
+      r_11 := VEC(1.0,1.0,d_11);
+
+      IF  graphic >= 2 THEN
+        POI_FREE(#100, r_00:PEN=1);
+        POI_FREE(#110, r_10:PEN=2);
+        POI_FREE(#101, r_01:PEN=3);
+        POI_FREE(#111, r_11:PEN=4);        
+      ENDIF;
+            
+      
+! +++
+!     Calculate deformation slope vectors for the given epsilon value
+! ---
+
+      PART(#7 , s_rbvoffv0(sur_id,def_id,u_00+eps,v_00,graphic_eval,d_00u));
+      PART(#8 , s_rbvoffv0(sur_id,def_id,u_10-eps,v_10,graphic_eval,d_10u));
+      PART(#9 , s_rbvoffv0(sur_id,def_id,u_01+eps,v_01,graphic_eval,d_01u));
+      PART(#10, s_rbvoffv0(sur_id,def_id,u_11-eps,v_11,graphic_eval,d_11u));
+      
+      PART(#11, s_rbvoffv0(sur_id,def_id,u_00,v_00+eps,graphic_eval,d_00v));
+      PART(#12, s_rbvoffv0(sur_id,def_id,u_10,v_10+eps,graphic_eval,d_10v));
+      PART(#13, s_rbvoffv0(sur_id,def_id,u_01,v_01-eps,graphic_eval,d_01v));
+      PART(#14, s_rbvoffv0(sur_id,def_id,u_11,v_11-eps,graphic_eval,d_11v));          
+
+      v_00u := VEC(0.0+eps, 0.0, d_00u) - VEC(0.0, 0.0, d_00);
+      v_10u := VEC(1.0-eps, 0.0, d_10u) - VEC(1.0, 0.0, d_10);
+      v_01u := VEC(0.0+eps, 1.0, d_01u) - VEC(0.0, 1.0, d_01);
+      v_11u := VEC(1.0-eps, 1.0, d_11u) - VEC(1.0, 1.0, d_11);
+      
+      v_00v := VEC(0.0, 0.0+eps, d_00v) - VEC(0.0, 0.0, d_00);
+      v_10v := VEC(1.0, 0.0+eps, d_10v) - VEC(1.0, 0.0, d_10);
+      v_01v := VEC(0.0, 1.0-eps, d_01v) - VEC(0.0, 1.0, d_01);
+      v_11v := VEC(1.0, 1.0-eps, d_11v) - VEC(1.0, 1.0, d_11);      
+
+      vleng :=  200.0;     
+      v_00u := vleng*v_00u;
+      v_10u := vleng*v_10u;
+      v_01u := vleng*v_01u;
+      v_11u := vleng*v_11u;
+      v_00v := vleng*v_00v;
+      v_10v := vleng*v_10v;
+      v_01v := vleng*v_01v;
+      v_11v := vleng*v_11v;
+
+      v_10u := - v_10u;
+      v_11u := - v_11u;
+      v_01v := - v_01v;   
+      v_11v := - v_11v;
+      
+      IF  graphic >= 2 THEN
+        LIN_FREE(#200, r_00,r_00+10*v_00u:PEN=1);
+        LIN_FREE(#210, r_10,r_10+10*v_10u:PEN=2);
+        LIN_FREE(#201, r_01,r_01+10*v_01u:PEN=3);
+        LIN_FREE(#211, r_11,r_11+10*v_11u:PEN=4);        
+        LIN_FREE(#300, r_00,r_00+10*v_00v:PEN=1);
+        LIN_FREE(#310, r_10,r_10+10*v_10v:PEN=2);
+        LIN_FREE(#301, r_01,r_01+10*v_01v:PEN=3);
+        LIN_FREE(#311, r_11,r_11+10*v_11v:PEN=4);                
+      ENDIF;      
+
+            
+! Kanske fel riktning pa -eps vektorerna. Kolla !!!!
+
+      v_00uv := VEC(0,0,0);
+      v_10uv := VEC(0,0,0);
+      v_01uv := VEC(0,0,0);
+      v_11uv := VEC(0,0,0);
+
+! +++
+! Delete temporary used parts (geometry) in order to make GM as small
+! as possible. 
+! ---      
+      
+      DEL(GLOBAL_REF(#3));
+      DEL(GLOBAL_REF(#4));
+      DEL(GLOBAL_REF(#5));
+      DEL(GLOBAL_REF(#6));
+      DEL(GLOBAL_REF(#7));
+      DEL(GLOBAL_REF(#8));
+      DEL(GLOBAL_REF(#9));
+      DEL(GLOBAL_REF(#10));
+      DEL(GLOBAL_REF(#11));
+      DEL(GLOBAL_REF(#12));
+      DEL(GLOBAL_REF(#13));
+      DEL(GLOBAL_REF(#14));      
+
+! +++
+!     Calculate bicubic patch coefficients
+! ---
+      
+  PART(#15, s_mvoffv0 (
+            r_00, r_10, r_01, r_11,
+           v_00u,v_10u,v_01u,v_11u,
+           v_00v,v_10v,v_01v,v_11v,
+           v_00uv,v_10uv,v_01uv,v_11uv));
+  poi_id := GLOBAL_REF(#15);
+          
+  r_case   := 1;
+
+  indata := "BICPAT "+STR(r_case,-1,0);
+
+  CUR_GL(#16 ,poi_id, indata :BLANK=0);
+  p_id := GLOBAL_REF(#16);
+  
+  TFORM_MOVE(#19, VEC(0,0,0), VEC((i_patu-1)*1000.0,(j_patv-1)*1000.0,0),
+             1000.0,1000.0,1.0);
+  t_id := GLOBAL_REF(#19);
+  
+  TCOPY(#20, p_id, t_id);
+  s_id := GLOBAL_REF(#20);
+             
+
+! +++
+!     Write bicubic patch coefficients to text file (NMG format)
+! ---      
+      
+  nopat  :=  nopat + 1;
+
+  PART(#18, s_nvoffv0( n_patu,n_patv,w_case,s_id,i_patu,j_patv,nopat,defname ));
+
+!QQQQQ  GOTO  slut; ! Tillfalligt
+  
+  
+  DEL(s_id);
+  DEL(t_id);
+  DEL(p_id);
+  
+  
+! +++
+! End  loop all patches in U and V direction
+! ---
+
+    ENDFOR;
+  ENDFOR;
+
+
+slut:;
+
+ENDMODULE

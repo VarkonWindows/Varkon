@@ -1,0 +1,256 @@
+!********************** s_bdeforv0 ********************************
+! +++ 
+!
+! Deformation of a surface with a random translation function
+! in a given direction
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-04-18 Gunnar Liden
+! 1997-04-09 Array 111->211 Gunnar Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE s_bdeforv0 (
+REF    s_id                        >"Surface reference";
+FLOAT  mtrans    :=  23.5          >"Maximum (random) translation";
+VECTOR v_deform  := VEC(0,0,1)     >"Deformation direction (Surface normal for 0,0,0)";
+INT    graphic   :=   1            >"Graphics 0: No surface 1: Surface 2: All");
+
+!sdesce Translation deformation of a surface with a random function
+!sdescs Translations deformation av en yta med slumpm{ssig kurva
+
+
+! Internal variables
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  VECTOR s_n;                     ! Current surface normal
+
+                                  ! For calculation of random error:
+  FLOAT  rand_val;                ! Random value
+  FLOAT  seed;                    ! Seed for random value
+  INT    year;                    ! Year
+  INT    month;                   ! Month 
+  INT    day;                     ! Day
+  INT    hour;                    ! Hour 
+  INT    minute;                  ! Minute
+  INT    second;                  ! Second
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  INT    i_u;                     ! Loop index U line
+  INT    i_v;                     ! Loop index V line
+
+  REF    u_r_id;                  ! Identity for U random function
+  REF    v_r_id;                  ! Identity for V random function
+
+  VECTOR uv_sur;                  ! Parameter point on the surface
+  VECTOR pt_sur;                  ! Point on the surface
+  VECTOR sn_sur;                  ! Surface normal
+  VECTOR u_r_poi;                 ! Deformation U point
+  VECTOR v_r_poi;                 ! Deformation V point
+  FLOAT  deform;                  ! Deformation value
+
+  REF    rot_id;                  ! Identity for rotation line
+  REF    i_id;                    ! Isoparameter identity
+  REF    a_id;                    ! Approx. isoparameter identity
+  REF    tra_id;                  ! Transformation identity
+  REF    c_id;                    ! Current U section curve
+
+  VECTOR poi(111);                ! Points for angle curve 
+  FLOAT  rot_ang;                 ! Current rotation angle
+  VECTOR p1_l;                    ! Start point rotation line
+  VECTOR p2_l;                    ! End   point rotation line
+
+  INT    no_ulines;               ! Number of U curves
+  INT    no_vlines;               ! Number of V curves
+  REF    id_all(211);             ! Id's to all U lines
+  VECTOR pts(211,211);            ! Points 1997-04-09 111->211
+  STRING metod*15;                ! Method for tangent length calculation 
+
+  INT    b_val_a;                 ! Blank value for all geometry
+  INT    b_val_s;                 ! Blank value for surface
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 0;                            ! Change to 0, 1 or 2
+
+  IF    graphic = 0 THEN                ! Check graphics
+    b_val_s := 1;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 1 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 2 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 0;                       !
+  ELSE                                  !
+    EXIT("s_bdeforv0 Graphic not OK");  !
+  ENDIF;                                !
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_INI("Debug printout from "+       !
+          "s_bdeforv0");                !
+  ENDIF;                                !
+
+  FOR  i_u := 1 TO 111 DO               !
+    FOR  i_v := 1 TO 111 DO             !
+      pts(i_u,i_v):= VEC(-0.123456789, -0.123456789, -0.123456789);
+    ENDFOR;                             !
+  ENDFOR;                               !
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);          ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);          ! Retrieve number of V patches
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! Start random value
+! ---
+
+  TIME(year,month,day,hour,             ! Start seed for random value
+       minute,second);                  !
+  seed     := second/60.0;              !
+  rand_val := RANDOM(seed);             ! Random value
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Start random value rand_val "+STR(rand_val,4,3)); 
+  ENDIF;             
+
+
+! +++
+! 4. Create scalar (random) functions for the translation
+! ---
+
+! +++
+! Random function in U direction
+! ---
+
+  poi(1)   := VEC(-0.001   ,rand_val*mtrans-mtrans/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(2)   := VEC(npatu/2.0,rand_val*mtrans-mtrans/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(3)   := VEC(npatu+0.001 ,rand_val*mtrans-mtrans/2.0,0.0);
+  CUR_SPLARR(#5,"FREE",3,poi:BLANK=b_val_a,PEN=4);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Random translation distances in U direction "
+           +STR(poi(1).y,4,1)+" "
+           +STR(poi(2).y,4,1)+" "
+           +STR(poi(3).y,4,1)  ); 
+  ENDIF;             
+
+  FOR  i_u := 0 TO npatu DO
+    B_PLANE(#20,VEC(i_u,0.0,0.0),
+                VEC(i_u,mtrans,mtrans), 
+                VEC(i_u,mtrans,mtrans),
+                VEC(i_u,2*mtrans,0.0));
+    poi(i_u+1) := INTERSECT(GLOBAL_REF(#5),GLOBAL_REF(#20),1);
+    DEL(GLOBAL_REF(#20));
+    IF  DEBUG = 1 THEN  
+    LST_LIN("Random U values "+STR(poi(i_u+1).x,8,2)+" " 
+                              +STR(poi(i_u+1).y,8,2)+" "
+                              +STR(poi(i_u+1).z,8,2) ); 
+    ENDIF;             
+  ENDFOR;
+  CUR_SPLARR(#15,"FREE",npatu+1,poi:BLANK=b_val_a,PEN=2);
+  u_r_id := GLOBAL_REF(#15);
+
+! +++
+! Random function in V direction
+! ---
+
+  poi(1)   := VEC(-0.001   ,rand_val*mtrans-mtrans/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(2)   := VEC(npatv/2.0,rand_val*mtrans-mtrans/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(3)   := VEC(npatv+0.001 ,rand_val*mtrans-mtrans/2.0,0.0);
+  CUR_SPLARR(#6,"FREE",3,poi:BLANK=b_val_a,PEN=4);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Random translation distances in V direction "
+           +STR(poi(1).y,4,1)+" "
+           +STR(poi(2).y,4,1)+" "
+           +STR(poi(3).y,4,1)  ); 
+  ENDIF;             
+
+  FOR  i_v := 0 TO npatv DO
+    B_PLANE(#21,VEC(i_v,0.0,0.0),
+                VEC(i_v,mtrans,mtrans), 
+                VEC(i_v,mtrans,mtrans),
+                VEC(i_v,2*mtrans,0.0));
+    poi(i_v+1) := INTERSECT(GLOBAL_REF(#6),GLOBAL_REF(#21),1);
+    DEL(GLOBAL_REF(#21));
+    IF  DEBUG = 1 THEN  
+    LST_LIN("Random V values "+STR(poi(i_v+1).x,8,2)+" " 
+                              +STR(poi(i_v+1).y,8,2)+" "
+                              +STR(poi(i_v+1).z,8,2) ); 
+    ENDIF;             
+  ENDFOR;
+  CUR_SPLARR(#16,"FREE",npatv+1,poi:BLANK=b_val_a,PEN=2);
+  v_r_id := GLOBAL_REF(#16);
+
+! +++
+! 5. Create points and tangents for surface        
+! ---
+
+  FOR    i_u  := 0 TO npatu DO          ! Start loop U lines
+    FOR  i_v  := 0 TO npatv DO          ! Start loop V lines
+      uv_sur  := VEC(i_u,i_v);          ! Parameter point on the surface
+      pt_sur  :=   ON(s_id,uv_sur);     ! Point on the surface
+      sn_sur  := NORM(s_id,uv_sur);     ! Surface normal
+      u_r_poi := ON(u_r_id,i_u);        ! Point on U deformation function
+      v_r_poi := ON(v_r_id,i_v);        ! Point on V deformation function
+      deform  :=(u_r_poi.y+v_r_poi.y)/2;! Deformation value
+      IF VECL(v_deform) > 0.001 THEN    !
+        pts(i_u+1,i_v+1) := pt_sur +    !
+            deform*VECN(v_deform);      !
+      ELSE                              !
+        pts(i_u+1,i_v+1) := pt_sur +    !
+            deform*sn_sur;              !
+      ENDIF;                            !
+    ENDFOR;                             ! End   loop V lines
+  ENDFOR;                               ! End   loop U lines
+
+! +++
+! 6. Create surface
+! ---
+
+  metod := "ADINI_1";                   !
+!  metod := "ZERO_TWIST";                !
+  no_ulines := npatu +1;                !
+  no_vlines := npatv +1;                !
+  SUR_SPLARR(#1,metod,                  ! Create surface
+             no_ulines,no_vlines,       ! 
+             pts                        !
+      :BLANK=b_val_s);                  ! 
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_EXI();                            !
+  ENDIF;                                !
+
+ENDMODULE
+

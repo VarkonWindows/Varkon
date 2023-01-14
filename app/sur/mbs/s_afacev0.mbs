@@ -1,0 +1,261 @@
+!*********************** s_afacev0  *********************************
+! +++
+!
+! Approximation of a face defined by four curves on a surface,
+! optionally on multiple surfaces. The surfaces are not input to 
+! function. Surface identities are retrieved from the curve 
+! segments. In Varkon may a (composite) curve (i.e each curve
+! segment) be linked to many surfaces.
+!
+! Revisions
+! ---------
+!
+! 1995-12-01 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE  s_afacev0  (
+REF    u0_id           >"@t8 Select curve which will become the U0 curve";
+REF    u1_id           >"@t8 Select curve which will become the U1 curve";
+REF    v0_id           >"@t8 Select curve which will become the V0 curve";
+REF    v1_id           >"@t8 Select curve which will become the V1 curve";
+INT    no_dir1 :=  3   >"Number of patch boundary lines in U direction (2-50)";
+INT    no_dir2 :=  3   >"Number of patch boundary lines in V direction (2-50)";
+INT    graphic :=  1   >"@ =0: Show nothing =1: Show surface =2: Show pts =3: Show all" );
+
+!sdesce Approximation of a face defined by four curves
+!sdescs Approximering av ett "face" definierat av fyra kurvor
+
+
+! Internal variables:
+
+  INT    i_u;                   ! Loop index point in U direction
+  INT    i_v;                   ! Loop index point in U direction
+
+  FLOAT  u_rel;                 ! Relative U arclength
+  FLOAT  v_rel;                 ! Relative V arclength
+
+  VECTOR p_coon;                ! Point in Coons patch
+  VECTOR p_surf;                ! Surface point
+
+  INT    i_seg;                 ! Loop index curve segment
+
+                                ! For coonseval1:
+  INT    icase;                 ! =1: Only coordinates
+  FLOAT  ctol;                  ! tolerance for check of corner points
+  VECTOR drdu;                  ! First derivative in U direction
+  VECTOR drdv;                  ! First derivative in V direction
+  INT    graphic_coon;          ! =0: Show nothing =1: Show point =2: + tangents =3: All
+  VECTOR drdu_p;                ! First derivative in U direction projected
+  VECTOR drdv_p;                ! First derivative in V direction projected
+
+  REF    all_sur(30);           ! References to all surfaces
+  INT    n_sur;                 ! Number of surfaces
+
+                                ! For s_linsurv0:
+  VECTOR p_ext;                 ! Start point for intersect line
+  VECTOR v_proj;                ! Projection direction (line tangent)
+  INT    i_case;                ! Intersect calculation case
+  VECTOR r3_int;                ! Intersect point in R*3
+  VECTOR uv_int;                ! Intersect point in U,V
+  REF    id_int;                ! Identity for intersect point surface  
+  INT    status;                ! Error code = -1: No intersection
+  INT    graphic_int;           ! =0: No graphic =1: Show point =2: Show all
+
+  VECTOR s_n;                   ! Surface normal
+
+  INT    b_val_a;               ! Blank value for all other entities
+  INT    b_val_s;               ! Blank value for the surface       
+
+  INT    DEBUG;                 !
+  STRING s*1;                   ! For debug printout to screen
+
+  INT    nu,nv;                ! Number of patches
+  VECTOR poi( 40, 40);         ! Points for SUR_SPLARR
+  VECTOR tanu( 40, 40);        ! U tangents for SUR_SPLARR
+  VECTOR tanv( 40, 40);        ! V tangents for SUR_SPLARR
+  STRING metod*15;             ! Method for tangent length calculation 
+                               ! ZEROTWIST_1 or ADINI_1
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+  
+! +++
+! Check graphic case
+! ---
+
+  IF    graphic = 0 THEN                 !
+    b_val_s := 1;                        !
+    b_val_a := 1;                        !
+    graphic_coon:= 0;                    !
+  ELIF  graphic = 1 THEN                 !
+    b_val_s := 0;                        !
+    b_val_a := 1;                        !
+    graphic_coon:= 0;                    !
+  ELIF  graphic = 2 THEN                 !
+    b_val_s := 0;                        !
+    b_val_a := 0;                        !
+    graphic_coon:= 0;                    !
+  ELIF  graphic = 3 THEN                 !
+    b_val_s := 0;                        !
+    b_val_a := 0;                        !
+    graphic_coon:= 3;                    !
+  ELSE                                   !
+    EXIT("s_afacev0 graphic "+           !
+    STR(graphic,-1,0)+" not OK");        !
+  ENDIF;                                 !
+
+! +++
+! Check number of mesh points
+! ---
+
+  IF no_dir1 > 1 AND no_dir1 < 51  THEN  ! Check number of mesh points
+     ;                                   !
+  ELSE                                   !
+     EXIT("s_afacev0 no_dir1 not "+      !
+          "between 2 and 50");           !
+  ENDIF;                                 !
+  IF no_dir2 > 1 AND no_dir2 < 51  THEN  ! Check number of mesh points
+     ;                                   !
+  ELSE                                   !
+     EXIT("s_afacev0 no_dir2 not "+      !
+          "between 2 and 50");           !
+  ENDIF;                                 !
+
+! Check of the four input boundary curves u0, v0, u1 and v1 is made in coonseval1
+  
+  PSH_PMT ("Creation of an approximative face defined by four curves");
+
+! +++
+! 2. Retrieve identities for the surfaces
+! ---
+
+  n_sur := 0;                            ! Initialize number of surfaces
+
+  PART(#21, s_agetidv0 (                 ! Get surface id's from u0_id
+    u0_id, all_sur, n_sur):SAVE=0);      !
+  PART(#22, s_agetidv0 (                 ! Get surface id's from u1_id
+    u1_id, all_sur, n_sur):SAVE=0);      !
+  PART(#23, s_agetidv0 (                 ! Get surface id's from v0_id
+    v0_id, all_sur, n_sur):SAVE=0);      !
+  PART(#24, s_agetidv0 (                 ! Get surface id's from v1_id
+    v1_id, all_sur, n_sur):SAVE=0);      !
+
+  IF n_sur = 0 THEN                      ! Check number of surfaces
+    POP_PMT();                           ! 
+    EXIT("s_afacev0 Number of "+         !
+          "surfaces is 0");              !
+  ENDIF;                                 !
+
+! +++
+! 3. Calculate surface points
+! ---
+
+  nu  := 0;
+
+  FOR i_u:= 1 TO no_dir1 DO              ! Start loop U points
+   nu := nu + 1;
+   nv := 0;
+   FOR i_v:= 1 TO no_dir2 DO             ! Start loop V points
+    nv := nv + 1;
+  
+    u_rel := (i_u-1)/(no_dir1-1);        ! Current relative U arclength
+    v_rel := (i_v-1)/(no_dir2-1);        ! Current relative V arclength
+
+    IF DEBUG = 2 THEN                    !
+      s:= INPMT("s_afacev0 u_rel "+      !
+          STR(u_rel,10,6)+" v_rel " +    !
+          STR(v_rel,10,6)," ",1);        !
+    ENDIF;                               !
+
+    icase := 1;                          ! Calculate Coon's patch point
+    ctol  := 0.5;                        !
+    PART(#6,  coonevalv0 (               !
+    u0_id, u1_id, v0_id, v1_id,          !
+    u_rel, v_rel, icase, ctol,           !
+    p_coon, drdu, drdv, graphic_coon));  !
+
+    v_proj:= VECN(VPROD(drdu,drdv));     ! Shooting direction is surface normal
+                                         ! in Coon's patch
+
+    i_case := 1;                         ! No start point given
+    graphic_int := 0;                    !
+    PART ( #9, s_linsurv0 (              ! Intersect line/surface
+    p_coon , v_proj,                     ! 
+    n_sur, all_sur,                      !
+    i_case,                              !
+    r3_int    , uv_int    , id_int    ,  !
+    status    , graphic_int));           !
+
+    IF status = 0    THEN                !
+     p_surf:= r3_int;                    ! Surface point
+     IF graphic >  1 THEN                !
+       POI_FREE(#11,p_surf:PEN=2);       !
+     ENDIF;                              !
+    ELSE                                 !
+     IF graphic >  1 THEN                !
+       LIN_FREE(#12,p_surf,              !
+          p_surf+30*v_proj:PEN=4);       !
+     ENDIF;                              !
+     POP_PMT();                          ! 
+     EXIT("s_afacev0 line/surface "+     !
+          "intersect failed");           !
+    ENDIF;                               !
+
+    s_n:= NORM(id_int,uv_int);           ! Surface normal
+    PART(#31, vec_aproj ( drdu, s_n,     ! Project drdu on tangent plane
+              drdu_p ):SAVE=0);          !
+    PART(#32, vec_aproj ( drdv, s_n,     ! Project drdu on tangent plane
+              drdv_p ):SAVE=0);          !
+
+    IF  DEBUG = 1 THEN                   ! Debug start
+    s:=INPMT("s_afacev0 drdu   "         !
+              +STR(drdu.x,10,4)+" "      !
+              +STR(drdu.y,10,4)+" "      !
+              +STR(drdu.z,10,4),         !
+              "y",1);    
+    s:=INPMT("s_afacev0 drdu_p "         !
+              +STR(s_n.x,10,4)+" "       !
+              +STR(s_n.y,10,4)+" "       !
+              +STR(s_n.z,10,4),          !
+              "y",1);    
+    s:=INPMT("s_afacev0 drdu_p "         !
+              +STR(drdu_p.x,10,4)+" "    !
+              +STR(drdu_p.y,10,4)+" "    !
+              +STR(drdu_p.z,10,4),       !
+              "y",1);    
+    IF  s <> "y" THEN                    !
+      EXIT("s_afacev0 User innterrupt"); !
+    ENDIF;                               !
+    ENDIF;                               ! Debug end  
+
+    poi (nu,nv):= p_surf;                ! Point   to surface array
+    tanu(nu,nv):= VECN(drdu_p);          ! U tangent to array
+    tanv(nu,nv):= VECN(drdv_p);          ! V tangent to array
+
+   ENDFOR;                               ! End   loop V points
+  ENDFOR;                                ! End   loop U points
+
+! +++
+! 4. Create surface
+! ---
+
+  metod := "ZEROTWIST_1";  
+
+  SUR_SPLARR(#20,metod,nu,nv,poi,tanu,tanv:BLANK=b_val_s );
+
+  POP_PMT();                             ! Erase message 
+
+ENDMODULE

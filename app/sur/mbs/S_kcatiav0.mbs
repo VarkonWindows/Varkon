@@ -1,0 +1,485 @@
+! ***************** s_kcatiav0 ****************************
+!
+! +++
+! Export curves to Catia (NMG-Catia format)
+!
+! The function creates a file in the NMG-Catia format,
+! i.e. for the interface program TOCATIA (TSUFNMG) originally 
+! developped by Saab for the export of surfaces and curves 
+! from NMG to Catia.
+!
+! Input to the function is:
+! - The Catia file name
+!   Examples: MS1/MS11/WRK01 and KD1/COPY/MILIT
+! - The Catia model name
+!   There will be an failure if the model already exists
+! - The name of the curves  
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-05 Gunnar Liden
+! 
+!
+!************************************************************
+
+!sdesce Export curves  to Catia (NMG-Catia format) 
+!sdescs Exportera kurvor till Catia (NMG-Catia format)
+
+GLOBAL GEOMETRY MODULE s_kcatiav0 (
+
+STRING model*80:="Crvs-960830--A73320" > "Catia model name (no space)";
+STRING cfile*30:="KD1/COPY/MILIT"      > "File name (Ex. MS1/MS11/WRK01)";
+INT    n_apr    := 1         > "Number of segments for CUB_SEG approx. (CUR_APPROX)";
+REF    c1_id                 > "@t8  Select curve 1";
+STRING c1name*28:="Kurva_1"  > "Name curve 1";
+REF    c2_id     := #0.1     >"@ @t8  Select curve 2 (<CR>= #0.1: Not defined)";
+STRING c2name*28:="Kurva_2"  > "Name curve 2";
+REF    c3_id     := #0.1     >"@ @t8  Select curve 3 (<CR>= #0.1: Not defined)";
+STRING c3name*28:="Kurva_3"  > "@ Name curve 3";
+REF    c4_id     := #0.1     >"@ @t8  Select curve 4 (<CR>= #0.1: Not defined)";
+STRING c4name*28:="Kurva_4"  > "@ Name curve 4";
+REF    c5_id     := #0.1     >"@ @t8  Select curve 5 (<CR>= #0.1: Not defined)";
+STRING c5name*28:="Kurva_5"  > "@ Name curve 5";
+REF    c6_id     := #0.1     >"@ @t8  Select curve 6 (<CR>= #0.1: Not defined)";
+STRING c6name*28:="Kurva_6"  > "@ Name curve 6";
+REF    c7_id     := #0.1     >"@ @t8  Select curve 7 (<CR>= #0.1: Not defined)";
+STRING c7name*28:="Kurva_7"  > "@ Name curve 7";
+REF    c8_id     := #0.1     >"@ @t8  Select curve 8 (<CR>= #0.1: Not defined)";
+STRING c8name*28:="Kurva_8"  > "@ Name curve 8";
+REF    c9_id     := #0.1     >"@ @t8  Select curve 9 (<CR>= #0.1: Not defined)";
+STRING c9name*28:="Kurva_9"  > "@ Name curve 9";
+INT    graphic   :=  1       >"Eq. 0: Show nothing  Eq. 1: Show temp. curve");
+
+
+! Internal variables
+
+  REF    id_all(9);             ! Id's to all curves  
+  STRING a_name(9)*28;          ! Names for all curves
+  INT    no_curves;             ! Number of curves
+  INT    i_cur;                 ! Loop index curve 
+  REF    apr_id;                ! Reference to approximate curve
+  INT    i_seg;                 ! Loop index curve segment
+
+  STRING tmpfile*132;           ! Name of temporary file
+  STRING f07file_j*132;         ! Full name of temporary file on job  dir.
+
+                                ! For TIME:
+  INT    year;                  !
+  INT    month;                 !
+  INT    day;                   !
+  INT    hour;                  !
+  INT    minute;                !
+  INT    second;                !
+
+  STRING model_t*20;            ! Temporary model name (to be replaced)
+
+  STRING fname*20;              ! Outfile name (.F07 is added)
+
+  STRING str_in*132;            ! String for CUR_GL
+
+  FILE   tmp;                   ! Temporary file
+  FILE   f07;                   ! Temporary file for tocatia program
+  INT    n_d;                   ! Number of data
+  STRING cname_f*28;            ! Full name of surface
+  INT    i_l;                   ! Loop index line in file
+  INT    i_c;                   ! Loop index character
+
+  STRING line1*132;             ! Line
+  STRING line2*132;             ! Line
+  STRING line3*132;             ! Line
+  STRING line4*132;             ! Line
+  STRING line5*132;             ! Line
+  STRING line6*132;             ! Line
+  STRING line7*132;             ! Line
+  STRING line8*132;             ! Line
+  STRING line9*132;             ! Line
+  STRING line10*132;            ! Line
+  STRING line11*132;            ! Line
+  STRING line12*132;            ! Line
+  STRING line13*132;            ! Line
+  STRING line14*132;            ! Line
+  STRING line15*132;            ! Line
+  STRING line16*132;            ! Line
+  STRING line17*132;            ! Line
+  STRING linex*132;             ! Line
+  STRING liney*132;             ! Line
+  STRING linez*132;             ! Line
+
+                                ! For GETCURH:
+  INT    ns_geo;                ! No geometry segments
+  INT    ns_gra;                ! No graphical segments
+  INT    fnt;                   ! Font typ,subtyp;
+  FLOAT  sl;                    ! Dash length
+
+                                ! For GETSEG:
+  INT    reptype;               ! Requested type (curve):
+                                ! Eq. 0: Geometry
+                                ! Eq. 1: Graphic
+  FLOAT  segdata(4,4);          ! Segment coefficients
+  FLOAT  c_offset;              ! Curve offset
+  INT    type;                  ! Curve segment type
+                                ! Eq. 1: A  R*3 (free)    segment
+                                ! Eq. 2: An U,V (surface) segment
+  INT    subtype;               ! Curve segment subtype
+                                ! Eq. 0:
+                                ! Eq. 1:
+                                ! Eq. 2:
+  REF    sur1_id;               ! Reference to surface 1
+  REF    sur2_id;               ! Reference to surface 2
+
+
+  INT    b_val_c;               ! Blank value for curve
+
+  STRING rad*132;               ! String whole line
+
+  STRING catia_str*132;         ! Input data string for Catia interface
+
+  INT    DEBUG;                 ! For Debug printout
+
+  STRING s*1;                   ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+  PSH_PMT("Write curve data to a text file (s_kcatiav0)");
+
+!                  0. Initializations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+! +++
+! Check parameter for graphics
+! ---
+
+  IF   graphic = 0 THEN
+    b_val_c := 1;
+  ELIF graphic = 1 THEN
+    b_val_c := 0;
+  ELSE
+    EXIT("s_kwritev0 graphic not OK");
+  ENDIF;
+
+! +++
+! Curve names to array
+! ---
+
+  a_name(1) :=   c1name;
+  a_name(2) :=   c2name;
+  a_name(3) :=   c3name;
+  a_name(4) :=   c4name;
+  a_name(5) :=   c5name;
+  a_name(6) :=   c6name;
+  a_name(7) :=   c7name;
+  a_name(8) :=   c8name;
+  a_name(9) :=   c9name;
+
+! +++
+! Deternmine the number of curves 
+! ---
+
+  id_all( 1):=    c1_id;
+  id_all( 2):=    c2_id;
+  id_all( 3):=    c3_id;
+  id_all( 4):=    c4_id;
+  id_all( 5):=    c5_id;
+  id_all( 6):=    c6_id;
+  id_all( 7):=    c7_id;
+  id_all( 8):=    c8_id;
+  id_all( 9):=    c9_id;
+
+  no_curves := 0;
+  FOR i_cur := 1 TO  9 DO
+     IF id_all(i_cur) = #0.1 THEN
+       GOTO allc;
+     ELSE
+       no_curves := no_curves + 1;
+     ENDIF;
+  ENDFOR;
+allc:;
+
+
+! +++
+! Unique name for temporary files
+! ---
+
+  TIME(year,month,day,hour,minute,second);
+
+  tmpfile := STR(year,-1,0);
+  IF month < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(month, -1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(month, -1,0);
+  ENDIF;
+  IF day   < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(day  , -1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(hour , -1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(minute,-1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    tmpfile := tmpfile + "0"  +STR(second,-1,0);
+  ELSE
+    tmpfile := tmpfile        +STR(second,-1,0);
+  ENDIF;
+
+  f07file_j := ACT_JOBDIR() + tmpfile + ".F07";
+
+! +++
+! Line 1 (temporarely fixed)
+! ---
+
+  line1:= "USER  = GEO_GUNNAR   DATE AND TIME = 15-MAY-94 12:51:16 TYPE = CURVE";
+
+! +++
+! Line 2 Model name
+! ---
+
+  line2:= "MODELN= " + model;
+
+! +++
+! Line 3 
+! ---
+
+  line3:= "NCOM  =    0";
+
+! +++
+! Line 4 Text 1
+! ---
+
+  line4:= "TEXT1 =";
+
+! +++
+! Line 5 Text 2
+! ---
+
+  line5:= "TEXT2 =";
+
+! +++
+! Line 7
+! ---
+
+  line7:= "SWDSC =";
+
+! +++
+! Line 8
+! ---
+
+  line8:= "ENDSC =";
+
+! +++
+! Line 9  (datum temporarley fixed) !
+! ---
+
+  line9:= "OUTDAT= Basic";
+
+! +++
+! Line 10 Type cubic spline
+! ---
+
+  line10:= "CTYPE = CUBIC SPLINE";
+
+! +++
+! Line 11 Type 
+! ---
+
+  line11:= "GTYPE = LINE";
+
+! +++
+! Line 12 Surface 1
+! ---
+
+  line12:= "SURF1 =";
+
+! +++
+! Line 13 Surface 2
+! ---
+
+  line13:= "SURF2 =";
+
+! +++
+! Line 14 Offset
+! ---
+
+  line14:= "OFFST =";
+
+! +++
+! Line 17 Offset
+! ---
+
+  line17:= "PLANE = 3D";
+
+
+! +++
+! Open file
+! ---
+
+  OPEN(f07,"W", f07file_j);
+  IF  IOSTAT(f07) <> 0 THEN
+    EXIT("s_kcatiav0 Open "+f07file_j+" failed");
+  ENDIF;
+
+! +++
+! Start loop all curves
+! ---
+
+  FOR   i_cur :=  1  TO  no_curves DO
+
+    OUTSTR(f07,line1);
+    OUTLIN(f07);
+    OUTSTR(f07,line2);
+    OUTLIN(f07);
+    OUTSTR(f07,line3);
+    OUTLIN(f07);
+    OUTSTR(f07,line4);
+    OUTLIN(f07);
+    OUTSTR(f07,line5);
+    OUTLIN(f07);
+
+! +++
+! Line 6 Name for curve 
+! ---
+
+    line6:= "CURVE = " + a_name(i_cur);
+    OUTSTR(f07,line6);
+    OUTLIN(f07);
+
+    OUTSTR(f07,line7);
+    OUTLIN(f07);
+    OUTSTR(f07,line8);
+    OUTLIN(f07);
+    OUTSTR(f07,line9);
+    OUTLIN(f07);
+    OUTSTR(f07,line10);
+    OUTLIN(f07);
+    OUTSTR(f07,line11);
+    OUTLIN(f07);
+    OUTSTR(f07,line12);
+    OUTLIN(f07);
+    OUTSTR(f07,line13);
+    OUTLIN(f07);
+    OUTSTR(f07,line14);
+    OUTLIN(f07);
+
+
+! +++
+!   Approximate curve and retrieve number of curve segments
+! ---
+
+    CUR_APPROX(#1, id_all(i_cur) , "CUB_SEG", 1, n_apr :BLANK=b_val_c);
+    apr_id := GLOBAL_REF(REFC(1,i_cur));
+
+    GETCURH( apr_id, fnt,sl,ns_geo,ns_gra);
+
+! +++
+! Line 15 Number of points
+! ---
+
+    line15:= "NPCRV =    1  NPNTS ="+STR(ns_geo+1,5,0);
+    OUTSTR(f07,line15);
+    OUTLIN(f07);
+
+! +++
+! Line 16 Number of arcs
+! ---
+
+    line16:= "NARC  = "+STR(ns_geo,4,0)+"  CONTINUE: NO   GAP: YES";
+    OUTSTR(f07,line16);
+    OUTLIN(f07);
+
+    OUTSTR(f07,line17);
+    OUTLIN(f07);
+
+! +++
+!   Start loop all curve segments
+! ---
+
+    FOR  i_seg := 1 TO ns_geo DO
+
+! +++
+!     Calculate current parameter value, point and tangent
+! ---
+
+      reptype:= 0;                      
+      GETSEG( apr_id, i_seg, reptype,  
+        segdata,c_offset,type,        
+        subtype,sur1_id,sur2_id);    
+
+! +++
+!     Write X, Y and Z lines
+! ---
+
+      linex := STR(i_seg  ,4,0) + STR(segdata(1,1),20,11) + 
+                                  STR(segdata(2,1),18,11) + 
+                                  STR(segdata(3,1),18,11) + 
+                                  STR(segdata(4,1),18,11);
+      OUTSTR(f07,linex);
+      OUTLIN(f07);
+      liney := "    "           + STR(segdata(1,2),20,11) + 
+                                  STR(segdata(2,2),18,11) + 
+                                  STR(segdata(3,2),18,11) + 
+                                  STR(segdata(4,2),18,11);
+      OUTSTR(f07,liney);
+      OUTLIN(f07);
+      linez := "    "           + STR(segdata(1,3),20,11) + 
+                                  STR(segdata(2,3),18,11) + 
+                                  STR(segdata(3,3),18,11) + 
+                                  STR(segdata(4,3),18,11);
+      OUTSTR(f07,linez);
+      OUTLIN(f07);
+!      rad   := "    "           + STR(segdata(1,4),20,11) + 
+!                                  STR(segdata(2,4),18,11) + 
+!                                  STR(segdata(3,4),18,11) + 
+!                                  STR(segdata(4,4),18,11);
+!      OUTSTR(f07,rad  );
+!      OUTLIN(f07);
+
+! +++
+! End loop segments
+! ---
+
+    ENDFOR;
+
+! +++
+! End loop curves
+! ---
+
+  ENDFOR;
+
+  CLOSE(f07);
+
+  POP_PMT();
+
+! +++
+! Start of Catia interface program
+! ---
+
+  PSH_PMT("Catia interface program TSUFNMG is running (s_kcatiav0)");
+  catia_str:= "/usr/catia/saab_admin/beta/bin/tsufnmg"+
+              " 2 1 CATIA1 'STANDARD 1' '"+cfile+"' "+
+              f07file_j;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("String to interface program (s_kcatiav0)");
+  LST_LIN(catia_str);
+  LST_EXI();
+  ENDIF;
+
+  OS(catia_str);
+
+  POP_PMT();
+
+ENDMODULE

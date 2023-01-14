@@ -1,0 +1,334 @@
+! ***************** s_adeve1v0 ****************************
+!
+! +++
+! Create patch limit curves for surface development
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-16 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Create patch limit curves for the surface development
+!sdescs Skapa patch begränsningskurvor för ytutbredningen
+
+GLOBAL GEOMETRY MODULE s_adeve1v0 (
+
+    REF    s_t_id;              ! Trimmed surface        
+    VECTOR p_uv_start;          ! Start UV point
+    FLOAT  u_delta;             ! Delta U with sign
+    FLOAT  v_delta;             ! Delta V with sign
+    REF    csys_id;             ! Reference to development system
+    VECTOR p1_dev_start;        ! Start development point 1
+VAR VECTOR p2_dev_start;        ! Start development point 2
+    VECTOR utan_dev_start;      ! Start development U tangent
+    VECTOR vtan_dev_start;      ! Start development U tangent
+VAR VECTOR p1_dev_end;          ! End   development point 1
+VAR VECTOR p2_dev_end;          ! End   development point 2
+VAR VECTOR utan_dev_end;        ! End   development U tangent
+VAR VECTOR vtan_dev_end;        ! End   development U tangent
+    INT    graphic);            ! Eq. 0: No graphic Eq.1: Curves  Eq. 2: All");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  REF    c1_id;                  ! Reference to curve 1
+  REF    c2_id;                  ! Reference to curve 2
+  REF    c3_id;                  ! Reference to curve 3
+  REF    c4_id;                  ! Reference to curve 4
+
+  FLOAT  a_l_1;                  ! Arclength U= 0 (curve 1)
+  FLOAT  a_l_2;                  ! Arclength U= 1 (curve 2)
+  FLOAT  a_l_3;                  ! Arclength V= 0 (curve 3)
+  FLOAT  a_l_4;                  ! Arclength V= 1 (curve 4)
+  FLOAT  g_s_1;                  ! Geodesic  U= 0 V= 0 (curve 1)
+  FLOAT  g_e_1;                  ! Geodesic  U= 0 V= 1 (curve 1)
+  FLOAT  g_s_2;                  ! Geodesic  U= 1 V= 0 (curve 2)
+  FLOAT  g_e_2;                  ! Geodesic  U= 1 V= 1 (curve 2)
+  FLOAT  g_s_3;                  ! Geodesic  V= 0 U= 0 (curve 3)
+  FLOAT  g_e_3;                  ! Geodesic  V= 0 U= 1 (curve 3)
+  FLOAT  g_s_4;                  ! Geodesic  V= 1 U= 0 (curve 4)
+  FLOAT  g_e_4;                  ! Geodesic  V= 1 U= 1 (curve 4)
+  FLOAT  r_s_1;                  ! Geodesic  U= 0 V= 0 radius (curve 1)
+  FLOAT  r_e_1;                  ! Geodesic  U= 0 V= 1 radius (curve 1)
+  FLOAT  r_s_2;                  ! Geodesic  U= 1 V= 0 radius (curve 2)
+  FLOAT  r_e_2;                  ! Geodesic  U= 1 V= 1 radius (curve 2)
+  FLOAT  r_s_3;                  ! Geodesic  V= 0 U= 0 radius (curve 3)
+  FLOAT  r_e_3;                  ! Geodesic  V= 0 U= 1 radius (curve 3)
+  FLOAT  r_s_4;                  ! Geodesic  V= 1 U= 0 radius (curve 4)
+  FLOAT  r_e_4;                  ! Geodesic  V= 1 U= 1 radius (curve 4)
+
+  FLOAT  max_radius;             ! Maximum radius
+  INT    graphic_cur;            ! Graphic for c_a2cirv0
+
+  FLOAT  t_end;                  ! End parameter for curve
+
+  VECTOR vdum;                   ! Dummy vector for EVAL
+
+  INT    bflag_i;                ! Blank flag for isoparameters
+  INT    bflag_a;                ! Blank flag for all other entities
+ 
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks              
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  max_radius := 6000.0;          ! Maximum radius
+
+  IF    graphic = 0 THEN         ! 
+    bflag_i := 1;                ! Blank flag isoparameters
+    bflag_a := 1;                ! Blank flag all other entities
+    graphic_cur := 0;            ! Graphic circles
+  ELIF    graphic = 1 THEN       ! 
+    bflag_i := 0;                ! Blank flag isoparameters
+    bflag_a := 1;                ! Blank flag all other entities
+    graphic_cur := 0;            ! Graphic circles
+  ELIF    graphic = 2 THEN       ! 
+    bflag_i := 0;                ! Blank flag isoparameters
+    bflag_a := 0;                ! Blank flag all other entities
+    graphic_cur := 1;            ! Graphic circles
+  ELSE                           !
+    EXIT("s_adeve1v0 graphic not OK");
+  ENDIF;                         !
+
+! +++
+! Retrieve surface data for Debug ON. 
+! ---
+
+
+  IF  DEBUG = 1 THEN
+    GETSURH(s_t_id,"NPATU",npatu);   ! Retrieve number of U patches
+    GETSURH(s_t_id,"NPATV",npatv);   ! Retrieve number of V patches
+    IF  p_uv_start.x       >= -0.0000001 AND   
+        p_uv_start.x       <= npatu+0.0000001 THEN
+      ;
+    ELSE
+      EXIT("s_adeve1v0 p_uv_start.x outside surface");
+    ENDIF;
+    IF  p_uv_start.y       >= -0.0000001 AND   
+        p_uv_start.y       <= npatv+0.0000001 THEN
+      ;
+    ELSE
+      EXIT("s_adeve1v0 p_uv_start.y outside surface");
+    ENDIF;
+    IF  p_uv_start.x+u_delta   >= -0.0000001 AND   
+        p_uv_start.x+u_delta   <= npatu+0.0000001 THEN
+      ;
+    ELSE
+      EXIT("s_adeve1v0 p_uv_start.x+u_delta outside surface");
+    ENDIF;
+    IF  p_uv_start.y+v_delta   >= -0.0000001 AND   
+        p_uv_start.y+v_delta   <= npatv+0.0000001 THEN
+      ;
+    ELSE
+      LST_INI("s_deve1v0 Error outside surface");
+      LST_LIN("p_uv_start "+STR(p_uv_start.x,10,4)+" "
+                           +STR(p_uv_start.y,10,4));
+      LST_LIN("u_delta "+STR(u_delta,10,4)+" v_delta "+STR(v_delta,10,4));
+      LST_LIN("npatu "+STR(npatu, 5,0)+" npatv "+STR(npatv, 5,0));
+      LST_LIN("p_uv_start.y+v_delta "+STR(p_uv_start.y+v_delta,10,4)+" "
+                           +STR(npatv,5,0));
+      LST_EXI();
+      EXIT("s_adeve1v0 p_uv_start.y+v_delta outside surface");
+    ENDIF;
+  ENDIF;
+  
+! +++
+! 2. Create isoparameter patch limit curves
+! ---
+
+  CUR_ISO(#11, s_t_id, "U", p_uv_start.x, 
+                            p_uv_start.y,
+                            p_uv_start.y+v_delta
+                            :PEN=1,BLANK=bflag_i);
+  c1_id :=  GLOBAL_REF(#11);
+  CUR_ISO(#12, s_t_id, "U", p_uv_start.x+u_delta, 
+                            p_uv_start.y,
+                            p_uv_start.y+v_delta
+                            :PEN=2,BLANK=bflag_i);
+  c2_id :=  GLOBAL_REF(#12);
+  CUR_ISO(#13, s_t_id, "V", p_uv_start.y, 
+                            p_uv_start.x,
+                            p_uv_start.x+u_delta
+                            :PEN=3,BLANK=bflag_i);
+  c3_id :=  GLOBAL_REF(#13);
+  CUR_ISO(#14, s_t_id, "V", p_uv_start.y+v_delta, 
+                            p_uv_start.x,
+                            p_uv_start.x+u_delta
+                            :PEN=4,BLANK=bflag_i);
+  c4_id :=  GLOBAL_REF(#14);
+
+! +++
+! 3. Calculate arclengths and geodesic curvature 
+! ---
+
+  a_l_1 :=  ARCL(c1_id);
+  a_l_2 :=  ARCL(c2_id);
+  a_l_3 :=  ARCL(c3_id);
+  a_l_4 :=  ARCL(c4_id);
+
+  vdum  := EVAL(c1_id,"GEODESIC",VEC(0,0,0));
+  g_s_1 := vdum.x;
+  IF   ABS(g_s_1) > 1.0/max_radius THEN
+    r_s_1 := 1.0/g_s_1;
+  ELSE
+    r_s_1 := max_radius;
+  ENDIF;
+  vdum  := EVAL(c1_id,"GEODESIC",VEC(1,0,0));
+  g_e_1 := vdum.x;
+  IF   ABS(g_e_1) > 1.0/max_radius THEN
+    r_e_1 := 1.0/g_e_1;
+  ELSE
+    r_e_1 := max_radius;
+  ENDIF;
+
+  vdum  := EVAL(c2_id,"GEODESIC",VEC(0,0,0));
+  g_s_2 := vdum.x;
+  IF   ABS(g_s_2) > 1.0/max_radius THEN
+    r_s_2 := 1.0/g_s_2;
+  ELSE
+    r_s_2 := max_radius;
+  ENDIF;
+  vdum  := EVAL(c2_id,"GEODESIC",VEC(1,0,0));
+  g_e_2 := vdum.x;
+  IF   ABS(g_e_2) > 1.0/max_radius THEN
+    r_e_2 := 1.0/g_e_2;
+  ELSE
+    r_e_2 := max_radius;
+  ENDIF;
+
+  vdum  := EVAL(c3_id,"GEODESIC",VEC(0,0,0));
+  g_s_3 := vdum.x;
+  IF   ABS(g_s_3) > 1.0/max_radius THEN
+    r_s_3 := 1.0/g_s_3;
+  ELSE
+    r_s_3 := max_radius;
+  ENDIF;
+  vdum  := EVAL(c3_id,"GEODESIC",VEC(1,0,0));
+  g_e_3 := vdum.x;
+  IF   ABS(g_e_3) > 1.0/max_radius THEN
+    r_e_3 := 1.0/g_e_3;
+  ELSE
+    r_e_3 := max_radius;
+  ENDIF;
+
+  vdum  := EVAL(c4_id,"GEODESIC",VEC(0,0,0));
+  g_s_4 := vdum.x;
+  IF   ABS(g_s_4) > 1.0/max_radius THEN
+    r_s_4 := 1.0/g_s_4;
+  ELSE
+    r_s_4 := max_radius;
+  ENDIF;
+  vdum  := EVAL(c4_id,"GEODESIC",VEC(1,0,0));
+  g_e_4 := vdum.x;
+  IF   ABS(g_e_4) > 1.0/max_radius THEN
+    r_e_4 := 1.0/g_e_4;
+  ELSE
+    r_e_4 := max_radius;
+  ENDIF;
+
+! +++
+! 4. Delete iso-parametrics
+! ---
+
+  DEL(c1_id);
+  DEL(c2_id);
+  DEL(c3_id);
+  DEL(c4_id);
+
+! +++
+! 5. Create developed curves and calculate end points and tangents
+! ---
+
+  MODE_LOCAL(csys_id);
+  
+  IF  DEBUG = 2 THEN
+  LST_INI("s_deve1v0 Debug printout");
+  LST_LIN("p1_dev_start   "+STR(p1_dev_start.x,10,4)+" "+STR(p1_dev_start.y,10,4));
+  LST_LIN("p2_dev_start   "+STR(p2_dev_start.x,10,4)+" "+STR(p2_dev_start.y,10,4));
+  LST_LIN("utan_dev_start "+STR(utan_dev_start.x,10,6)+" "+STR(utan_dev_start.y,10,6));
+  LST_LIN("vtan_dev_start "+STR(vtan_dev_start.x,10,6)+" "+STR(vtan_dev_start.y,10,6));
+  ENDIF;
+
+  p1_dev_end   := p1_dev_start+((a_l_1+a_l_2)/2.0)*utan_dev_start;
+  IF  p2_dev_start.z < 0.0 THEN
+    p2_dev_start := p1_dev_start+ ((a_l_3+a_l_4)/2.0)*vtan_dev_start;
+  ENDIF;
+  p2_dev_end   := p2_dev_start+((a_l_1+a_l_2)/2.0)*utan_dev_start;
+
+  utan_dev_end := utan_dev_start;
+  vtan_dev_end := vtan_dev_start;
+  IF  DEBUG = 2 THEN
+  LST_LIN("p1_dev_end     "+STR(p1_dev_end.x,10,4)+" "+STR(p1_dev_end.y,10,4));
+  LST_LIN("p2_dev_end     "+STR(p2_dev_end.x,10,4)+" "+STR(p2_dev_end.y,10,4));
+  LST_EXI();
+  ENDIF;
+
+  PART(#1, c_a2cirv0 ( p1_dev_start, utan_dev_start, 
+                       r_s_1, r_e_1, a_l_1, csys_id,
+                       graphic_cur):PEN=1);
+
+  t_end        := INV_ARCL(GLOBAL_REF(#1#1), ARCL(GLOBAL_REF(#1#1)));
+  p1_dev_end   := ON(GLOBAL_REF(#1#1),t_end);
+
+  PART(#2, c_a2cirv0 ( p2_dev_start, utan_dev_start, 
+                       r_s_2, r_e_2, a_l_2, csys_id,
+                       graphic_cur):PEN=2);
+  t_end        := INV_ARCL(GLOBAL_REF(#2#1), ARCL(GLOBAL_REF(#2#1)));
+  p2_dev_end   := ON(GLOBAL_REF(#2#1),t_end);
+
+
+!  CUR_CONIC(#1, "PROJ",
+!                p1_dev_start, p1_dev_start+utan_dev_start, 0.5,
+!                p1_dev_end,   p1_dev_end  +utan_dev_end
+!                :PEN=1,BLANK=bflag_a);
+!  CUR_CONIC(#2, "PROJ",
+!                p2_dev_start, p2_dev_start+utan_dev_start, 0.5,
+!                p2_dev_end,   p2_dev_end  +utan_dev_end
+!                :PEN=2,BLANK=bflag_a);
+!  POI_PROJ(#31, p1_dev_start:PEN=1);
+!  POI_PROJ(#32, p2_dev_start:PEN=2);
+!  POI_PROJ(#33, p1_dev_end  :PEN=3);
+!  POI_PROJ(#34, p2_dev_end  :PEN=4);
+
+  IF  graphic >= 2 THEN
+    LIN_PROJ(#3, p1_dev_start, p2_dev_start:PEN=3,BLANK=bflag_a);
+    LIN_PROJ(#4, p1_dev_end  , p2_dev_end  :PEN=4,BLANK=bflag_a);
+  ENDIF;
+  
+  MODE_GLOBAL();
+
+! +++
+! 6. Delete geometry for end point/tangent calculations when graphic= 0 
+! ---
+
+  IF  graphic <= 1 THEN
+    DEL(GLOBAL_REF(#1));
+    DEL(GLOBAL_REF(#2));
+  ENDIF;
+  
+  IF  DEBUG = 3 THEN
+  s:= INPMT("s_adeve1v0 Continue y/n ?","y",1);
+  IF s <> "y" THEN
+    EXIT("s_adeve1v0 Execution interrupted");
+  ENDIF;
+  ENDIF;
+
+  
+ENDMODULE

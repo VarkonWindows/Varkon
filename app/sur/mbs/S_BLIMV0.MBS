@@ -1,0 +1,291 @@
+! ***************** s_blimv0   ****************************
+! +++
+! Limit and tangent curve for a given angle          
+!
+! The constant angle is defined in local systems. These
+! systems are defined by a spine surface, i.e. a curve
+! on a surface. The tangents on the spine surface will
+! be X axis and the spine surface normal will be the 
+! Y axis.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-16 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Limit and tangent curve for a given angle          
+!sdescs Direktris och tangentkurva foer given vinkel
+
+
+GLOBAL GEOMETRY MODULE s_blimv0   (
+
+REF    s_id           >"@t16 Select surface";
+FLOAT  c_angle:= 60.0 >"Constant angle defining curve";
+REF    c_id           >"@t8  Select surface curve";
+INT    n_add  := 0    >"Number of points added for each segment";
+INT    graphic:= 1    >"Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+
+! Internal variables
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! No of geometrical segments
+  INT    ns_gra;                 ! No of graphical   segments
+  INT    fnt;                    ! Font type, subtype
+  FLOAT  sl;                     ! Dash length 
+
+  INT    i_i;                    ! Loop index intersect
+  INT    n_i;                    ! Total number of intersects
+  FLOAT  u_d;                    ! Delta   curve parameter value
+  FLOAT  u_c;                    ! Current curve parameter value
+  VECTOR p_c;                    ! Point on the curve
+  VECTOR p_s;                    ! Point on the surface
+  
+  REF    sur_id;                 ! Surface identity 
+  VECTOR sur_uv;                 ! Surface point (U,V)
+
+  STRING t_direct*10;            ! Tangent direction DRDU or DRDV
+  VECTOR drdu;                   ! Tangent in U direction
+  VECTOR drdv;                   ! Tangent in V direction
+  VECTOR drdt;                   ! Tangent for the curve  
+
+  VECTOR xaxis;                  ! X axis for intersect system
+  VECTOR yaxis;                  ! Y axis for intersect system
+  VECTOR origin;                 ! Origin for intersect system
+
+  REF    csys_id;                ! Intersect coord. system identity
+
+  REF    bra_id(50);             ! Identities for intersect branch curves
+  INT    n_totint;               ! Total number of intersect branches 
+
+  INT    no_branch;              ! No branches
+
+  INT    i_s;                    ! Loop index intersect
+
+  REF    cur_id;                 ! Curve branch identity for output point
+  FLOAT  u_angle;                ! Parameter value for output point
+  INT    graphic_1;              ! Graphic for s_afill1v0
+
+  INT    n_poi;                  ! Number of points in poi
+  VECTOR poi(111);               ! Points for surface curve 
+  STRING metod*15;               ! Method for tangent length calculation 
+  INT    no_ulines;              ! Number of U curves
+  INT    no_vlines;              ! Number of V curves
+  VECTOR pts(2,111);             ! Points for surface
+
+  INT    bflag_s;                ! Blank flag for surface
+  INT    bflag_a;                ! Blank flag for all 
+  INT    bflag_c;                ! Blank flag for coordinate system
+  
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN
+    bflag_s := 1;   
+    bflag_a := 1;   
+    bflag_c := 1;
+  ELIF graphic = 1 THEN
+    bflag_s := 0;   
+    bflag_a := 1;
+    bflag_c := 1;       
+  ELIF graphic = 2 THEN
+    bflag_s := 0;   
+    bflag_a := 0;  
+    bflag_c := 0;     
+  ELSE             
+    EXIT("s_blimv0  Graphic not 0, 1 or 2");
+  ENDIF;         
+
+  graphic_1 := 0;
+
+  IF  n_add < 0 THEN
+    EXIT("s_blimv0  n_add < 0");
+  ENDIF;
+
+  t_direct := "Undefined";
+
+  FOR  i_i := 1 TO 50  DO
+    bra_id(i_i) := #0; 
+  ENDFOR;
+
+! Number of segments in the curve
+  GETCURH(c_id, fnt,sl,ns_geo,ns_gra);
+
+
+  PSH_PMT("Limit and tangent curve defined by angle");
+  
+  IF DEBUG = 1 THEN 
+  LST_INI("s_blimv0  Debug printout");
+  LST_LIN("ns_geo "+STR(ns_geo,3,0)+" n_add "+STR(n_add,3,0));
+  ENDIF;
+
+! +++
+! 3. Calculate all points for the given angle
+! ---
+
+  n_i := ns_geo + 1 + n_add*ns_geo;
+  u_d := 1.0/(n_add+1);
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("Number of intersects n_i "+STR(n_i,3,0)+" (local systems)");
+  ENDIF;
+
+
+! +++
+! Start loop all intersects
+! ---
+
+  n_totint := 0;
+  n_poi    := 0;
+
+  FOR  i_i := 1 TO n_i DO
+
+!   Current parameter value u_c
+    u_c := (i_i-1)*u_d;
+
+!   Current point on curve
+
+    p_c := ON(c_id,u_c);
+    IF graphic = 2 THEN
+      POI_FREE(#100,p_c:PEN=4);
+    ENDIF;
+
+!   Get UV coordinates on surface for the current point
+    PART(#10,eval_utouv(c_id, u_c, sur_id, sur_uv):SAVE=0);
+
+!   Determine direction for X axis of intersect plane
+    IF  i_i = 1 THEN
+      drdu := VECN( EVAL(sur_id, "DRDU", sur_uv) );
+      drdv := VECN( EVAL(sur_id, "DRDV", sur_uv) );
+      drdt := VECN( EVAL(c_id  , "DRDT", VEC(u_c,0,0)) );
+      IF  ABS(drdv*drdt) <  ABS(drdu*drdt) THEN
+        t_direct := "DRDV";      
+      ELSE
+        t_direct := "DRDU";      
+      ENDIF;
+      IF DEBUG = 1 THEN 
+      LST_LIN("Direction for the X axis is "+t_direct+
+              " in surface "+RSTR(s_id));
+      ENDIF;
+    ENDIF;
+
+!   Create intersecting coordinate system (X/Y-plane)
+    xaxis  := EVAL(sur_id, t_direct, sur_uv);
+    yaxis  := EVAL(sur_id, "NORMAL", sur_uv);
+    origin := p_c;
+    IF DEBUG = 1 THEN 
+    LST_LIN("origin "+STR(origin.x,10,4)+" "+STR(origin.y,10,4)+" "
+                    +STR(origin.z,10,4)+"   "+ STR(i_i,3,0));
+    LST_LIN("xaxis  "+STR(xaxis.x,10,4)+" "+STR(xaxis.y,10,4)+" "
+                    +STR(xaxis.z,10,4));
+    LST_LIN("yaxis  "+STR(yaxis.x,10,4)+" "+STR(yaxis.y,10,4)+" "
+                    +STR(yaxis.z,10,4));
+    ENDIF;
+
+
+    CSYS_3P(#2, "Intplan", origin, origin+xaxis, origin+yaxis
+                 :BLANK=bflag_c);
+    csys_id := GLOBAL_REF(REFC(2,i_i));
+
+!   Determine the number of intersect branches
+    no_branch := N_CUR_INT( s_id, csys_id );
+    IF  no_branch = 0 THEN
+      MODE_LOCAL(csys_id);
+      B_PLANE(#91,VEC(0,0,0),VEC(100,100,0),
+      VEC(100,100,0),VEC(200,0,0):PEN=4);
+      MODE_GLOBAL();    
+      GOTO no_intersect;
+    ENDIF;
+    IF DEBUG = 1 THEN 
+    LST_LIN("Intersect i_i "+STR(i_i,3,0)+" no_branch "+STR(no_branch,3,0));
+    ENDIF;
+!   Check that dimension of bra_id not is exceeded
+    IF  no_branch > 50 THEN
+      IF DEBUG = 1 THEN 
+      LST_EXI();
+      ENDIF;
+      POP_PMT();
+      EXIT("s_blimv0  no_branch > 50");
+    ENDIF;
+
+!   Create all intersect branches
+    FOR i_s:= 1 TO no_branch DO 
+     CUR_INT(#3,s_id, csys_id , i_s:BLANK=bflag_a,PEN=3);
+     n_totint := n_totint + 1;
+     bra_id(i_s) := GLOBAL_REF(REFC(3,n_totint));
+    ENDFOR;
+
+!   Calculate point for the given angle 
+    PART (#4, s_blim1v0  (csys_id, s_id, c_angle, no_branch, bra_id,
+              cur_id, u_angle, graphic_1));
+
+    IF  u_angle < 0.0 THEN
+      MODE_LOCAL(csys_id);
+      B_PLANE(#90,VEC(0,0,0),VEC(100,100,0),
+      VEC(100,100,0),VEC(200,0,0):PEN=2);
+      MODE_GLOBAL();
+      GOTO no_point;
+    ENDIF;
+    
+!   Current point on surface
+
+    p_s := ON(cur_id,u_angle);
+    IF graphic = 2 THEN
+      IF  VECL(p_c-p_s) > 0.1 THEN
+        LIN_FREE(#101,p_c, p_s:PEN=4);
+      ELSE
+        POI_FREE(#112,p_s:PEN=4);
+      ENDIF;
+    ENDIF;
+
+    n_poi      := n_poi + 1;
+    IF  n_poi > 111 THEN
+      POP_PMT();
+     EXIT("s_blimv0  n_poi > 111");
+    ENDIF;
+    poi(n_poi)   := p_s;
+    pts(1,n_poi) := p_s;
+    pts(2,n_poi) := p_c;
+
+
+no_intersect:; ! Label: There was no intersect
+no_point:;     ! Label: There was no point with the given angle
+
+  ENDFOR;
+
+! +++
+! 4. Create curve on the surface 
+! ---
+
+
+  CUR_SPLARR(#6,"FREE",n_poi,poi:BLANK=bflag_s);
+
+! +++
+! Projection of tangents onto the surface not yet implemented
+! ---
+
+
+  IF DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+  POP_PMT();
+  
+ENDMODULE

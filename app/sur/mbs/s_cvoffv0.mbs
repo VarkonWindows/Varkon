@@ -1,0 +1,113 @@
+!************************ s_cvoffv0 *********************
+! +++							*
+! Evaluation of the curve joined by a specific number 	*
+! of points in the thickness surface with regard to	*
+! their tangents.					*
+!							*
+! Input: Curve, thickness surface, value on curve,	*
+!	 step length, number of iterations		*
+! ---							*
+!							*
+! Revision history					*
+! ----------------					*
+! 1996-08 Elsa Rydman					*
+!							*
+!********************************************************
+
+!sdesce Evaluation of curve using tangents for the offset points
+
+!sdescs Framtagning av kurva mha tangenterna i tjockytepunkterna
+
+
+GLOBAL GEOMETRY MODULE s_cvoffv0(
+
+REF 	cur_id > 	"@t8 Select a curve";
+REF 	thi_id > 	"@t16 Select tickness surface";
+FLOAT 	u_cur > 	"Give initial value on curve";
+FLOAT 	dist > 		"Give step length";
+INT 	iter > 		"Give the number of iterations");
+
+
+INT	i;		! Counter
+INT 	font;
+INT 	length;
+INT 	ns_geo;		! Number of segments on curve
+INT 	ns_gra;
+INT 	n_pts;		! Number of points
+
+FLOAT 	u_temp;		! Temporary value of u
+
+VECTOR 	p_off;		! Point on offset 
+VECTOR 	droffdc;	! Derivatives at p_off with respect to curve
+
+VECTOR 	pts(80);	! Point vector (n)
+VECTOR 	t_pts(80);	! Tangent vector at point (n)
+FLOAT  	p_val(80);      ! P value for curve segment
+STRING 	metod(80)*1;    ! P or M
+VECTOR 	mpos(80);       ! Mid point for segment (not used)
+
+
+
+BEGINMODULE
+
+! +++
+! 1. Get the number of segments on curve.
+! ---
+
+  getcurh(cur_id, font, length, ns_geo, ns_gra);
+  
+! +++
+! 2. Determine offset points and their tangents.
+! ---			
+
+  u_temp:= u_cur;				! Initial value of u_temp
+  n_pts:= 0;					! Initial number of points
+
+
+! Iteration over the points
+
+  FOR i := 1 TO iter DO
+
+    IF trunc(u_temp) < ns_geo THEN		! Check if point is on surface
+    
+      u_temp:= u_cur + n_pts*dist;		! Next point
+      
+      n_pts:= n_pts + 1;
+      
+      part(#1, s_avoffv0(cur_id, thi_id		! Call subrutine s_avoffv0
+        , u_temp, p_off, droffdc));		!
+        
+      pts(n_pts):= p_off;			! Put point in vector
+      t_pts(n_pts):= p_off+VECN(droffdc); 	! Create the tangent
+      
+      
+      
+      p_val(n_pts) := 0.5;
+      metod(n_pts):= "P";
+      mpos(n_pts) := VEC(0,0,0);
+      
+!      LIN_FREE(#10,pts(n_pts),t_pts(n_pts):PEN=2);
+
+    ELSE
+      GOTO noscale;
+    ENDIF;
+
+  ENDFOR;
+  noscale:
+  ;
+  
+! +++
+! 3. Draw a curve through the points with regard to the tangents
+! ---
+
+  CUR_CONARR(#3, "FREE", n_pts, pts, t_pts,metod,p_val,mpos:PEN=4,LEVEL=1);
+
+! +++
+! 4. Draw a curve through the points
+! ---
+
+  CUR_SPLARR(#4, "FREE", n_pts, pts:PEN=3,LEVEL=2);
+   
+  ;
+
+ENDMODULE

@@ -1,0 +1,282 @@
+! ***************** s_ascurv0  ****************************
+! +++
+! Create curve on surface from a free UV curve
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-09-30 Gunnar Liden
+! 1996-10-12 Tangent curve added
+! 1996-10-25 Tangent to surface curve added Gunnar Liden
+! 1996-10-29 CSYS "Spine" wrong X-axis  Karl-Erik Eklund
+! 
+!************************************************************
+
+!sdesce Create curve on surface from a free UV curve
+!sdescs Skapa kurva på yta från fri UV kurva
+
+
+GLOBAL GEOMETRY MODULE s_ascurv0  (
+
+REF    s_id                      > "@t16 Select surface";
+REF    c_id                      > "@t8  Select free surface curve";
+FLOAT  c_angle:= 0.0  > "Constant angle for tangent curve";
+FLOAT  t_dist := 10.0 > "Distance to tangent definition curve (0= No curve)";
+INT    graphic:= 1    > "Eq. 0: Blank all Eq. 1: Show curve Eq. 2: Show all");
+
+
+! Internal variables
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! No of geometrical segments
+  INT    ns_gra;                 ! No of graphical   segments
+  INT    fnt;                    ! Font type, subtype
+  FLOAT  sl;                     ! Dash length 
+
+  INT    npatu;                  ! Number of U patches
+  INT    npatv;                  ! Number of V patches
+  
+  INT    i_i;                    ! Loop index intersect
+  INT    n_i;                    ! Total number of intersects
+  FLOAT  u_d;                    ! Delta   curve parameter value
+  FLOAT  u_c;                    ! Current curve parameter value
+  VECTOR p_c;                    ! Point on the curve
+  VECTOR t_c;                    ! Tangent on curve
+  VECTOR t_cuv;                  ! Tangent on free UV curve
+  VECTOR p_s;                    ! Point on the surface
+  VECTOR s_n;                    ! Normal on surface
+             
+  VECTOR sur_uv;                 ! Surface point (U,V)
+
+  INT    n_add;                  ! Number of points added for each segment
+  INT    i_s;                    ! Loop index point on curve
+
+  REF    cur_id;                 ! Curve branch identity for output point
+
+  INT    n_poi;                  ! Number of points in poi
+  VECTOR poi(111);               ! Points for surface and tangent curve 
+  VECTOR tanpoi(111);            ! Tangent points for surface curve
+  VECTOR pm(111);                ! Mid point
+  STRING mf(111)*1;              ! Mid point flag
+  FLOAT  pval(111);              ! P-value
+  VECTOR snorm(111);             ! Surface normals
+  INT    i_poi;                  ! Loop index point
+
+  STRING s_t_cuv*132;            ! t_cuv as string  
+  REF    curout_id;              ! Identity for output curve
+  
+  INT    bflag_a;                ! Blank flag for all 
+  INT    bflag_c;                ! Blank flag for coordinate system
+  
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN
+    bflag_a := 1;   
+    bflag_c := 1;
+  ELIF graphic = 1 THEN  
+    bflag_a := 1;
+    bflag_c := 0;       
+  ELIF graphic = 2 THEN  
+    bflag_a := 0;  
+    bflag_c := 0;     
+  ELSE             
+    EXIT("s_ascurv0 Graphic not 0, 1 or 2");
+  ENDIF;         
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);  
+  
+! Additional points should not be added for s_scintv0 curves !!  
+  n_add  := 0;        
+        
+  IF  n_add < 0 THEN
+    EXIT("s_ascurv0 n_add < 0");
+  ENDIF;
+
+ 
+  GETCURH(c_id,                    ! Number of segments in the curve
+   fnt,sl,ns_geo,ns_gra);          ! 
+
+
+  PSH_PMT("Curve and tangent curve from a free UV curve");
+  
+  IF DEBUG = 1 THEN 
+  LST_INI("s_ascurv0 Debug printout");
+  LST_LIN("ns_geo "+STR(ns_geo,3,0)+" n_add "+STR(n_add,3,0));
+  ENDIF;
+
+! +++
+! 3. Calculate all points for the given angle
+! ---
+
+  n_i := ns_geo + 1 + n_add*ns_geo;
+  u_d := 1.0/(n_add+1);
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("Number of points n_i "+STR(n_i,3,0));
+  ENDIF;
+
+
+! +++
+! Start loop all points
+! ---
+
+  n_poi    := 0;
+
+
+  
+  FOR  i_i := 1 TO n_i DO
+
+!   Current parameter value u_c
+    u_c := (i_i-1)*u_d;
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("u_c "+STR(u_c,10,5));
+    ENDIF;
+
+!   Current point on curve
+
+    p_c   := ON(c_id,u_c);
+    t_cuv := TANG(c_id,u_c);
+    IF graphic = 2 THEN
+      POI_FREE(#100,p_c:PEN=4);
+    ENDIF;
+    IF DEBUG = 1 THEN 
+    LST_LIN("p_c "+STR(p_c.x,10,5)+" "+STR(p_c.y,10,5));
+    LST_LIN("t_cuv "+STR(t_cuv.x,12,9)+" "+STR(t_cuv.y,12,9));
+    ENDIF;
+
+!   Point (curve) is scaled for s_uvnetv0
+    sur_uv := (1.0/100.0)*(p_c - VEC(100,100,0));
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("´sur_uv "+STR(sur_uv.x,10,5)+" "+STR(sur_uv.y,10,5));
+    ENDIF;   
+    
+!   Current point on surface
+
+    IF   sur_uv.x >= -0.000001 AND sur_uv.x <  npatu+0.000001 AND
+         sur_uv.y >= -0.000001 AND sur_uv.y <  npatv+0.000001 THEN
+      ; !OK
+    ELSE
+      IF DEBUG = 1 THEN 
+      LST_EXI();
+      ENDIF; 
+      EXIT("s_ascurv0 UV curve pt outside surface");
+    ENDIF;
+    
+    p_s := ON(s_id,sur_uv);
+    IF graphic = 2 THEN
+      POI_FREE(#101,p_s:PEN=4);
+    ENDIF;
+    s_t_cuv := STR(t_cuv.x,15,12)+ " " + STR(t_cuv.y,15,12);
+    t_c := EVAL(s_id,"DUVTOD3 "+s_t_cuv,sur_uv);
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("p_s "+STR(p_s.x,10,5)+" "+STR(p_s.y,10,5)+" "+STR(p_s.z,10,5));
+    LST_LIN("t_c "+STR(t_c.x/VECL(t_c),12,9)+" "+STR(t_c.y/VECL(t_c),12,9)+
+               " "+STR(t_c.z/VECL(t_c),12,9));
+    LST_LIN(" ");
+    ENDIF;
+
+    n_poi      := n_poi + 1;
+    IF  n_poi > 111 THEN
+      POP_PMT();
+     EXIT("s_ascurv0 n_poi > 111");
+    ENDIF;
+    poi(n_poi)    := p_s;
+    tanpoi(n_poi) := p_s + t_c;
+    pm(n_poi)     := VEC(0,0,0);
+    mf(n_poi)     := "P";
+    pval(n_poi)   := 0.5;    
+
+    IF  ABS(t_dist) > 0.01 THEN
+      s_n := NORM(s_id,sur_uv);
+      snorm(n_poi) := s_n;
+    ENDIF;
+
+  ENDFOR;
+
+! +++
+! 4. Create curve on the surface 
+! ---
+
+  CUR_CONARR(#1,"FREE",n_poi,poi,tanpoi,mf,pval,pm:BLANK=bflag_c);
+!  CUR_SPLARR(#1,"FREE",n_poi,poi:BLANK=bflag_c);
+
+  curout_id := GLOBAL_REF(#1);
+  
+! +++
+! 5. Create tangent curve
+! ---
+
+
+
+!   Current tangent point
+    IF  ABS(t_dist) < 0.01 THEN
+      GOTO notang;
+    ENDIF;
+
+  
+  FOR  i_poi := 1 TO n_poi DO
+
+!   Current parameter value u_c
+    u_c := i_poi-1.0;
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("u_c "+STR(u_c,10,5));
+    ENDIF;
+
+!   Current point and tangent on curve
+
+    p_c :=   ON(curout_id,u_c);
+    t_c := TANG(curout_id,u_c);
+
+!   Current surface normal
+    s_n := snorm(i_poi);
+    
+    CSYS_3P(#3, "Spine", p_c, p_c + s_n, p_c + t_c:BLANK=bflag_a);
+    MODE_LOCAL(GLOBAL_REF(#3));
+    LIN_FREE(#4, VEC(0,0,0), t_dist*VEC(SIN(c_angle),0.0,COS(c_angle)):BLANK=bflag_a);
+    MODE_GLOBAL();
+    poi(i_poi) := ON(GLOBAL_REF(#4),1.0);
+    
+    IF  graphic = 2 THEN
+      POI_FREE(#24, poi(i_poi):PEN=3);
+    ENDIF;
+    
+    DEL(GLOBAL_REF(#4));
+    DEL(GLOBAL_REF(#3));    
+    
+  ENDFOR; 
+  
+  CUR_SPLARR(#2,"FREE",n_poi,poi:BLANK=bflag_c);
+  
+  
+  
+notang:;   ! Label no tangent definition curve    
+
+  IF DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+  POP_PMT();
+  
+ENDMODULE

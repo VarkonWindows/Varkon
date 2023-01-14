@@ -1,0 +1,254 @@
+! ***************** cylinder_2 ****************************
+!
+! +++
+! Create a cylinder defined by origin, radius, xaxis and height
+!
+! The number of patches in U direction is input to the function
+!
+! This is a function for programming checks of SUR_CONIC
+! evaluation functions (CUR_SIL for instance)
+!
+! Revision history
+! ________________
+!
+! 1995-02-12 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Cylinder defined by origin, axis, radius and height
+!sdescs Cylinder definierad av origo, radie, axel och höjd
+
+GLOBAL GEOMETRY MODULE cylinder_2 (
+
+VECTOR  origin := VEC(0,0,0)  > "Origo";
+VECTOR  axis   := VEC(1,1,1)  > "Axel riktning";
+FLOAT   radius :=  10.0       > "Radie";
+FLOAT   height := 100.0       > "Höjd";
+INT     no_u   :=   3         > "Antal U linjer ( minimum 2)";
+INT   graphic:=  1   >"=0: Visa inget =1: Yta =2: Allt");
+
+
+! Internal variables
+
+  FLOAT  pval;                   ! P-value
+  VECTOR yaxis;                  ! Y axis
+  
+  INT    n_poi;                  ! Number of points
+  VECTOR poi(400);               ! Points
+  VECTOR tanpoi(400);            ! Tangent points 
+  VECTOR midpoi(400);            ! Mid     points 
+  FLOAT  pvalue(400);            ! P values
+  STRING p_flag(400)*1;          ! P value flags
+                                 ! Eq. P: P value
+                                 ! Eq. M: Mid point
+  INT    graphic_c;              ! Graphical representation
+                                 ! Eq. 0: No graphic (blanked)
+                                 ! Eq. 1: Curve 
+
+  INT    i_p;                    ! Loop index point
+  FLOAT  d_x;                    ! Delta X for spine
+
+  INT    bflag_i;                ! Blank flag for curve
+  INT    bflag_s;                ! Blank flag for surface
+
+  INT    DEBUG;                  ! Debug
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                       ! Debug printout
+
+  IF   graphic = 0 THEN             ! 
+    bflag_i := 1;                   ! Blank flag curves
+    bflag_s := 1;                   ! Blank flag surface
+  ELIF graphic = 1 THEN             ! 
+    bflag_i := 1;                   ! Blank flag curves
+    bflag_s := 0;                   ! Blank flag surface
+  ELIF graphic = 2 THEN             ! 
+    bflag_i := 0;                   ! Blank flag curves
+    bflag_s := 0;                   ! Blank flag surface
+  ELSE                              !
+    EXIT("cylinder_2 graphic");     !
+  ENDIF;                            !
+
+  pval:= SQRT(2.0)-1.0;             ! P value circle
+
+! +++
+! 2. Create longitudinal input curves to SUR_CONIC
+! ---
+
+! +++
+! Create local system with input axis as X axis
+! ---
+
+  yaxis:= VEC(0,0,0);
+  IF   ABS(axis.x) <= ABS(axis.y) AND ABS(axis.y) <= ABS(axis.z) THEN
+    yaxis := VEC(1,0,0);
+  ELIF ABS(axis.y) <= ABS(axis.x) AND ABS(axis.x) <= ABS(axis.z) THEN
+    yaxis := VEC(0,1,0);
+  ELIF ABS(axis.z) <= ABS(axis.y) AND ABS(axis.y) <= ABS(axis.x) THEN
+    yaxis := VEC(0,0,1);
+  ELIF ABS(axis.z) <= ABS(axis.x) AND ABS(axis.x) <= ABS(axis.y) THEN
+    yaxis := VEC(0,0,1);
+  ELSE
+   EXIT("cylinder_2 yaxis programfel");
+  ENDIF;
+
+  CSYS_3P(#30,"Cylinder",origin,origin+axis,origin+yaxis:BLANK=1);
+
+  MODE_LOCAL(#30);
+
+! +++
+! All limit and tangent definition curves are defined 
+! as straight lines. The lines must be converted to 
+! curves (using CUR_COMP) since SUR_CONIC only accepts 
+! curves.
+! ---
+
+  LIN_FREE(#2,VEC(  0 ,  radius,    0   ),! Limit   1 
+              VEC(height, radius,   0   ) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#3,VEC(  0   , radius, radius),! Tangent 1
+              VEC(height, radius, radius) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#4,VEC(  0   ,   0   , radius),! Limit   2
+              VEC(height,   0   , radius) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#5,VEC(  0   ,-radius, radius),! Tangent 2
+              VEC(height,-radius, radius) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#6,VEC(  0   ,-radius,   0   ),! Limit   3
+              VEC(height,-radius,   0   ) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#7,VEC(  0   ,-radius,-radius),! Tangent 3
+              VEC(height,-radius,-radius) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#8,VEC(  0   ,  0    ,-radius),! Limit   4
+              VEC(height,  0    ,-radius) !
+              :BLANK=bflag_i);            !
+  LIN_FREE(#9,VEC(  0   , radius,-radius),! Tangent 4
+              VEC(height, radius,-radius) !
+              :BLANK=bflag_i);            !
+
+
+
+  CUR_COMP(#10,#2:BLANK=bflag_i);   ! Convert to curves
+  CUR_COMP(#11,#3:BLANK=bflag_i);   !
+  CUR_COMP(#12,#4:BLANK=bflag_i);   !
+  CUR_COMP(#13,#5:BLANK=bflag_i);   !
+  CUR_COMP(#14,#6:BLANK=bflag_i);   !
+  CUR_COMP(#15,#7:BLANK=bflag_i);   !
+  CUR_COMP(#16,#8:BLANK=bflag_i);   !
+  CUR_COMP(#17,#9:BLANK=bflag_i);   !
+
+! +++
+! 3. Create spine curve to SUR_CONIC
+! ---
+
+  CUR_CONIC(#20,"FREE",             !
+      VEC(  0  , 0 , 0 ),           !
+      VEC(height,0 , 0 ),0.5,       !
+      VEC(height,0 , 0 ),           !
+      VEC(  0  , 0 , 0 )            !
+          :BLANK=bflag_i);          !
+
+! +++
+! 4. Create P value curve to the surface
+! ---
+
+! +++
+! The same P value curve can be used for all four
+! conic strips of the output surface. The P value
+! curve is a scalar function (not a R*3 curve),
+! and shall not be transformed with the active
+! coordinate system. The P value curve must therefore
+! be defined by a BASIC module.
+! ---
+
+  IF no_u < 2 THEN                  !
+    EXIT("cylinder_2 no_u < 2");    !
+  ENDIF;                            !
+
+  n_poi:= no_u;                     !
+  d_x  := height/(no_u-1);          ! Delta x
+  FOR i_p := 1 TO no_u DO           !
+    poi(i_p):= VEC(d_x*(i_p-1),     !
+               pval,0);             !
+    tanpoi(i_p):= VEC(d_x*i_p,      !
+               pval,0);             !
+    midpoi(i_p):= VEC(0,0,0);       !
+    pvalue(i_p):= 0.5;              !
+    p_flag(i_p):= "P";              !
+  ENDFOR;                           !
+  graphic_c:= 1;                    !
+
+  IF DEBUG = 1 THEN                 !
+  LST_INI("cylinder_2");            !
+  FOR i_p := 1 TO no_u DO           !
+  LST_LIN(" p "                     !
+    +STR(poi(i_p).x,8,2)            !
+    +" "+STR(poi(i_p).y,8,2)        !
+    +" "+STR(poi(i_p).z,8,2));      !
+  LST_LIN("tp "                     !
+    +STR(tanpoi(i_p).x,8,2)         !
+    +" "+STR(tanpoi(i_p).y,8,2)     !
+    +" "+STR(tanpoi(i_p).z,8,2));   !
+  ENDFOR;                           !
+  LST_EXI();                        !
+  ENDIF;                            !
+
+  PART(#21 , c_cconicv0 (           ! Create P value curve
+    n_poi,poi,tanpoi,               !
+    midpoi,pvalue,p_flag,           !
+    graphic_c));                    !
+
+! +++
+! 5. Create the surface (identity #1)   
+! ---
+
+  SUR_CONIC(#1 ,   #20  ,           !
+            #10, #11, "P", #21#1,   !
+            #12, #13, "P", #21#1,   !
+            #14, #15, "P", #21#1,   !
+            #16, #17, "P", #21#1,   !
+            #10, #11                !
+            :BLANK=bflag_s);        !
+
+! +++
+! 6. Erase temporary used geometry (if graphic = 0 or =1)
+! ---
+
+  MODE_GLOBAL();                    !
+
+  IF graphic= 0 OR graphic= 1 THEN  !
+    DEL( #2);                       !
+    DEL( #3);                       !
+    DEL( #4);                       !
+    DEL( #5);                       !
+    DEL( #6);                       !
+    DEL( #7);                       !
+    DEL( #8);                       !
+    DEL( #9);                       !
+    DEL(#10);                       !
+    DEL(#11);                       !
+    DEL(#12);                       !
+    DEL(#13);                       !
+    DEL(#14);                       !
+    DEL(#15);                       !
+    DEL(#16);                       !
+    DEL(#17);                       !
+    DEL(#20);                       !
+    DEL(#21);                       !
+    DEL(#30);                       !
+  ENDIF;                            !
+
+ENDMODULE

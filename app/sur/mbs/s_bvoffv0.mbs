@@ -1,0 +1,89 @@
+!********************** s_bvoffv0 *************************   
+! +++                                                     *
+! Evaluation of coordinates and derivatives in the        *
+! thickness surface.                                      *
+!                                                         *
+! Input:  Surface, thickness surface, U and V-parameters  *
+!							  *
+! Output: Thickness,                                      *
+!         Derivates of the thickness with respect         * 
+!         to U and V                                      *
+!                                                         *
+! Revision history					  *
+! ----------------                                        *
+! 1996-06-16 Elsa Rydman                                  *
+! ---                                                     *
+!**********************************************************
+
+!sdesce Evaluation of coordinates and derivatives of thickness surface
+
+!sdescs Framtagning av koordinater och derivator för tjockytan
+
+
+GLOBAL GEOMETRY MODULE s_bvoffv0 (
+
+FLOAT 		u_par:=0.3 > 	"U, parametervalue on thickness surface (0-1)";
+FLOAT 		v_par:=0.8 > 	"V, parametervalue on thickness surface (0-1)";
+REF   		thi_id     > 	"@t16 Select a thickness surface";
+
+VAR FLOAT 	thickness; 	! Distance to offset
+VAR FLOAT 	dtdu;      	! Output data, derivative
+VAR FLOAT 	dtdv);     	! Output data, derivative
+
+
+FLOAT  su_par;   	! Scaled U-parameter 
+FLOAT  sv_par;   	! Scaled V-parameter
+
+VECTOR p_int;    	! Point on thickness surface, (x,y,z)
+VECTOR t_uv;     	! Point on thickness surface, (u,v)                                         
+VECTOR n_int;    	! Normal for thickness surface
+
+
+BEGINMODULE
+
+
+
+! +++
+! 1. Evaluation of coordinates in the thickness surface 
+!    corresponding to a point in the given surface
+!---
+     
+    
+  su_par:= u_par*1000.0;            	! Scale U and V with 1000
+  sv_par:= v_par*1000.0;            	!
+
+  lin_free(#5,vec(su_par, sv_par,  	! Create a line trough (U,V)
+   -100),vec(su_par, sv_par, 100));	! in the thickness surface
+   
+   
+  p_int:= intersect(global_ref(#5)	! Intersection point (x,y,z)
+            , thi_id, 1);   		!
+  
+  t_uv:=  inv_on_sur(thi_id		! Intersection point (u,v)
+            , p_int, 1, 1);         	!
+  
+  thickness:= p_int.z;              	! Distance to offset in (u,v)
+
+  n_int:= eval(thi_id, "NORMAL", t_uv);	! Normal vector for thickness surface
+  
+
+! +++
+! 2. Evaluation of derivatives of the thickness
+! ---
+ 
+
+  dtdu:= -n_int.x/n_int.z*1000.0; 	! Derivatives of the
+  dtdv:= -n_int.y/n_int.z*1000.0;     	! thickness
+
+
+! lst_ini("Test-printout");
+! lst_lin("thickness" + str(thickness,15,8)); 
+! lst_lin("dtdu " + str(dtdu, 15, 8)+ ", "+ str(dtdv, 15, 8));
+! lst_lin("u"+str(su_par,15,8));
+! lst_lin("v"+str(sv_par,15,8));
+! lst_lin("p_int" + str(p_int.x,15, 8)+ " "+str(p_int.y,15 ,8)+
+! " "+str(p_int.z,15 ,8));
+! lst_lin("t_uv" + str(t_uv.x,15,8)+" "+ str(t_uv.y,15,8));
+! lst_exi();
+   
+ENDMODULE

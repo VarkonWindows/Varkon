@@ -1,0 +1,497 @@
+!*********************  s_famsurv0   ************************************
+! +++
+! Read and register nurbs data for a fam surface from file
+!
+! Input data for this function is a text file with NURBS data in
+! fam format and a part with NURBS control points regsitered as GROUP's. 
+! The system fam is used at Saab to create FE nets for electromagnetic 
+! calculations.
+!
+! The input file must be on the active job directory. 
+! File name example: tank_nur.fam
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-05-01 Gunnar Liden
+! 1997-05-20 Graphics for U,V direction Gunnar Liden
+! 
+!********************************************************************
+
+!sdesce Read and register nurbs data for a fam surface from file
+!sdescs Läs och registrera NURBS data för en fam yta
+
+GLOBAL GEOMETRY MODULE  s_famsurv0        (
+REF     prt_id                 >"@t16384 Part with NURBS poygon points";
+STRING  r_name*3 := "X12"      >"Requested surface (X12, X13, ,,)";
+INT     print    :=  1         >"0= No printout 1= Printout";
+INT     graphic  :=  1 >"0= None, 1= Polygon points 2= Directions added");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  CONSTANT STRING s_n_body = "*number_of_bodies_in_the_model";
+  CONSTANT STRING s_b_box  = "*Bounding_box";
+  CONSTANT STRING s_o_data = "*OBJECT_DATA";
+  CONSTANT STRING s_o_name = "*object_name";
+  CONSTANT STRING s_c_pts  = "*control_point_data";
+  CONSTANT STRING s_l_surf = "*list_of_surfaces";
+  CONSTANT STRING s_nurs   = "NURS";
+  CONSTANT STRING s_define = "DEFINE";
+  CONSTANT STRING s_e_obj  = "*end_object";
+  CONSTANT STRING s_u_triu = "* Untrimmed in U";
+  CONSTANT STRING s_u_triv = "* Untrimmed in V";
+  CONSTANT STRING s_u_knot = "* Knot definitions in U";
+  CONSTANT STRING s_v_knot = "* Knot definitions in V";
+  CONSTANT STRING s_end    = "END";
+
+  STRING ptdat*30;             ! NURBS data (ex. tank_nur.fam)
+  INT    n_start;              ! Start line for requested surface
+
+  REF    group_id;
+  STRING group_name*10;
+  INT    n_member;
+  REF    member_id(3);
+
+  VECTOR b_box;                ! Bounding box
+  STRING o_name*132;           ! Object name
+  STRING p_name*4;             ! Point  name
+  INT    n_body;               ! Number of bodies
+  INT    i_body;               ! Current body
+  INT    n_cpts;               ! Number of control points
+  INT    n_surf;               ! Number of surfaces in the body
+  INT    u_degree;             ! Degree in U
+  INT    v_degree;             ! Degree in V
+  INT    n_u_p;                ! Number of control points in U
+  INT    n_v_p;                ! Number of control points in V
+  INT    n_u_k;                ! Number of knots in U
+  INT    n_v_k;                ! Number of knots in V
+  INT    index_u;              ! Point address in U
+  INT    index_v;              ! Point address in V
+  STRING s_name*3;             ! Surface name
+  FLOAT  weight;               ! Weight for a point
+  FLOAT  u_knot;               ! Knot value U
+  FLOAT  v_knot;               ! Knot value V
+  INT    multipl;              ! Multiplicity
+  
+  STRING p_name_all(50,50)*4;  ! All point names for the surface
+  FLOAT  weight_all(50,50);    ! All point weights
+  VECTOR poi_all(50,50);       ! All points
+
+  INT    n_total;              ! Total number of points
+
+                               ! For s_reghead
+  INT    n_u;                  ! Number of U lines (max U knot)
+  INT    n_v;                  ! Number of V lines (max V knot)
+  INT    s_type;               ! Surface type
+
+! ---
+
+  STRING f_name*132;           ! Full file name
+  FILE   pdat;                 ! File with points
+
+  INT     i_u;                 ! Point (array) address IU 
+  INT     i_v;                 ! Point (array) address IV
+  VECTOR  poi;                 ! Point 
+  
+  FLOAT  a_leng;               ! Length of arrow
+  VECTOR u_dir;                ! U direction
+  VECTOR v_dir;                ! V direction
+  VECTOR s_normal;             ! Surface normal
+
+  INT    i_line;               ! Loop index line in file
+
+  STRING rad*132;              ! Dummy string
+
+  INT    b_val_s;              ! BLANK value point
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks of input data
+!
+!    Get  file name from the input part
+!    Open input file with NURBS data
+
+  DEBUG := 1;          
+
+  FOR  i_u := 1 TO 50 DO
+    FOR  i_v := 1 TO 50 DO
+      p_name_all(i_u,i_v) := "Undefined"; 
+      weight_all(i_u,i_v) := -1.23456789;
+      poi_all(i_u,i_v)    := VEC(-1.23456789,-1.23456789,-1.23456789); 
+    ENDFOR;
+  ENDFOR;
+
+  IF  print = 1 THEN
+    LST_INI("NURBS data for surface "+r_name+"   Module: s_famsurv0");
+  ENDIF;
+  
+  n_body := 0;               ! Number of bodies
+  n_surf := 0;               ! Number of surfaces in the body
+
+  IF   graphic = 0 THEN  
+    b_val_s:= 1;     
+  ELIF graphic = 1 THEN
+    b_val_s:= 0;      
+  ELIF graphic = 2 THEN
+    b_val_s:= 0;      
+  ELSE                  
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0   graphic not OK"); 
+  ENDIF;                      !
+
+  i_u      := -12345;   
+  i_v      := -12345;  
+  poi      := VEC(0,0,0);  
+
+! Full name for file on the active job directory
+  ptdat := GETSTR(prt_id,1);
+
+  f_name:= ACT_JOBDIR() +  ptdat;
+
+! Open file with data
+  OPEN(pdat,"R",f_name);
+  IF IOSTAT(pdat) <> 0 THEN 
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT(f_name+"failed");
+  ENDIF; 
+
+
+! +++
+! 1. Find start line for surface data 
+! ---
+
+! Read until r_name
+  n_start := 0;
+  FOR  i_line := 1 TO 10000 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  IOSTAT(pdat) <> 0 THEN
+      CLOSE(pdat);
+      IF  print = 1 THEN
+        LST_EXI();
+      ENDIF;
+      EXIT("s_famsurv0 No "+r_name+" in file");
+    ENDIF;
+    IF  FINDS(rad, s_nurs) > 0 AND  FINDS(rad, s_define) > 0 AND
+        FINDS(rad, r_name  ) > 0                                 THEN
+      n_start := i_line;
+      GOTO  l_start;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+    LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_famsurv0 More than 10000 lines in the file");
+
+l_start:; ! Label: Start line for surface
+
+  IF  print = 1 THEN
+  LST_LIN("Start line for r_name= "+r_name+" "+STR(n_start,3,0));
+  ENDIF;
+
+! Rewind 
+  CLOSE(pdat);
+  OPEN(pdat,"R",f_name);
+  IF IOSTAT(pdat) <> 0 THEN 
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT(f_name+"failed");
+  ENDIF; 
+  FOR  i_line := 1 TO n_start - 1 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+  ENDFOR; 
+
+
+! +++
+! 3. Get surface control point names and weights
+! ---
+
+!   Part of line to dummy string
+    rad     := INSTR(pdat,5);  
+    IF  FINDS(rad, s_nurs) > 0    THEN
+      ;
+    ELSE
+      IF  print = 1 THEN
+        LST_EXI();
+      ENDIF;
+      CLOSE(pdat);
+      EXIT("s_famsurv0 Program error "+s_nurs);
+    ENDIF;
+    s_name  := INSTR(pdat,3);
+    IF  FINDS(s_name, r_name) > 0    THEN
+      ;
+    ELSE
+      IF  print = 1 THEN
+      LST_EXI();
+      ENDIF;
+      CLOSE(pdat);
+      EXIT("s_famsurv0 Program error "+s_name);
+    ENDIF;
+    rad     := INSTR(pdat,7);  
+    u_degree:= ININT(pdat);             ! Degree in U
+    v_degree:= ININT(pdat);             ! Degree in V
+    n_u_p   := ININT(pdat);             ! Number of control points in U
+    n_v_p   := ININT(pdat);             ! Number of control points in V
+    n_u_k   := ININT(pdat);             ! Number of knots in U
+    n_v_k   := ININT(pdat);             ! Number of knots in V
+    rad     := INLIN(pdat);
+
+
+  IF  print = 1 THEN
+    LST_LIN("Surface name                  "+s_name);
+    LST_LIN("Degree                   in U "+STR(u_degree,3,0));
+    LST_LIN("Degree                   in V "+STR(v_degree,3,0));
+    LST_LIN("Number of control points in U "+STR(n_u_p,3,0));
+    LST_LIN("Number of control points in V "+STR(n_v_p,3,0));
+    LST_LIN("Number of knots          in U "+STR(n_u_k,3,0));
+    LST_LIN("Number of knots          in V "+STR(n_v_k,3,0));
+  ENDIF;
+
+  rad     := INLIN(pdat); ! * Completed and checked
+  rad     := INLIN(pdat); ! * Control points
+  
+  FOR  i_v := 1 TO n_v_p DO
+    FOR  i_u := 1 TO n_u_p DO
+      rad     := INSTR(pdat,16); ! NURS Xnn CONTROL
+      index_u := ININT(pdat);
+      index_v := ININT(pdat);
+      rad     := INSTR(pdat,1);
+      p_name  := INSTR(pdat,4);
+      weight  := INFLT(pdat);
+      rad     := INLIN(pdat);
+      p_name_all(i_u,i_v) := p_name; 
+      weight_all(i_u,i_v) := weight;
+      IF  print = 1 THEN
+      LST_LIN("Point name "+p_name +
+              " Address "+STR(index_u,3,0)+ ","+STR(index_v,3,0)+
+              "    Weight "+STR(weight,15,8));
+      ENDIF; 
+        
+    ENDFOR;
+  ENDFOR;
+  
+! +++
+! 4. Get surface points and register surface control points
+! ---
+
+  SET_ROOT_GM(prt_id);
+
+  n_total := 0;
+
+nxtgrp:; ! Label: Next group 
+  
+  group_id := GET_NEXT_GM (0, 4096 );
+  IF  group_id = #0 THEN
+    GOTO allgrp;
+  ENDIF;
+
+  GETGRP(group_id, group_name, n_member, member_id);
+
+  FOR  i_v := 1 TO n_v_p DO
+    FOR  i_u := 1 TO n_u_p DO
+      IF  FINDS(group_name, p_name_all(i_u,i_v)) > 0  THEN
+        n_total := n_total + 1;  
+        GETPOI(member_id(1), poi);
+        poi_all(i_u,i_v) := poi;
+        IF graphic = 1 THEN
+          POI_FREE(#100, poi:PEN=4);
+        ENDIF;
+      ENDIF;
+
+    ENDFOR;
+  ENDFOR;
+
+  GOTO  nxtgrp;
+
+allgrp:
+
+  IF  print = 1 THEN
+    LST_LIN("No. of ctrl pts  n_u_p*n_v_p= "+STR(n_u_p*n_v_p,3,0));
+    LST_LIN("No. of retrieved pts n_total= "+STR(n_total,3,0));
+  ENDIF;
+
+  IF  n_total = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Surface "+r_name+ " not in this body");
+  ENDIF;
+  IF  n_total <> n_v_p*n_u_p THEN
+    FOR  i_v := 1 TO n_v_p DO
+      FOR  i_u := 1 TO n_u_p-1 DO
+        IF ABS(poi_all(i_u,i_v).x+1.23456789) < 0.00001 THEN
+         IF  print = 1 THEN
+           LST_LIN("Point "+STR(i_u,3,0)+" "+STR(i_v,3,0)+
+                     " is not defined");
+           LST_LIN("Point name "+ p_name_all(i_u,i_v));
+         ENDIF;
+        ENDIF;
+      ENDFOR;
+    ENDFOR;
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 n_total not n_v_p*n_u_p");
+  ENDIF;
+
+
+! +++
+! 5. Draw polygon lines if graphic = 1
+! ---
+
+  IF graphic = 0 THEN
+   GOTO nopoly;
+  ENDIF;
+
+  FOR  i_v := 1 TO n_v_p DO
+    FOR  i_u := 1 TO n_u_p-1 DO
+      LIN_FREE(#101, poi_all(i_u,i_v),poi_all(i_u+1,i_v):PEN=2);
+      IF  graphic = 2 AND  i_u = 1 AND i_v = 1 THEN
+        u_dir := poi_all(i_u+1,i_v)-poi_all(i_u,i_v);
+        a_leng := 0.3*VECL(u_dir);
+        PART(#111, cpil2 (10, a_leng, ON(GLOBAL_REF(#101),0.0),ON(GLOBAL_REF(#101),0.5))
+                    :PEN=2);
+      ENDIF;
+    ENDFOR;
+  ENDFOR;
+  FOR  i_u := 1 TO n_u_p DO
+    FOR  i_v := 1 TO n_v_p-1 DO
+      LIN_FREE(#102, poi_all(i_u,i_v),poi_all(i_u,i_v+1):PEN=3);
+      IF  graphic = 2 AND  i_u = 1 AND i_v = 1 THEN
+        v_dir  := poi_all(i_u,i_v+1)-poi_all(i_u,i_v);
+        a_leng := 0.3*VECL(v_dir);
+        PART(#112, cpil2 (10, a_leng, ON(GLOBAL_REF(#102),0.0),ON(GLOBAL_REF(#102),0.5))
+                    :PEN=3);
+      ENDIF;
+    ENDFOR;
+  ENDFOR;
+
+  s_normal :=  a_leng*VECN(VPROD(u_dir,v_dir));
+  
+  IF   graphic = 2 THEN
+  LIN_FREE(#103, ON(GLOBAL_REF(#102),0.0), 
+                 ON(GLOBAL_REF(#102),0.0)+10*s_normal
+           :PEN=4);
+  PART(#113, cpil2 (10, 2*a_leng, ON(GLOBAL_REF(#103),0.0),
+                                  ON(GLOBAL_REF(#103),1.0))
+                    :PEN=4);
+  ENDIF;
+
+nopoly:; ! Draw no polygon
+
+! +++
+! 6. Get knot vector                                 
+! ---
+
+  n_u    := -123456789;
+  n_v    := -123456789;
+  rad     := INLIN(pdat); 
+  IF  FINDS(rad, s_u_knot ) = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Not yet programmed for "+rad);
+  ENDIF;
+
+  FOR  i_u := 1 TO n_u_k DO
+    rad     := INSTR(pdat,15);
+    index_u := ININT(pdat);
+    u_knot  := INFLT(pdat);
+    IF  u_knot >= n_u THEN
+      n_u := TRUNC(u_knot);
+    ENDIF;
+    multipl := ININT(pdat);
+    rad     := INLIN(pdat);
+    IF  print = 1 THEN
+    LST_LIN("U knot "+ STR(index_u,3,0)+ " Value "+STR(u_knot,10,6)+
+              " Multiplicity "+STR(multipl,3,0));
+    ENDIF; 
+  ENDFOR;
+
+  rad     := INLIN(pdat); 
+  IF  FINDS(rad, s_u_triu ) = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Not yet programmed for "+rad);
+  ENDIF;
+  rad     := INLIN(pdat); 
+  IF  FINDS(rad, s_v_knot ) = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Not yet programmed for "+rad);
+  ENDIF;
+
+  FOR  i_v := 1 TO n_v_k DO
+    rad     := INSTR(pdat,15);
+    index_v := ININT(pdat);
+    v_knot  := INFLT(pdat);
+    IF  v_knot >= n_v THEN
+      n_v := TRUNC(v_knot);
+    ENDIF;
+    multipl := ININT(pdat);
+    rad     := INLIN(pdat);
+    IF  print = 1 THEN
+    LST_LIN("V knot "+ STR(index_v,3,0)+ " Value "+STR(v_knot,10,6)+
+              " Multiplicity "+STR(multipl,3,0));
+    ENDIF; 
+  ENDFOR;
+
+  rad     := INLIN(pdat); 
+  IF  FINDS(rad, s_u_triv ) = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Not yet programmed for "+rad);
+  ENDIF;
+  rad     := INLIN(pdat); 
+  IF  FINDS(rad, s_end    ) = 0 THEN
+    CLOSE(pdat);
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famsurv0 Not yet programmed for "+rad);
+  ENDIF;
+
+! +++
+! 7. Registration of surface data header             
+! ---
+
+  s_type := 17;
+  PART(#20, s_reghead ( n_u, n_v, s_type ));
+
+  IF  print = 1 THEN
+    LST_EXI();
+  ENDIF;
+  
+  CLOSE(pdat);
+
+ENDMODULE

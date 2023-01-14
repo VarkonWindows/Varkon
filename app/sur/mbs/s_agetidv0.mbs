@@ -1,0 +1,119 @@
+!*********************** s_agetidv0 *********************************
+! +++
+!
+! Get surface identities from the segments of a curve
+!
+! Revisions
+! ---------
+!
+! 1995-12-01 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+BASIC  GEOMETRY MODULE  s_agetidv0 (
+                         ! Input parameter:
+    REF    cur_id;       ! Reference (# identity) to a curve
+                         ! Input and output parameters:
+VAR REF    all_sur(30);  ! References to all surfaces
+VAR INT    n_sur);       ! Number of surfaces
+
+!sdesce Get surface identities from the segments of a curve
+!sdescs Hämta yt identiteter från segmenten av en kurva
+
+
+! Internal variables:
+
+  INT    i_seg;                 ! Loop index curve segment
+  INT    i_sur;                 ! Loop index surface
+
+                                ! For GETCURH:
+  INT    ns_geo;                ! Number of geometry segments
+  INT    ns_gra;                ! Number of graphical segments
+  INT    fnt;                   ! Font typ,subtyp;
+  FLOAT  sl;                    ! Dash length
+
+                                ! For GETSEG:
+  INT    reptype;               ! Requested type (curve):
+                                ! Eq. 0: Geometry
+                                ! Eq. 1: Graphic
+  FLOAT  segdata(4,4);          ! Segment coefficients
+  FLOAT  c_offset;              ! Curve offset
+  INT    type;                  ! Curve segment type
+                                ! Eq. 1: A  R*3 (free)    segment
+                                ! Eq. 2: An U,V (surface) segment
+  INT    subtype;               ! Curve segment subtype
+                                ! Eq. 0:
+                                ! Eq. 1:
+                                ! Eq. 2:
+  REF    sur1_id;               ! Reference to surface 1
+  REF    sur2_id;               ! Reference to surface 2
+
+  INT    DEBUG;                 !
+  STRING s*1;                   ! For debug printout to screen
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+! +++
+! Check input number of surfaces
+! ---
+
+  IF n_sur >= 0 AND n_sur <= 30  THEN    ! Check number of surfaces
+     ;                                   !
+  ELSE                                   !
+     EXIT("s_agetidv0 n_sur not "+       !
+          "between 0 and 30");           !
+  ENDIF;                                 !
+
+! +++
+! 2. Retrieve identities for the surfaces
+! ---
+
+  GETCURH(  cur_id,                      ! Retrieve no segments
+   fnt,sl,ns_geo   ,ns_gra);             !
+
+  FOR i_seg:= 1 TO ns_geo    DO          ! Start loop segments in curve
+
+    reptype:= 0;                         ! Get surface id (coefficients)
+    GETSEG( cur_id, i_seg, reptype,      ! 
+        segdata,c_offset,type,           !
+        subtype,sur1_id,sur2_id);        !
+
+    IF  type = 1 THEN                    ! R*3 segment ?
+      GOTO nxtseg;                       ! Yes, continue with next segment
+    ENDIF;                               !
+
+    FOR  i_sur:= 1 TO n_sur DO           ! Start loop prev. found surfaces
+      IF sur1_id = all_sur(i_sur) THEN   ! Surface id already found ?
+        GOTO nxtseg;                     ! Yes, continue with next segment
+      ENDIF;                             !
+    ENDFOR;                              ! End   loop prev. found surfaces
+
+    n_sur := n_sur + 1;                  ! An additional surface
+    IF   n_sur <= 30  THEN               ! Check number of output surfaces
+       ;                                 !
+    ELSE                                 !
+       EXIT("s_agetidv0 n_sur "+         !
+            "exceeds 30");               !
+    ENDIF;                               !
+
+    all_sur(n_sur):= sur1_id;            ! Surface to array
+
+nxtseg:;                                 ! Label: Surface already found
+
+  ENDFOR;                                ! End   loop segments in curve
+
+
+
+ENDMODULE

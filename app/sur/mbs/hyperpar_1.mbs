@@ -1,0 +1,264 @@
+! ***************** hyperpar_1 ****************************
+!
+! +++
+! Create an hyperolic paraboloid
+!
+! Revision history
+! ________________
+!
+! 1996-06-27 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create a hyperolic paraboloid
+!sdescs Skapa en hyperolisk paraboloid
+
+LOCAL  GEOMETRY MODULE hyperpar_1 (
+FLOAT a_leng :=   400.0 > "Length in X axis direction for hyperbola";
+FLOAT b_leng :=   200.0 > "Length in Y axis direction for hyperbol";
+FLOAT h_pval :=     0.7 > "P value ( > 0.5 ) for hyperbola";
+FLOAT c_leng :=   500.0 > "Length in Z axis direction for parabola";
+FLOAT s_trim :=     0.0 > "Start trim U value for spine ( 0.0 <= U <= 1)";
+FLOAT e_trim :=     1.0 > "End   trim U value for spine ( 0.0 <= U <= 1)";
+INT   n_strip:=     2   > "@ Number of strips   ( <CR> ==> 2)";
+INT   graphic:=     1   >"=0: None =1: Show surface =2: Show all");
+
+! Internal variables
+
+  FLOAT  pval;                   ! P-value
+  FLOAT  eps;                    ! Defines epsilon for spine intersect .....
+
+  REF    spine_id;               ! Spine curve identity
+  REF    lim1_id;                ! Maxwidth 1 curve
+  REF    lim2_id;                ! Top curve        
+  REF    lim3_id;                ! Maxwidth 2 curve
+  REF    tan1_id;                ! Tangent curve to maxwidth 1
+  REF    tan2_id;                ! Tangent curve to top curve        
+  REF    tan3_id;                ! Tangent curve to maxwidth 2
+
+  FLOAT  p_pval;                 ! P value for parabola (= 0.5)
+
+  REF    bpval_id;               ! Pvalue function for b axis
+
+  INT    ncur;                   ! Number of curves for surface
+  STRING param_type*10;          ! Parameterization type
+  REF    lim_id(3);              ! Limit   curves
+  REF    tan_id(3);              ! Tangent curves
+  STRING mid_type(3)*1;          ! Mid curve type
+  REF    pval_id(3);             ! P-value curves
+
+  INT    bflag_c;                ! Blank flag for curves
+  INT    bflag_s;                ! Blank flag for surface
+
+  INT    DEBUG;                  ! Debug
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                       ! Debug printout
+
+  IF   graphic = 0 THEN             ! 
+    bflag_c := 1;                   !
+    bflag_s := 1;                   !
+  ELIF graphic = 1 THEN             ! 
+    bflag_c := 1;                   !
+    bflag_s := 0;                   !
+  ELIF graphic = 2 THEN             ! 
+    bflag_c := 0;                   !
+    bflag_s := 0;                   !
+  ELSE                              !
+    bflag_c := 0;                   !
+    bflag_s := 0;                   ! 
+  ENDIF;                            !
+
+! +++
+! 2. Create the spine curve
+! ---
+
+  eps := 0.001;                     !
+  CUR_CONIC(#2, "FREE",             ! Straight line = X axis
+     VEC(-a_leng+eps,0.0,0.0),      !
+     VEC( a_leng-eps,0.0,0.0), 0.5, !
+     VEC( a_leng-eps,0.0,0.0),      !
+     VEC(-a_leng+eps,0.0,0.0)       !
+   :PEN=2,BLANK=bflag_c);           !
+
+  IF ABS(s_trim)     > 0 OR         ! Trim spine (surface) ?
+     ABS(e_trim-1.0) > 0     THEN   !
+    CUR_TRIM(#15, GLOBAL_REF(#2 ),  !
+        s_trim, e_trim              !
+       :PEN=2,BLANK=bflag_c);       !
+    spine_id:=GLOBAL_REF(#15);      !
+  ELSE                              !
+    spine_id:=GLOBAL_REF(#2 );      !
+  ENDIF;                            !
+
+! +++
+! 3. Create one P value curve for all strips
+! ---
+
+! +++
+! The P value curve is a scalar function (not a R*3 curve),
+! and shall not be transformed with the active coordinate 
+! system. The P value curve must therefore be defined with
+! the basic system active.
+! ---
+
+  IF h_pval  > 0.5  AND             ! Check P values
+     h_pval < 0.85       THEN       !
+    ;                               !
+  ELSE                              !
+    EXIT("hyperpar_1 h_pvalue not"+ !
+         " OK");                    !
+  ENDIF;                            !
+
+  p_pval := 0.5;                    ! P value for parabola
+
+  MODE_BASIC();                     !
+  CUR_CONIC(#3 , "FREE",            ! 
+    VEC(  0.0,   p_pval, 0.0),      !
+    VEC(2*a_leng,p_pval, 0.0), 0.5, !
+    VEC(2*a_leng,p_pval, 0.0),      !
+    VEC(  0.0,   p_pval, 0.0)       !
+   :PEN=1,BLANK=bflag_c);           !
+  MODE_GLOBAL();                    !
+
+  bpval_id:=GLOBAL_REF(#3 );         !
+
+! +++
+! 4. Limit and tangent curves 
+! ---
+
+! +++
+! Hyperbola limit an tangent curves
+! ---
+
+  CUR_CONIC(#4, "FREE",                 ! Limit 1
+   VEC(-a_leng,-b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), h_pval, !
+   VEC( a_leng,-b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  lim1_id:= GLOBAL_REF(#4 );            !
+
+  CUR_CONIC(#5, "FREE",                 ! Limit 3
+   VEC(-a_leng, b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), h_pval, !
+   VEC( a_leng, b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  lim3_id:= GLOBAL_REF(#5 );            !
+
+  CSYS_1P(#6 ,"Transl_1",               !
+      VEC(0,0,a_leng*0.2),0,0,0         !
+   :PEN=3,BLANK=bflag_c);               !
+
+  MODE_LOCAL(GLOBAL_REF(#6));           !
+
+  CUR_CONIC(#7, "FREE",                 ! Tangent 1
+   VEC(-a_leng,-b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), h_pval, !
+   VEC( a_leng,-b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  tan1_id:= GLOBAL_REF(#7 );            !
+
+  CUR_CONIC(#8, "FREE",                 ! Tangent 3
+   VEC(-a_leng, b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), h_pval, !
+   VEC( a_leng, b_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  tan3_id:= GLOBAL_REF(#8 );            !
+
+
+  MODE_GLOBAL();                        !
+
+  CSYS_1P(#9 ,"Rotation",               !
+      VEC(0,0,  0.0 ),90.0,0,0          !
+   :PEN=3,BLANK=bflag_c);               !
+
+  MODE_LOCAL(GLOBAL_REF(#9));           !
+
+
+  CUR_CONIC(#10,"FREE",                 ! Limit 2
+   VEC(-a_leng, c_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), p_pval, !
+   VEC( a_leng, c_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  lim2_id:= GLOBAL_REF(#10);            !
+
+  CSYS_1P(#12,"Transl_1",               !
+      VEC(0,0,a_leng*0.2),0,0,0         !
+   :PEN=3,BLANK=bflag_c);               !
+
+  MODE_LOCAL(GLOBAL_REF(#12));          !
+
+  CUR_CONIC(#13,"FREE",                 ! Tangent 2
+   VEC(-a_leng, c_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 ), p_pval, !
+   VEC( a_leng, c_leng,  0.0 ),         !
+   VEC(  0.0  ,   0.0,   0.0 )          !
+   :PEN=4,BLANK=bflag_c);               !
+
+  tan2_id:= GLOBAL_REF(#13);            !
+
+
+  MODE_GLOBAL();                        !
+
+! +++
+! 10. Create the surface (identity #1)   
+! ---
+
+  ncur       := n_strip + 1;            ! Number of curves
+  param_type := "Undefined";            !
+  lim_id(1)  := lim1_id;                !
+  lim_id(2)  := lim2_id;                !
+  lim_id(3)  := lim3_id;                !
+  tan_id(1)  := tan1_id;                !
+  tan_id(2)  := tan2_id;                !
+  tan_id(3)  := tan3_id;                !
+  mid_type(1):= "P";                    !
+  mid_type(2):= "P";                    !
+  mid_type(3):= " ";                    !
+  pval_id(1) := bpval_id;               !
+  pval_id(2) := bpval_id;               !
+  pval_id(3) := #0;                     !
+
+! Fungerar ännu inte !!!!!!!!
+!  SUR_CONARR(#1 , param_type,           !
+!    ncur, spine_id,                     !
+!    lim_id, tan_id, mid_type, pval_id   !
+!            :BLANK=bflag_s);            !
+
+  IF n_strip  <> 2 THEN                
+    LST_INI("hyperpar_1 Varning (Fel)");
+    LST_LIN(" ");  
+    LST_LIN("Det går för närvarande bara att göra yta med två  strippar "); 
+    LST_LIN("Funktionen SUR_CONARR fungerar ännu inte. När Johan har fixat"); 
+    LST_LIN("detta ska SUR_CONIC bytas ut mot SUR_CONARR i denna modul"); 
+    LST_EXI();   
+  ENDIF;        
+
+  SUR_CONIC(#1 , spine_id,              !
+     lim1_id,tan1_id,"P",bpval_id,      !
+     lim2_id,tan2_id,"P",bpval_id,      !
+     lim3_id,tan3_id                    !
+            :BLANK=bflag_s);            !
+
+ENDMODULE

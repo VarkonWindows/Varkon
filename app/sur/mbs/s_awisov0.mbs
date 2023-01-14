@@ -1,0 +1,100 @@
+!********************** s_awisov0  ********************************
+! +++ 
+!
+! Determine if U or V lines are wing profiles in a surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-10-07 G Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE s_awisov0  (
+    REF    s_id;                  ! Surface
+VAR STRING p_case*1);             ! Profile case: U or V profiles
+
+!sdesce Determine if U or V lines are wing profiles in a surface
+!sdescs Avgor om U eller V linjer ar vingprofiler i en yta
+
+
+! Internal variables
+
+  VECTOR s_n_us_vs;               ! Surface normal for us,vs
+  VECTOR s_n_ue_vs;               ! Surface normal for ue,vs
+  VECTOR s_n_us_ve;               ! Surface normal for us,ve
+  VECTOR s_n_ue_ve;               ! Surface normal for ue,ve
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! Initializations and checks
+! ---
+
+  DEBUG:= 0;
+
+  IF  DEBUG = 1 THEN 
+  LST_INI("Debug printout from s_awisov0 "); 
+  ENDIF;               
+
+! Initialize output variable
+  p_case    := "N";   
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! Determine if U or V lines are profile sections in the wing
+! !!!   Not at all a sufficient analysis !!!!!!
+! !!!      Add code !!!!!!!!
+! ---
+
+  s_n_us_vs := NORM(s_id,VEC( 0.0 , 0.0 ));   ! Surface normal for us,vs
+  s_n_ue_vs := NORM(s_id,VEC(npatu, 0.0 ));   ! Surface normal for ue,vs
+  s_n_us_ve := NORM(s_id,VEC( 0.0 ,npatv));   ! Surface normal for us,ve
+  s_n_ue_ve := NORM(s_id,VEC(npatu,npatv));   ! Surface normal for ue,ve
+
+  IF    s_n_us_vs*s_n_ue_vs > 0 AND s_n_us_ve*s_n_ue_ve > 0 AND
+        s_n_us_vs*s_n_us_ve < 0 AND s_n_ue_vs*s_n_ue_ve < 0     THEN
+    p_case := "U";
+  ELSE
+    p_case := "V";
+  ENDIF;
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("The wing profiles are "+p_case+" curves in the surface"); 
+  ENDIF;             
+
+
+
+  IF  DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+
+
+
+ENDMODULE
+

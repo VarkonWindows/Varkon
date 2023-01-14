@@ -1,0 +1,409 @@
+!********************** s_adeforv0 ********************************
+! +++ 
+!
+! Deformation of a wing surface with a random twist function
+!
+! The function assumes that the profiles of the wing are constant
+! U lines.
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-03-22 Gunnar Liden
+! 1996-12-03 Debug  Gunnar Liden
+! 1997-04-09 Bug: Leading edge criterion Array 111->211 Gunnar Liden
+! 1997-10-07 Call of s_aleadv0, V profile curves  added Gunnar Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE s_adeforv0 (
+REF    s_id                        >"Surface reference";
+FLOAT  mtwist    :=   3.5          >"Maximum (random) twist in degrees";
+VECTOR v_lead    := VEC(0,0,1)     >"Vector criterion for leading edge";
+INT    graphic   :=   1            >"Graphics 0: No surface 1: Surface 2: All");
+
+!sdesce Deformation of a wing surface with a random twist function
+!sdescs Deformation av en vinge med slumpmässig twist kurva
+
+
+! Internal variables
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  VECTOR s_n;                     ! Current surface normal
+
+                                  ! For calculation of random error:
+  FLOAT  rand_val;                ! Random value
+  FLOAT  seed;                    ! Seed for random value
+  INT    year;                    ! Year
+  INT    month;                   ! Month 
+  INT    day;                     ! Day
+  INT    hour;                    ! Hour 
+  INT    minute;                  ! Minute
+  INT    second;                  ! Second
+
+  FLOAT  dot_start;               ! Start scalar product s_n*v_lead
+  FLOAT  dot;                     ! Current scalar product s_n*v_lead
+  VECTOR uv_sur;                  ! Parameter point on the surface
+  INT    l_v;                     ! Leading edge V value
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  INT    i_u;                     ! Loop index U line
+  INT    i_v;                     ! Loop index V line
+
+  REF    rot_id;                  ! Identity for rotation line
+  REF    ang_id;                  ! Identity for random angle curve
+  REF    i_id;                    ! Isoparameter identity
+  REF    a_id;                    ! Approx. isoparameter identity
+  REF    tra_id;                  ! Transformation identity
+  REF    c_id;                    ! Current U section curve
+
+  VECTOR poi(111);                ! Points for angle curve 
+  FLOAT  rot_ang;                 ! Current rotation angle
+  VECTOR rot_poi;                 ! Point on rotation curve
+  VECTOR p1_l;                    ! Start point rotation line
+  VECTOR p2_l;                    ! End   point rotation line
+
+  INT    no_ulines;               ! Number of U curves
+  INT    no_vlines;               ! Number of V curves
+  REF    id_all(111);             ! Id's to all U lines
+  VECTOR pts(211,211);            ! Points 111->211
+!  VECTOR tgs(111,111);            ! Tangents
+  STRING metod*15;                ! Method for tangent length calculation 
+
+                                  ! For s_aleadv0
+  REF    csys_id;                 ! Coordinate system
+  INT    n_add;                   ! Number of added pts 0: Only patch boundaries";
+  INT    graphic_lead;            ! Graphics 0: No curve 1: Curve 2: All");
+
+  REF    id_lead;                 ! Identity leading  edge
+  REF    id_trail;                ! Identity trailing edge
+
+  STRING p_case*1;                ! Profile case: U or V profiles
+
+  INT    b_val_a;                 ! Blank value for all geometry
+  INT    b_val_s;                 ! Blank value for surface
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:= 0;                            ! Change to 0, 1 or 2
+
+  IF    graphic = 0 THEN                ! Check graphics
+    b_val_s := 1;                       !
+    b_val_a := 1;                       !
+    graphic_lead := 0;
+  ELIF  graphic = 1 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 1;                       !
+    graphic_lead := 0;
+  ELIF  graphic = 2 THEN                !
+    b_val_s := 0;                       !
+    b_val_a := 0;                       !
+    graphic_lead := 1;
+  ELSE                                  !
+    EXIT("s_adeforv0 Graphic not OK");  !
+  ENDIF;                                !
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_INI("Debug printout from "+       !
+          "s_adeforv0");                !
+  ENDIF;                                !
+
+  dot_start := -0.123456789;            !
+  dot       := -0.123456789;            !
+
+  id_lead   := #0;
+  id_trail  := #0;
+
+  p_case    := "Z";                     ! 
+
+  FOR  i_u := 1 TO 111 DO               !
+    FOR  i_v := 1 TO 111 DO             !
+      pts(i_u,i_v):= VEC(-0.123456789, -0.123456789, -0.123456789);
+!      tgs(i_u,i_v):= VEC(-0.123456789, -0.123456789, -0.123456789);
+    ENDFOR;                             !
+  ENDFOR;                               !
+
+! +++
+! Determine if U or V curves are wing profile curves
+! ---
+
+  PART (#24, s_awisov0  ( s_id, p_case):SAVE=0);
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);          ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);          ! Retrieve number of V patches
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! Start random value
+! ---
+
+  TIME(year,month,day,hour,             ! Start seed for random value
+       minute,second);                  !
+  seed     := second/60.0;              !
+  rand_val := RANDOM(seed);             ! Random value
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Start random value rand_val "+STR(rand_val,4,3)); 
+  ENDIF;             
+
+
+! +++
+! 2. Find leading edge and create trailing edge
+! ---
+
+  csys_id  := #0;
+  n_add    :=  0;
+  PART(#10,  s_aleadv0  ( s_id, csys_id, v_lead, n_add, graphic_lead));
+  id_lead  := GLOBAL_REF(REFC(10,1,1,1));
+  id_trail := GLOBAL_REF(REFC(10,1,2,1));
+
+!QQ  l_v := -12345;                        ! Leading edge V value
+
+!QQ  FOR i_v:= 0 TO npatv DO               ! Start loop V lines
+
+!QQ    uv_sur := VEC(npatu/2.0,i_v);       !
+!QQ    s_n := NORM(s_id,uv_sur);           ! Current surface normal
+!QQ    IF i_v   = 0 THEN                   ! 
+!QQ      dot_start := s_n*v_lead;          ! Start scalar product s_n*v_lead
+!QQ    ELSE                                !
+!QQ      dot       := s_n*v_lead;          ! Current scalar product s_n*v_lead
+!QQ      IF    dot_start > 0 AND           !
+!QQ            dot       < 0    THEN       !
+!QQ        l_v  := i_v;                    ! Leading edge
+!QQ        dot_start := 0.0;               !
+!QQ      ELIF  dot_start < 0 AND           !
+!QQ            dot       > 0    THEN       !
+!QQ        l_v  := i_v;                    ! Leading edge
+!QQ        dot_start := 0.0;               !
+!QQ      ENDIF;                            !
+!QQ    ENDIF;                              !
+
+!QQ  ENDFOR;                               ! End  loop V lines
+
+!QQ  IF  l_v <= 0 THEN                     ! 
+!QQ    EXIT("s_adeforv0 Leading edge");    !
+!QQ  ENDIF;                                !
+
+!QQ  IF  DEBUG = 1 THEN  
+!QQ  LST_LIN("Leading edge l_v "+STR(l_v,3,0)); 
+!QQ  ENDIF;             
+
+! +++
+! 3. Create rotation line  
+! ---
+
+!QQ  LIN_FREE(#2, ON(s_id,VEC( 0.0, l_v)),
+!QQ               ON(s_id,VEC( 0.0 ,0.0)) :BLANK=b_val_a,PEN=3);
+!QQ  LIN_FREE(#3, ON(s_id,VEC(npatu,l_v)),
+!QQ               ON(s_id,VEC(npatu,0.0)):BLANK=b_val_a,PEN=3);
+
+  LIN_FREE(#2, STARTP(id_lead), STARTP(id_trail)
+                     :BLANK=b_val_a,PEN=3);
+  LIN_FREE(#3,   ENDP(id_lead),   ENDP(id_trail)
+                     :BLANK=b_val_a,PEN=3);
+
+  LIN_FREE(#4, ON(GLOBAL_REF(#2),0.5) ,
+               ON(GLOBAL_REF(#3),0.5) :BLANK=b_val_a,PEN=2);
+
+  rot_id := GLOBAL_REF(#4);
+  p1_l   := ON(rot_id,0.0);
+  p2_l   := ON(rot_id,1.0);
+
+  IF  p_case = "V" THEN
+    GOTO vprofiles;
+  ENDIF;
+
+! +++
+! 4.U Create scalar (random) function for the twist
+! ---
+
+  poi(1)   := VEC(-0.001   ,rand_val*mtwist-mtwist/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(2)   := VEC(npatu/2.0,rand_val*mtwist-mtwist/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(3)   := VEC(npatu+0.001 ,rand_val*mtwist-mtwist/2.0,0.0);
+  CUR_SPLARR(#5,"FREE",3,poi:BLANK=b_val_a,PEN=4);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Random rotation angles "
+           +STR(poi(1).y,4,1)+" "
+           +STR(poi(2).y,4,1)+" "
+           +STR(poi(3).y,4,1)  ); 
+  ENDIF;             
+
+  FOR  i_u := 0 TO npatu DO
+    B_PLANE(#20,VEC(i_u,0.0,0.0),
+                VEC(i_u,mtwist,mtwist), 
+                VEC(i_u,mtwist,mtwist),
+                VEC(i_u,2*mtwist,0.0));
+    poi(i_u+1) := INTERSECT(GLOBAL_REF(#5),GLOBAL_REF(#20),1);
+    DEL(GLOBAL_REF(#20));
+  ENDFOR;
+  CUR_SPLARR(#15,"FREE",npatu+1,poi:BLANK=b_val_a,PEN=2);
+  ang_id := GLOBAL_REF(#15);
+
+! +++
+! 5.U Rotate U section curves (wing profiles)       
+! ---
+
+  FOR i_u:= 0 TO  npatu DO              ! Start loop U lines 
+
+    CUR_ISO(#6,s_id,"U",i_u,0.0,npatv   ! Create isoparameter
+               :BLANK=b_val_a,PEN=3);   !
+    i_id := GLOBAL_REF(REFC(6,i_u+1));  !
+    CUR_APPROX(#7, i_id,"CUB_SEG",      ! Approximate isoparameter
+                    1, 1                !
+               :BLANK=b_val_a,PEN=1);   !
+    a_id := GLOBAL_REF(REFC(7,i_u+1));  !
+    rot_poi := ON(ang_id,i_u);          ! Point on rotation curve
+    rot_ang := rot_poi.y;               !
+    IF  DEBUG = 1 THEN  
+    LST_LIN("i_u "+STR(i_u,3,0)+" Angle "+STR(rot_ang,4,3)); 
+    ENDIF;             
+    TFORM_ROTL(#8,p1_l,p2_l,rot_ang);   ! Rotation matrix
+    tra_id:= GLOBAL_REF(REFC(8,i_u+1)); !
+
+    TCOPY(#9  ,a_id, tra_id, 0);        ! Rotate curve
+    id_all(i_u+1) :=                    !
+      GLOBAL_REF(REFC(9,i_u+1));        !
+
+  ENDFOR;                               ! End   loop U lines
+
+! +++
+! 6.U Create points and tangents for surface        
+! ---
+
+  FOR    i_u := 0 TO npatu DO           ! Start loop U lines
+    FOR  i_v := 0 TO npatv DO           ! Start loop V lines
+      c_id := id_all(i_u+1);            ! Current curve identity
+      pts(i_u+1,i_v+1) := ON(c_id,i_v); !
+    ENDFOR;                             ! End   loop V lines
+  ENDFOR;                               ! End   loop U lines
+
+  metod := "ADINI_1";                   !
+  no_ulines := npatu +1;                !
+  no_vlines := npatv +1;                !
+
+
+  GOTO  cresur;
+
+
+vprofiles:; ! Label: Curve profiles are V curves
+
+
+! +++
+! 4.V Create scalar (random) function for the twist
+! ---
+
+  poi(1)   := VEC(-0.001   ,rand_val*mtwist-mtwist/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(2)   := VEC(npatv/2.0,rand_val*mtwist-mtwist/2.0,0.0);
+  rand_val := RANDOM(rand_val);
+  poi(3)   := VEC(npatv+0.001 ,rand_val*mtwist-mtwist/2.0,0.0);
+  CUR_SPLARR(#35,"FREE",3,poi:BLANK=b_val_a,PEN=4);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("U: Random rotation angles "
+           +STR(poi(1).y,4,1)+" "
+           +STR(poi(2).y,4,1)+" "
+           +STR(poi(3).y,4,1)  ); 
+  ENDIF;             
+
+  FOR  i_v := 0 TO npatv DO
+    B_PLANE(#50,VEC(i_v,0.0,0.0),
+                VEC(i_v,mtwist,mtwist), 
+                VEC(i_v,mtwist,mtwist),
+                VEC(i_v,2*mtwist,0.0));
+    poi(i_v+1) := INTERSECT(GLOBAL_REF(#35),GLOBAL_REF(#50),1);
+    DEL(GLOBAL_REF(#50));
+  ENDFOR;
+  CUR_SPLARR(#45,"FREE",npatv+1,poi:BLANK=b_val_a,PEN=2);
+  ang_id := GLOBAL_REF(#45);
+
+! +++
+! 5.V Rotate V section curves (wing profiles)       
+! ---
+
+  FOR i_v:= 0 TO  npatv DO              ! Start loop V lines 
+
+    CUR_ISO(#36,s_id,"V",i_v,0.0,npatu  ! Create isoparameter
+               :BLANK=b_val_a,PEN=3);   !
+    i_id := GLOBAL_REF(REFC(36,i_v+1)); !
+    CUR_APPROX(#37, i_id,"CUB_SEG",     ! Approximate isoparameter
+                    1, 1                !
+               :BLANK=b_val_a,PEN=1);   !
+    a_id := GLOBAL_REF(REFC(37,i_v+1)); !
+    rot_poi := ON(ang_id,i_v);          ! Point on rotation curve
+    rot_ang := rot_poi.y;               !
+    IF  DEBUG = 1 THEN  
+    LST_LIN("i_v "+STR(i_v,3,0)+" Angle "+STR(rot_ang,4,3)); 
+    ENDIF;             
+    TFORM_ROTL(#38,p1_l,p2_l,rot_ang);   ! Rotation matrix
+    tra_id:= GLOBAL_REF(REFC(38,i_v+1)); !
+
+    TCOPY(#39  ,a_id, tra_id, 0);        ! Rotate curve
+    id_all(i_v+1) :=                    !
+      GLOBAL_REF(REFC(39,i_v+1));        !
+
+  ENDFOR;                               ! End   loop V lines
+
+!QQQQ  LST_EXI();
+!QQQQ  EXIT();  ! Tillfalligt
+! +++
+! 6.V Create points and tangents for surface        
+! ---
+
+    FOR  i_v := 0 TO npatv DO           ! Start loop V lines
+  FOR    i_u := 0 TO npatu DO           ! Start loop U lines
+      c_id := id_all(i_v+1);            ! Current curve identity
+      pts(i_u+1,i_v+1) := ON(c_id,i_u); !
+    ENDFOR;                             ! End   loop V lines
+  ENDFOR;                               ! End   loop U lines
+
+  metod := "ADINI_1";                   !
+  no_ulines := npatu +1;                !
+  no_vlines := npatv +1;                !
+
+
+
+cresur:; ! Label: Create surface
+
+! +++
+! 7. Create surface
+! ---
+
+  SUR_SPLARR(#1,metod,                  ! Create surface
+             no_ulines,no_vlines,       ! 
+             pts                        !
+      :BLANK=b_val_s);                  ! 
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_EXI();                            !
+  ENDIF;                                !
+
+ENDMODULE
+

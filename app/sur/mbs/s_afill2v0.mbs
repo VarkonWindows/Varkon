@@ -1,0 +1,293 @@
+! ***************** s_afill2v0  ****************************
+! +++
+! Circular (approxim.) interpolation of fillet point
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-07-03 Gunnar Liden
+! 1997-05-16 Interpolation bug  Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Circular (approxim.) interpolation of fillet point
+!sdescs Cirkulär (approxim.) interpolation av fillet punkt
+
+
+GLOBAL GEOMETRY MODULE s_afill2v0  (
+    REF    csys_id;              ! Intersect coord. system identity
+    FLOAT  c_angle;              ! Constant angle defining curve
+    REF    cur_id;               ! Curve branch identity for output point
+    FLOAT  u_c;                  ! Curve parameter value for start
+    FLOAT  ang1;                 ! Angle start point to origin (ext. pt)
+    FLOAT  ang2;                 ! Angle end   point to origin (ext. pt)
+VAR FLOAT  u_interp;             ! Circular interpolated U value
+VAR FLOAT  d_interp;             ! Distance to interpolated point
+    INT    graphic);             ! Eq. 0: Show nothing Eq. 2: Show all
+
+
+! Internal variables
+
+  VECTOR p1_c;                   ! Start point   of the curve segment
+  VECTOR p2_c;                   ! End   point   of the curve segment
+  VECTOR p1_s;                   ! Current start point 
+  VECTOR p2_e;                   ! Current end   point 
+
+  REF    cir_id;                 ! Identity for circle
+  REF    lin_id;                 ! Identity for line  
+  FLOAT  u_cir;                  ! Parameter for end point of circle
+  VECTOR p_int;                  ! Intersect point line/curve
+  INT    n_int;                  ! Number of intersect points line/curve
+
+  INT    n_iterations;           ! Number of iterations
+  INT    m_iterations;           ! Maximum number of iterations
+
+  FLOAT  ang_crit;               ! Angle criterion
+     
+  VECTOR pi_c;                   ! Interpolated point
+  VECTOR ti_c;                   ! Interpolated tangent
+  VECTOR pi_e;                   ! Interpolated normalized vector
+  FLOAT  doti;                   ! Scalar product ti_c*pi_e
+  FLOAT  denom;                  ! Denominator
+  FLOAT  angi;                   ! Angle for interpolated point
+  VECTOR t1_s;                   ! New start tangent
+  VECTOR p1_e;                   ! New normalized vector
+  FLOAT  dots;                   ! Scalar product t1_s*p1_e
+  FLOAT  angs;                   ! Angle for new start point  
+  FLOAT  u_s;                    ! New start point
+  FLOAT  u_e;                    ! New end   point
+   
+  INT    bflag_a;                ! Blank flag for all 
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  ang_crit := 0.2;
+  IF   graphic = 0 THEN
+    bflag_a := 1;   
+  ELIF graphic = 1 THEN
+    bflag_a := 1;   
+  ELIF graphic = 2 THEN
+    bflag_a := 0;   
+  ELSE             
+    EXIT("s_afill2v0 Graphic not 0, 1 or 2");
+  ENDIF;         
+
+  u_interp := -1.23456789;
+  d_interp := -1.23456789;
+
+  n_iterations := 0;
+  m_iterations := 2;
+  
+  IF DEBUG = 1 THEN 
+  LST_INI("s_afill2v0 Debug printout");
+  LST_LIN("u_c "+STR(u_c,6,2)+" c_angle "+STR(c_angle,6,2));
+  LST_LIN("ang1 "+STR(ang1,6,2)+" ang2 "+STR(ang2,6,2));
+  ENDIF;
+
+! +++
+! 2. Create circle, intersecting line and intersect point U value
+! ---
+
+  MODE_LOCAL(csys_id);
+! Start point on curve segment
+  p1_c :=   ON(cur_id, u_c);
+! End   point on curve segment
+  p2_c :=   ON(cur_id, u_c + 1.0);
+  MODE_GLOBAL();
+
+  p1_s := p1_c;
+  p2_e := p2_c;
+  angs := ang1;
+
+rstart:;  ! Label rstart
+  n_iterations := n_iterations + 1;
+  
+  IF  graphic >= 2 THEN
+    MODE_LOCAL(csys_id);
+    POI_FREE(#101, p1_s:PEN=3);
+    POI_FREE(#102, p1_e:PEN=3);
+    MODE_GLOBAL();
+  ENDIF;
+
+  MODE_LOCAL(csys_id);
+  CSYS_3P(#2, "Circle",VEC(0,0,0), p1_s, p2_e :BLANK=bflag_a,PEN=4);
+
+  MODE_LOCAL(GLOBAL_REF(#2));
+  ARC_1POS(#3, VEC(0,0,0), 1.5*VECL(p1_s-p2_e), 0.0, c_angle - angs
+               :BLANK=bflag_a,PEN=2);
+  cir_id := GLOBAL_REF(#3);
+  u_cir  := INV_ARCL(cir_id,ARCL(cir_id));
+
+  LIN_FREE(#4, VEC(0,0,0), ON(cir_id,u_cir):BLANK=bflag_a,PEN=4);
+  lin_id := GLOBAL_REF(#4);
+
+  n_int := N_INTERSECT(lin_id, cur_id, -1 );
+  IF  n_int = 0 THEN
+    u_interp := -12.3456789;
+    IF DEBUG = 1 THEN 
+    LST_LIN("u_cir "+STR(u_cir,6,2)+" n_int "+STR(n_int,3,0));
+    LST_EXI();
+    ENDIF;
+    EXIT();
+!    EXIT("s_afill2v0 Line/curve failed");
+  ENDIF;
+
+  p_int := INTERSECT(lin_id, cur_id, -1);
+
+  u_interp := INV_ON(cur_id, p_int, 1);
+
+  d_interp := VECL(p_int);
+  
+  MODE_GLOBAL();
+  
+! +++
+! 3. Check if result is within tolerance
+! ---
+
+
+  MODE_LOCAL(csys_id);
+! Interpolated point on curve segment
+  pi_c :=   ON(cur_id     ,u_interp);
+! Interpolated  tangent on curve segment
+  ti_c := TANG(cur_id     ,u_interp);
+! Normalized vectors to external point    
+  pi_e := VECN(pi_c);
+  doti := ti_c*pi_e;
+! Calculate interpolated angle
+  IF    doti >  1.0 THEN
+    angi :=   0.0;
+  ELIF  doti < -1.0 THEN
+    angi := 180.0;      
+  ELSE
+    angi := ARCCOS(doti);
+  ENDIF;
+  IF  angi > 90.0 THEN
+    angi := 180.0 - angi;
+  ENDIF;
+  MODE_GLOBAL();
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("angi  "+STR(angi ,6,2)+" c_angle "+STR(c_angle ,6,2));
+  LST_LIN("Crit. "+STR(ang_crit ,6,2)+" Diff. "+STR(angi-c_angle ,6,2));
+  ENDIF;
+
+  IF  ABS(angi-c_angle) <=  ang_crit THEN
+    GOTO optimum;
+  ENDIF;
+
+! +++
+! 4. New start and end point
+! ---
+
+  IF  n_iterations >= m_iterations THEN
+    GOTO  no_optim;
+  ENDIF;
+
+  IF      ABS(u_interp-u_c)     >  0.1/n_iterations AND 
+          ABS(u_c+1.0-u_interp) >  0.1/n_iterations       THEN
+    u_s := u_interp - 0.1/n_iterations;
+    u_e := u_interp + 0.1/n_iterations;
+  ELIF    ABS(u_interp-u_c)     <=  0.1/n_iterations AND 
+          ABS(u_c+1.0-u_interp) >   0.1/n_iterations       THEN
+    u_s := u_c;
+    u_e := u_interp + 0.1/n_iterations;
+  ELIF    ABS(u_interp-u_c)     >   0.1/n_iterations AND 
+          ABS(u_c+1.0-u_interp) <=  0.1/n_iterations       THEN
+    u_s := u_interp - 0.1/n_iterations;
+    u_e := u_c + 1.0;        
+  ELSE
+    EXIT("s_afill2v0 Program error rstart");
+  ENDIF;  
+
+  MODE_LOCAL(csys_id);
+! New start point on curve segment
+  p1_s :=   ON(cur_id, u_s);
+! New end   point on curve segment
+  p2_e :=   ON(cur_id, u_e);
+! New start tangent on curve segment
+  t1_s := TANG(cur_id ,u_s);
+! Normalized vectors to external point    
+  p1_e := VECN(p1_s);
+  dots := t1_s*p1_e;
+! Calculate new start angle
+  IF    dots >  1.0 THEN
+    angi :=   0.0;
+  ELIF  dots < -1.0 THEN
+    angs := 180.0;      
+  ELSE
+    angs := ARCCOS(dots);
+  ENDIF;
+  IF  angs > 90.0 THEN
+    angs := 180.0 - angs;
+  ENDIF;
+
+  MODE_GLOBAL();
+
+  GOTO  rstart;
+  
+! +++
+! 5. Calculate interpolated angle, graphics, etc for Debug On
+! ---
+
+  IF  DEBUG = 0 THEN
+    GOTO nolist;
+  ENDIF;
+
+  MODE_LOCAL(csys_id);
+! Interpolated point on curve segment
+  pi_c :=   ON(cur_id     ,u_interp);
+! Interpolated  tangent on curve segment
+  ti_c := TANG(cur_id     ,u_interp);
+! Normalized vectors to external point    
+  pi_e := VECN(pi_c);
+  doti := ti_c*pi_e;
+! Calculate interpolated angle
+  IF    doti >  1.0 THEN
+    angi :=   0.0;
+  ELIF  doti < -1.0 THEN
+    angi := 180.0;      
+  ELSE
+    angi := ARCCOS(doti);
+  ENDIF;
+  IF  angi > 90.0 THEN
+    angi := 180.0 - angi;
+  ENDIF;
+  IF  graphic = 2 THEN
+    LIN_FREE(#111, p1_c, pi_c :PEN=2);
+    LIN_FREE(#112, pi_c, p2_c :PEN=4);
+  ENDIF;
+
+  MODE_GLOBAL();
+
+  IF DEBUG = 1 THEN 
+    LST_LIN("u_interp "+STR(u_interp,10,4)+
+             " d_interp "+STR(d_interp,10,2)+
+             " angi "+         STR(angi,10,4));
+  ENDIF;
+
+nolist:;    ! Label: No debug (listing)
+no_optim:;  ! Label: No optimum found
+optimum:;   ! Label: Optimum found
+
+  IF DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

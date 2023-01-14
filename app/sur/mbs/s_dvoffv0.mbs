@@ -1,0 +1,180 @@
+!*************************** s_dvoffv0 **********************************
+! +++                                            		   	*	 
+! Define a deformation surface with given points   		   	*
+!								   	*
+! The input to this module is a surface r_input(u,v), which shall be	*
+! deformed. The surface is normally a part of an aircraft surface,	*	  
+! for instance a part of the nacelle to SAAB 2000.		   	*
+! In this first version must the part of the surface be defined with a 	*	
+! rectangular grid of patches.						*
+! It is for the future planned that the input may be a face, i.e. a 	*
+! surface part limited by (four) curves on the surface.		   	*
+!  				   					*			  
+! A deformation function f_deform (function from R*2 to R), with the   	*
+! same number of patches as the input surface, is calculated in this	*  
+! module. The output deformation surface is the "sum of the input 	*
+! surface and the deformation function in the direction of the surface	*
+! normal n_input (normalized) for the input surface:	   		*
+! 				   					*								   *
+! r_deformed(u,v) = r_input(u,v) + f_deform(u,v)*n_input(u,v)	   	*
+!								   	*
+! The deformation function can also be interpreted and used as a 	*
+! variable offset surface.					   	*
+! 								   	*
+! It is very difficult for a user to directly define the deformation 	*
+! (variable offset) function. A more natural and "user-friendly" method *
+! for the definition of the deformation function must be developed.   	*
+!								   	*
+! In this module is the idea tested that the deformation function is 	*
+! defined as a relative arclength function.		   		*
+! The arclengths are the lengths of the isoparameter curves in the U 	*
+! and V direction of the input surface.		   			*
+!								   	*
+! The user defines the deformations (offsets) in the corner points  	*
+! (0,0), (0,1), (1,0) and (1,1). The slopes for the corner points are	*
+! zero in this first test. In the future will the input also be	the     *
+! slopes and/or additional points along the boundaries. 	   	*
+! The variation of the deformation between the corner points, i.e. the  * 
+! boundary curves of the arclength deformation function, will be 	*
+! defined as Generalized Conics. 	   				*
+! This rectangular surface (with a scaling factor 1000) is created in 	*	
+! this module.								*
+! 
+! The user has probably (normally) no interest of the rectangular	*
+! relative arclength deformation surface. The graphical representation 	*
+! should be in R*3 on the input surface or (as tested here) on the 	*
+! developed input surface. The options in this function are scaled 	*
+! porcupines (?) on the input and/or the developed surface.		*
+!   									*
+! The difficult calculation (approximation) of the deformation function *
+! f_deform(u,v) is not yet programmed. Some optimisation method will 	*
+! probably be used ....							*
+!									*
+! Note that the input surface must be of type bicubic.			*
+! Adding patches (with function SUR_APPROX) will make the approximate 	*
+! deformation function more accurate (hopefully ....) 			* 
+! ---                                              			*
+! Revision history				   			*
+! _________________				   			*
+!						   			*
+! 1996-09-16 Elsa Rydman			   			*
+! 1997-01-22 Comments added Gunnar Liden           			*
+! 1997-01-27 Parameter defname, .. and bval_a added Gunnar Liden
+!************************************************************************
+
+!sdesce Define a deformation surface with given points.
+
+!sdescs Definiera en deformationsyta med givna punkter.
+
+
+GLOBAL GEOMETRY MODULE s_dvoffv0 (
+
+REF   sur_id       > "@t16 Select a bicubic surface";
+REF   csys_id	   > "@t8192 Select a coordinate system";
+FLOAT d00 := 10.0  > "Deformation distance in corner point   0,  0";
+FLOAT d10 := 20.0  > "Deformation distance in corner point 100,  0";
+FLOAT d01 := 20.0  > "Deformation distance in corner point   0,100";
+FLOAT d11 := 10.0  > "Deformation distance in corner point 100,100";
+STRING defname*24:= "SLASK" >"Name of deformation function/fil .DAT added";
+INT   graphic := 1 >"Eq. 0: None Eq. 1: Show def. surface Eq. 2: All");
+
+
+! Internal variables
+
+  REF     u0_id;               	! Reference to U0 boundary
+  REF	  u1_id;		! Referense to U1 boundary
+  REF     v0_id;               	! Reference to V0 boundary
+  REF	  v1_id;		! Referense to V1 boundary
+
+  INT     sur_type;             ! Eq. 1: Surface is bicubic
+  
+  INT     graphic_func;         ! Graphics for s_kvoffv0
+  INT     bval_a;               ! Blank value for All other entities
+    
+  INT     DEBUG;               	! Debug
+  
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initalizations and checks
+! ---
+
+  IF    graphic =  0  THEN
+    bval_a := 1;
+  ELIF  graphic =  1  THEN
+    bval_a := 1;
+  ELIF  graphic =  2  THEN
+    bval_a := 0;
+  ELSE
+    EXIT("s_dvoffv0 graphic not 0, 1 or 2");
+  ENDIF;
+  
+  
+  graphic_func := graphic;
+
+! +++
+! Check that the input surface is bicubic
+! ---
+   
+  GETSURH(sur_id, "SUR_TYPE", sur_type);
+  IF  sur_type <> 1 THEN
+    EXIT("s_dvoffv0 Not a bicubic surface "+RSTR(sur_id));
+  ENDIF;
+  
+! +++
+! 2. Create boundary curves for the arclength deformation surface
+! ---
+
+  MODE_BASIC();  ! Create curves in Basic. Not in any local system
+   
+  CUR_CONIC(#11, "FREE", VEC(0,0,d00), VEC(0,0,d00) + VEC(0, 1, 0), 0.5,
+                     VEC(0,100,d01), VEC(0,100,d01) + VEC(0, 1, 0)
+                     :BLANK=bval_a);
+  CUR_CONIC(#12, "FREE", VEC(100,0,d10), VEC(100,0,d10) + VEC(0, 1, 0), 0.5,
+                     VEC(100,100,d11), VEC(100,100,d11) + VEC(0, 1, 0)
+                     :BLANK=bval_a);
+                     
+  CUR_CONIC(#13, "FREE", VEC(0,0,d00), VEC(0,0,d00) + VEC(1, 0, 0), 0.5,
+                     VEC(100,0,d10), VEC(100,0,d10) + VEC(1, 0, 0)
+                     :BLANK=bval_a);
+  CUR_CONIC(#14, "FREE", VEC(0,100,d01), VEC(0,100,d01) + VEC(1, 0, 0), 0.5,
+                     VEC(100,100,d11), VEC(100,100,d11) + VEC(1, 0, 0)
+                     :BLANK=bval_a); 
+     
+! +++
+! Create global references for the curves
+! ---
+                                                                                  
+  u0_id := GLOBAL_REF(#11); 
+  u1_id := GLOBAL_REF(#12); 
+  
+  v0_id := GLOBAL_REF(#13); 
+  v1_id := GLOBAL_REF(#14);     
+    
+  MODE_GLOBAL();
+  
+! +++
+! 3. Registrate the relative arclength deformation surface
+! ---
+  
+  PART(#2,s_rvoffv0(sur_id, u0_id, u1_id, v0_id, v1_id));
+   
+! +++
+! 4. Create the deformation function f_deform(u,v) as a surface
+! ---
+
+  PART(#1,s_kvoffv0(GLOBAL_REF(#2), sur_id, defname, graphic_func));
+ 
+! +++
+! 5. Graphical representations of the deformation surface
+! ---
+
+! Tillfalligt  PART(#3,s_gvoffv0(GLOBAL_REF(#2),csys_id, 10.0, graphic));
+
+
+ENDMODULE

@@ -1,0 +1,465 @@
+
+! +++
+! Read and register nurbs data for a fam    face from file
+!
+! Input data for this function is a text file with NURBS data in
+! fam format and a part with NURBS control points regsitered as GROUP's. 
+! The system fam is used at Saab to create FE nets for electromagnetic 
+! calculations.
+!
+! The input file must be on the active job directory. 
+! File name example: tank_nur.fam
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-05-01 Gunnar Liden
+! 1997-05-20 Directions  Gunnar Liden
+! 
+!********************************************************************
+
+!sdesce Read and register nurbs data for a fam face from file
+!sdescs Läs och registrera NURBS data för en fam face
+
+GLOBAL GEOMETRY MODULE  s_famfacv0        (
+REF     prt_id                 >"@t16384 Part with a NURBS surface";
+STRING  r_name*3 := "V1"       >"Requested face (V1, V1, ...,)";
+INT     print    :=  1         >"0= No printout 1= Printout";
+INT     graphic  :=  1 >"0= None, 1= Polygon points, 2= Directions");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  CONSTANT STRING s_n_body = "*number_of_bodies_in_the_model";
+  CONSTANT STRING s_b_box  = "*Bounding_box";
+  CONSTANT STRING s_o_data = "*OBJECT_DATA";
+  CONSTANT STRING s_o_name = "*object_name";
+  CONSTANT STRING s_c_pts  = "*control_point_data";
+  CONSTANT STRING s_l_surf = "*list_of_surfaces";
+  CONSTANT STRING s_nurs   = "NURS";
+  CONSTANT STRING s_nurl   = "NURL";
+  CONSTANT STRING s_define = "DEFINE";
+  CONSTANT STRING s_e_obj  = "*end_object";
+  CONSTANT STRING s_u_triu = "* Untrimmed in U";
+  CONSTANT STRING s_u_triv = "* Untrimmed in V";
+  CONSTANT STRING s_u_knot = "* Knot definitions in U";
+  CONSTANT STRING s_v_knot = "* Knot definitions in V";
+  CONSTANT STRING s_end    = "END";
+  CONSTANT STRING s_s_face = "*start_face";
+  CONSTANT STRING s_knot   = "KNOT";
+
+  REF    ppt_id;               ! Part with a NURBS polygon points
+  STRING ptdat*30;             ! NURBS data (ex. tank_nur.fam)
+  INT    n_start;              ! Start line for requested    face
+
+  REF    shead_id;             ! Id for s_reghead
+
+  VECTOR b_box;                ! Bounding box
+  STRING o_name*132;           ! Object name
+  STRING p_name*4;             ! Point  name
+  INT    n_body;               ! Number of bodies
+  INT    i_body;               ! Current body
+  INT    n_cpts;               ! Number of control points
+  INT    n_surf;               ! Number of surfaces in the body
+  INT    n_face;               ! Number of faces    in the body
+  INT    u_degree;             ! Degree in U
+  INT    v_degree;             ! Degree in V
+  INT    n_u_p;                ! Number of control points in U
+  INT    n_v_p;                ! Number of control points in V
+  INT    n_u_k;                ! Number of knots in U
+  INT    n_v_k;                ! Number of knots in V
+  INT    index_u;              ! Point address in U
+  INT    index_v;              ! Point address in V
+  STRING s_name*3;             ! Surface name
+  STRING s_name_face*3;        ! Surface name for face
+  FLOAT  weight;               ! Weight for a point
+  FLOAT  u_knot;               ! Knot value U
+  FLOAT  v_knot;               ! Knot value V
+  INT    multipl;              ! Multiplicity
+  INT    c_leng;               ! Length of c_name
+  STRING s_keyword*10;         ! Keyword in FAM
+  
+  STRING face_name*3;          ! Face    name
+  INT    n_loop;               ! Number of loops
+  INT    n_cur;                ! Number of curves
+  INT    n_poi;                ! Number of control points
+  INT    i_cur;                ! Loop index curve
+  INT    i_poi;                ! Loop index control point
+  INT    i_knt;                ! Loop index knot value
+  INT    n_knt_all;            ! For criterion all knot values 
+  FLOAT  v_knt;                ! Knot value
+  STRING c_name*3;             ! Curve   name
+  INT    cur_pen;              ! Curve pen number
+
+  STRING p_name_all(50,50)*4;  ! All point names for the surface
+  FLOAT  weight_all(50,50);    ! All point weights
+  VECTOR poi_all(50,50);       ! All points
+
+  INT    n_total;              ! Total number of points
+
+  FLOAT  a_leng;               ! Length of arrow
+  INT    n_lin;                ! Number of lines
+
+                               ! For s_reghead
+  INT    n_u;                  ! Number of U lines (max U knot)
+  INT    n_v;                  ! Number of V lines (max V knot)
+  INT    s_type;               ! Surface type
+
+! ---
+
+  STRING f_name*132;           ! Full file name
+  FILE   pdat;                 ! File with points
+
+  INT     i_u;                 ! Point (array) address IU 
+  INT     i_v;                 ! Point (array) address IV
+  VECTOR  poi;                 ! Point 
+
+  INT    i_line;               ! Loop index line in file
+
+  STRING rad*132;              ! Dummy string
+
+  INT    b_val_s;              ! BLANK value point
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks of input data
+!
+!    Get  file name from the input part
+!    Open input file with NURBS data
+
+  DEBUG := 1;          
+
+  FOR  i_u := 1 TO 50 DO
+    FOR  i_v := 1 TO 50 DO
+      p_name_all(i_u,i_v) := "Undefined"; 
+      weight_all(i_u,i_v) := -1.23456789;
+      poi_all(i_u,i_v)    := VEC(-1.23456789,-1.23456789,-1.23456789); 
+    ENDFOR;
+  ENDFOR;
+
+  s_keyword := "Undefined"; 
+
+  IF  print = 1 THEN
+    LST_INI("NURBS data for face "+r_name+"   Module: s_famfacv0");
+  ENDIF;
+  
+  n_body := 0;               ! Number of bodies
+  n_surf := 0;               ! Number of surfaces in the body
+  n_face := 0;               ! Number of faces    in the body
+
+  IF   graphic = 0 THEN  
+    b_val_s:= 1;     
+  ELIF graphic = 1 THEN
+    b_val_s:= 0;      
+  ELIF graphic = 2 THEN
+    b_val_s:= 0;      
+  ELSE                  
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_famfacv0   graphic not OK"); 
+  ENDIF;                      !
+
+  i_u      := -12345;   
+  i_v      := -12345;  
+  poi      := VEC(0,0,0);  
+
+! Full name for file on the active job directory
+  ppt_id := GETREF(prt_id,1);
+  ptdat  := GETSTR(ppt_id,1);
+
+  f_name:= ACT_JOBDIR() +  ptdat;
+
+! Open file with data
+  OPEN(pdat,"R",f_name);
+  IF IOSTAT(pdat) <> 0 THEN 
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT(f_name+"failed");
+  ENDIF; 
+
+! Name of surface
+  s_name := GETSTR(prt_id,2);
+
+! +++
+! 1. Find start line for face data 
+! ---
+
+! Read until r_name
+  n_start := 0;
+  FOR  i_line := 1 TO 10000 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  IOSTAT(pdat) <> 0 THEN
+      CLOSE(pdat);
+      IF  print = 1 THEN
+        LST_EXI();
+      ENDIF;
+      EXIT("s_famfacv0 No "+r_name+" in file");
+    ENDIF;
+    IF  FINDS(rad, s_s_face) > 0 THEN
+      n_face      := n_face + 1;
+      face_name   := SUBSTR(rad,13);
+      n_loop      := ININT(pdat);
+      rad         := INLIN(pdat);  
+      s_name_face := INSTR(pdat,3);
+      rad         := INLIN(pdat);  
+      n_cur       := ININT(pdat);
+      rad         := INLIN(pdat);  
+      IF  FINDS(face_name, r_name  ) > 0  THEN
+        n_start := i_line;
+        IF  print = 1 THEN
+          LST_LIN(" ");
+          LST_LIN(STR(n_face,3,0)+"     Face "+face_name+
+                     " on surface "+s_name_face+
+                  " No. of loops "+STR(n_loop,3,0)+
+                  " No. of curves "+STR(n_cur,3,0));
+        ENDIF;
+        GOTO  l_start;
+      ENDIF;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+    LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_famfacv0 More than 10000 lines in the file");
+
+l_start:; ! Label: Start line for face
+
+  IF  print = 1 THEN
+  LST_LIN(" ");
+  LST_LIN("The Start line for face "+r_name+" is "+STR(n_start,3,0));
+  ENDIF;
+
+! Check that the face is on the surface
+  IF  FINDS(s_name_face, s_name  ) = 0  THEN
+    IF  print = 1 THEN
+      LST_LIN("Face "+face_name+
+         " is on surface "+s_name_face+
+         " and not on surface "+s_name);
+      LST_LIN("Change surface name in part "+RSTR(prt_id)+
+              " from "+s_name+ " to "+s_name_face);
+      LST_LIN("or change face name ! ");
+      LST_EXI();
+    ENDIF;
+    CLOSE(pdat);
+    EXIT("s_famfacv0 Face "+face_name+
+         " is not on surface "+s_name);
+  ENDIF;
+
+! +++
+! 3. Get curve data for all curves                
+! ---
+
+! Not yet programmed for many loops
+  IF n_loop <> 1 THEN
+    IF  print = 1 THEN
+      LST_EXI();
+    ENDIF;
+    CLOSE(pdat);
+    EXIT("s_famfacv0 Not yet programmed for n_loop= "+STR(n_loop,3,0));
+  ENDIF;
+
+  cur_pen := 0;
+  n_lin   := 0;
+! Start loop all curves
+  FOR i_cur := 1 TO n_cur DO
+
+!   Part of line to dummy string
+    rad     := INSTR(pdat,5);  
+    IF  FINDS(rad, s_nurl) > 0    THEN
+      ;
+    ELSE
+      IF  print = 1 THEN
+        LST_EXI();
+      ENDIF;
+      CLOSE(pdat);
+      EXIT("s_famfacv0 Program error "+s_nurl);
+    ENDIF;
+!   Curve name
+    c_name  := INSTR(pdat,3);
+    c_leng  := LENGTH(c_name);
+!   Part of line (DEFINE) to dummy string
+    IF  c_leng = 2 THEN
+      rad     := INSTR(pdat,6+c_leng-2);  
+    ELIF  c_leng = 3 THEN
+      rad     := INSTR(pdat,6+c_leng-2);  
+    ENDIF;
+    IF  FINDS(rad, s_define) > 0    THEN
+      ;
+    ELSE
+      IF  print = 1 THEN
+        LST_LIN("Error: Curve name                "+c_name);
+        LST_LIN("Error: Curve name length c_leng  "+STR(c_leng,3,0));
+        LST_LIN("Error: rad                       "+rad);
+        LST_EXI();
+      ENDIF;
+      CLOSE(pdat);
+      EXIT("s_famfacv0 Program error "+s_define);
+    ENDIF;
+
+    u_degree:= ININT(pdat);             ! Degree
+    n_poi   := ININT(pdat);             ! Number of control points 
+    rad     := INLIN(pdat);
+
+    IF  print = 1 THEN
+      LST_LIN("Curve name                "+c_name);
+      LST_LIN("Curve number i_cur=       "+STR(i_cur,3,0));
+      LST_LIN("Curve name length c_leng  "+STR(c_leng,3,0));
+      LST_LIN("Curve degree              "+STR(u_degree,3,0));
+      LST_LIN("Number of control points  "+STR(n_poi,3,0));
+    ENDIF;
+
+!   Start loop all control points
+    FOR i_poi := 1 TO n_poi DO
+
+!     Part of line (NURL) to dummy string
+      rad       := INSTR(pdat,5);  
+!     Curve name
+      c_name    := INSTR(pdat,3);
+      rad       := INSTR(pdat,7+c_leng-2);  ! CONTROL
+      index_u   := ININT(pdat);             ! Point number
+      poi.x     := INFLT(pdat);             ! Point X
+      poi.y     := INFLT(pdat);             ! Point Y
+      poi.z     := INFLT(pdat);             ! Point Z
+      rad       := INLIN(pdat); 
+
+      poi_all(i_cur,i_poi) := VEC(-5000,-2000,0)+1000.0*poi;
+
+      IF  print = 1 THEN
+        LST_LIN("Control pt "+STR(index_u,3,0)+
+        " "+STR(poi.x,10,6)+" "+STR(poi.y,10,6)+" "+STR(poi.z, 8,2));
+      ENDIF;
+
+      IF graphic = 1 THEN
+        POI_FREE(#100, VEC(-5000,-2000,0)+1000.0*poi:PEN=4);
+      ENDIF;
+
+!   End   loop all control points
+    ENDFOR;
+
+!   Draw curve for graphic= 1
+    cur_pen := cur_pen + 1;
+    IF cur_pen > 6 THEN
+       cur_pen := 1;
+    ENDIF;
+    FOR i_poi := 1 TO n_poi-1 DO
+      n_lin := n_lin + 1;
+      LIN_FREE(#110, poi_all(i_cur,i_poi),poi_all(i_cur,i_poi+1):
+                PEN=cur_pen);
+      IF  graphic = 2 THEN
+        a_leng := 0.5*VECL( ON(GLOBAL_REF(REFC(110,n_lin)),0.0)-
+                            ON(GLOBAL_REF(REFC(110,n_lin)),1.0));
+        PART(#113, cpil2 (10, a_leng, ON(GLOBAL_REF(REFC(110,n_lin)),0.0),
+                                      ON(GLOBAL_REF(REFC(110,n_lin)),1.0))
+                    :PEN=cur_pen);
+      ENDIF;
+    ENDFOR;
+
+!   Start loop all possible knot values    
+    n_knt_all := 0;
+    FOR i_poi := 1 TO n_poi DO
+
+!     Part of line (NURL) to dummy string
+      rad       := INSTR(pdat,5);  
+!     Curve name
+      c_name    := INSTR(pdat,3);
+      rad       := INSTR(pdat,4+c_leng-2);  
+      s_keyword := SUBSTR(rad,1); 
+      IF  FINDS(s_keyword, s_knot) > 0    THEN
+        ; ! Continue
+      ELSE
+        GOTO  allknt;
+      ENDIF;
+      i_knt     := ININT(pdat);
+      v_knt     := INFLT(pdat);
+      multipl   := ININT(pdat);
+      rad       := INLIN(pdat); 
+      n_knt_all := n_knt_all + multipl;
+      IF  print = 1 THEN
+        LST_LIN("Knot "+STR(i_knt,3,0) + 
+                " value "+STR(v_knt,15,8) + 
+                " Multiplicity  "+STR(multipl,3,0));
+      ENDIF;
+
+!   End   loop all control points
+    ENDFOR;
+
+allknt: ! Label: All knots
+
+! Trim finns i s_keyword    
+    rad     := INLIN(pdat);           ! Tillfalligt TRIM resten av rad
+    rad     := INLIN(pdat);           ! Tillfalligt END
+
+! End   loop all curves
+  ENDFOR;
+
+! +++
+! 4. Get U,V plane for the surface (face)
+! ---
+
+  SET_ROOT_GM(prt_id);
+  shead_id := GET_NEXT_GM (0, 16384, "s_reghead" );
+  IF  shead_id = #0 THEN
+    IF  print = 1 THEN
+      LST_LIN("There is no s_reghead in part "+RSTR(prt_id));
+      LST_EXI();
+    ENDIF;
+    CLOSE(pdat);
+    EXIT("s_famfacv0 No s_reghead in part "+RSTR(prt_id));
+  ENDIF;
+
+  n_u    := GETINT(shead_id,1);
+  n_v    := GETINT(shead_id,2);
+  s_type := GETINT(shead_id,3);
+
+  IF  print = 1 THEN
+    LST_LIN("Number of U lines (max U knot value) "+STR(n_u,3,0));
+    LST_LIN("Number of V lines (max V knot value) "+STR(n_v,3,0));
+    LST_LIN("Surface type                         "+STR(s_type,3,0));
+  ENDIF;
+
+  FOR  i_u := 0 TO n_u DO
+    LIN_FREE(#130, 
+         VEC(-5000,-2000,950.0)+1000.0*VEC(i_u,  0 , 0),
+         VEC(-5000,-2000,950.0)+1000.0*VEC(i_u, n_v ,0):PEN=3);
+      IF  graphic = 2 AND  i_u = 0 THEN
+        a_leng := 0.1*VECL( ON(GLOBAL_REF(#130),0.0)-ON(GLOBAL_REF(#130),1.0));
+        PART(#111, cpil2 (10, a_leng, ON(GLOBAL_REF(#130),0.0),ON(GLOBAL_REF(#130),1.0))
+                    :PEN=3);
+      ENDIF;
+  ENDFOR;
+  FOR  i_v := 0 TO n_v DO
+    LIN_FREE(#131, 
+         VEC(-5000,-2000,950.0)+1000.0*VEC(0,   i_v,  0),
+         VEC(-5000,-2000,950.0)+1000.0*VEC(n_u, i_v,  0):PEN=2);
+      IF  graphic = 2 AND  i_v = 0 THEN
+        a_leng := 0.1*VECL( ON(GLOBAL_REF(#131),0.0)-ON(GLOBAL_REF(#131),1.0));
+        PART(#112, cpil2 (10, a_leng, ON(GLOBAL_REF(#131),0.0),ON(GLOBAL_REF(#131),1.0))
+                    :PEN=2);
+      ENDIF;
+  ENDFOR;
+
+
+  IF  print = 1 THEN
+    LST_EXI();
+  ENDIF;
+  
+  CLOSE(pdat);
+
+ENDMODULE

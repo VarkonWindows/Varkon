@@ -1,0 +1,259 @@
+! ***************** s_angan   ****************************
+!
+! +++
+! Surface analysis with an angle surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1999-03-16 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Surface analysis with an angle surface
+!sdescs Ytanalys med vinkelyta
+
+GLOBAL GEOMETRY MODULE s_angan   (
+
+REF    s_id                  >"@t16 Select surface";
+VECTOR spine_s := VEC(0,0,0) >"Spine start point";
+VECTOR spine_e := VEC(0,0,0) >"Spine end   point";
+VECTOR scale_s := VEC(1,1,1) >"Scale factor in X, Y and Z";
+INT    n_u         := 30     >"Number of cross-sections";
+INT    n_v         := 40     >"Number of points on curve";
+STRING a_case*1:= "U"        >"Case S=Spine U=U-lines V=V-lines";
+INT    graphic := 1          >"Eq 0: None Eq 1: Surface Eq. 2: All R*3");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  REF    cur_all(100);           ! All curves
+  INT    n_cur_all;              ! Number of curves
+
+  VECTOR y_axis;                 ! Y axis for angle system
+
+  INT    i_cur;                  ! Loop index curve
+  REF    cur_id;                 ! Current curve
+
+  VECTOR sur_pts(100,100);       ! Input pts to angle surface
+  INT    nu_sur_pts;             ! Number of points in U direction
+  INT    nv_sur_pts;             ! Number of points in V direction
+
+  INT    i_v;                    ! Loop index point on curve
+  FLOAT  u_param;                ! Current parameter value
+  FLOAT  tot_arc;                ! Total arclength for curve
+  FLOAT  delta_arc;              ! Delta arclength for a point
+  VECTOR c_point;                ! Current point
+  VECTOR c_tang;                 ! Current tangent
+  FLOAT  c_angle;                ! Current angle
+  FLOAT  x_coord;                ! X coorinate for output surface
+
+  INT    bflag_a;                ! Blank flag for all other entities
+  INT    bflag_s;                ! Blank flag for surface
+
+  INT    DEBUG;                  ! Debug
+
+  CONSTANT  FLOAT  idpoint = 0.01;
+
+  CONSTANT  FLOAT  f_undef = -0.123456789;
+  CONSTANT  INT    i_undef = -12345;
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Debug printout (0 or 1)
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    bflag_a := 1;
+    bflag_s := 1;
+  ELIF graphic = 1 THEN
+    bflag_a := 1;
+    bflag_s := 0;
+  ELIF graphic = 2 THEN
+    bflag_a := 0;
+    bflag_s := 0;
+  ELSE
+    EXIT("s_angan graphic not 0, 1 or 2");
+  ENDIF;                            
+! Check number of curve points
+  IF  n_v < 2 THEN
+    EXIT("s_angan Number of curve points is less than 2");
+  ENDIF;
+
+! Initialization of internal variables
+  nu_sur_pts := i_undef; 
+  nv_sur_pts := i_undef; 
+  i_v        := i_undef;
+  u_param    := f_undef;
+  tot_arc    := f_undef;
+  delta_arc  := f_undef;
+  c_point    := VEC(f_undef, f_undef, f_undef);
+  c_tang     := VEC(f_undef, f_undef, f_undef);
+  c_angle    := f_undef;
+  x_coord    := f_undef;
+  FOR  i_cur := 1 TO 100 DO
+    FOR  i_v := 1 TO 100 DO
+      sur_pts(i_cur,i_v) := VEC(f_undef, f_undef, f_undef);
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+! Number of U patches
+  GETSURH(s_id,"NPATU",npatu);
+! Number of V patches
+  GETSURH(s_id,"NPATV",npatv);
+
+! +++
+! 2. Create iso-parameter curves for a_case= U and = V
+! ---
+
+  IF   a_case = "u" OR a_case = "U" OR a_case = "v" OR a_case = "V" THEN
+    PART(#2, s_anganp ( s_id, n_u, a_case, cur_all, n_cur_all, bflag_a));
+  ELIF a_case = "s" OR a_case = "S" THEN
+    EXIT("s_angan Case S= Spine not yet implemented");
+  ELSE
+    EXIT("s_angan Case not S, U or V");
+  ENDIF;
+
+! +++
+! 3. Create coordinate system for analysis
+! ---
+
+  y_axis := ENDP(cur_all(1)) - STARTP(cur_all(1));
+  CSYS_3P(#4, "AngCsys", spine_s, spine_e, spine_s + y_axis:BLANK=bflag_a); 
+
+! Temporarely create view
+  MODE_LOCAL(#4);
+!  CSYS_1P(#50,"VyCsys",VEC(0,0,0),5.0,30.0,10.0:BLANK=bflag_a);
+  CSYS_1P(#50,"VyCsys",VEC(0,0,0),0.0,90.0,90.0:BLANK=bflag_a,PEN=4);
+  MODE_GLOBAL();
+  cre_view("s_angan", #50); 
+  act_view("s_angan"); 
+  rep_view(1);
+
+! +++
+! 4. Create angle surface
+! ---
+
+! Tangents (angles) are calculated in the local system
+  MODE_LOCAL(GLOBAL_REF(#4));
+
+! Initialize number of U surface points
+  nu_sur_pts := 0; 
+   
+  FOR  i_cur := 1 TO  n_cur_all DO
+!   Current curve
+    cur_id := cur_all(i_cur);
+
+!   Total arclength current curve
+    tot_arc    := ARCL(cur_id);
+!   Delta arclength corresponding to number of points
+    delta_arc  := tot_arc/(n_v-1);
+!   X coordinate for section
+    c_point:=  ON(cur_id, 0.0);
+    x_coord := c_point.x;
+
+!   An additional U point
+    nu_sur_pts := nu_sur_pts + 1; 
+
+!   Initialize number of V surface points
+    nv_sur_pts := 0;
+ 
+!   Start loop curve points
+    FOR  i_v := 1 TO n_v DO
+
+!     Current parameter value
+      u_param    := INV_ARCL(cur_id,(i_v-1)*delta_arc);
+
+!     Point
+      c_point:=   ON(cur_id, u_param);
+!     Tangent
+      c_tang := TANG(cur_id, u_param);
+
+
+!     Calculate angle
+      c_angle := ANGLE(c_tang.y,c_tang.z);
+
+!     Graphics
+      IF graphic = 2 THEN
+        LIN_FREE(#100, c_point, c_point + delta_arc*c_tang:PEN=2);
+        TEXT(#101,  c_point ,c_angle, STR(x_coord,5,1)+
+            STR(c_angle,5,1)
+            +" "+STR((i_v-1)*delta_arc,5,1):TSIZE=2,PEN=4);
+      ENDIF;      
+!     An additional U point
+      nv_sur_pts := nv_sur_pts + 1; 
+!     Point to surface points array
+      sur_pts(nu_sur_pts,nv_sur_pts) := 
+!          VEC(scale_s.x*x_coord,
+!              scale_s.y*c_angle,
+!              scale_s.z*(i_v-1)*delta_arc);
+          VEC(scale_s.x*x_coord,
+              scale_s.y*(i_v-1)*delta_arc,
+              scale_s.z*c_angle);
+    ENDFOR; 
+
+  ENDFOR;
+
+! DEBUG
+  IF  DEBUG = 1 THEN
+  LST_INI("s_angan Surface points");
+  FOR  i_cur := 1 TO nu_sur_pts DO
+    FOR  i_v := 1 TO nv_sur_pts DO
+      LST_LIN(STR(i_cur,4,0)+STR(i_v,4,0)
+           +STR(sur_pts(i_cur,i_v).x,8,1)
+           +STR(sur_pts(i_cur,i_v).y,8,1)
+           +STR(sur_pts(i_cur,i_v).z,8,1));
+    ENDFOR;
+  ENDFOR;
+  LST_EXI();
+  
+  ENDIF;
+
+! Activate global system
+  MODE_GLOBAL();
+
+  SUR_SPLARR(#1, "ZEROTWIST_1", nu_sur_pts, nv_sur_pts, sur_pts
+              :BLANK=bflag_s,PEN=3);
+
+
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,184 @@
+! ***************** s_bplanint ****************************
+!
+! +++
+! Make a B_PLANE (or X/Y coordinate system plane) intersect 
+! in a surface
+!
+! There is an option (a parameter) to show the curves in
+! the surface UV plane.
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1994-05-01 Gunnar Liden
+! 1997-04-03 Accept also a coordinate system
+! 1997-04-06 Different branch colours for U,V representation
+!
+!************************************************************
+
+!sdesce Make a B_PLANE intersect in a surface 
+!sdescs Ett B_PLAN snitt i en yta   
+
+
+GLOBAL GEOMETRY MODULE s_bplanint (
+
+REF    s_id             > "@t16 Select surface";
+REF    b_id             > "@t40960 Select B_PLANE or coord. system";
+STRING rflag*3:= "R*3"  > "@ Curve representation <CR>= R*3 or U,V";
+INT    graphic:= 1      > "@ Eq. 1: Show curves  Eq. 0: Blank curves");
+
+
+! Internal variables
+
+  INT    branch;                 ! Requested branch of intersect
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    no_branch;              ! No branches
+  INT    add;                    ! For UV or R*3 curve
+
+  INT    i_s;                    ! Loop index intersect
+
+  INT    i_l;                    ! Loop index for U,V grid
+  
+  INT    colour;                 ! Pen number
+
+  INT    bflag_i;                ! Blank flag for intersects
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+!                         Algorithm
+!                         =========
+!
+!                  1. Initiations and checks      
+!
+!                 Graphic flag for intersects
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  colour := 1;
+
+  IF graphic =   1 THEN          ! 
+    bflag_i := 0;                ! No blank of intersects
+  ELIF graphic = 0 THEN
+    bflag_i := 1;                ! Blank intersects
+  ELSE
+    EXIT("s_bplanint graphic not 0 or 1");
+  ENDIF;
+
+! +++
+!                  2. Retrieve surface data 
+!
+!        Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("surintplan "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+!            3. Calculate number of intersect branches
+!
+! ---
+
+  IF    rflag="R*3" OR           ! Curve representation R*3 or U,V";
+        rflag="r*3"     THEN     ! 
+    add  := 0;                   !
+  ELIF  rflag="U,V" OR           !
+        rflag="u,v" OR           ! 
+        rflag="UV"  OR           !
+        rflag="uv"      THEN     ! 
+    rflag := "U,V";
+    add   := 1000;               !
+  ELSE                           !
+    EXIT("rflag "+rflag+         !
+         " not valid");          !
+  ENDIF;                         !
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("b_id "         +   !
+    RSTR(b_id),                  !
+    "",1);                       !
+  ENDIF;                         !
+
+  no_branch := N_CUR_INT(        ! Number of branches
+               s_id,b_id);       !
+
+  IF no_branch = 0   THEN        !
+   EXIT("No intersect");         !
+  ENDIF;                         !
+
+! +++
+!                4. Calculate intersects    
+!
+!  Start loop all branches i_s= 1,2, ...... no_branch
+!
+!       Calculate intersect curve (red colour)
+!
+!
+!  End   loop all branches i_s= 1,2, ......
+!
+! ---
+ 
+  IF  rflag = "U,V" THEN
+    SET(PEN=colour);
+  ENDIF;
+
+  FOR i_s:= 1 TO no_branch DO    ! Start loop branches  
+
+    branch:= i_s + add;          ! Current branch number
+
+    CUR_INT(#1,s_id, b_id        ! Intersect curve
+        ,branch:BLANK=bflag_i);  !
+
+    IF  rflag = "U,V" THEN
+      colour := colour + 1;
+      IF  colour > 4 THEN
+        colour := 1;
+      ENDIF;
+      SET(PEN=colour);
+    ENDIF;
+  ENDFOR;                        ! End   loop branches   
+
+
+! +++
+!          5. Grid of lines for UV curve case
+!
+!   Create a grid of U,V lines corresponding to the number
+!   of patches in U and V direction for UV intersection
+!   case. Calls of MODE_GLOBAL and LIN_FREE
+! ---
+
+  MODE_BASIC ();                 ! Activate basic  system
+  IF add    > 0    THEN          !
+   colour := 5;
+   SET(PEN=colour);
+   FOR i_l:=1 TO npatu + 1 DO    ! Start loop U lines
+    LIN_FREE(#15,                ! Create line
+    VEC(100+(i_l-1)*100,100,0),  !
+    VEC(100+(i_l-1)*100,         !
+         100*(npatv+1),0));      !
+   ENDFOR;                       ! End   loop U lines
+   FOR i_l:=1 TO npatv + 1 DO    ! Start loop V lines
+    LIN_FREE(#16,                ! Create line
+    VEC(100,100+(i_l-1)*100,0),  !
+    VEC(100*(npatu+1),           !
+         100+(i_l-1)*100,0));    !
+   ENDFOR;                       ! End   loop V lines
+  ENDIF;
+
+ENDMODULE

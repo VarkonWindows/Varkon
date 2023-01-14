@@ -1,0 +1,205 @@
+! ***************** s_ageodv0 ****************************
+!
+! +++
+! Analysis of geodesic curvature                              
+!
+! 1995-02-18 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Analysis of geodesic curvature                              
+!sdescs Analys av geodetisk krökning
+
+
+GLOBAL GEOMETRY MODULE s_ageodv0 (
+
+REF    s_id                     >"@t16 Select surface";
+REF    c_id                     >"@t8  Curve on the surface";
+REF    csys_id                  >"@t8192 Select coordinate system for diagram";
+STRING kcase*10:="geodesic"     >"Case: geodesic  ";
+FLOAT  rleng  :=1000.0          >"@ Scale factor for geodesic points in R*3 space";
+FLOAT  dleng  := 30.0           >"@ Scale factor for diagram";
+INT    kpen   :=  2             >"@ Pen (colour) for tangent lines";
+INT    graphic:= 1              >"@ Graphic Eq 1: Lines Eq 2: No R*3 lines");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    ns_geo;                 ! No geometry segments
+  INT    ns_gra;                 ! No graphical segments
+  INT    fnt;                    ! Font typ,subtyp;
+  FLOAT  sl;                     ! Dash length
+
+  FLOAT  u_cur;                  ! Current curve parameter value
+  INT    i_s;                    ! Loop index segment
+  INT    i_p;                    ! Loop index point  
+  INT    n_p;                    ! Number of pts per segment
+  FLOAT  ustep;                  ! U step for curve     
+  FLOAT  geodesic;               ! Geodesic curvature
+
+  VECTOR uv;                     ! Vector for EVAL function
+  VECTOR d_a;                    ! Vector for EVAL
+
+  VECTOR r_t;                    ! Tangent
+  VECTOR s_n;                    ! Surface   normal
+  VECTOR pri;                    ! Principal normal
+  VECTOR r_txs_n;                ! Cross vector product
+
+  VECTOR p_cur;                  ! Current  point
+  VECTOR p_pre;                  ! Previous point
+
+  INT    i_l;                    ! Loop index for U,V grid
+
+  FLOAT  uglob;                  ! U surface global parameter
+  FLOAT  vglob;                  ! V surface global parameter
+
+  VECTOR twist;                  ! Calculated twist vector 
+  VECTOR d2rdudv;                ! Surface    twist vector 
+  VECTOR drdv_ui1vj;             ! dr/dv in point u(i+1),v(j)
+  VECTOR d_d;                    ! Vector for EVAL function
+  VECTOR d_e;                    ! Vector for EVAL function
+  VECTOR s_p;                    ! Surface point
+  VECTOR s_e;                    ! End patch point
+  VECTOR s_e2;                   ! End patch point 2
+  STRING ecase1*10;              ! Case 1 for EVAL
+  STRING ecase2*10;              ! Case 2 for EVAL
+  STRING ecase3*10;              ! Case 3 for EVAL
+
+  FLOAT  ch_l;                   ! Chord length
+  FLOAT  v_l;                    ! Vector length
+  FLOAT  ratio;                  ! v_l/ch_l
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+! ---
+! 0. Initiations and checks      
+!
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   kcase="geodesic" THEN     ! EVAL cases
+     ecase1:= "geodesic";        !
+     ecase2:= "normal";          !
+     ecase3:= "drdt";            !
+  ELIF kcase="unde" THEN         !
+     ecase1:= "UNDEF";           !
+     ecase2:= "UNDEF";           !
+     ecase3:= "UNDEF";           !
+  ELIF kcase="undef" THEN        !
+     ecase1:= "UNDEF";           !
+     ecase2:= "UNDEF";           !
+     ecase3:= "UNDEF";           !
+  ELSE                           !
+    EXIT("s_ageodv0 kcase "+     !
+          kcase);                !
+  ENDIF;                         !
+
+  LST_INI("s_ageodv0 Geodesic curvature");
+
+!+++
+! Retrieve number of segments. Call  of GETCURH.
+! Retrieve number of patches.  Calls of GETSURH.
+!---
+
+
+  GETCURH(c_id,                  ! Retrieve no segments
+   fnt,sl,ns_geo,ns_gra);        !
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 1 THEN              ! Debug to screen
+   s:= INPMT("s_ageodv0"   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+!+++
+! Create reference lines ratio= 0, 1, 2          
+!---
+
+  MODE_LOCAL(csys_id);           ! Activate diagram system
+  LIN_FREE(#4,VEC(0,0*dleng,0),  ! 
+     VEC(npatu*100,0*dleng,0));  ! 
+  LIN_FREE(#5,VEC(0,1*dleng,0),  !
+     VEC(npatu*100,1*dleng,0));  ! 
+  LIN_FREE(#6,VEC(0,1*dleng,0),  !
+     VEC(0,1*dleng,npatv*100));  ! 
+  MODE_GLOBAL();                 ! Activate global system
+
+! +++
+! 2. Curvature calculation
+!
+!    Calculate geodesic curvature and create geometry (lines) 
+! ---
+
+n_p   := 11;                       ! No points per segment
+ustep := 1.0/(n_p-1);              ! U parameter step
+
+SET(PEN=kpen);                     ! Pen (colour)
+
+IF DEBUG = 1  THEN                 ! Debug to screen
+     s:= INPMT("s_ageodv0"   +   !
+      " ustep "+STR(ustep,-12,6),  !
+      "",1);                       !
+ENDIF;                             !
+
+FOR i_s:=1 TO ns_geo       DO      ! Start loop segments
+  FOR i_p:=1 TO n_p          DO    ! Start loop points in segment
+    u_cur:= i_s-1.0+(i_p-1)*ustep; ! U curve parameter
+
+    uv := VEC(u_cur,0,0);          !
+    d_a:= EVAL(c_id,ecase1,uv);    ! Calculate tangent or twist vector
+    geodesic:= d_a.x;              !
+    s_p:=EVAL(c_id,"XYZ",uv);      ! Surface point       
+    pri:=EVAL(c_id,"PRINORMAL",uv);!
+    r_t:=EVAL(c_id,ecase3,uv);     !
+    d_a:=EVAL(c_id,"UV",uv);       !
+    uglob:= d_a.x-1.0;             !
+    vglob:= d_a.y-1.0;             !
+    uv := VEC(uglob,vglob,0);      !
+    s_n:=EVAL(s_id,ecase2,uv);     !
+
+    r_txs_n:= VPROD(r_t,s_n);      !
+    r_txs_n:= VECN(r_txs_n);       !
+
+    p_cur := s_p+                  ! Current point
+        rleng*geodesic*r_txs_n;    !
+    IF i_s=1 AND i_p=1 THEN        !
+      p_pre:= p_cur;               ! Previous point
+    ELSE                           !
+      IF VECL(p_pre-p_cur) >       !
+                  0.1       THEN   !
+        LIN_FREE(#20,p_pre,p_cur   !
+               :PEN=2);            !
+      ENDIF;                       !
+      p_pre:= p_cur;               ! Previous point
+    ENDIF;                         !
+
+
+    LST_LIN(STR(u_cur,6,3)+ " " +  ! Write to window
+       STR(geodesic,25,10));       !
+      
+    MODE_LOCAL(csys_id);           ! Activate diagram system
+    POI_FREE(#8,VEC(u_cur*100,     ! Create geodesic point
+      geodesic*rleng  ));          !
+    MODE_GLOBAL();                 ! Activate global system
+
+  ENDFOR;                          ! End   loop segments
+ENDFOR;                            ! End   loop points in segment
+
+LST_EXI();                         ! Close list window
+SET(PEN= 1  );                     ! Pen (colour)
+
+ENDMODULE

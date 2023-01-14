@@ -1,0 +1,329 @@
+! ******************* s_bprfv0 ******************************
+! +++ 
+!
+! The function creates a profile surface on the X/Y plane
+! of a local coordinate system
+!
+! --- 
+!
+!
+! Revision history
+! _______________ 
+!
+! 1997-03-09 Gunnar Liden
+!
+! ************************************************************
+
+!sdesce Create a profile surface on X/Y plane of a local system
+!sdescs Skapa en profil yta i X/Y planet på lokalt system
+
+GLOBAL GEOMETRY MODULE s_bprfv0 (
+REF    prt_id          >"@t16384 Profile (section) curve created in s_aprcv0";
+REF    csy_id          >"Coordinate system";
+REF    lin_id          >"@t2 Limit (longitudinal) line";
+REF    cut_id          >"@t2 Cutting line";
+INT    graphic := 1    >"=0: Show nothing =1: Show surface =2: Show all");
+
+! Internal variables:
+
+                         ! Data from s_aprcv0
+  FLOAT  h_1;            ! Height 1
+  FLOAT  h_2;            ! Height 2
+  FLOAT  w_1;            ! Width  1
+  FLOAT  pval_2;         ! P - value
+  REF    csys_id_c;      ! System for graphical representation
+  INT    graphic_c;      ! Graphics
+
+  FLOAT  eps;            ! Epsilon for loft surface
+  
+  VECTOR pl_1;           ! Point 1 on input line
+  VECTOR pl_2;           ! Point 2 on input line
+  VECTOR pc_1;           ! Point 1 on cutting line
+  VECTOR pc_2;           ! Point 2 on cutting line
+  VECTOR pi_1;           ! Intersect point 1
+  VECTOR pi_2;           ! Intersect point 2
+  VECTOR po_1;           ! Point 1 on offset line
+  VECTOR po_2;           ! Point 2 on offset line
+
+  FLOAT  l_offs;         ! Offset to line for limit 5 curve
+
+  REF    spine_id;       ! Spine   curve
+  REF    lim1_id;        ! Limit   curve 1 identity
+  REF    lim2_id;        ! Limit   curve 2 identity
+  REF    lim3_id;        ! Limit   curve 3 identity
+  REF    lim4_id;        ! Limit   curve 4 identity
+  REF    lim5_id;        ! Limit   curve 5 identity
+  REF    tan1_id;        ! Tangent curve 1 identity
+  REF    tan2_id;        ! Tangent curve 2 identity
+  REF    tan3_id;        ! Tangent curve 3 identity
+  REF    tan4_id;        ! Tangent curve 4 identity
+  REF    tan5_id;        ! Tangent curve 5 identity
+  REF    tram_id;        ! Transformation for limit 2 and 4 curves 
+  REF    trau_id;        ! Transformation for limit 3 curve
+  REF    trat_id;        ! Transformation tangent curve 3
+  REF    pval_id;        ! P-value curve
+  REF    lft_id;         ! Lofing surface identity
+  REF    pla_id;         ! Intersect B-plane identity
+  REF    int_id;         ! Intersect identity
+  REF    intall_id(20);  ! Intersect curve identities
+  REF    iso1_id;        ! Isoparameter V=0 identity
+  REF    iso2_id;        ! Isoparameter V=1 identity
+  REF    iso3_id;        ! Isoparameter U=0 identity
+  REF    comp_id;        ! Composite boundary curve identity
+  REF    spinec_id;      ! Identity for curved spine
+ 
+  VECTOR p_strt;         ! Start         point for curved spine
+  VECTOR tp_strt;        ! Start tangent point for curved spine
+  VECTOR p_mid;          ! Mid           point for curved spine
+  VECTOR tp_mid;         ! Mid   tangent point for curved spine
+  VECTOR p_end;          ! End           point for curved spine
+  VECTOR tp_end;         ! End   tangent point for curved spine
+  
+  FLOAT  int_s;          ! Intersect curve start parameter value
+  FLOAT  int_e;          ! Intersect curve end   parameter value
+  VECTOR int_uvs;        ! Intersect curve start UV parameter point
+  VECTOR int_uve;        ! Intersect curve end   UV parameter point
+
+  INT    n_branch;       ! Number of intersect branches
+  INT    i_branch;       ! Loop index intersect branch
+  
+  FLOAT  iso1_e;         ! End   isoparameter value for iso1_id
+  FLOAT  iso2_s;         ! Start isoparameter value for iso2_id
+  FLOAT  int1_e;         ! End parameter for intersect branch 1
+  FLOAT  int2_e;         ! End parameter for intersect branch 2
+  
+  
+  FLOAT  radius;         ! Radius for spine cutting corner
+    
+  INT    b_val_s;        ! Blank value surfaces
+  INT    b_val_a;        ! Blank value all other entities
+
+  STRING s*1;            ! String for INPMT
+  
+BEGINMODULE
+
+! +++ 
+! Algorithm
+! _________ 
+! --- 
+
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  IF    graphic = 0 THEN
+    b_val_s := 1;
+    b_val_a := 1;
+  ELIF  graphic = 1 THEN
+    b_val_s := 0;
+    b_val_a := 1;
+  ELIF  graphic = 2 THEN
+    b_val_s := 0;
+    b_val_a := 0;
+  ELSE
+    EXIT("s_bprfv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Epsilon for safe surface/plane intersect
+  eps := 200.0;
+  
+! Initialize local variables
+  lim1_id   := #0;
+  lim2_id   := #0;
+  lim3_id   := #0;
+  lim4_id   := #0;
+  lim5_id   := #0;
+  tan1_id   := #0;
+  tan2_id   := #0;
+  tan3_id   := #0;
+  tan4_id   := #0;
+  tan5_id   := #0; 
+  pval_id   := #0;  
+       
+! +++
+! Get data for the section curve    
+! ---
+
+! Check name of part !!!  To be added
+
+  h_1     := GETFLT(prt_id,1);
+  h_2     := GETFLT(prt_id,2);
+  w_1     := GETFLT(prt_id,3);
+  pval_2  := GETFLT(prt_id,4);
+
+! +++
+! 2. Create limit curves 1 and 5 and spine on the X/Y plane
+! ---
+
+! Activate local system 
+  IF    csy_id = #0 THEN
+    MODE_GLOBAL();
+  ELSE
+    MODE_LOCAL(csy_id);
+  ENDIF;
+
+! Project input line to X/Y plane
+! Points which might be in R*3
+  pl_1 := ON(lin_id, 0.0);
+  pl_2 := ON(lin_id, 1.0);
+  
+  LIN_PROJ(#2, pl_1, pl_2 :BLANK=b_val_a);
+! Points in X/Y plane
+  pl_1 := ON(GLOBAL_REF(#2), 0.0);
+  pl_2 := ON(GLOBAL_REF(#2), 1.0);
+  
+! Create offset line, which will be (part of) limit5 curve
+  l_offs := -w_1; ! Add .. Defined by cut_id ...
+  LIN_OFFS(#3, GLOBAL_REF(#2), l_offs : BLANK=b_val_a);
+
+
+! Trimming point for limit 5 curve
+  pi_1 := INTERSECT(cut_id, GLOBAL_REF(#3), -1);
+
+  
+! Trimming line for limit 1 curve
+  po_1 := ON(GLOBAL_REF(#3),0.0);
+  LIN_FREE(#4, pi_1, pi_1 + (pl_1 - po_1) : BLANK=b_val_a, PEN=2);
+
+! Trimming point for limit 1 curve
+  pi_2 := INTERSECT(GLOBAL_REF(#2), GLOBAL_REF(#4), -1);
+
+  IF  graphic = 3 THEN
+    POI_FREE(#101, pi_1 :PEN=2);
+    POI_FREE(#102, po_1 :PEN=3);
+    POI_FREE(#103, pi_2 :PEN=4);
+  ENDIF;
+
+
+
+! Create limit curves 1 and 5
+  CUR_SPLINE(#5, "PROJ", pl_1 , VEC(0,0,0), pi_2 + eps*VECN(pl_2-pl_1)
+  , VEC(0,0,0):BLANK= b_val_a,PEN=3);
+  lim1_id := GLOBAL_REF(#5);
+  CUR_SPLINE(#6, "PROJ", po_1 , VEC(0,0,0), pi_1 + eps*VECN(pl_2-pl_1)
+  , VEC(0,0,0):BLANK= b_val_a);
+  lim5_id := GLOBAL_REF(#6);
+
+! Create straight line spine curve which is extrapolated
+! and used for limit curve 3
+  CUR_SPLINE(#7, "PROJ", pl_1+0.5*(po_1-pl_1) , VEC(0,0,0), 
+  pi_2+0.5*(pi_1-pi_2) + eps*VECN(pl_2-pl_1)
+              , VEC(0,0,0)  :BLANK= b_val_a);
+  spine_id := GLOBAL_REF(#7);
+  
+! Create curved spine 
+
+! p_strt  :=  pl_1+0.5*(po_1-pl_1);
+! tp_strt :=  pl_1+0.5*(po_1-pl_1)+ 0.95*(pl_2-pl_1);
+! p_mid   :=  pl_1+0.5*(po_1-pl_1)+ 0.95*(pl_2-pl_1);
+! tp_mid  :=  p_strt;
+! p_end   :=  pl_2+0.25*(pi_1-pl_2);
+! LIN_PROJ(#25, pl_2, pi_1:BLANK=b_val_a,PEN=2);
+! LIN_OFFS(#26, GLOBAL_REF(#25), eps:BLANK=b_val_a,PEN=3);
+! tp_end  := ON(GLOBAL_REF(#26),0.25); 
+  
+  p_strt  :=  pl_1+0.1*(pl_1-po_1);
+  tp_strt :=  pl_1+0.1*(pl_1-po_1)+ 0.95*(pl_2-pl_1);
+  p_mid   :=  pl_1+0.1*(pl_1-po_1)+ 0.95*(pl_2-pl_1);
+  tp_mid  :=  p_strt;
+  p_end   :=  pl_2-0.15*(pi_1-pl_2);
+  LIN_PROJ(#25, p_end, pi_1:BLANK=b_val_a,PEN=2);
+  LIN_OFFS(#26, GLOBAL_REF(#25), eps:BLANK=b_val_a,PEN=3);
+  tp_end  := ON(GLOBAL_REF(#26),0.0 ); 
+  
+   CUR_CONIC(#27, "PROJ", p_strt, tp_strt, 0.5,
+                          p_mid,  tp_mid,  0.5,
+                          p_end,  tp_end       :BLANK=b_val_s,PEN=3);
+
+! CUR_CONIC(#27, "PROJ", 
+!                        p_mid,  tp_mid,  0.5,
+!                        p_end,  tp_end       :BLANK=b_val_s,PEN=3);
+  spinec_id := GLOBAL_REF(#27);
+
+! Activate global system
+  MODE_GLOBAL();
+  
+ 
+
+! +++
+! 3. Create the other limit and tangent curves 
+! ---
+
+! +++
+! Transformation matrices
+! ---
+
+! Activate local system 
+  IF    csy_id = #0 THEN
+    MODE_GLOBAL();
+  ELSE
+    MODE_LOCAL(csy_id);
+  ENDIF;
+
+  TFORM_MOVE(#8 , VEC(0,0,0), VEC(0,0,h_1));
+  tram_id := GLOBAL_REF(#8 );
+  TFORM_MOVE(#11, VEC(0,0,0), VEC(0,0,h_1+h_2));
+  trau_id := GLOBAL_REF(#11);
+  TFORM_MOVE(#14, pl_1, po_1);
+  trat_id := GLOBAL_REF(#14);
+  
+  MODE_GLOBAL();
+
+! +++
+! Limit 2, 3 and 4 curves
+! ---
+
+  TCOPY(#9 , lim1_id, tram_id);
+  lim2_id := GLOBAL_REF(#9 );
+  TCOPY(#10, lim5_id, tram_id);
+  lim4_id := GLOBAL_REF(#10);
+  TCOPY(#13, spine_id, trau_id);
+  lim3_id := GLOBAL_REF(#13);  
+
+! +++
+! Tangent curves
+! ---
+
+  tan1_id := lim2_id;
+  tan2_id := lim1_id;
+  
+  TCOPY(#15, lim3_id, trat_id);
+  tan3_id := GLOBAL_REF(#15);    
+    
+  tan4_id := lim5_id;
+  tan5_id := lim4_id;
+  
+! +++
+! 4. Create the P-value curve 
+! ---    
+
+  MODE_BASIC();
+  
+  CUR_SPLINE(#16, "FREE", 
+           VEC(    0,          pval_2, 0), VEC(0,0,0),
+           VEC(ARCL(spine_id), pval_2, 0), VEC(0,0,0) :BLANK=b_val_a);
+
+  pval_id := GLOBAL_REF(#16);
+           
+  MODE_GLOBAL();
+  
+! +++
+! 5. Create surface
+! ---
+
+! SUR_CONIC(#17, spinec_id,
+!                lim3_id, tan3_id, "P", pval_id,
+!                lim4_id, tan4_id, "P", pval_id,
+!                lim5_id, tan5_id           :BLANK=b_val_s);
+
+ SUR_CONIC(#17, spinec_id,
+                 lim1_id, tan1_id, "P", pval_id,
+                 lim2_id, tan2_id, "P", pval_id,
+                 lim3_id, tan3_id, "P", pval_id,
+                 lim4_id, tan4_id, "P", pval_id,
+                 lim5_id, tan5_id           :BLANK=b_val_s);
+  lft_id := GLOBAL_REF(#17);
+
+
+ENDMODULE

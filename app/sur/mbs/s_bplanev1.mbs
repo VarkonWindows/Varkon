@@ -1,0 +1,274 @@
+!********************  s_bplanev1 **********************
+! +++
+! Test of B_PLANE approximation of surfaces
+! Tillfälligt behålls denna som ersättning för s_bplanev1
+! Revision history
+! ________________
+!
+! 1996-02-02  Gunnar Liden
+!
+! ---
+!*******************************************************
+!sdesce Create hidden line surfaces (replaces s_bplanv0)
+!sdescs Skapa ytor för dolda konturer (ersätter s_bplanv0)
+
+GLOBAL GEOMETRY MODULE  s_bplanev1 (
+REF    sur_id                      >"@t16 Surface";
+FLOAT  offset     :=  -3.0         >"Surface offset";
+FLOAT  thick      :=   0.0         >"Surface thickness";
+INT    graphic    :=   1 
+>"Eq. 1: B_PLANE's in nowshow 2: No iso parametrics";
+FLOAT  lnorm      :=   0.0         >
+"Length of surface normals (lnorm=0: No normals will be created)";
+FLOAT  bpts       :=  -6.0         >
+"Boundary points if bpts not equal to zero";
+INT    reverse    :=   1           >
+"Eq. 1: Reversed order of B_PLANE points (reversed normal)";
+INT    nopatch    :=   0           >
+"Number of B_plane patches from file (for Debug) Eq. 0: All";
+INT    sides      :=  12           >
+"Eq. 1: Upper Eq.2: Lower Eq. 12: Double sided B_plane");
+
+
+! Internal variables:
+  STRING str_in*132;                ! CUR_GL input string
+
+  INT    n_ulines;                  ! No U lines in surface       
+  INT    n_vlines;                  ! No V lines in surface       
+  INT    i_b;                       ! Loop index patch
+  VECTOR p1,p2,p3,p4;               ! B_PLANE points
+
+  STRING rad*132;                   ! String for reading of file
+
+  FILE   dat;                       ! File with B_PLANE points
+
+  STRING iso_c*1;                   ! Isoparameter U or V
+  FLOAT  iso_v  ;                   ! Parameter value
+  FLOAT  start_v;                   ! Parameter for start point
+  FLOAT    end_v;                   ! Parameter for end   point
+  INT    i_iso;                     ! Loop index   
+
+  INT    i_u;                       ! Loop index   
+  INT    i_v;                       ! Loop index   
+  FLOAT  delta;                     ! Delta parameter
+  VECTOR p_s;                       ! Point on surface
+  VECTOR n_s;                       ! Surface normal  
+
+  INT    i_p;                       ! Loop index point on curve
+  INT    no_point;                  ! Number of points on curve
+  FLOAT  u_param;                   ! Parameter U value
+  FLOAT  v_param;                   ! Parameter V value
+  VECTOR p_o;                       ! Pt on offset surface
+  VECTOR p_o_pre;                   ! Pt on offset surface (previous)
+
+  STRING os*3;                      ! Operating system
+  STRING stype*1;                   ! Surface type
+  INT    typ;                       ! Surface type
+
+  STRING b_file*132;                ! File with B_PLANE's   
+
+  INT    DEBUG;                     ! Eq. 0: No Debug  
+                                    ! Eq. 1: Full Debug
+
+BEGINMODULE
+
+!           0. Initiations                              
+!           ==============
+
+  IF graphic = 1 OR graphic= 2 THEN  ! Graphical representation
+    BLANK_LEV(50);                 !
+  ELSE                             !
+    UNBLANK_LEV(50);               !
+  ENDIF;                           !
+
+  DEBUG := 1;                      ! Change to 0 or 1
+
+! +++
+! 1. Number of U and V lines and surface type
+! ---
+
+
+   GETSURH(sur_id,"SUR_TYPE",typ);  ! Type
+   IF   typ = 1 THEN                ! CUB_SUR
+     stype:= "b";                   !
+   ELIF typ = 2 THEN                ! RAT_SUR
+     EXIT("s_bplanev1 RAT_SUR");    !
+   ELIF typ = 3 THEN                ! LFT_SUR
+     stype:= "c";                   !
+   ELSE                             ! 
+     EXIT("s_bplanev1 typ fel");    !
+   ENDIF;                           !
+
+   GETSURH(sur_id,"NPATU",n_ulines);! No U patches
+   n_ulines:= n_ulines + 1;         ! No U lines
+   GETSURH(sur_id,"NPATV",n_vlines);! No V patches
+   n_vlines:= n_vlines + 1;         ! No V lines
+
+
+!               3. Create approx. B_PLANE surface
+!               ==================================
+
+  SUR_APPROX(#1, sur_id, "FAC_SUR",12, offset, thick:LEVEL=50);
+
+   
+!          4. All U isoparameter curves 
+!          =============================
+
+  IF graphic = 2 THEN              ! Isoparametrics ?
+    GOTO noparam;                  !
+  ENDIF;
+
+  iso_c  := "U";                   ! U iso parameter curve
+  iso_v  :=   0.0;                 ! U start value
+  start_v:=   0.0;                 ! U start value
+  end_v  :=  n_vlines - 1;         ! U end   value
+
+  FOR i_iso:= 0 TO n_ulines-1 DO   ! Start loop U curves
+    CUR_ISO(#8,sur_id,iso_c,           ! Create iso curve
+       iso_v+i_iso,start_v,end_v); !
+  ENDFOR;                          ! End   loop U curves
+
+
+!          5. All V isoparameter curves
+!          =============================
+
+  iso_c  := "V";                   ! V iso parameter curve
+  iso_v  :=   0.0;                 ! V start value
+  start_v:=   0.0;                 ! V start value
+  end_v  :=  n_ulines - 1;         ! V end   value
+
+  FOR i_iso:= 0 TO n_vlines-1 DO   ! Start loop V curves
+    CUR_ISO(#9,sur_id,iso_c,           ! Create iso curve
+       iso_v+i_iso,start_v,end_v); !
+  ENDFOR;                          ! End   loop V curves
+
+noparam:;                          ! Label: No parametrics
+
+!          6. Surface normals (for lnorm > 0)
+!          ==================================
+
+
+  IF ABS(lnorm) > 0.1 THEN         !
+  FOR i_u := 0 TO n_ulines-2 DO    !
+   FOR i_v := 0 TO n_vlines-2 DO   !
+    p_s:=  ON(sur_id,VEC(0.5+i_u,0.5+i_v)); !
+    n_s:=NORM(sur_id,VEC(0.5+i_u,0.5+i_v)); !
+    LIN_FREE(#7,p_s,p_s+lnorm*n_s);!
+   ENDFOR;                         !
+  ENDFOR;                          !
+  ENDIF;                           !
+
+!          7. Boundary points (for bpts  > 0)
+!          ==================================
+
+
+  IF ABS(bpts) > 0.1 AND           ! Start U boundary for LFT_SUR
+            stype="c"   THEN       !
+                                   !
+  no_point := 50;                  ! No points on curve
+                                   !
+                                   !
+  u_param := 0.0;                  ! U= 0.0         
+  FOR i_p := 0 TO no_point DO      ! Start loop U= 0.0         
+   v_param :=                      ! V= 
+        (n_vlines-1)/no_point*i_p; !
+   p_s:=  ON(sur_id,VEC(u_param,v_param));  ! Point on surface
+   n_s:=NORM(sur_id,VEC(u_param,v_param));  ! Surface normal
+   IF i_p > 0 THEN                 ! Previous offset point
+     p_o_pre := p_o;               !
+   ENDIF;                          !
+   p_o:= p_s + bpts*n_s;           ! Current offset point
+   IF i_p > 0 THEN                 !
+      IF VECL(p_o-p_o_pre)         !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#51,p_o,p_o_pre);   ! Line segment
+      ENDIF;                       !
+   ENDIF;                          !
+  ENDFOR;                          ! End  loop U= n_ulines-1
+                                   !
+  u_param := n_ulines-1;           ! U= n_ulines-1
+  FOR i_p := 0 TO no_point DO      ! Start loop U= n_ulines-1
+   v_param :=                      ! V= 
+        (n_vlines-1)/no_point*i_p; !
+   p_s:=  ON(sur_id,VEC(u_param,v_param));  ! Point on surface
+   n_s:=NORM(sur_id,VEC(u_param,v_param));  ! Surface normal
+   IF i_p > 0 THEN                 ! Previous offset point
+     p_o_pre := p_o;               !
+   ENDIF;                          !
+   p_o:= p_s + bpts*n_s;           ! Current offset point
+   IF i_p > 0 THEN                 !
+      IF VECL(p_o-p_o_pre)         !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#52,p_o,p_o_pre);   ! Line segment
+      ENDIF;                       !
+   ENDIF;                          !
+  ENDFOR;                          ! End  loop U= n_ulines-1
+                                   !
+  ENDIF;                           ! End U boundary for LFT_SUR
+
+  IF ABS(bpts) > 0.1   THEN        !
+  FOR i_u := 0 TO n_ulines-1 DO    !
+    p_s:=  ON(sur_id,VEC(i_u,0.0));         !
+    n_s:=NORM(sur_id,VEC(i_u,0.0));         !
+    POI_FREE(#20,p_s+ bpts*n_s     !
+                      :BLANK=1);   !
+    p_s:=  ON(sur_id,VEC(i_u,n_vlines-1));  !
+    n_s:=NORM(sur_id,VEC(i_u,n_vlines-1));  !
+    POI_FREE(#21,p_s+ bpts*n_s     !
+                      :BLANK=1);   !
+    IF i_u > 0 THEN                !
+      IF VECL(ON(REFC(20,i_u))-    !
+              ON(REFC(20,i_u+1)))  !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#22,                !
+             ON(REFC(20,i_u)),     !
+             ON(REFC(20,i_u+1)));  !
+      ENDIF;
+      IF VECL(ON(REFC(21,i_u))-    !
+              ON(REFC(21,i_u+1)))  !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#23,                !
+             ON(REFC(21,i_u)),     !
+             ON(REFC(21,i_u+1)));  !
+      ENDIF;                       !
+    ENDIF;                         !
+  ENDFOR;                          !
+  ENDIF;                           !
+
+  IF ABS(bpts) > 0.1 AND           !
+            stype="b"   THEN       !
+  FOR i_v := 0 TO n_vlines-1 DO    !
+    p_s:=  ON(sur_id,VEC(0.0,i_v));         !
+    n_s:=NORM(sur_id,VEC(0.0,i_v));         !
+    POI_FREE(#30,p_s+ bpts*n_s     !
+                      :BLANK=1);   !
+    p_s:=  ON(sur_id,VEC(n_ulines-1,i_v));  !
+    n_s:=NORM(sur_id,VEC(n_ulines-1,i_v));  !
+    POI_FREE(#31,p_s+ bpts*n_s     !
+                      :BLANK=1);   !
+    IF i_v > 0 THEN                !
+      IF VECL(ON(REFC(30,i_v))-    !
+              ON(REFC(30,i_v+1)))  !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#32,                !
+             ON(REFC(30,i_v)),     !
+             ON(REFC(30,i_v+1)));  !
+      ENDIF;                       !
+      IF VECL(ON(REFC(31,i_v))-    !
+              ON(REFC(31,i_v+1)))  !
+                > 0.2 THEN         !
+!1995-02-27     > 1.0 THEN         !
+      LIN_FREE(#33,                !
+             ON(REFC(31,i_v)),     !
+             ON(REFC(31,i_v+1)));  !
+      ENDIF;                       !
+    ENDIF;                         !
+  ENDFOR;                          !
+  ENDIF;                           !
+
+ENDMODULE

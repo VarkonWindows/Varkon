@@ -1,0 +1,72 @@
+! ***************** s_isoupar   ****************************
+!
+! +++
+! Create U isoparameter curves on a surface
+!
+! 1995-03-03 Gunnar Liden
+! 1996-03-01 delta bug Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create U isoparameter curves on a surface
+!sdescs Skapa U isoparameterkurvor på en yta
+
+GLOBAL GEOMETRY MODULE s_isoupar   (
+
+REF    s_id                  > "@t16 Select surface";
+INT    n_u         := 30     > "@ Number of U parameter lines");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING iso_c*1;                ! Isoparameter U or V
+  FLOAT  start_p;                ! Parameter for start point
+  FLOAT  end_p;                  ! Parameter for end   point
+
+  INT    i_u;                    ! Loop index U parameters
+
+  FLOAT  delta;                  ! Delta parameter value
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! 0. Initiations and checks      
+
+! +++
+! 1. Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+! +++
+! 2. Create U parameter lines
+! ---
+
+  IF n_u >= 2 THEN               ! Delta parameter
+    delta:= npatu/(n_u-1);       !
+  ELSE                           !
+    EXIT("s_isoupar n_u < 2");   !
+  ENDIF;
+
+  iso_c  := "U";                 ! Type of isoparameter
+  start_p:=   0.0;               ! Start value 
+  end_p  :=   npatv;             ! End   value
+
+  FOR i_u:= 1 TO  n_u  DO        ! Start loop U curves
+
+    CUR_ISO(#1,s_id,iso_c,       ! Isoparameter
+        (i_u-1)*delta,           !
+        start_p,end_p);          !
+
+  ENDFOR;                        ! End   loop U curves    
+
+
+ENDMODULE

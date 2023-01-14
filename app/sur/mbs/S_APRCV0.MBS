@@ -1,0 +1,130 @@
+! ******************* s_aprcv0 ******************************
+! +++ 
+!
+! The function creates a profile curve for module s_profv0
+! 
+!
+! --- 
+!
+!
+! Revision history
+! _______________ 
+!
+! 1997-03-07 Gunnar Liden
+!
+! ************************************************************
+
+!sdesce Create a profile curve type a for module s_profv0
+!sdescs Skapa en profil kurva typ a för modul s_profv0
+
+GLOBAL GEOMETRY MODULE s_aprcv0 (
+FLOAT  h_1     := 10.0 >"Height 1";
+FLOAT  h_2     :=  5.0 >"Height 2";
+FLOAT  w_1     := 20.0 >"Width  1";
+FLOAT  pval_2  :=  0.6 >"P -value";
+REF    csys_id := #0   >"@ System for graphical repr. <CR>==> No system";
+INT    graphic := 1    >"=0: Show nothing =1: Show surface =2: Show all");
+
+! Internal variables:
+
+  VECTOR p_1;            ! Point 1
+  VECTOR p_2;            ! Point 2
+  VECTOR p_3;            ! Point 3
+  VECTOR p_4;            ! Point 4
+  VECTOR p_5;            ! Point 5
+  VECTOR tp_1;           ! Tangent point 1
+  VECTOR tp_2;           ! Tangent point 2
+  VECTOR tp_3;           ! Tangent point 3
+  VECTOR tp_4;           ! Tangent point 4
+  VECTOR tp_5;           ! Tangent point 5
+
+  FLOAT  pval_1;         ! P-value p_1 to p_2
+! FLOAT  pval_2 Input    ! P-value p_2 to p_3
+  FLOAT  pval_3;         ! P-value p_3 to p_4
+  FLOAT  pval_4;         ! P-value p_4 to p_5 
+   
+  INT    b_val_s;        ! Blank value surfaces
+  INT    b_val_a;        ! Blank value all other entities
+
+BEGINMODULE
+
+! +++ 
+! Algorithm
+! _________ 
+! --- 
+
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  IF    graphic = 0 THEN
+    b_val_s := 1;
+    b_val_a := 1;
+  ELIF  graphic = 1 THEN
+    b_val_s := 0;
+    b_val_a := 1;
+  ELIF  graphic = 2 THEN
+    b_val_s := 0;
+    b_val_a := 0;
+  ELSE
+    EXIT("s_aprcv0 graphic not 0, 1 or 2");
+  ENDIF;
+  
+
+! +++
+! 2. Create planar section (output) curve in Basic system 
+! ---      
+
+  p_1  := VEC(   0.0,   0.0,     0.0);
+  p_2  := VEC(   0.0,   h_1,     0.0);
+  p_3  := VEC( w_1/2.0, h_1+h_2, 0.0);
+  p_4  := VEC(   w_1,    h_1,    0.0);
+  p_5  := VEC(   w_1,    0.0,    0.0);
+  
+  tp_1 := p_2;
+  tp_2 := p_1;
+  tp_3 := p_3 + VEC( w_1, 0.0, 0.0);
+  tp_4 := p_5;
+  tp_5 := p_4;
+
+  pval_1  :=  0.5;
+! pval_2  is input
+  pval_3  :=  pval_2;
+  pval_4  :=  0.5;
+
+  
+    
+  MODE_BASIC();
+  
+  CUR_CONIC(#1, "PROJ", p_1, tp_1, pval_1,
+                        p_2, tp_2, pval_2,
+                        p_3, tp_3, pval_3,
+                        p_4, tp_4, pval_4,
+                        p_5, tp_5          :BLANK=b_val_a );
+ 
+  MODE_GLOBAL();                      
+  
+! +++
+! 3. Graphical representation  
+! ---        
+
+  IF     graphic = 1 OR graphic = 2 THEN
+    IF   csys_id  =  #0  THEN
+      MODE_GLOBAL();
+    ELSE
+      MODE_LOCAL(csys_id);
+    ENDIF;
+    CUR_CONIC(#2, "PROJ", p_1, tp_1, pval_1,
+                          p_2, tp_2, pval_2,
+                          p_3, tp_3, pval_3,
+                          p_4, tp_4, pval_4,
+                          p_5, tp_5          :BLANK=b_val_s, PEN=2 );   
+    
+    
+    MODE_GLOBAL();
+    
+  ENDIF;
+
+
+ENDMODULE

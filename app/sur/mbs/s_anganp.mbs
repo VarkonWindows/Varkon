@@ -1,0 +1,136 @@
+! ***************** s_anganp   ****************************
+!
+! +++
+! Create iso-parameter lines for angle surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1999-03-16 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Create iso-parameter lines for angle surface
+!sdescs Skapa isoparameter linjer for vinkelyta
+
+GLOBAL GEOMETRY MODULE s_anganp   (
+
+    REF    s_id;                 ! Surface
+    INT    n_u;                  ! Number of iso-parameter lines
+    STRING a_case*1;             ! U=U-lines V=V-lines
+VAR REF    cur_all(100);         ! All curves
+VAR INT    n_cur_all;            ! Number of curves
+    INT    bflag_a);             ! Blank flag for all other entities
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING iso_c*1;                ! Isoparameter U or V
+  FLOAT  start_p;                ! Parameter for start point
+  FLOAT  end_p;                  ! Parameter for end   point
+
+  INT    i_u;                    ! Loop index U parameters
+
+  FLOAT  delta;                  ! Delta parameter value
+
+  INT    DEBUG;                  ! Debug
+
+  CONSTANT  FLOAT  idpoint = 0.01;
+
+  CONSTANT  FLOAT  f_undef = -0.123456789;
+  CONSTANT  INT    i_undef = -12345;
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Debug printout (0 or 1)
+  DEBUG := 1;
+! Initializations of output variables
+  n_cur_all := i_undef;
+  FOR i_u:= 1 TO  100  DO
+    cur_all(i_u) := #0;
+  ENDFOR;
+
+  IF   bflag_a = 0 OR bflag_a = 1 THEN
+    ;
+  ELSE
+    EXIT("s_anganp bflag_a not 0 or 1");
+  ENDIF;                            
+
+  IF  n_u > 100 THEN
+    LST_INI("s_anganp WARNING WARNING");
+    LST_LIN("Number of isoparameters changed to 100");
+    LST_EXI(); 
+    n_u := 100;
+  ENDIF;
+  IF  n_u < 2 THEN
+    LST_INI("s_anganp WARNING WARNING");
+    LST_LIN("Number of isoparameters changed to 2");
+    LST_EXI(); 
+    n_u := 2;
+  ENDIF;
+
+! +++
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+! Number of U patches
+  GETSURH(s_id,"NPATU",npatu);
+! Number of V patches
+  GETSURH(s_id,"NPATV",npatv);
+
+! +++
+! 2. Create U parameter lines
+! ---
+
+  IF   a_case = "U" OR a_case = "u" THEN
+    ; ! Continue  
+  ELIF  a_case = "V" OR a_case = "v" THEN
+    EXIT("s_anganp a_case= V not yet implemented");
+!    GOTO v_lines;
+  ELSE
+    EXIT("s_anganp a_case not U or V");
+  ENDIF;
+
+! Delta parameter
+  delta:= npatu/(n_u-1);
+
+! Type of isoparameter
+  iso_c  := "U";
+! Start value
+  start_p:=   0.0;
+! End value
+  end_p  :=   npatv;
+
+! Start loop U curves
+  n_cur_all := 0;
+  FOR i_u:= 1 TO  n_u  DO
+!   An additional output curve
+    n_cur_all := n_cur_all + 1;
+    
+!   Isoparameter
+    CUR_ISO(#1,s_id,iso_c,(i_u-1)*delta, start_p,end_p:BLANK=bflag_a);
+
+!   To output array
+    cur_all(n_cur_all) := GLOBAL_REF(REFC(1,n_cur_all));
+
+! End  loop U curves
+  ENDFOR;
+
+
+ENDMODULE
+
+

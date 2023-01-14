@@ -1,0 +1,381 @@
+!******************** rulsurf  ******************
+! Funktionen skapar en rationell regelyta. 
+! Utdatan är en fil, som kan läsas av SUR_??     
+! 1993-10-10  Gunnar Liden
+! 1996-02-14  Kommentarer  Gunnar Liden
+!*************************************************
+
+!sdesce Create rational bicubic ruled surface (test function)
+!sdescs Skapa rationell bikubisk regelyta (test funktion)
+
+GLOBAL GEOMETRY MODULE rulsurf (
+REF    u0_id                   >"@t8 Kurva u0 för regelytan";
+REF    u1_id                   >"@t8 Kurva u1 för regelytan";
+STRING filename*132:= " "      >"Namn på utdata fil");
+
+
+! Interna variabler
+
+  INT      i_seg;               ! Loop index
+
+                                ! Data for the u0 curve      
+  INT      s_ns;                ! Number of segments in the curve
+  INT      s_fnt;               ! Font for the curve (solid, dashed, )
+  INT      s_plank;             ! Flag for planar curve (plank=1)
+  FLOAT    s_sl;                ! Length for dashed curve
+  FLOAT    s_kdat(4,4);         ! Curve plane (matrix) for plank=1
+  FLOAT    s_offset(25);        ! Offset for each segment in the curve
+  FLOAT    s_sdat(25,4,4);      ! Coefficients for the curve
+
+                                ! Data for the u1 curve      
+  INT      t_ns;                ! Number of segments in the curve
+  INT      t_fnt;               ! Font for the curve (solid, dashed, )
+  INT      t_plank;             ! Flag for planar curve (plank=1)
+  FLOAT    t_sl;                ! Length for dashed curve
+  FLOAT    t_kdat(4,4);         ! Curve plane (matrix) for plank=1
+  FLOAT    t_offset(25);        ! Offset for each segment in the curve
+  FLOAT    t_sdat(25,4,4);      ! Coefficients for the curve
+
+                                ! Coefficients for a rational patch
+
+  FLOAT    a00x,a01x,a02x,a03x; !
+  FLOAT    a10x,a11x,a12x,a13x; !
+  FLOAT    a20x,a21x,a22x,a23x; !
+  FLOAT    a30x,a31x,a32x,a33x; !
+
+  FLOAT    a00y,a01y,a02y,a03y; !
+  FLOAT    a10y,a11y,a12y,a13y; !
+  FLOAT    a20y,a21y,a22y,a23y; !
+  FLOAT    a30y,a31y,a32y,a33y; !
+
+  FLOAT    a00z,a01z,a02z,a03z; !
+  FLOAT    a10z,a11z,a12z,a13z; !
+  FLOAT    a20z,a21z,a22z,a23z; !
+  FLOAT    a30z,a31z,a32z,a33z; !
+
+  FLOAT    a00 ,a01 ,a02 ,a03 ; !
+  FLOAT    a10 ,a11 ,a12 ,a13 ; !
+  FLOAT    a20 ,a21 ,a22 ,a23 ; !
+  FLOAT    a30 ,a31 ,a32 ,a33 ; !
+
+  STRING   str1*80;             ! The name of the file
+  STRING   str2*80;             ! Type of file
+  STRING   str3*80;             ! Requested type
+
+  FILE     mbs;                 ! Output .DAT file
+
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+  INT      DEBUG;               ! For debug printout
+
+
+
+BEGINMODULE
+
+!                      1. Initiations                
+!                      --------------
+
+   IF filename <> " " THEN     ! Open file
+     OPEN(mbs,"w",act_jobdir()+! Open output MBS file
+       filename+".DAT");       !
+     IF (IOSTAT(mbs)<>0 ) THEN ! Check (program error)
+      EXIT("Open of "          !
+      +filename+".DAT failed");!
+     ENDIF;                    !
+   ENDIF;                      !
+
+
+!              2. Data from the input curves
+!              ------------------------------
+
+  u0_id:= GLOBAL_REF(u0_id,1);  ! Global reference
+  u1_id:= GLOBAL_REF(u1_id,1);  ! Global reference
+
+  GETCUR(u0_id,s_fnt,s_sl,      ! Get curve data from GM for
+    s_ns,s_sdat,s_offset,       ! boundary u0    
+    s_plank,s_kdat);
+
+  GETCUR(u1_id,t_fnt,t_sl,      ! Get curve data from GM for
+    t_ns,t_sdat,t_offset,       ! boundary u1    
+    t_plank,t_kdat);
+ 
+  IF s_ns <> t_ns THEN          ! Must be the same number
+  EXIT("Antal segment ej lika");! of points in the curves
+  ENDIF;                        !
+
+!              2. Data to output file        
+!              ----------------------         
+
+  OUTSTR(mbs,"Surface: "+       ! Header for surface
+  "Regelyta skapad av "+        !
+  "modulen rulsurf");           !
+  OUTLIN(mbs);                  !
+  OUTSTR(mbs,"    "  +          !
+  STR(s_ns,-1,0) + "    1 " +   !
+  " Number of patches");        !
+  OUTLIN(mbs);                  !
+
+
+  a02x := 0.0;
+  a03x := 0.0;
+  a12x := 0.0;
+  a13x := 0.0;
+  a22x := 0.0;
+  a23x := 0.0;
+  a32x := 0.0;
+  a33x := 0.0;
+
+  a02y := 0.0;
+  a03y := 0.0;
+  a12y := 0.0;
+  a13y := 0.0;
+  a22y := 0.0;
+  a23y := 0.0;
+  a32y := 0.0;
+  a33y := 0.0;
+
+  a02z := 0.0;
+  a03z := 0.0;
+  a12z := 0.0;
+  a13z := 0.0;
+  a22z := 0.0;
+  a23z := 0.0;
+  a32z := 0.0;
+  a33z := 0.0;
+
+  a02  := 0.0;
+  a03  := 0.0;
+  a12  := 0.0;
+  a13  := 0.0;
+  a22  := 0.0;
+  a23  := 0.0;
+  a32  := 0.0;
+  a33  := 0.0;
+
+  FOR i_seg:= 1 TO s_ns DO      ! Start loop all segments
+
+    OUTSTR(mbs," " +            ! Header for patch
+    STR(i_seg,-1,0)+ " 1 " +    !
+    " Patch address" );         !
+    OUTLIN(mbs);                !
+
+    a00x:= s_sdat(i_seg,1,1);   ! X coefficients  (column 1)
+    a10x:= s_sdat(i_seg,2,1);   !
+    a20x:= s_sdat(i_seg,3,1);   !
+    a30x:= s_sdat(i_seg,4,1);   !
+
+    a00y:= s_sdat(i_seg,1,2);   ! Y coefficients  (column 1)
+    a10y:= s_sdat(i_seg,2,2);   !
+    a20y:= s_sdat(i_seg,3,2);   !
+    a30y:= s_sdat(i_seg,4,2);   !
+
+    a00z:= s_sdat(i_seg,1,3);   ! Z coefficients  (column 1)
+    a10z:= s_sdat(i_seg,2,3);   !
+    a20z:= s_sdat(i_seg,3,3);   !
+    a30z:= s_sdat(i_seg,4,3);   !
+
+    a00 := s_sdat(i_seg,1,4);   ! w coefficients  (column 1)
+    a10 := s_sdat(i_seg,2,4);   !
+    a20 := s_sdat(i_seg,3,4);   !
+    a30 := s_sdat(i_seg,4,4);   !
+
+    a01x:= t_sdat(i_seg,1,1)-   ! X coefficients  (column 2)
+           s_sdat(i_seg,1,1);   !
+    a11x:= t_sdat(i_seg,2,1)-   !
+           s_sdat(i_seg,2,1);   !
+    a21x:= t_sdat(i_seg,3,1)-   !
+           s_sdat(i_seg,3,1);   !
+    a31x:= t_sdat(i_seg,4,1)-   !
+           s_sdat(i_seg,4,1);   !
+
+    a01y:= t_sdat(i_seg,1,2)-   ! Y coefficients  (column 2)
+           s_sdat(i_seg,1,2);   !
+    a11y:= t_sdat(i_seg,2,2)-   !
+           s_sdat(i_seg,2,2);   !
+    a21y:= t_sdat(i_seg,3,2)-   !
+           s_sdat(i_seg,3,2);   !
+    a31y:= t_sdat(i_seg,4,2)-   !
+           s_sdat(i_seg,4,2);   !
+
+    a01z:= t_sdat(i_seg,1,3)-   ! Z coefficients  (column 2)
+           s_sdat(i_seg,1,3);   !
+    a11z:= t_sdat(i_seg,2,3)-   !
+           s_sdat(i_seg,2,3);   !
+    a21z:= t_sdat(i_seg,3,3)-   !
+           s_sdat(i_seg,3,3);   !
+    a31z:= t_sdat(i_seg,4,3)-   !
+           s_sdat(i_seg,4,3);   !
+
+    a01 := t_sdat(i_seg,1,4)-   ! w coefficients  (column 2)
+           s_sdat(i_seg,1,4);   !
+    a11 := t_sdat(i_seg,2,4)-   !
+           s_sdat(i_seg,2,4);   !
+    a21 := t_sdat(i_seg,3,4)-   !
+           s_sdat(i_seg,3,4);   !
+    a31 := t_sdat(i_seg,4,4)-   !
+           s_sdat(i_seg,4,4);   !
+
+    OUTSTR(mbs," " +            ! Row 1 X coefficients
+    STR(a00x,-15,8)+            !
+    STR(a01x,-15,8)+            !
+    STR(a02x,-15,8)+            !
+    STR(a03x,-15,8)+            !
+    "a00x a01x a02x a03x");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 2 X coefficients
+    STR(a10x,-15,8)+            !
+    STR(a11x,-15,8)+            !
+    STR(a12x,-15,8)+            !
+    STR(a13x,-15,8)+            !
+    "a10x a11x a12x a13x");     !
+    OUTLIN(mbs);                !
+
+
+    OUTSTR(mbs," " +            ! Row 3 X coefficients
+    STR(a20x,-15,8)+            !
+    STR(a21x,-15,8)+            !
+    STR(a22x,-15,8)+            !
+    STR(a23x,-15,8)+            !
+    "a20x a21x a22x a23x");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 4 X coefficients
+    STR(a30x,-15,8)+            !
+    STR(a31x,-15,8)+            !
+    STR(a32x,-15,8)+            !
+    STR(a33x,-15,8)+            !
+    "a30x a31x a32x a33x");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 1 Y coefficients
+    STR(a00y,-15,8)+            !
+    STR(a01y,-15,8)+            !
+    STR(a02y,-15,8)+            !
+    STR(a03y,-15,8)+            !
+    "a00y a01y a02y a03y");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 2 Y coefficients
+    STR(a10y,-15,8)+            !
+    STR(a11y,-15,8)+            !
+    STR(a12y,-15,8)+            !
+    STR(a13y,-15,8)+            !
+    "a10y a11y a12y a13y");     !
+    OUTLIN(mbs);                !
+
+
+    OUTSTR(mbs," " +            ! Row 3 Y coefficients
+    STR(a20y,-15,8)+            !
+    STR(a21y,-15,8)+            !
+    STR(a22y,-15,8)+            !
+    STR(a23y,-15,8)+            !
+    "a20y a21y a22y a23y");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 4 Y coefficients
+    STR(a30y,-15,8)+            !
+    STR(a31y,-15,8)+            !
+    STR(a32y,-15,8)+            !
+    STR(a33y,-15,8)+            !
+    "a30y a31y a32y a33y");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 1 Z coefficients
+    STR(a00z,-15,8)+            !
+    STR(a01z,-15,8)+            !
+    STR(a02z,-15,8)+            !
+    STR(a03z,-15,8)+            !
+    "a00z a01z a02z a03z");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 2 Z coefficients
+    STR(a10z,-15,8)+            !
+    STR(a11z,-15,8)+            !
+    STR(a12z,-15,8)+            !
+    STR(a13z,-15,8)+            !
+    "a10z a11z a12z a13z");     !
+    OUTLIN(mbs);                !
+
+
+    OUTSTR(mbs," " +            ! Row 3 Z coefficients
+    STR(a20z,-15,8)+            !
+    STR(a21z,-15,8)+            !
+    STR(a22z,-15,8)+            !
+    STR(a23z,-15,8)+            !
+    "a20z a21z a22z a23z");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 4 Z coefficients
+    STR(a30z,-15,8)+            !
+    STR(a31z,-15,8)+            !
+    STR(a32z,-15,8)+            !
+    STR(a33z,-15,8)+            !
+    "a30z a31z a32z a33z");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 1 W coefficients
+    STR(a00 ,-15,8)+            !
+    STR(a01 ,-15,8)+            !
+    STR(a02 ,-15,8)+            !
+    STR(a03 ,-15,8)+            !
+    "a00  a01  a02  a03 ");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 2 W coefficients
+    STR(a10 ,-15,8)+            !
+    STR(a11 ,-15,8)+            !
+    STR(a12 ,-15,8)+            !
+    STR(a13 ,-15,8)+            !
+    "a10  a11  a12  a13 ");     !
+    OUTLIN(mbs);                !
+
+
+    OUTSTR(mbs," " +            ! Row 3 W coefficients
+    STR(a20 ,-15,8)+            !
+    STR(a21 ,-15,8)+            !
+    STR(a22 ,-15,8)+            !
+    STR(a23 ,-15,8)+            !
+    "a20  a21  a22  a23 ");     !
+    OUTLIN(mbs);                !
+
+    OUTSTR(mbs," " +            ! Row 4 W coefficients
+    STR(a30 ,-15,8)+            !
+    STR(a31 ,-15,8)+            !
+    STR(a32 ,-15,8)+            !
+    STR(a33 ,-15,8)+            !
+    "a30  a31  a32  a33 ");     !
+    OUTLIN(mbs);                !
+
+  ENDFOR;                       ! End   loop all segments
+
+!                         3. Close file                 
+!                         -------------
+
+
+  CLOSE(mbs);                  ! Close file
+
+  IF DEBUG = 1 THEN            ! Debug
+  s:=INPMT("rulsurf:"+         !
+    " Antal patches "          !
+   + str(s_ns,-1,0) +          !
+   "  "                        !
+   ,"", 1);                    !
+  ENDIF;                       !
+
+!                         3. Create surface             
+!                         ------------------
+
+  str1:=act_jobdir()+          ! Full name of file    
+       filename+".DAT";        !
+  str2:="NMG_F07";             ! Type of file
+  str3:="RAT_SUR";             ! Requested output surface type
+
+  SUR_EXDEF(#1,str1,str2,str3);! Import surface
+
+!                         4. Erase file                 
+!                         --------------
+
+ OS("rm str1");                ! Operating system command
+
+ENDMODULE

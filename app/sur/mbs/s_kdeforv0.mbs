@@ -1,0 +1,125 @@
+!************************ s_kdeforv0 **********************
+! +++
+! Create a deformed wing surface with a twist curve
+!
+! Revision History
+! ________________
+!
+! 1996-11-26 Elsa Rydman
+! ---
+!**********************************************************
+
+!sdesce Create a deformed wing surface with a twist curve
+!sdescs Skapa en deformerad vingyta med en twist kurva
+
+GLOBAL MODULE s_kdeforv0(
+REF    s_id              >"Surface reference";
+REF    csys_id           >"Coordinate system";
+FLOAT  ps_y :=   2       >"Start point angle in degrees";     
+FLOAT  ts_y :=   1.5     >"Start tangent point angle";
+FLOAT  pval :=   0.5     >"P-value for twist curve";
+FLOAT  pe_y :=   1.0     >"End point angle in degrees";
+FLOAT  te_y :=   1.6     >"End tangent point angle";
+INT    graphic := 1      >"Eq. 0: No graphics Eq. 1: Surface Eq. 2: All");
+
+! Internal variables
+
+  REF ang_id;                     ! Identity for twist curve
+
+  VECTOR poi(111);                ! Curve points
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  INT    i_u;                     ! Loop index U line
+
+  REF    dsur_id;                 ! Deformed surface id
+
+  VECTOR v_lead;                  ! Leading edge criterion 
+
+  INT    DEBUG;                   ! Debug flag
+
+  INT    bval_a;                  ! Blank value all entities
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+  MODE_LOCAL(csys_id);
+  
+! +++
+! 1. Initializations
+! ---
+
+  DEBUG := 0;
+
+! +++
+!     Get graphics
+! ---
+
+  IF    graphic = 0 THEN
+    bval_a := 1;
+  ELIF  graphic = 1 THEN
+    bval_a := 1;
+  ELIF  graphic = 2 THEN
+    bval_a := 0;
+  ELSE
+    EXIT("s_kdeforv0 Graphic not OK"); 
+  ENDIF;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Debug printout from s_kdeforv0"); 
+  ENDIF;
+  
+
+
+! +++
+!     Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! 2. Create a one segment generalized conic curve
+! ---
+
+  CUR_CONIC(#2, "FREE", 
+  VEC(  -0.001   , ps_y, 0.0), VEC(npatu, ts_y, 0.0), pval,
+  VEC(npatu+0.001, pe_y, 0.0), VEC( 0.0 , te_y, 0.0)
+  :BLANK= bval_a);
+
+! +++
+! 3. Create a multi-segment curve with the same number of
+!    segments as there are U lines in the surface.
+! ---
+
+  FOR  i_u := 0 TO npatu DO
+    B_PLANE(#4 ,VEC(i_u,0.0,0.0),
+                VEC(i_u,npatu ,npatu ), 
+                VEC(i_u,npatu ,npatu ),
+                VEC(i_u,2*npatu ,0.0));
+    poi(i_u+1) := INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#4),1);
+    DEL(GLOBAL_REF(#4));
+  ENDFOR;
+  CUR_SPLARR(#3 ,"FREE",npatu+1,poi:BLANK=bval_a,PEN=2);
+  ang_id := GLOBAL_REF(#3);
+
+! +++
+! 3. Create the deformed wing surface
+! ---
+
+  v_lead:=VEC(0,0,1);
+
+  PART(#1,s_cdeforv0(s_id,ang_id,v_lead,graphic));
+             
+  IF  DEBUG = 1 THEN 
+  LST_EXI(); 
+  ENDIF;
+
+ENDMODULE  

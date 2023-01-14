@@ -1,0 +1,92 @@
+!******************** s_gvoffv0 ********************
+! +++                                              *
+! Graphical representation of deformation surface  *
+!                                                  *
+! ---                                              *
+! Revision history				   *
+! _________________				   *
+!						   *
+! 1996-09-16 Elsa Rydman			   *
+!						   *
+!***************************************************
+
+!sdesce Graphical representation of deformation surface
+
+!sdescs Grafisk representation av deformationsytan
+
+
+GLOBAL GEOMETRY MODULE s_gvoffv0 (
+
+REF prt_id         > "@t16384 Part which registrates deformation surface";
+REF csys_id        > "@t8192  Identity of coordinate system";
+FLOAT scale_d := 5 > "Scale factor deformation values";
+INT   graphic := 1 > "Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+! Internal variables
+
+  REF     sur_id;             	! Reference to surface
+  REF     u0_id;               	! Reference to U0 boundary
+  REF     u1_id;               	! Reference to U1 boundary
+  REF     v0_id;               	! Reference to V0 boundary
+  REF     v1_id;               	! Reference to V1 boundary
+
+
+				! In case of calling coonevalv0
+!  VECTOR  xyz;			! Coordinates	
+!  VECTOR  drdu;		! First derivatives in U direction
+!  VECTOR  drdv;		! First derivatives in V direction
+  	
+  INT     DEBUG;               	! Debug
+ 
+  
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+  
+! +++
+! 1. Get data (references) from the input registration part 
+! ---
+
+  sur_id := GETREF(prt_id,1);
+  
+  u0_id  := GETREF(prt_id,2);
+  u1_id  := GETREF(prt_id,3);
+  
+  v0_id  := GETREF(prt_id,4);
+  v1_id  := GETREF(prt_id,5);
+  
+  
+! +++
+! 2. Develop surface
+! ---
+   sur_approx(#1, sur_id, 	! Approximate the surface 
+      "CUB_SUR", 1, 4:PEN=2);
+   
+   PART(#2,			! Spread out the approx. surface
+      s_adevev0(global_ref(#1),
+      csys_id, vec(-1,-1,0), 0, 1));
+ 
+! +++
+! 3. Develop given deformation surface   
+! ---
+
+  PART(#3, s_svoffv0(prt_id,1));
+  
+        
+! +++
+! 4. Graphical representation
+! ---
+
+graphic:=1;
+
+  IF graphic=2 THEN
+    PART(#4, s_ivoffv0(global_ref(#1), global_ref(#3#2#1)));
+    PART(#5, s_ivoffv0(global_ref(#2#1), global_ref(#3#2#1)));
+  ELIF graphic=1 THEN
+    PART(#6, s_ivoffv0(global_ref(#1), global_ref(#3#2#1)));
+  ENDIF;
+
+ENDMODULE

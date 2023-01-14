@@ -1,0 +1,361 @@
+!*********************  s_fambdyv0   ************************************
+! +++
+! Read and register nurbs control points for a fam body from file
+!
+! Input data for this function is a text file with NURBS data in
+! fam format. The system fam is used at Saab to create FE nets
+! for electromagnetic calculations.
+!
+! The input file must be on the active job directory. 
+! File name example: tank_nur.fam
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-05-01 Gunnar Liden
+! 
+!********************************************************************
+
+!sdesce Read and register nurbs control points for a fam body from file
+!sdescs Läs och registrera NURBS polygon punkter för en fam body
+
+LOCAL  GEOMETRY MODULE  s_fambdyv0        (
+STRING  ptdat*30 := "tank_nur.fam" >"NURBS data (ex. tank_nur.fam)?";
+INT     r_body   :=  1         >"Requested body number";
+INT     print    :=  1         >"0= No printout 1= Printout";
+INT     graphic  :=  1 >"0= None, 1= Polygon points");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  CONSTANT STRING s_n_body = "*number_of_bodies_in_the_model";
+  CONSTANT STRING s_b_box  = "*Bounding_box";
+  CONSTANT STRING s_o_data = "*OBJECT_DATA";
+  CONSTANT STRING s_o_name = "*object_name";
+  CONSTANT STRING s_c_pts  = "*control_point_data";
+  CONSTANT STRING s_l_surf = "*list_of_surfaces";
+  CONSTANT STRING s_nurs   = "NURS";
+  CONSTANT STRING s_define = "DEFINE";
+  CONSTANT STRING s_e_obj  = "*end_object";
+  CONSTANT STRING s_s_face = "*start_face";
+
+  VECTOR b_box;                ! Bounding box
+  STRING o_name*132;           ! Object name
+  STRING p_name*4;             ! Point  name
+  INT    n_body;               ! Number of bodies
+  INT    i_body;               ! Current body
+  INT    n_cpts;               ! Number of control points
+  INT    n_surf;               ! Number of surfaces in the body
+  INT    n_face;               ! Number of faces    in the body
+  INT    u_degree;             ! Degree in U
+  INT    v_degree;             ! Degree in V
+  INT    n_u_p;                ! Number of control points in U
+  INT    n_v_p;                ! Number of control points in V
+  INT    n_u_k;                ! Number of knots in U
+  INT    n_v_k;                ! Number of knots in V
+  INT    index_u;              ! Point address in U
+  INT    index_v;              ! Point address in V
+  STRING s_name*3;             ! Surface name
+  FLOAT  weight;               ! Weight for a point
+
+  STRING face_name*3;          ! Face    name
+  INT    n_loop;               ! Number of loops
+  INT    n_cur;                ! Number of curves
+! ---
+
+  STRING f_name*132;           ! Full file name
+  FILE   pdat;                 ! File with points
+
+  INT     i_u;                 ! Point (array) address IU 
+  INT     i_v;                 ! Point (array) address IV
+  VECTOR  poi;                 ! Point 
+
+  INT    i_line;               ! Loop index line in file
+
+  STRING rad*132;              ! Dummy string
+
+  INT    b_val_p;              ! BLANK value point
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks of input data
+!
+!    Open input file with NURBS data
+
+  DEBUG := 1;          
+
+  IF  print = 1 THEN
+    LST_INI("s_fambdyv0       Debug");
+  ENDIF;
+  
+  n_body := 0;               ! Number of bodies
+  n_surf := 0;               ! Number of surfaces in the body
+  n_face := 0;               ! Number of faces    in the body
+
+  IF   graphic = 0 THEN  
+    b_val_p:= 1;     
+  ELIF graphic = 1 THEN
+    b_val_p:= 0;      
+  ELSE                  
+   IF  print = 1 THEN
+   LST_EXI();
+   ENDIF;
+   EXIT("s_fambdyv0   graphic not OK"); 
+  ENDIF;                      !
+
+  i_u      := -12345;   
+  i_v      := -12345;  
+  poi      := VEC(0,0,0);  
+
+! Full name for file on the active job directory
+  f_name:= ACT_JOBDIR() +  ptdat;
+
+! Open file with data
+  OPEN(pdat,"R",f_name);
+  IF IOSTAT(pdat) <> 0 THEN 
+   IF  print = 1 THEN
+   LST_EXI();
+   ENDIF;
+   EXIT(f_name+"failed");
+  ENDIF; 
+
+
+! +++
+! 1. Get number of bodies
+! ---
+
+! Read until s_n_body
+  FOR  i_line := 1 TO 50 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  FINDS(rad, s_n_body) > 0 THEN
+      n_body  := ININT(pdat);
+      rad     := INLIN(pdat);  
+      GOTO l_body;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No "+s_n_body+" in file");
+
+l_body:; ! Label: Number of bodies is retrieved 
+
+  IF  print = 1 THEN
+    LST_LIN("Number of bodies "+STR(n_body,3,0));
+  ENDIF;
+
+  IF  r_body >= 1 AND r_body <= n_body  THEN
+    ;
+  ELSE
+    IF  print = 1 THEN
+    LST_EXI();
+    ENDIF;
+    CLOSE(pdat);
+    EXIT("s_fambdy r_body not in file");
+  ENDIF;
+
+  i_body := 0;
+
+! +++
+! 2. Get bounding box
+! ---
+
+! Read until s_n_body
+  FOR  i_line := 1 TO 50 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  FINDS(rad, s_b_box ) > 0 THEN
+      b_box.x  := INFLT(pdat);
+      b_box.y  := INFLT(pdat);
+      b_box.z  := INFLT(pdat);
+      rad      := INLIN(pdat);  
+      GOTO l_bbox;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No "+s_b_box +" in file");
+
+l_bbox:; ! Label: Bounding box is retrieved
+
+  IF  print = 1  THEN
+    LST_LIN("Bounding box "+STR(b_box.x,15,8) +
+                        " "+STR(b_box.y,15,8) +
+                        " "+STR(b_box.z,15,8));
+  ENDIF;
+
+! +++
+! 3. Get object name 
+! ---
+
+! Read until s_o_name and i_body = r_body
+  FOR  i_line := 1 TO 10000 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  FINDS(rad, s_o_name ) > 0 THEN
+      i_body := i_body + 1;
+      IF  i_body = r_body THEN
+!QQ      o_name   := INSTR(pdat,4);
+!QQ      rad      := INLIN(pdat);  
+         rad      := INLIN(pdat);  
+         o_name   := SUBSTR(rad,1);
+        GOTO l_onam;
+      ENDIF;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No "+s_o_name +" in file");
+
+l_onam:; ! Label: Object name is retrieved
+
+  IF  print = 1 THEN
+    LST_LIN("Object name     "+ o_name );
+!QQ    LST_LIN("Object name     "+ rad    );
+  ENDIF;
+
+
+! +++
+! 4. Get data for the control points
+! ---
+
+! Read until s_c_pts 
+  FOR  i_line := 1 TO 50 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  FINDS(rad, s_c_pts ) > 0 THEN
+      GOTO l_cpts;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No "+s_c_pts +" in file");
+
+l_cpts:; ! Label: s_c_pts string is found
+
+  IF  print = 1 THEN
+    LST_LIN(" ");
+    LST_LIN("NURBS control points for all surfaces in body "
+             +o_name+" (Body number "+STR(r_body,3,0)+")");
+    LST_LIN(" ");
+  ENDIF;
+
+
+! Number of control points
+  n_cpts := 0; 
+  FOR  i_line := 1 TO 1000 DO
+    p_name := INSTR(pdat,4);
+    IF  FINDS(p_name, "Q" ) = 0 THEN
+      GOTO  l_allpt;
+    ENDIF;
+
+!   Control point
+    poi.x := INFLT(pdat);
+    poi.y := INFLT(pdat);
+    poi.z := INFLT(pdat);
+    rad   := INLIN(pdat);  
+
+    n_cpts := n_cpts + 1; 
+    POI_FREE(#21, poi:BLANK=b_val_p);
+    GROUP(#22,p_name,GLOBAL_REF(REFC(21,n_cpts)));
+
+    IF  print = 1 THEN
+      LST_LIN(p_name+" "+STR(poi.x,10,2)+ " "+
+                         STR(poi.y,10,2)+ " "+
+                         STR(poi.z,10,2)+ "      Pt "+
+                         STR(n_cpts,5,0)   );
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No. of control pts > 1000");
+
+
+l_allpt:; ! Label: All Control points retrieved
+
+! +++
+! 5. Get all surface and face names
+! ---
+
+  IF  print = 1 THEN
+    LST_LIN(" ");
+    LST_LIN("Surfaces and faces in body "
+             +o_name+" (Body number "+STR(r_body,3,0)+")");
+    LST_LIN(" ");
+  ENDIF;
+
+! Read until s_e_obj
+  FOR  i_line := 1 TO 10000 DO
+!   Line to dummy string
+    rad     := INLIN(pdat);  
+    IF  FINDS(rad, s_nurs) > 0 AND  FINDS(rad, s_define) > 0   THEN
+      n_surf := n_surf + 1;
+      s_name := SUBSTR(rad,6,3);
+      IF  print = 1 THEN
+        LST_LIN(STR(n_surf,3,0)+"     Surface  "+s_name);
+      ENDIF;
+    ENDIF;
+    IF  FINDS(rad, s_s_face) > 0 THEN
+      n_face    := n_face + 1;
+      face_name := SUBSTR(rad,13);
+      n_loop    := ININT(pdat);
+      rad       := INLIN(pdat);  
+      s_name    := INSTR(pdat,3);
+      rad       := INLIN(pdat);  
+      n_cur     := ININT(pdat);
+      rad       := INLIN(pdat);  
+      IF  print = 1 THEN
+        LST_LIN(STR(n_face,3,0)+"     Face "+face_name+
+                   " on surface "+s_name+
+                " No. of loops "+STR(n_loop,3,0)+
+                " No. of curves "+STR(n_cur,3,0));
+      ENDIF;
+    ENDIF;
+    IF  FINDS(rad, s_e_obj  ) > 0 THEN
+        GOTO l_eobj;
+    ENDIF;
+  ENDFOR;
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+  EXIT("s_fambdyv0 No "+s_e_obj  +" in file");
+
+l_eobj:; ! Label: End of object is reached
+
+
+  IF  print = 1 THEN
+  LST_EXI();
+  ENDIF;
+  CLOSE(pdat);
+
+
+ENDMODULE

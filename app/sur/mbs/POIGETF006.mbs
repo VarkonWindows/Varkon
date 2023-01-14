@@ -1,0 +1,175 @@
+!*********************  POIGETF006  ***********************************
+! +++
+! Retrieve point number, surface point, surface normal, curvature,
+! tangents and twist vector from a file in SUR_POINTS format,
+! i.e. in a format that the surface creation VARKON standard
+! function SUR_POINTS can read.
+!      
+!
+! Revision history
+! ________________
+!
+! 1994-06-07 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Read surface point data from file in SUR_POINTS format
+!sdescs Läs yt punkt med data från fil i SUR_POINTS format
+
+MACRO GEOMETRY MODULE  POIGETF006 (
+VAR FILE     pdat;                ! Input file
+VAR INT      iu;                  ! U point number
+VAR INT      iv;                  ! V point number
+VAR VECTOR   s_pt;                ! Surface point
+VAR VECTOR   s_n;                 ! Surface normal
+VAR VECTOR   r3min;               ! Principal curv. direction 1
+VAR VECTOR   r3max;               ! Principal curv. direction 2
+VAR FLOAT    kmin;                ! Principal curv. 1
+VAR FLOAT    kmax;                ! Principal curv. 2
+VAR VECTOR   utan;                ! Tangent in U direction
+VAR VECTOR   vtan;                ! Tangent in V direction
+VAR VECTOR   twist;               ! Twist vector
+VAR INT      flag);               ! Eq. -1: End of File
+
+! Internal variables:
+
+  STRING rad*132;              ! Dummy string
+  STRING rowcode*9;            ! Row code      
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+!
+! Read all input parameter values from intput file.
+!
+! ---
+
+! Surface point address iu,iv
+
+rowcode   := INSTR(pdat,9);  ! pointadr or EOF         
+
+IF rowcode = "EOF      "THEN ! End Of File ?
+ flag:= -1;                  !
+ goto  eof;                  !
+ELSE                         !
+ flag:=  1;                  !
+ENDIF;                       !
+
+iu        := ININT(pdat);    ! 
+iv        := ININT(pdat);    ! 
+rad       := INLIN(pdat);    ! End of line to dummy string
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  1");      !
+ENDIF;                       !
+
+! Surface point s_pt 
+
+rowcode   := INSTR(pdat,9);  ! xyz
+s_pt.x    := INFLT(pdat);    ! 
+s_pt.y    := INFLT(pdat);    ! 
+s_pt.z    := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  2");      !
+ENDIF;                       !
+
+! Tangent in U direction
+
+rowcode   := INSTR(pdat,9);  ! drdu
+utan.x    := INFLT(pdat);    ! 
+utan.y    := INFLT(pdat);    ! 
+utan.z    := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  3");      !
+ENDIF;                       !
+
+! Tangent in V direction
+
+rowcode   := INSTR(pdat,9);  ! drdv
+vtan.x    := INFLT(pdat);    ! 
+vtan.y    := INFLT(pdat);    ! 
+vtan.z    := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  4");      !
+ENDIF;                       !
+
+! Twist vector       
+
+rowcode   := INSTR(pdat,9);  ! d2rdudv
+twist.x   := INFLT(pdat);    ! 
+twist.y   := INFLT(pdat);    ! 
+twist.z   := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  5");      !
+ENDIF;                       !
+
+! Surface normal s_n 
+
+rowcode   := INSTR(pdat,9);  ! normal
+s_n.x     := INFLT(pdat);    ! 
+s_n.y     := INFLT(pdat);    ! 
+s_n.z     := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  6");      !
+ENDIF;                       !
+
+! Minimum principal curvature
+
+rowcode   := INSTR(pdat,9);  ! kappamin
+kmin      := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  7");      !
+ENDIF;                       !
+
+! Maximum principal curvature
+
+rowcode   := INSTR(pdat,9);  ! kappamax
+kmax      := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  8");      !
+ENDIF;                       !
+
+! Minimum principal curvature direction
+
+rowcode   := INSTR(pdat,9);  ! r3min
+r3min.x   := INFLT(pdat);    ! 
+r3min.y   := INFLT(pdat);    ! 
+r3min.z   := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006  9");      !
+ENDIF;                       !
+
+! Maximum principal curvature direction
+
+rowcode   := INSTR(pdat,9);  ! r3max
+r3max.x   := INFLT(pdat);    ! 
+r3max.y   := INFLT(pdat);    ! 
+r3max.z   := INFLT(pdat);    ! 
+rad       := INLIN(pdat);    !
+
+IF IOSTAT(pdat)<>0 THEN      !
+ EXIT("POIGETF006 10");      !
+ENDIF;                       !
+
+eof:;                        ! Label End Of File
+
+ENDMODULE

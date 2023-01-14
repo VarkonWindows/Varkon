@@ -1,0 +1,154 @@
+!********************************************************
+!*
+
+GLOBAL GEOMETRY MODULE s_dxf ();
+! MACRO MODULE facout();
+
+!*   Writes facetsurfaces and B-planes to disc
+!*   DXF-formatted.
+!*
+!*   (C)Microform AB 1997
+!*   Identical to facout. For tests only .........
+!*
+!*******************************************************
+
+   CONSTANT INT SURFACE=16,B_PLANE=32768,FAC_SUR=4;
+
+   REF    id;              ! ID of current surface
+   INT    type;            ! Surface type
+   INT    nu,nv;           ! Number of facets in U and V
+   INT    iu,iv;           ! Loop counters
+   INT    version,blank,
+          level,pen;       ! Entity header data
+   REF    groups(3);       ! Entity header data
+   VECTOR p1,p2,p3,p4;     ! Facet/b_plane data
+   FILE   f;               ! Output file
+
+BEGINMODULE
+
+!*
+!***Create file and write start section.
+!*
+   open(f,"W",act_jobdir()+act_jobnam()+".DXF");
+   outstr(f,"0");        outlin(f);
+   outstr(f,"SECTION");  outlin(f);
+   outstr(f,"2");        outlin(f);
+   outstr(f,"ENTITIES"); outlin(f);
+!*
+!***Start at the top of the GM tree structure.
+!*
+   set_root_gm(#0);
+!*
+!***Traverse all levels of GM (0) and look for surfaces
+!***and B_planes.
+!*
+loop:
+   id:=get_next_gm(0,SURFACE+B_PLANE);
+   if id <> #0 then
+!*
+!***Get the entity header and check what type it is.
+!*
+     gethdr(id,type,version,blank,level,pen,groups);
+
+     if type = SURFACE then
+!*
+!***A surface was found. Get surface type from GM.
+!*
+       getsurh(id,"SUR_TYPE",type);
+!*
+!***If its a facet surface write the facets to disc.
+!*
+       if type = FAC_SUR then
+         getsurh(id,"NPATU",nu);
+         getsurh(id,"NPATV",nv);
+         for iu:=1 to nu do
+           for iv:=1 to nv do
+             getfacp(id,iu,iv,p1,p2,p3,p4);
+             outstr(f,"0");        outlin(f);
+             outstr(f,"3DFACE");   outlin(f);
+             outstr(f,"8");        outlin(f);
+             outstr(f,"0");        outlin(f);
+             outstr(f,"62");       outlin(f);
+             outint(f,pen,-1);     outlin(f);
+             outstr(f,"10");       outlin(f);
+             outflt(f,p1.x,-1,5);  outlin(f);
+             outstr(f,"20");       outlin(f);
+             outflt(f,p1.y,-1,5);  outlin(f);
+             outstr(f,"30");       outlin(f);
+             outflt(f,p1.z,-1,5);  outlin(f);
+             outstr(f,"11");       outlin(f);
+             outflt(f,p2.x,-1,5);  outlin(f);
+             outstr(f,"21");       outlin(f);
+             outflt(f,p2.y,-1,5);  outlin(f);
+             outstr(f,"31");       outlin(f);
+             outflt(f,p2.z,-1,5);  outlin(f);
+             outstr(f,"12");       outlin(f);
+             outflt(f,p3.x,-1,5);  outlin(f);
+             outstr(f,"22");       outlin(f);
+             outflt(f,p3.y,-1,5);  outlin(f);
+             outstr(f,"32");       outlin(f);
+             outflt(f,p3.z,-1,5);  outlin(f);
+             outstr(f,"13");       outlin(f);
+             outflt(f,p4.x,-1,5);  outlin(f);
+             outstr(f,"23");       outlin(f);
+             outflt(f,p4.y,-1,5);  outlin(f);
+             outstr(f,"33");       outlin(f);
+             outflt(f,p4.z,-1,5);  outlin(f);
+           endfor;
+         endfor;
+       endif;
+!*
+!***A b_plane was found. Get data from GM and
+!***write to file.
+!*
+     else
+       getbpl(id,p1,p2,p3,p4);
+       outstr(f,"0");        outlin(f);
+       outstr(f,"3DFACE");   outlin(f);
+       outstr(f,"8");        outlin(f);
+       outstr(f,"0");        outlin(f);
+       outstr(f,"62");       outlin(f);
+       outint(f,pen,-1);     outlin(f);
+       outstr(f,"10");       outlin(f);
+       outflt(f,p1.x,-1,5);  outlin(f);
+       outstr(f,"20");       outlin(f);
+       outflt(f,p1.y,-1,5);  outlin(f);
+       outstr(f,"30");       outlin(f);
+       outflt(f,p1.z,-1,5);  outlin(f);
+       outstr(f,"11");       outlin(f);
+       outflt(f,p2.x,-1,5);  outlin(f);
+       outstr(f,"21");       outlin(f);
+       outflt(f,p2.y,-1,5);  outlin(f);
+       outstr(f,"31");       outlin(f);
+       outflt(f,p2.z,-1,5);  outlin(f);
+       outstr(f,"12");       outlin(f);
+       outflt(f,p3.x,-1,5);  outlin(f);
+       outstr(f,"22");       outlin(f);
+       outflt(f,p3.y,-1,5);  outlin(f);
+       outstr(f,"32");       outlin(f);
+       outflt(f,p3.z,-1,5);  outlin(f);
+       outstr(f,"13");       outlin(f);
+       outflt(f,p4.x,-1,5);  outlin(f);
+       outstr(f,"23");       outlin(f);
+       outflt(f,p4.y,-1,5);  outlin(f);
+       outstr(f,"33");       outlin(f);
+       outflt(f,p4.z,-1,5);  outlin(f);
+     endif;
+!*
+!***Next surface or b_plane.
+!*
+     goto loop;
+   endif;
+!*
+!***Write end section and close the file.
+!*
+   outstr(f,"0");       outlin(f);
+   outstr(f,"ENDSEC");  outlin(f);
+   outstr(f,"0");       outlin(f);
+   outstr(f,"EOF");     outlin(f);
+
+   close(f);
+
+ENDMODULE
+
+

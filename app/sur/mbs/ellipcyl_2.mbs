@@ -1,0 +1,106 @@
+! ***************** ellipcyl_2 ****************************
+!
+! +++
+! Create a cylinder with elliptical cross-section.         
+!
+! The cross-section ellipse curve is defined by:
+!
+!       2         2
+! (x-xc)    (y-yc)
+! ------  + ------ = 1
+!     2         2
+!   xr        yr
+!
+! A local system will be created in input point (xc,yc,zc).
+!
+! The cylinder will be placed with the Z axis as the
+! mid line of the surface and the mid point will be
+! the origin of the local coordinate system.
+!
+! Revision history
+! ________________
+!
+! 1995-10-23 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Create a cylinder with elliptical cross-section.         
+!sdescs Skapa cylinder med elliptisk tvärsektion
+
+LOCAL  GEOMETRY MODULE ellipcyl_2 (
+FLOAT xc     :=   199.0  >"Center X coord. for ellipt cylinder";
+FLOAT yc     :=     0.0  >"Center Y coord. for ellipt cylinder";
+FLOAT zc     :=     0.0  >"Center Z coord. for ellipt cylinder";
+FLOAT xr     :=   168.0  > "Major axis half length";
+FLOAT yr     :=   250.0  > "Minor axis half length";
+FLOAT height :=   400.0  > "Height for ellipt. cylinder";
+INT   graphic:=     1    >"=1: Show input curves to surface");
+
+! Internal variables
+
+  FLOAT  x_mp;                   ! X value for mid point
+  FLOAT  y_mp;                   ! Y value for mid point
+  VECTOR s_pt;                   ! Start point
+  VECTOR s_t ;                   ! Start tangent
+  VECTOR e_pt;                   ! End   point
+  VECTOR e_t ;                   ! End   tangent
+  VECTOR m_pt;                   ! Mid   point
+
+
+  FLOAT  pval;                   ! P value for ellipse
+
+  INT    DEBUG;                  ! Debug
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                       ! Debug printout
+
+! +++
+! 2. Create local system in point (xc, yc, zc)
+! ---
+
+  CSYS_1P(#2, "Centre", VEC(xc,yc,zc),0,0,0:BLANK=0);
+
+! +++
+! 3. Calculate P-value
+! ---
+
+!
+!       2         2
+!   x         y   
+! ------  + ------ = 1
+!     2         2
+!   xr        yr
+  
+  x_mp:= xr/2.0;
+
+  y_mp:= SQRT(( 1.0 - (x_mp)**2/xr**2)*yr**2);
+
+  s_pt:=       VEC(  0 , yr ,0.0);
+  s_t :=       VEC(  1 , 0,  0.0);
+  e_pt:=       VEC( xr ,  0 ,0.0);
+  e_t :=       VEC(  0 , -1, 0.0);
+  m_pt:=       VEC( x_mp, y_mp, 0);
+
+  PART ( #4, c_pvaluev0(
+       s_pt, s_t, e_pt, e_t, m_pt, 0, pval));
+
+! +++
+! 4. Create elliptic cylinder
+! ---
+
+  PART( #1, ellipcyl_1 ( xr, yr, pval, height, graphic),#2);
+
+
+ENDMODULE

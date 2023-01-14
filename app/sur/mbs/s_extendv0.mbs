@@ -1,0 +1,254 @@
+! ***************** s_extendv0 ****************************
+!
+! +++
+! Extend a surface by extrapolation.
+! 
+! Write surface data in SUR_POINTS format  
+!
+! 1994-06-15 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Extend surface, write in SUR_POINTS format 
+!sdescs Förläng yta, skriv i SUR_POINTS format
+
+GLOBAL GEOMETRY MODULE s_extendv0 (
+
+REF    s_id                  > "@t16 Select surface";
+STRING iso*2:=  "VE"         > "VE V end   VS V start US ...";
+FLOAT  extend:=  0.9         > "Extend value";
+FLOAT  pval  :=  0.5         > "P value";
+STRING fname*20:="EXTEND"    > "Outfile name (.DAT is added)";
+STRING  o_s*4    := "UNIX"   >"Operating system (UNIX or VAX)";
+INT     e_case   := 2        > "Case Eq. 2: .. not used ...");
+
+! Internal variables
+
+  STRING fout_name*132;          ! Output file name
+  FILE   pdatout;                !
+
+  INT    npts;                   ! Total no of output pts
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+  FLOAT  iso_p1;                 ! Parameter for start point
+  FLOAT  iso_p2;                 ! Parameter for end   point
+
+  VECTOR uv;                     ! UV point    
+  VECTOR d_a;                    ! Output from EVAL
+
+  VECTOR s_p1;                   ! Start point   conic    
+  VECTOR s_p2;                   ! End   point   conic    
+  VECTOR s_t1;                   ! Start tangent conic    
+  VECTOR s_t2;                   ! End   tangent conic    
+
+  VECTOR c_p1;                   ! Curve point 1
+  VECTOR c_p2;                   ! Curve point 2
+  VECTOR c_p3;                   ! Curve point 3
+  VECTOR c_p4;                   ! Curve point 4
+  VECTOR c_p5;                   ! Curve point 5
+
+  INT    i_pat;                  ! Loop index patch
+  INT    n_pat;                  ! End loop index i_pat
+  INT    i_cur;                  ! Loop index curve
+
+  VECTOR s_pt;                   ! Point on surface
+  VECTOR utan;                   ! Tangent in U direction
+  VECTOR vtan;                   ! Tangent in V direction
+  VECTOR twist;                  ! Twist vector           
+  VECTOR s_n;                    ! Normal for surface point s_pt
+  VECTOR kap1;                   ! Principal curvature direction
+  VECTOR kap2;                   ! Principal curvature direction
+  FLOAT  k1;                     ! Principal curvature
+  FLOAT  k2;                     ! Principal curvature
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+!                        Algorithm
+!                        =========
+! ---
+
+!                  0. Initiations and checks      
+
+  DEBUG := 0;                    ! Debug printout
+
+  PART(#2,G_REFSEL(s_id));       ! Add # to reference if necessary
+
+
+  IF    o_s = "VAX"   THEN       ! Operating system VAX 
+    fout_name:= ACT_JOBDIR()+    !
+       fname;                    !
+  ELIF  o_s = "UNIX"  THEN       ! Operating system UNIX 
+    fout_name:=ACT_JOBDIR() +    ! 
+          fname;                 !
+  ELSE                           !
+   EXIT("s_extendv0 o_s "+       !
+        o_s);                    !
+  ENDIF;                         !
+
+!+++
+!  Retrieve number of patches. Calls of GETSURH.
+!---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  OPEN(pdatout,"W",fout_name);   ! Open file for output data
+  IF IOSTAT(pdatout) <> 0 THEN   !
+   EXIT(fout_name+"failed");     !
+  ENDIF;                         !
+
+! Header to output file
+
+  IF iso = "UE" OR iso="ue" THEN !
+    n_pat := npatv;              ! No patches
+    iso_p2:= npatu;              ! Iso value end   point
+    iso_p1:= npatu-0.9;          ! Iso value start point
+    OUTSTR(pdatout,"total    "   !
+   +STR( 2 ,-21,0 )+ " "         !
+   +STR( n_pat  + 1,-21,0 ));    !
+   OUTLIN(pdatout);              !
+  ELSE                           !
+   EXIT("s_extendv0 iso "+       !
+        iso);                    !
+  ENDIF;                         !
+
+  npts := 0;                     ! Output number of points
+  kap1 := VEC(0,0,0);            ! Curvature values
+  kap2 := VEC(0,0,0);            !
+  k1   := 0.0;                   !
+  k2   := 0.0;                   !
+
+  FOR i_pat:= 1 TO n_pat DO      ! Start loop patches
+
+    IF iso="UE" OR iso="ue" THEN !
+      uv:= VEC(iso_p1,i_pat-1);  !
+      s_p1:=EVAL(s_id,"xyz" ,uv);!
+      s_t1:=EVAL(s_id,"drdu",uv);!
+      uv:= VEC(iso_p2,i_pat-1);  !
+      s_p2:=EVAL(s_id,"xyz" ,uv);!
+      s_pt:=s_p2;                ! Point on surface
+      s_t2:=EVAL(s_id,"drdu",uv);!
+      utan:=VECN(s_t2);          ! Tangent in U direction
+      vtan:=EVAL(s_id,"drdv",uv);! Tangent in V direction
+      vtan:=VECN(vtan);          !
+      s_n :=EVAL(s_id,"normal",uv);! Surface normal
+      twist:=EVAL(s_id,"d2rdudv",uv);! Twist vector  
+    ENDIF;                       !
+    CUR_CONIC(#3,"FREE",         !
+      s_p1,s_t1,pval,s_p2,s_t2); !
+    CUR_TRIM(#4,#3,0.0,1+extend);!
+    CUR_TRIM(#40,#4,0.0,1.0);    ! Graphic curve
+    c_p1:= ON(#4,1.0);           !
+    npts := npts + 1;            ! An additional point
+    PART(#31,POIRECF006(         ! Write point to output file
+       pdatout,   1   , i_pat ,  !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+    DEL(#3);                     !
+    DEL(#4);                     !
+    IF iso="UE" OR iso="ue" THEN !
+      uv:= VEC(iso_p1,i_pat-.99);!
+      s_p1:=EVAL(s_id,"xyz" ,uv);!
+      s_t1:=EVAL(s_id,"drdu",uv);!
+      uv:= VEC(iso_p2,i_pat-.99);!
+      s_p2:=EVAL(s_id,"xyz" ,uv);!
+      s_t2:=EVAL(s_id,"drdu",uv);!
+    ENDIF;                       !
+    CUR_CONIC(#5,"FREE",         !
+      s_p1,s_t1,pval,s_p2,s_t2); !
+    CUR_TRIM(#6,#5,0.0,1+extend);!
+    c_p2:= ON(#6,1.0);           !
+!    LIN_FREE(#21,c_p1, c_p1 +    !
+!        (c_p2-c_p1)*50.0);       !
+!    DEL(#21);                    !
+
+    s_pt := c_p2;                ! Point on surface
+    utan := TANG(#6,1.0);        ! Tangent in U direction
+    vtan := VECN(c_p2-c_p1);     ! Tangent in V direction
+    s_n  := VPROD(utan,vtan);    ! Surface normal
+    s_n  := VECN(s_n);           ! 
+    twist:= VEC(0,0,0);          !
+    npts := npts + 1;            ! An additional point
+    PART(#32,POIRECF006(         ! Write point to output file
+       pdatout,   2   , i_pat ,  !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+
+    DEL(#5);                     !
+    DEL(#6);                     !
+
+  ENDFOR;                        ! End   loop patches
+
+  IF iso="UE" OR iso="ue" THEN   !
+    uv:= VEC(iso_p1, n_pat );    !
+    s_p1:=EVAL(s_id,"xyz" ,uv);  !
+    s_t1:=EVAL(s_id,"drdu",uv);  !
+    uv:= VEC(iso_p2, n_pat );    !
+    s_p2:=EVAL(s_id,"xyz" ,uv);  !
+    s_pt:=s_p2;                  ! Point on surface
+    s_t2:=EVAL(s_id,"drdu",uv);  !
+    utan:=VECN(s_t2);            ! Tangent in U direction
+    vtan:=EVAL(s_id,"drdv",uv);  ! Tangent in V direction
+    vtan:=VECN(vtan);            !
+    s_n :=EVAL(s_id,"normal",uv);! Surface normal
+    twist:=EVAL(s_id,"d2rdudv",uv);! Twist vector  
+  ENDIF;                         !
+  CUR_CONIC(#7,"FREE",           !
+      s_p1,s_t1,pval,s_p2,s_t2); !
+  CUR_TRIM(#8,#7,0.0,1+extend);  !
+    c_p1:= ON(#8,1.0);           !
+  DEL(#7);                       !
+  DEL(#8);                       !
+  npts := npts + 1;              ! An additional point
+  PART(#33,POIRECF006(           ! Write point to output file
+       pdatout,   1   , n_pat+1, !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+  IF iso="UE" OR iso="ue" THEN   !
+      uv:= VEC(iso_p1,n_pat-.01);!
+      s_p1:=EVAL(s_id,"xyz" ,uv);!
+      s_t1:=EVAL(s_id,"drdu",uv);!
+      uv:= VEC(iso_p2,n_pat-.01);!
+      s_p2:=EVAL(s_id,"xyz" ,uv);!
+      s_t2:=EVAL(s_id,"drdu",uv);!
+  ENDIF;                         !
+  CUR_CONIC(#9,"FREE",           !
+    s_p1,s_t1,pval,s_p2,s_t2);   !
+  CUR_TRIM(#10,#9,0.0,1+extend); !
+    c_p2:= ON(#10,1.0);          !
+  LIN_FREE(#22,c_p1, c_p1 -      !
+        (c_p2-c_p1)*50.0);       !
+  s_pt := c_p2;                  ! Point on surface
+  utan := TANG(#10,1.0);         ! Tangent in U direction
+  vtan := VECN(c_p1-c_p2);       ! Tangent in V direction
+  s_n  := VPROD(utan,vtan);      ! Surface normal
+  s_n  := VECN(s_n);             ! 
+  twist:= VEC(0,0,0);            !
+  npts := npts + 1;              ! An additional point
+  PART(#34,POIRECF006(           ! Write point to output file
+       pdatout, 2 , n_pat+1 ,    !
+       s_pt, s_n, kap1, kap2,    !
+       k1, k2, utan, vtan,       ! 
+       twist)                    ! 
+       :SAVE=0);                 !
+
+  DEL(#9);                       !
+  DEL(#10);                      !
+
+OUTSTR(pdatout,"EOF      "   +   STR(      npts ,-21,0 ));
+OUTLIN(pdatout);
+  CLOSE(pdatout);                ! Close output file
+
+ENDMODULE

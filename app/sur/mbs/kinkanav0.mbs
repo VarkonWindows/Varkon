@@ -1,0 +1,459 @@
+!******************** kinkanav0 ******************
+! +++
+! The function analyses kinks between patches  
+!
+! Revision history
+! ________________
+!
+! 1994-06-17  Gunnar Liden
+! ---
+!*************************************************
+
+!sdesce The function analyses kinks between patches  
+!sdescs Analys av knäckar mellan "patches"
+
+GLOBAL GEOMETRY MODULE kinkanav0 (
+REF    sur_id                  >"@t16 Surface";
+INT    iu          :=  3       >"Patch address U (iu=-1: V analysis)";
+INT    iv          := -1       >"Patch address V (iv=-1: U analysis)";
+INT    np_uv       := 10       >"Number of points in each patch";
+REF    csys                    > "@t8192 Coordinate system";
+INT    aflag       :=  2       
+>"Analysis flag (=1: Show angles =2: Printout)");
+
+
+! Interna variabler
+
+  INT      nu;                  ! Number of patches in U direction
+  INT      nv;                  ! Number of patches in V direction
+  INT      typ;                 ! Type of surface
+  INT      font;                ! Surface font
+
+  STRING surtyp(3)*10;          ! For printout of analysis
+  INT      ip_u;                ! Loop index point in u direction
+  INT      ip_v;                ! Loop index point in v direction
+  INT      ip_a;                ! Loop index all normals          
+  INT      ipatch;              ! Loop index patch                
+
+  FLOAT    deltau;              ! Delta in u direction
+  FLOAT    deltav;              ! Delta in v direction
+  FLOAT    u_p;                 ! U value
+  FLOAT    v_p;                 ! V value
+  FLOAT    u_pmax;              ! U value
+  FLOAT    v_pmax;              ! V value
+
+  INT      n_tot;               ! Total number of points
+
+  VECTOR   p_s;                 ! Surface point  
+  VECTOR   n_s;                 ! Surface normal
+  VECTOR   n_a;                 ! Average normal
+  VECTOR   v_c1;                ! Vector to compare
+  VECTOR   v_c2;                ! Vector to compare
+  FLOAT    dot;                 ! Dot product
+  VECTOR   p_s_t;               ! Surface point  transformed 
+  VECTOR   n_s_t;               ! Surface normal transformed
+
+  VECTOR   n1_all(900);         ! All surface normals
+  VECTOR   n2_all(900);         ! All surface normals
+  VECTOR   uv1_all(900);        ! All parameter values
+  VECTOR   uv2_all(900);        ! All parameter values
+  FLOAT    ang_all(900);        ! All deviation angles
+
+
+  FLOAT    ang;                 ! The cone angle
+  FLOAT    ang_c;               ! Angle to compare
+
+  VECTOR   origin;              ! Origin for system 
+
+  FLOAT    radius;              ! Radius for cone
+
+  FLOAT    kdata(4,4);          ! Transformation matrix
+  STRING   knamn*10;            ! Name of system
+  FLOAT    a11,a12,a13,b1;      ! Matrix
+  FLOAT    a21,a22,a23,b2;      ! Matrix
+  FLOAT    a31,a32,a33,b3;      ! Matrix
+
+  INT      ns;                  ! No segmant in curve   
+  INT      fnt;                 ! Font 
+  INT      plank;               ! Planar flag (plank=1)
+  FLOAT    sl;                  ! Dash length
+  FLOAT    kdat(4,4);           ! Curveplane (for planar curve)
+
+
+  STRING   s*1;                 ! String for DEBUG (INPMT)
+
+  INT      DEBUG;               ! For debug printout
+
+
+
+BEGINMODULE
+
+!                      1. Initiations                
+!                      --------------
+
+  DEBUG := 1;                   ! Debug (0 or 1)
+
+  PART(#2,G_REFSEL(sur_id));    ! Add # to sur_id if necessary
+
+  GETSURH(sur_id,"NPATU",nu);   ! Retrieve number of patches in U
+  GETSURH(sur_id,"NPATV",nv);   ! Retrieve number of patches in V
+
+   IF DEBUG = 2 THEN            ! Debug
+   s:=INPMT("kinanav0 nu "      !
+    + STR( nu  ,-1,0 ) +        !
+    " nv  "                     !
+    + STR( nv  ,-1,0 )          !
+    ,"", 1);                    !
+   ENDIF;                       !
+
+  IF np_uv < 2 THEN             ! Check np_uv
+    EXIT("kanal: np_uv<2");     !
+  ENDIF;                        !
+
+  IF   iu = -1 AND iv <> -1 THEN! Check iu, iv
+    ;                           !
+  ELIF iv = -1 AND iu <> -1 THEN! 
+    ;                           !
+  ELSE                          !
+    EXIT("kinkanav0:"+          !
+  " iu or iv must be -1");      !
+  ENDIF;                        !
+
+  u_pmax:= -1.0;                ! Initiate
+  v_pmax:= -1.0;                ! Initiate
+
+  deltau:= 1.0/(np_uv-1);       ! Delta u
+  deltav:= 1.0/(np_uv-1);       ! Delta v
+
+  part(#5,G_REFSEL(csys));      ! Add # for global reference
+
+
+  GETCSY(csys,knamn,kdata);     ! Get transformation matrix  
+
+  IF  DEBUG = 2 THEN              !
+     s:= INPMT("Koordinatsystem " !
+    +  "för transformationen är "+!
+           knamn  +               !
+      " ",                        !
+      "",1);                      !
+  ENDIF;                          !
+
+   a11:= kdata(1,1);            ! Transformationsmatris
+   a12:= kdata(1,2);            ! 
+   a13:= kdata(1,3);            ! 
+   b1 := kdata(1,4);            ! 
+   a21:= kdata(2,1);            ! 
+   a22:= kdata(2,2);            ! 
+   a23:= kdata(2,3);            ! 
+   b2 := kdata(2,4);            ! 
+   a31:= kdata(3,1);            ! 
+   a32:= kdata(3,2);            ! 
+   a33:= kdata(3,3);            ! 
+   b3 := kdata(3,4);            ! 
+
+
+!              2. Calculate surface normals         
+!              ---------------------------
+
+  n_tot := 0;                   ! Total number of points
+  ang   := 0.0;                 ! No difference
+
+
+  IF  iu = -1 THEN              ! V iso analysis
+
+  IF iv < 1 THEN                ! Check iv
+    EXIT("kinkanav0: iv < 1 "); !
+  ENDIF;                        !
+
+  FOR ipatch:= 0 TO nu-1 DO     ! Start loop U patches   
+   FOR ip_u := 1 TO np_uv DO    ! Start loop U points    
+
+   n_tot := n_tot + 1;          ! Number of points
+
+   u_p:=ipatch+deltau*(ip_u-1); ! Current U value
+   v_p:= iv - 0.0001;           ! Current V value
+
+   IF DEBUG = 2 THEN            ! Debug
+   s:=INPMT("kinkanav0 u_p "    !
+    + str(u_p  ,-15,8) +        !
+    " v_p "                     !
+    + str(v_p  ,-15,8)          !
+    ,"", 1);                    !
+   ENDIF;                       !
+
+   n_s:=NORM(sur_id,VEC(u_p,v_p));   ! Surface normal
+
+   uv1_all(n_tot):=             ! Parameter point
+       VEC(u_p,v_p,0);          !
+   n1_all(n_tot):= n_s;         ! n_s to n1_all array
+
+
+   IF DEBUG = 1 THEN            ! Create point for Debug On
+     p_s:=  ON(sur_id,VEC(u_p,v_p)); ! Surface point  
+     LIN_FREE(#10,p_s,          !
+            p_s -  10.0*n_s );  !
+   ENDIF;                       !
+
+   IF iv = nv THEN              !
+     v_p:= 0.0;                 ! Assume closed surface
+   ELSE                         !
+     v_p:= iv + 0.0001;         ! Current V value
+   ENDIF;                       !
+
+   n_s:=NORM(sur_id,VEC(u_p,v_p));   ! Surface normal
+
+   uv2_all(n_tot):=             ! Parameter point
+       VEC(u_p,v_p,0);          !
+   n2_all(n_tot):= n_s;         ! n_s to n2_all array
+
+
+   IF DEBUG = 1 THEN            ! Create point for Debug On
+     p_s:=  ON(sur_id,VEC(u_p,v_p)); ! Surface point  
+     LIN_FREE(#11,p_s,          !
+            p_s -  15.0*n_s );  !
+   ENDIF;                       !
+
+   v_c1:= n1_all(n_tot);       ! Current vector 1
+   v_c2:= n2_all(n_tot);       ! Current vector 2
+   dot := v_c1*v_c2;           ! Dot product
+   ang_c := ARCCOS(dot);       ! Angle to compare
+   IF ang_c > ang  THEN        ! Compare ang_c and ang
+     ang := ang_c;             !
+     u_pmax:= u_p;             !
+     v_pmax:= v_p;             !
+   ENDIF;                      !
+   ang_all(n_tot):= ang_c;     ! All deviation angles
+
+   IF DEBUG = 2 THEN            ! Debug
+   s:=INPMT("kinkanav0 u_p "    !
+    + str(u_p  ,-15,8) +        !
+    " v_p "                     !
+    + str(v_p  ,-15,8) +        !
+    " ang_c "                   !
+    + str(ang_c,-15,8)          !
+    ,"", 1);                    !
+   ENDIF;                       !
+
+   ENDFOR;                      ! End   loop V points    
+  ENDFOR;                       ! End   loop U patches   
+  ENDIF;                        ! End V isoparameter curve
+
+  IF  iv = -1 THEN              ! U iso analysis
+
+  IF iu < 1 THEN                ! Check iu
+    EXIT("kinkanav0: iu < 1 "); !
+  ENDIF;                        !
+
+  FOR ipatch:= 0 TO nv-1 DO     ! Start loop V patches   
+   FOR ip_v := 1 TO np_uv DO    ! Start loop V points    
+
+   n_tot := n_tot + 1;          ! Number of points
+
+   u_p:=iu - 0.0001;            ! Current U value
+   v_p:=ipatch+deltau*(ip_v-1); ! Current V value
+
+   IF DEBUG = 2 THEN            ! Debug
+   s:=INPMT("kinkanav0 u_p "    !
+    + str(u_p  ,-15,8) +        !
+    " v_p "                     !
+    + str(v_p  ,-15,8)          !
+    ,"", 1);                    !
+   ENDIF;                       !
+
+   n_s:=NORM(sur_id,VEC(u_p,v_p));   ! Surface normal
+
+   uv1_all(n_tot):=             ! Parameter point
+       VEC(u_p,v_p,0);          !
+   n1_all(n_tot):= n_s;         ! n_s to n1_all array
+
+
+   IF DEBUG = 1 THEN            ! Create point for Debug On
+     p_s:=  ON(sur_id,VEC(u_p,v_p)); ! Surface point  
+     LIN_FREE(#20,p_s,          !
+            p_s -  10.0*n_s );  !
+   ENDIF;                       !
+
+   u_p:= iu + 0.0001;           ! Current U value
+
+   n_s:=NORM(sur_id,VEC(u_p,v_p));   ! Surface normal
+
+   uv2_all(n_tot):=             ! Parameter point
+       VEC(u_p,v_p,0);          !
+   n2_all(n_tot):= n_s;         ! n_s to n2_all array
+
+
+   IF DEBUG = 1 THEN            ! Create point for Debug On
+     p_s:=  ON(sur_id,VEC(u_p,v_p)); ! Surface point  
+     LIN_FREE(#21,p_s,          !
+            p_s -  15.0*n_s );  !
+   ENDIF;                       !
+
+   v_c1:= n1_all(n_tot);       ! Current vector 1
+   v_c2:= n2_all(n_tot);       ! Current vector 2
+   dot := v_c1*v_c2;           ! Dot product
+   ang_c := ARCCOS(dot);       ! Angle to compare
+   IF ang_c > ang  THEN        ! Compare ang_c and ang
+     ang := ang_c;             !
+     u_pmax:= u_p;             !
+     v_pmax:= v_p;             !
+   ENDIF;                      !
+   ang_all(n_tot):= ang_c;     ! All deviation angles
+
+   IF DEBUG = 2 THEN            ! Debug
+   s:=INPMT("kinkanav0 u_p "    !
+    + str(u_p  ,-15,8) +        !
+    " v_p "                     !
+    + str(v_p  ,-15,8) +        !
+    " ang_c "                   !
+    + str(ang_c,-15,8)          !
+    ,"", 1);                    !
+   ENDIF;                       !
+
+   ENDFOR;                      ! End   loop V points    
+  ENDFOR;                       ! End   loop U patches   
+  ENDIF;                        ! End V isoparameter curve
+
+!                   4. Graphical representation   
+!                   ----------------------------
+
+
+   u_p:= u_pmax;                 ! Current U value
+   v_p:= v_pmax;                 ! Current V value
+   p_s:=  ON(sur_id,VEC(u_p,v_p));    ! Surface point  
+   n_s:=NORM(sur_id,VEC(u_p,v_p));    ! Surface point  
+   LIN_FREE(#1 ,p_s,             !
+             p_s +  50.0*n_s );  !
+
+  IF  aflag <= 1    THEN         !
+  s:=INPMT("Max angle:"          !
+   + str(ang  ,-12,6) +          !
+   " u " +                       !
+     str(u_pmax  ,-8,4 ) +       !
+   " v " +                       !
+     str(v_pmax  ,-8,4 ) +       !
+   "  "                          !
+   ,"", 1);                      !
+
+  s:=INPMT("Max angle:"          !
+   + str(ang  ,-12,6) +          !
+   " x " +                       !
+     str(p_s.x   ,-8,4 ) +       !
+   " y " +                       !
+     str(p_s.y   ,-8,4 ) +       !
+   " z " +                       !
+     str(p_s.z   ,-8,4 ) +       !
+   "  "                          !
+   ,"", 1);                      !
+  ENDIF;                         !
+
+!                   5. Printout to screen         
+!                   ---------------------
+
+  IF aflag = 2 THEN               ! Only for aflag= 2
+
+  LST_INI("Analysis of"+          ! Initiera utskrift på skärm.
+          " surface          "+   !
+           RSTR(sur_id));            !
+                                  !   Skriv överskrift.
+
+  LST_LIN("  ");                  !   Skriv tomrad.
+
+  LST_LIN("  COORDINATE SYSTEM: "  + knamn); ! 
+
+  LST_LIN("  ");                  !   Skriv tomrad.
+
+  LST_LIN("  PNR     U"+         !   Skriv tabellhuvud.
+            "         V"+
+            "           NX"+
+            "          NY"+
+            "          NZ"+
+            "       Angle");
+
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+  FOR  ip_a := 1 TO n_tot DO      !
+
+
+
+      n_s_t.x := 
+          a11*n1_all(ip_a).x+
+          a12*n1_all(ip_a).y+
+          a13*n1_all(ip_a).z;
+      n_s_t.y := 
+          a21*n1_all(ip_a).x+
+          a22*n1_all(ip_a).y+
+          a23*n1_all(ip_a).z;
+      n_s_t.z := 
+          a31*n1_all(ip_a).x+
+          a32*n1_all(ip_a).y+
+          a33*n1_all(ip_a).z;
+
+
+
+     LST_LIN("   " +          !
+     STR(ip_a,-3,0)  +
+     STR(uv1_all(ip_a).x,-11,4) +
+     STR(uv1_all(ip_a).y,-11,4) +
+     STR(       n_s_t.x,-12,8) +
+     STR(       n_s_t.y,-12,8) +
+     STR(       n_s_t.z,-12,8) +
+     STR(ang_all(ip_a),-12,8));
+
+      n_s_t.x := 
+          a11*n2_all(ip_a).x+
+          a12*n2_all(ip_a).y+
+          a13*n2_all(ip_a).z;
+      n_s_t.y := 
+          a21*n2_all(ip_a).x+
+          a22*n2_all(ip_a).y+
+          a23*n2_all(ip_a).z;
+      n_s_t.z := 
+          a31*n2_all(ip_a).x+
+          a32*n2_all(ip_a).y+
+          a33*n2_all(ip_a).z;
+
+
+
+     LST_LIN("      " +          !
+!     STR(ip_a,-3,0)  +
+     STR(uv2_all(ip_a).x,-11,4) +
+     STR(uv2_all(ip_a).y,-11,4) +
+     STR(       n_s_t.x,-12,8) +
+     STR(       n_s_t.y,-12,8) +
+     STR(       n_s_t.z,-12,8)); 
+  ENDFOR;             
+
+  LST_LIN("  ");                  !   Skriv tomrad.
+  LST_LIN("Maximum angle deviation:");        !   Skriv tomrad.
+  LST_LIN("  ");                  !   Skriv tomrad.
+
+  LST_LIN("  PNR     U"+         !   Skriv tabellhuvud.
+            "         V"+
+            "            X"+
+            "           Y"+
+            "           Z"+
+            "       Angle");
+
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+      p_s_t.x := a11*p_s.x+a12*p_s.y+a13*p_s.z+b1;
+      p_s_t.y := a21*p_s.x+a22*p_s.y+a23*p_s.z+b2;
+      p_s_t.z := a31*p_s.x+a32*p_s.y+a33*p_s.z+b3;
+                 
+     LST_LIN("      " +          !
+!     STR(ip_a,-3,0)  +
+     STR(u_pmax         ,-11,4) +
+     STR(v_pmax         ,-11,4) +
+     STR(p_s_t.x         ,-12,4) +
+     STR(p_s_t.y         ,-12,4) +
+     STR(p_s_t.z         ,-12,4) +
+     STR(ang,-12,8));
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+  LST_EXI();                      ! Stäng utskrift på skärmen.
+
+  ENDIF;                          ! End aflag= 2
+                   
+ENDMODULE

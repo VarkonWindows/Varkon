@@ -1,0 +1,341 @@
+! ***************** s_alimitv1 ****************************
+!
+! +++
+! Create a limit and tangent curve for a given V value
+!
+! ---
+! Revision history
+! _______________
+!
+! 1996-10-23 s_alimitv0->s_alimitv1 Gunnar Liden
+! 1997-02-05 Extrapolation of limit curves 
+!            Add segments (case= 3)           Gunnar Liden
+!
+!************************************************************
+
+!sdesce Create a limit and tangent curve for a given V value
+!sdescs Skapa direktris och tangentkurva för givet V värde
+
+GLOBAL GEOMETRY MODULE s_alimitv1 (
+
+REF    s_id              > "@t16 Select surface";
+FLOAT  isov   := 0.65    > "Direktrix V value";
+FLOAT  startu :=-1.0     > "Start U value direktrix (-1: Whole surf.)";
+FLOAT  endu   :=-1.0     > "End   U value direktrix (-1: Surf. end)";
+INT    cur_no := 1       > "Limit curve number in surface (0= Undefined)";
+STRING lim_name*60 := " "> "Name of limit   curve";
+STRING tan_name*60 := " "> "Name of tangent curve";
+INT    case   := 1       
+> "@ Eq. 1: No reduction (=<CR>) Eq. 11: Mid curve Eq. 2: Reduce";
+FLOAT  c_tol  := 0.1     > "@ Koordinat tolerance  (mm)";
+FLOAT  a_tol  := 0.5     > "@ Tangent   tolerance (degrees)";
+INT    n_poi  := 5       > "@ Accuracy pts/segment tangent curve <CR>= 5";
+INT    graphic:= 1       > "Eq. 0: All blanked Eq. 1: Show curves");
+
+
+! Internal variables
+
+  FLOAT  e_dist;            ! Extrapolation distance
+  FLOAT  l_tang;            ! Length of tangent
+
+  REF    iso_id;            ! Global reference for isoparametric
+  REF    e_iso_id;          ! Reference to extrapolated iso curve
+  REF    lim_id;            ! Global reference for limit   curve
+  REF    tan_id;            ! Global reference for tangent curve
+  STRING cur_type*20;       ! Type of curve 
+                            ! Eq. SPINE     Spine curve
+                            ! Eq. LIMIT     Directrix
+                            ! Eq. TANGENT   Tangent def. curve
+                            ! Eq. MID       Mid R*3 curve    
+                            ! Eq. PVALUE    P-value curve
+  STRING cur_desc*132;      ! Free description of the curve
+
+  INT    npatu;             ! No patches in U direction
+  INT    npatv;             ! No patches in V direction
+
+  STRING iso_c*1;           ! Isoparameter U or V
+  FLOAT  start_p;           ! Parameter for start point
+  FLOAT  end_p;             ! Parameter for end   point
+
+  INT    method;            ! Method  c_reduc1v0
+  INT    graphic_r;         ! Graphic c_reduc1v0
+
+  FLOAT  r_dist;            ! Distance between limit and
+                            ! tangent curve
+
+  FLOAT  u_c;               ! Curve parameter value
+  REF    sur_id;            ! Surface identity 
+  VECTOR sur_uv;            ! Surface point (U,V)
+  VECTOR c_tang;            ! Cross tangent for tangent curve
+  VECTOR p_tang;            ! Tangent point
+  VECTOR p_seg(20);         ! Points for tangent splining
+
+  INT    nopoints;          ! No of points  
+  VECTOR pcurve(200);       ! Points      
+  VECTOR tcurve(200);       ! Tangent points      
+  STRING mf(200)*1;         ! Flag for "P" or "M"
+  FLOAT  pval(200);         ! P values 
+  VECTOR pm(200);           ! Mid points
+
+                            ! For GETCURH:
+  INT    ns_geo;            ! No of geometrical segments
+  INT    ns_gra;            ! No of graphical   segments
+  INT    fnt;               ! Font type, subtype
+  FLOAT  sl;                ! Dash length 
+
+
+  INT    i_seg;             ! Loop index curve segment
+  INT    i_u;               ! Loop index points in segment 
+
+  FLOAT  delta_u;           ! Delta U value
+
+  FLOAT  start_u;           ! Start U value
+  FLOAT  end_u;             ! End   U value
+
+  INT    add_u;             ! Number of added segments (case= 3)
+  
+  INT    bflag_i;           ! Blank flag for output curves 
+  INT    bflag_a;           ! Blank flag for other entities
+
+  INT    DEBUG;             ! For Debug printout
+
+  STRING s*1;               ! For INPMT
+
+BEGINMODULE
+
+! +++
+!                         Algorithm
+!                         =========
+! ---
+
+! 0. Initializations and checks      
+!              
+
+  DEBUG := 0;                    ! Debug printout
+
+  e_dist := 10.0;                 ! Extrapolation distance
+  
+  IF   case =  3  THEN 
+    add_u := ROUND(c_tol);
+    IF  add_u < 1 THEN
+      EXIT("a_limitv0 No of added segments !c_tol! < 1 (case 3)");
+    ENDIF;
+  ELSE
+    add_u := 0;
+  ENDIF;
+      
+  IF graphic = 0 THEN      
+    bflag_i   := 1;               
+    bflag_a   := 1;               
+    graphic_r := 0;   
+  ELIF graphic = 1 THEN      
+    bflag_i   := 0;               
+    bflag_a   := 1;               
+    graphic_r := 1;   
+  ELIF graphic = 2 THEN      
+    bflag_a   := 0;               
+    bflag_i   := 0; 
+    graphic_r := 1;   
+  ELSE                     
+    EXIT("s_alimitv1 graphic not 0, 1 or 2");
+  ENDIF;       
+  
+  IF case = 1 OR case = 2 OR case = 3 OR case = 11  THEN      
+   ; ! OK
+  ELSE
+    EXIT("s_alimitv1 case not 1 2 or 3");
+  ENDIF;
+
+  IF  n_poi > 20  THEN     
+    EXIT("s_alimitv1 n_poi > 20 ");
+  ENDIF;
+  IF    n_poi <  3  THEN     
+    EXIT("s_alimitv1 n_poi < 3");
+  ENDIF;
+
+! +++
+! 1. Retrieve surface data 
+!
+!  Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("s_alimitv1 "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+  IF endu  < 0.0    THEN         ! End U value
+    end_u := npatu;              !
+  ELSE                           !
+    end_u := endu;               !
+  ENDIF;                         !
+
+  IF startu >= 0.0  THEN         ! Check startu
+    IF startu > end_u THEN       !
+      EXIT("s_alimitv1 "+        !
+        "startu > endu ");       !
+    ENDIF;                       !
+  ENDIF;                         !
+
+! +++
+! 2. Create the V parameter line
+! ---
+
+  IF startu < 0 THEN             !
+    start_p:=   0.0;             ! Start value 0
+    end_p  :=   npatu;           ! End   value npatu
+  ELSE                           !
+    start_p:=   startu;          ! Start value 
+    end_p  :=   end_u;           ! End   value
+  ENDIF;                         !
+  iso_c  := "V";                 ! Type of isoparameter
+
+  CUR_ISO(#4,s_id,iso_c,isov,    ! Isoparameter
+   start_p,end_p:BLANK=bflag_a); !
+  iso_id := GLOBAL_REF(#4);
+
+! +++
+! Extrapolate if startu <  0 (whole surface)
+! ---
+
+  IF  startu < 0 THEN
+    l_tang := VECL(EVAL(iso_id, "DRDT", VEC(start_p,0,0)));
+    LIN_FREE(#20, ON(iso_id, start_p) - l_tang/e_dist*TANG(iso_id,start_p),
+                  ON(iso_id, start_p):BLANK=1);
+    l_tang := VECL(EVAL(iso_id, "DRDT", VEC(end_p,0,0)));
+    LIN_FREE(#21, ON(iso_id, end_p ),
+                  ON(iso_id, end_p) + l_tang/e_dist*TANG(iso_id,end_p)
+                  :BLANK=1);
+    CUR_COMP(#22, #20, iso_id, #21 :BLANK=1 ); 
+    e_iso_id := GLOBAL_REF(#22);             
+  ELSE
+    e_iso_id := iso_id;
+  ENDIF;
+  
+
+! +++
+! Create the approximate limit curve 
+! case = 1 3 and 11: Approximate to spline (p-values = 0.5)
+! case = 2:          Reduce (approximate with conics)
+! ---
+
+  
+  IF   case =  1  OR case = 3 OR case = 11  THEN 
+    CUR_APPROX(#7, e_iso_id, "CUB_SEG",1, add_u + 1  :BLANK=bflag_i);
+    lim_id := GLOBAL_REF(#7);
+  ELIF case =  2  THEN 
+    method   := 1;  
+    PART(#1, c_reduc1v0 ( e_iso_id, c_tol, a_tol, n_poi,
+                           method, graphic_r));
+    lim_id := GLOBAL_REF(#1#1);
+  ENDIF;
+
+! +++
+! 3. Create the tangent curve
+! ---
+
+! +++
+! Create points for tangent curve
+! ---
+
+
+  r_dist := 0.02*ARCL(iso_id);   ! Distance to tangent line
+
+  GETCURH(iso_id,                ! Number of segments in iso curve
+   fnt,sl,ns_geo,ns_gra);        ! 
+
+  nopoints := 0;               
+
+  delta_u := 1.0/(n_poi-1);      ! Delta U 
+
+  FOR  i_seg:= 1 TO ns_geo DO    ! Start loop segments
+    FOR  i_u:= 1 TO n_poi    DO  ! Start loop U points
+
+    u_c := (i_seg-1) + (i_u-1)*delta_u;
+!   Get UV coordinates on surface for the current point
+    PART(#5 ,eval_utouv(iso_id, u_c, sur_id, sur_uv):SAVE=0);
+    c_tang := EVAL(sur_id,"DRDV",sur_uv);
+    
+    p_tang := ON(sur_id,sur_uv)+r_dist*VECN(c_tang);
+
+    p_seg(i_u) := p_tang;
+
+    IF DEBUG = 1 THEN           
+      POI_FREE(#30,p_seg(i_u));
+    ENDIF; 
+
+    ENDFOR;                      ! End   loop U points    
+    CUR_SPLARR(#6,"FREE", n_poi, !
+       p_seg:BLANK=bflag_a);     !
+    nopoints:= nopoints+1;       !
+    pcurve(nopoints) := ON(GLOBAL_REF(#6), 0.0);
+    tcurve(nopoints) := pcurve(nopoints)+TANG(GLOBAL_REF(#6),0.0);
+    mf(nopoints)     := "P";     
+    pval(nopoints)   := 0.5;    
+    pm(nopoints)     := VEC(0,0,0);
+    IF  i_seg = ns_geo THEN
+    nopoints:= nopoints+1;       !
+    pcurve(nopoints) := ON(GLOBAL_REF(#6), n_poi-1);
+    tcurve(nopoints) := pcurve(nopoints)+TANG(GLOBAL_REF(#6),n_poi-1);
+    mf(nopoints)     := "P";     
+    pval(nopoints)   := 0.5;    
+    pm(nopoints)     := VEC(0,0,0);
+    ENDIF;
+    DEL(GLOBAL_REF(#6));
+  ENDFOR;                        ! End   loop segments
+
+! +++
+! Create the approximate tangent definition curve 
+! case = 1, 3:  Approximate to spline (p-values = 0.5)
+! case = 2:     Reduce (approximate with conics)
+! case = 11:    No tangent curve is created
+! ---
+
+  IF   case =  1 OR case = 3 THEN 
+    CUR_CONARR(#2,"FREE",nopoints, pcurve,tcurve,mf,pval,pm 
+                 :BLANK=bflag_i);
+    tan_id := GLOBAL_REF(#2);
+  ELIF case =  2  THEN 
+    CUR_CONARR(#9,"FREE",nopoints, pcurve,tcurve,mf,pval,pm 
+                 :BLANK=bflag_i);
+    PART(#8, c_reduc1v0 (  GLOBAL_REF(#9),c_tol, a_tol, n_poi, 
+         method, graphic_r));
+    tan_id := GLOBAL_REF(#8#1);
+  ELIF case =  11 THEN 
+    GOTO midcrv;
+  ENDIF;
+
+! +++
+! 4. Register the surface definition curves as parts and groups
+! ---
+
+  cur_type := "LIMIT";
+  cur_desc := "Created by module s_alimitv1";
+  PART(#10, s_regcurv0 ( lim_id, lim_name, cur_type,
+            cur_desc, cur_no));
+
+  cur_type := "TANGENT";
+  cur_desc := "Created by module s_alimitv1";
+  PART(#11, s_regcurv0 ( tan_id, tan_name, cur_type,
+            cur_desc, cur_no));
+
+  GROUP(#13, lim_name, lim_id);
+  GROUP(#14, tan_name, tan_id);
+
+midcrv:; ! Label: Mid curve is created
+
+
+  IF case = 11 THEN
+    cur_type := "MID";      
+    cur_desc := "Created by module s_alimitv1";
+    PART(#12, s_regcurv0 ( tan_id, tan_name, cur_type,
+              cur_desc, cur_no));
+  ENDIF;
+
+ENDMODULE

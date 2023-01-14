@@ -1,0 +1,309 @@
+!********************* s_aboxv0   ******************************
+! +++
+! Create a non-regular box
+! 
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-03-23 Gunnar Liden
+!
+!***********************************************************
+
+!sdesce Create a non-regular box
+!sdescs Skapa en box från åtta punkter
+
+GLOBAL GEOMETRY MODULE s_aboxv0   (
+VECTOR  p_1  := VEC(   0,   0,   0) >"@ Point 1";
+VECTOR  p_2  := VEC(-100,   0,   0) >"@ Point 2";
+VECTOR  p_3  := VEC(   0,-100,   0) >"@ Point 3";
+VECTOR  p_4  := VEC(-100,-100,   0) >"@ Point 4";
+VECTOR  p_5  := VEC(   0,   0, 300) >"@ Point 5";
+VECTOR  p_6  := VEC(-100,   0, 300) >"@ Point 6";
+VECTOR  p_7  := VEC(   0,-100, 300) >"@ Point 7";
+VECTOR  p_8  := VEC(-100,-100, 300) >"@ Point 8";
+
+INT  graphic := 2 >"=0: Show nothing =1: Show box =2: Show all");
+
+! Internal variables
+
+  INT    npatu;                  ! Number of patches in U direction
+  INT    npatv;                  ! Number of patches in V direction
+  INT    sur_type;               ! Surface type 
+  INT    i_u;                    ! Loop index IU patch    
+  INT    i_v;                    ! Loop index IV patch    
+
+  INT    p_type;                 ! Patch type 
+
+  INT    t_case;                 ! Case topological data
+                                 ! Eq. 1: Only patch address 
+                                 ! Eq. 2: Patch type added     
+                                 ! Eq. 3: Patch limits added 
+
+  FLOAT  offset;                 ! Offset for patch
+
+  INT    g_case;                 ! Case geometric data
+                                 ! Eq. 1: Coefficient format 
+                                 ! Eq. 2: Geometric   format   
+                                 ! Eq. 3: Bezier      format   
+  VECTOR  r_00;                  ! Corner point 00
+  VECTOR  r_10;                  ! Corner point 10
+  VECTOR  r_01;                  ! Corner point 01
+  VECTOR  r_11;                  ! Corner point 11
+  VECTOR  tu_00;                 ! Corner U tangent 00
+  VECTOR  tu_10;                 ! Corner U tangent 10
+  VECTOR  tu_01;                 ! Corner U tangent 01
+  VECTOR  tu_11;                 ! Corner U tangent 11
+  VECTOR  tv_00;                 ! Corner V tangent 00
+  VECTOR  tv_10;                 ! Corner V tangent 10
+  VECTOR  tv_01;                 ! Corner V tangent 01
+  VECTOR  tv_11;                 ! Corner V tangent 11
+  VECTOR  tw_00;                 ! Twist vector 00
+  VECTOR  tw_10;                 ! Twist vector 10
+  VECTOR  tw_01;                 ! Twist vector 01
+  VECTOR  tw_11;                 ! Twist vector 11
+
+  INT    b_val_sur;              ! Blank value surface
+  INT    b_val_all;              ! Blank value all other entities
+
+  STRING str*132;                ! String for CUR_GL
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! __________
+! ---
+
+! +++
+! Initializations and checks of input data
+! ---
+
+  IF     graphic = 0 THEN
+    b_val_all := 1;
+    b_val_sur := 1;
+  ELIF   graphic = 1 THEN
+    b_val_all := 1;
+    b_val_sur := 0;
+  ELIF   graphic = 2 THEN
+    b_val_all := 0;
+    b_val_sur := 0;
+  ELSE
+    EXIT("s_aboxv0   Graphic not 0, 1 or 2");
+  ENDIF;
+
+  r_00  := VEC(0,0,0);
+  r_10  := VEC(0,0,0);
+  r_01  := VEC(0,0,0);
+  r_11  := VEC(0,0,0);
+  tu_00  := VEC(0,0,0);
+  tu_10  := VEC(0,0,0);
+  tu_01  := VEC(0,0,0);
+  tu_11  := VEC(0,0,0);
+  tv_00  := VEC(0,0,0);
+  tv_10  := VEC(0,0,0);
+  tv_01  := VEC(0,0,0);
+  tv_11  := VEC(0,0,0);
+  tw_00  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+! +++
+! Registration of surface header data for SUR_USRDEF
+! ---
+
+ npatu    := 6;
+ npatv    := 1;
+ sur_type := 1;
+ PART(#2,s_reghead ( npatu, npatv, sur_type ));
+
+! +++
+! Register topological and geometrical patch data.
+! ---
+
+! +++
+! Registration of topological data 
+! ---
+
+  t_case := 1;
+
+  i_v := 1;
+  FOR i_u := 1 TO npatu DO
+    PART(#5,s_regtop ( t_case, i_u, i_v ));
+  ENDFOR;
+
+! +++
+! Calculate corner geometry data
+! ---
+
+
+  r_00   := p_4;
+  r_01   := p_2;
+  r_10   := p_3;
+  r_11   := p_1;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  tw_00  := VEC(0,0,0);
+  tw_01  := VEC(0,0,0);
+  tw_10  := VEC(0,0,0);
+  tw_11  := VEC(0,0,0);
+
+  g_case  := 2;
+  i_u     := 1;
+  i_v     := 1;
+  p_type  := 1;
+  offset  := 0.0;
+
+  PART(#6,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  r_00   := p_3;
+  r_01   := p_1;
+  r_10   := p_7;
+  r_11   := p_5;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 2;
+
+  PART(#7,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  r_00   := p_7;
+  r_01   := p_5;
+  r_10   := p_8;
+  r_11   := p_6;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 3;
+
+  PART(#8,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+  r_00   := p_8;
+  r_01   := p_6;
+  r_10   := p_4;
+  r_11   := p_2;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 4;
+
+  PART(#9,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+
+  r_00   := p_4;
+  r_01   := p_3;
+  r_10   := p_8;
+  r_11   := p_7;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 5;
+
+  PART(#10,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+
+  r_00   := p_2;
+  r_01   := p_1;
+  r_10   := p_6;
+  r_11   := p_5;
+
+  tu_00  := 0.5*(r_10 - r_00);
+  tu_01  := 0.5*(r_11 - r_01);
+  tu_10  := 0.5*(r_10 - r_00);
+  tu_11  := 0.5*(r_11 - r_01);
+
+  tv_00  := 0.5*(r_01 - r_00);
+  tv_01  := 0.5*(r_01 - r_00);
+  tv_10  := 0.5*(r_11 - r_10);
+  tv_11  := 0.5*(r_11 - r_10);
+
+  i_u     := 6;
+
+  IF  graphic = 2 THEN
+  LIN_FREE(#100, r_00, r_00 + tu_00:PEN=2);
+  LIN_FREE(#110, r_10, r_10 + tu_10:PEN=2);
+  LIN_FREE(#101, r_01, r_01 + tu_01:PEN=2);
+  LIN_FREE(#111, r_11, r_11 + tu_11:PEN=2);
+  LIN_FREE(#200, r_00, r_00 + tv_00:PEN=4);
+  LIN_FREE(#210, r_10, r_10 + tv_10:PEN=4);
+  LIN_FREE(#201, r_01, r_01 + tv_01:PEN=4);
+  LIN_FREE(#211, r_11, r_11 + tv_11:PEN=4);
+  ENDIF;
+
+  PART(#11,s_reggeom  ( g_case, i_u, i_v, p_type, 
+            r_00,  r_10,  r_01,  r_11, 
+           tu_00, tu_10, tu_01, tu_11, 
+           tv_00, tv_10, tv_01, tv_11, 
+           tw_00, tw_10, tw_01, tw_11, offset  ));
+
+
+
+
+  str:="SUDEF " + " s_reghead s_regtop s_reggeom";
+  CUR_GL(#1, #0, str:PEN= 3);
+
+
+ENDMODULE

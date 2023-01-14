@@ -1,0 +1,451 @@
+! ***************** s_abezv0   ****************************
+!
+! +++
+! Creates a Bezier polygon points for a bicubic patch
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-02-16 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Creates a Bezier polygon points for a bicubic patch
+!sdescs Skapar Bezier polygon för en bikubisk patch 
+
+
+GLOBAL GEOMETRY MODULE s_abezv0   (
+
+REF    s_id           > "@t16 Select surface";
+INT    i_u     :=  5  > "Patch address in U direction";
+INT    i_v     :=  8  > "Patch address in V direction";
+INT    graphic :=  1  > "=0: Nothing =1: Point");
+
+!  Order of coefficients in VARKON's GETCUBP output vector
+!  _______________________________________________________
+!
+!  data( 1) = a00x      data( 2) = a00y      data( 3) = a00z    
+!  data( 4) = a01x      data( 5) = a01y      data( 6) = a01z    
+!  data( 7) = a02x      data( 8) = a02y      data( 9) = a02z    
+!  data(10) = a03x      data(11) = a03y      data(12) = a03z    
+!
+!  data(13) = a10x      data(14) = a10y      data(15) = a10z    
+!  data(16) = a11x      data(17) = a11y      data(18) = a11z    
+!  data(19) = a12x      data(20) = a12y      data(21) = a12z    
+!  data(22) = a13x      data(23) = a13y      data(24) = a13z    
+!
+!  data(25) = a20x      data(26) = a20y      data(27) = a20z    
+!  data(28) = a21x      data(29) = a21y      data(30) = a21z    
+!  data(31) = a22x      data(32) = a22y      data(33) = a22z    
+!  data(34) = a23x      data(35) = a23y      data(36) = a23z    
+!
+!  data(37) = a30x      data(38) = a30y      data(39) = a30z    
+!  data(40) = a31x      data(41) = a31y      data(42) = a31z    
+!  data(43) = a32x      data(44) = a32y      data(45) = a32z    
+!  data(46) = a33x      data(47) = a33y      data(48) = a33z    
+
+
+! Invertation of a matrix (Varkon module matrixiv0) 1997-02-16
+! 
+! Reference: Faux & Pratt p 136-137
+! 
+! Input  matrix M (determinant=      9.00000000) :                                  
+!      1.00000000      0.00000000      0.00000000      0.00000000                 
+!     -3.00000000      3.00000000      0.00000000      0.00000000                 
+!      3.00000000     -6.00000000      3.00000000      0.00000000                 
+!     -1.00000000      3.00000000     -3.00000000      1.00000000                 
+! Output matrix invM:                                                                  
+!      1.00000000     -0.00000000      0.00000000     -0.00000000                 
+!      1.00000000      0.33333333     -0.00000000      0.00000000                 
+!      1.00000000      0.66666667      0.33333333     -0.00000000                 
+!      1.00000000      1.00000000      1.00000000      1.00000000                 
+! 
+! 
+! Input  matrix Mtransp (determinant=      9.00000000) :                                  
+!      1.00000000     -3.00000000      3.00000000     -1.00000000                 
+!      0.00000000      3.00000000     -6.00000000      3.00000000                 
+!      0.00000000      0.00000000      3.00000000     -3.00000000                 
+!      0.00000000      0.00000000      0.00000000      1.00000000                 
+! Output matrix invMtransp:                                                                  
+!      1.00000000      1.00000000      1.00000000      1.00000000                 
+!     -0.00000000      0.33333333      0.66666667      1.00000000                 
+!      0.00000000     -0.00000000      0.33333333      1.00000000                 
+!     -0.00000000      0.00000000     -0.00000000      1.00000000                 
+! 
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  FLOAT  pdat(48);               ! Patch data
+  FLOAT  offset;                 ! Offset for patch
+
+  INT    p_typ;                  ! Patch type
+  FLOAT  u1;                     ! Start U value patch
+  FLOAT  u2;                     ! End   U value patch
+  FLOAT  v1;                     ! Start V value patch
+  FLOAT  v2;                     ! End   V value patch
+
+  FLOAT  IM(4,4);                ! Matrix for Bezier, inverse
+  FLOAT  IMT(4,4);               ! Matrix for Bezier, transp, inverse
+
+  FLOAT  CX(4,4);                ! Coefficients for   X
+  FLOAT  CY(4,4);                ! Coefficients for   Y
+  FLOAT  CZ(4,4);                ! Coefficients for   Z
+
+  FLOAT  BX(4,4);                ! Bezier polygon pts X
+  FLOAT  BY(4,4);                ! Bezier polygon pts Y
+  FLOAT  BZ(4,4);                ! Bezier polygon pts Z
+
+  FLOAT  TX(4,4);                ! Temporary used for X
+  FLOAT  TY(4,4);                ! Temporary used for Y
+  FLOAT  TZ(4,4);                ! Temporary used for Z
+
+  STRING str_pat*132;            ! Patch address
+
+  VECTOR p00;                    ! Corner point (0,0)
+  VECTOR p10;                    ! Corner point (1,0)
+  VECTOR p01;                    ! Corner point (0,1)
+  VECTOR p11;                    ! Corner point (1,1)
+
+  INT    b_val_p;                ! Blank flag for p
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;
+
+  IF   graphic = 0 THEN
+    b_val_p := 1;
+  ELIF graphic = 1 THEN
+    b_val_p := 0;
+  ELSE
+    EXIT("s_abezv0  graphic");
+  ENDIF;
+
+! +++
+! 2. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+  IF DEBUG = 2 THEN 
+   s:= INPMT("s_abezv0   "   +
+    " npatu "+STR(npatu,-1,0)+
+    " npatu "+STR(npatv,-1,0),
+    "",1);
+  ENDIF;
+
+  IF  i_u <  1 THEN
+    EXIT("s_abezv0  i_u <  1");
+  ENDIF;
+  IF  i_u >  npatu THEN
+    EXIT("s_abezv0  i_u > npatu= "+STR(npatu,-1,0));
+  ENDIF;
+  IF  i_v <  1 THEN
+    EXIT("s_abezv0  i_v <  1");
+  ENDIF;
+  IF  i_v >  npatv THEN
+    EXIT("s_abezv0  i_v > npatv= "+STR(npatv,-1,0));
+  ENDIF;
+
+! +++
+! 3. Retrieve patch data
+!
+! ---
+
+    GETTOPP(s_id,i_u,i_v,p_typ, u1,u2,v1,v2);
+!   Check for NULL patch
+    IF p_typ <> 1 THEN
+      EXIT("s_abezv0 NULL patch p_typ= " + STR(p_typ,-1,0) );
+    ENDIF;
+
+!   Get patch data
+    GETCUBP(s_id,i_u,i_v,pdat, offset);
+    IF ABS(offset) >0.0001 THEN
+      EXIT("s_abezv0 Offset= "+ STR(offset,-12,8)   );
+    ENDIF;
+
+  CX(1,1):= pdat( 1); CY(1,1):= pdat( 2); CZ(1,1):= pdat( 3);
+  CX(1,2):= pdat( 4); CY(1,2):= pdat( 5); CZ(1,2):= pdat( 6);
+  CX(1,3):= pdat( 7); CY(1,3):= pdat( 8); CZ(1,3):= pdat( 9);
+  CX(1,4):= pdat(10); CY(1,4):= pdat(11); CZ(1,4):= pdat(12);
+
+  CX(2,1):= pdat(13); CY(2,1):= pdat(14); CZ(2,1):= pdat(15);
+  CX(2,2):= pdat(16); CY(2,2):= pdat(17); CZ(2,2):= pdat(18);
+  CX(2,3):= pdat(19); CY(2,3):= pdat(20); CZ(2,3):= pdat(21);
+  CX(2,4):= pdat(22); CY(2,4):= pdat(23); CZ(2,4):= pdat(24);
+
+  CX(3,1):= pdat(25); CY(3,1):= pdat(26); CZ(3,1):= pdat(27);
+  CX(3,2):= pdat(28); CY(3,2):= pdat(29); CZ(3,2):= pdat(30);
+  CX(3,3):= pdat(31); CY(3,3):= pdat(32); CZ(3,3):= pdat(33);
+  CX(3,4):= pdat(34); CY(3,4):= pdat(35); CZ(3,4):= pdat(36);
+
+  CX(4,1):= pdat(37); CY(4,1):= pdat(38); CZ(4,1):= pdat(39);
+  CX(4,2):= pdat(40); CY(4,2):= pdat(41); CZ(4,2):= pdat(42);
+  CX(4,3):= pdat(43); CY(4,3):= pdat(44); CZ(4,3):= pdat(45);
+  CX(4,4):= pdat(46); CY(4,4):= pdat(47); CZ(4,4):= pdat(48);
+
+
+
+
+  CX(1,1):= pdat( 1); CY(1,1):= pdat( 2); CZ(1,1):= pdat( 3);
+  CX(2,1):= pdat( 4); CY(2,1):= pdat( 5); CZ(2,1):= pdat( 6);
+  CX(3,1):= pdat( 7); CY(3,1):= pdat( 8); CZ(3,1):= pdat( 9);
+  CX(4,1):= pdat(10); CY(4,1):= pdat(11); CZ(4,1):= pdat(12);
+
+  CX(1,2):= pdat(13); CY(1,2):= pdat(14); CZ(1,2):= pdat(15);
+  CX(2,2):= pdat(16); CY(2,2):= pdat(17); CZ(2,2):= pdat(18);
+  CX(3,2):= pdat(19); CY(3,2):= pdat(20); CZ(3,2):= pdat(21);
+  CX(4,2):= pdat(22); CY(4,2):= pdat(23); CZ(4,2):= pdat(24);
+
+  CX(1,3):= pdat(25); CY(1,3):= pdat(26); CZ(1,3):= pdat(27);
+  CX(2,3):= pdat(28); CY(2,3):= pdat(29); CZ(2,3):= pdat(30);
+  CX(3,3):= pdat(31); CY(3,3):= pdat(32); CZ(3,3):= pdat(33);
+  CX(4,3):= pdat(34); CY(4,3):= pdat(35); CZ(4,3):= pdat(36);
+
+  CX(1,4):= pdat(37); CY(1,4):= pdat(38); CZ(1,4):= pdat(39);
+  CX(2,4):= pdat(40); CY(2,4):= pdat(41); CZ(2,4):= pdat(42);
+  CX(3,4):= pdat(43); CY(3,4):= pdat(44); CZ(3,4):= pdat(45);
+  CX(4,4):= pdat(46); CY(4,4):= pdat(47); CZ(4,4):= pdat(48);
+
+
+
+
+! +++
+! 4. Calculate the Bezier polygon 
+! ---
+
+! Inverted matrices
+
+  IM(1,1)    :=    1.0;
+  IM(1,2)    :=    0.0;
+  IM(1,3)    :=    0.0;
+  IM(1,4)    :=    0.0;
+
+  IM(2,1)    :=    1.0;
+  IM(2,2)    :=  1.0/3.0;
+  IM(2,3)    :=    0.0;
+  IM(2,4)    :=    0.0;
+
+  IM(3,1)    :=    1.0;
+  IM(3,2)    :=  2.0/3.0;
+  IM(3,3)    :=  1.0/3.0;
+  IM(3,4)    :=    0.0;
+
+  IM(4,1)    :=    1.0;
+  IM(4,2)    :=    1.0;
+  IM(4,3)    :=    1.0;
+  IM(4,4)    :=    1.0;
+
+  IMT(1,1)    :=    1.0;
+  IMT(1,2)    :=    1.0;
+  IMT(1,3)    :=    1.0;
+  IMT(1,4)    :=    1.0;
+
+  IMT(2,1)    :=    0.0;
+  IMT(2,2)    :=  1.0/3.0;
+  IMT(2,3)    :=  2.0/3.0;
+  IMT(2,4)    :=    1.0;
+
+  IMT(3,1)    :=    0.0;
+  IMT(3,2)    :=    0.0;
+  IMT(3,3)    :=  1.0/3.0;
+  IMT(3,4)    :=    1.0;
+
+  IMT(4,1)    :=    0.0;
+  IMT(4,2)    :=    0.0;
+  IMT(4,3)    :=    0.0;
+  IMT(4,4)    :=    1.0;
+
+  PART(#4, matrixmult ( IM, CX, TX ):SAVE=0);
+  PART(#5, matrixmult ( IM, CY, TY ):SAVE=0);
+  PART(#6, matrixmult ( IM, CZ, TZ ):SAVE=0);
+
+  PART(#7, matrixmult ( TX, IMT, BX ):SAVE=0);
+  PART(#8, matrixmult ( TY, IMT, BY ):SAVE=0);
+  PART(#9, matrixmult ( TZ, IMT, BZ ):SAVE=0);
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Debug from s_abezv0");
+
+  LST_LIN("Matrix CX:");
+  LST_LIN(STR(CX(1,1),15,8)+ " "+ STR(CX(1,2),15,8)+ " " +
+          STR(CX(1,3),15,8)+ " "+ STR(CX(1,4),15,8));
+  LST_LIN(STR(CX(2,1),15,8)+ " "+ STR(CX(2,2),15,8)+ " " +
+          STR(CX(2,3),15,8)+ " "+ STR(CX(2,4),15,8));
+  LST_LIN(STR(CX(3,1),15,8)+ " "+ STR(CX(3,2),15,8)+ " " +
+          STR(CX(3,3),15,8)+ " "+ STR(CX(3,4),15,8));
+  LST_LIN(STR(CX(4,1),15,8)+ " "+ STR(CX(4,2),15,8)+ " " +
+          STR(CX(4,3),15,8)+ " "+ STR(CX(4,4),15,8));
+  LST_LIN("Matrix CY:");
+  LST_LIN(STR(CY(1,1),15,8)+ " "+ STR(CY(1,2),15,8)+ " " +
+          STR(CY(1,3),15,8)+ " "+ STR(CY(1,4),15,8));
+  LST_LIN(STR(CY(2,1),15,8)+ " "+ STR(CY(2,2),15,8)+ " " +
+          STR(CY(2,3),15,8)+ " "+ STR(CY(2,4),15,8));
+  LST_LIN(STR(CY(3,1),15,8)+ " "+ STR(CY(3,2),15,8)+ " " +
+          STR(CY(3,3),15,8)+ " "+ STR(CY(3,4),15,8));
+  LST_LIN(STR(CY(4,1),15,8)+ " "+ STR(CY(4,2),15,8)+ " " +
+          STR(CY(4,3),15,8)+ " "+ STR(CY(4,4),15,8));
+  LST_LIN("Matrix CZ:");
+  LST_LIN(STR(CZ(1,1),15,8)+ " "+ STR(CZ(1,2),15,8)+ " " +
+          STR(CZ(1,3),15,8)+ " "+ STR(CZ(1,4),15,8));
+  LST_LIN(STR(CZ(2,1),15,8)+ " "+ STR(CZ(2,2),15,8)+ " " +
+          STR(CZ(2,3),15,8)+ " "+ STR(CZ(2,4),15,8));
+  LST_LIN(STR(CZ(3,1),15,8)+ " "+ STR(CZ(3,2),15,8)+ " " +
+          STR(CZ(3,3),15,8)+ " "+ STR(CZ(3,4),15,8));
+  LST_LIN(STR(CZ(4,1),15,8)+ " "+ STR(CZ(4,2),15,8)+ " " +
+          STR(CZ(4,3),15,8)+ " "+ STR(CZ(4,4),15,8));
+
+  LST_LIN("Matrix TX:");
+  LST_LIN(STR(TX(1,1),15,8)+ " "+ STR(TX(1,2),15,8)+ " " +
+          STR(TX(1,3),15,8)+ " "+ STR(TX(1,4),15,8));
+  LST_LIN(STR(TX(2,1),15,8)+ " "+ STR(TX(2,2),15,8)+ " " +
+          STR(TX(2,3),15,8)+ " "+ STR(TX(2,4),15,8));
+  LST_LIN(STR(TX(3,1),15,8)+ " "+ STR(TX(3,2),15,8)+ " " +
+          STR(TX(3,3),15,8)+ " "+ STR(TX(3,4),15,8));
+  LST_LIN(STR(TX(4,1),15,8)+ " "+ STR(TX(4,2),15,8)+ " " +
+          STR(TX(4,3),15,8)+ " "+ STR(TX(4,4),15,8));
+  LST_LIN("Matrix TY:");
+  LST_LIN(STR(TY(1,1),15,8)+ " "+ STR(TY(1,2),15,8)+ " " +
+          STR(TY(1,3),15,8)+ " "+ STR(TY(1,4),15,8));
+  LST_LIN(STR(TY(2,1),15,8)+ " "+ STR(TY(2,2),15,8)+ " " +
+          STR(TY(2,3),15,8)+ " "+ STR(TY(2,4),15,8));
+  LST_LIN(STR(TY(3,1),15,8)+ " "+ STR(TY(3,2),15,8)+ " " +
+          STR(TY(3,3),15,8)+ " "+ STR(TY(3,4),15,8));
+  LST_LIN(STR(TY(4,1),15,8)+ " "+ STR(TY(4,2),15,8)+ " " +
+          STR(TY(4,3),15,8)+ " "+ STR(TY(4,4),15,8));
+  LST_LIN("Matrix TZ:");
+  LST_LIN(STR(TZ(1,1),15,8)+ " "+ STR(TZ(1,2),15,8)+ " " +
+          STR(TZ(1,3),15,8)+ " "+ STR(TZ(1,4),15,8));
+  LST_LIN(STR(TZ(2,1),15,8)+ " "+ STR(TZ(2,2),15,8)+ " " +
+          STR(TZ(2,3),15,8)+ " "+ STR(TZ(2,4),15,8));
+  LST_LIN(STR(TZ(3,1),15,8)+ " "+ STR(TZ(3,2),15,8)+ " " +
+          STR(TZ(3,3),15,8)+ " "+ STR(TZ(3,4),15,8));
+  LST_LIN(STR(TZ(4,1),15,8)+ " "+ STR(TZ(4,2),15,8)+ " " +
+          STR(TZ(4,3),15,8)+ " "+ STR(TZ(4,4),15,8));
+
+  LST_LIN("Matrix BX:");
+  LST_LIN(STR(BX(1,1),15,8)+ " "+ STR(BX(1,2),15,8)+ " " +
+          STR(BX(1,3),15,8)+ " "+ STR(BX(1,4),15,8));
+  LST_LIN(STR(BX(2,1),15,8)+ " "+ STR(BX(2,2),15,8)+ " " +
+          STR(BX(2,3),15,8)+ " "+ STR(BX(2,4),15,8));
+  LST_LIN(STR(BX(3,1),15,8)+ " "+ STR(BX(3,2),15,8)+ " " +
+          STR(BX(3,3),15,8)+ " "+ STR(BX(3,4),15,8));
+  LST_LIN(STR(BX(4,1),15,8)+ " "+ STR(BX(4,2),15,8)+ " " +
+          STR(BX(4,3),15,8)+ " "+ STR(BX(4,4),15,8));
+  LST_LIN("Matrix BY:");
+  LST_LIN(STR(BY(1,1),15,8)+ " "+ STR(BY(1,2),15,8)+ " " +
+          STR(BY(1,3),15,8)+ " "+ STR(BY(1,4),15,8));
+  LST_LIN(STR(BY(2,1),15,8)+ " "+ STR(BY(2,2),15,8)+ " " +
+          STR(BY(2,3),15,8)+ " "+ STR(BY(2,4),15,8));
+  LST_LIN(STR(BY(3,1),15,8)+ " "+ STR(BY(3,2),15,8)+ " " +
+          STR(BY(3,3),15,8)+ " "+ STR(BY(3,4),15,8));
+  LST_LIN(STR(BY(4,1),15,8)+ " "+ STR(BY(4,2),15,8)+ " " +
+          STR(BY(4,3),15,8)+ " "+ STR(BY(4,4),15,8));
+  LST_LIN("Matrix BZ:");
+  LST_LIN(STR(BZ(1,1),15,8)+ " "+ STR(BZ(1,2),15,8)+ " " +
+          STR(BZ(1,3),15,8)+ " "+ STR(BZ(1,4),15,8));
+  LST_LIN(STR(BZ(2,1),15,8)+ " "+ STR(BZ(2,2),15,8)+ " " +
+          STR(BZ(2,3),15,8)+ " "+ STR(BZ(2,4),15,8));
+  LST_LIN(STR(BZ(3,1),15,8)+ " "+ STR(BZ(3,2),15,8)+ " " +
+          STR(BZ(3,3),15,8)+ " "+ STR(BZ(3,4),15,8));
+  LST_LIN(STR(BZ(4,1),15,8)+ " "+ STR(BZ(4,2),15,8)+ " " +
+          STR(BZ(4,3),15,8)+ " "+ STR(BZ(4,4),15,8));
+
+  p00 := ON(s_id, VEC(i_u-1.0,i_v-1.0));
+  p10 := ON(s_id, VEC(i_u    ,i_v-1.0));
+  p01 := ON(s_id, VEC(i_u-1.0,i_v    ));
+  p11 := ON(s_id, VEC(i_u    ,i_v    ));
+
+  LST_LIN("Corner points:");
+  LST_LIN("p00 "+STR(p00.x,15,8)+" "+STR(p00.y,15,8)+" "+STR(p00.z,15,8));
+  LST_LIN("p10 "+STR(p10.x,15,8)+" "+STR(p10.y,15,8)+" "+STR(p10.z,15,8));
+  LST_LIN("p01 "+STR(p01.x,15,8)+" "+STR(p01.y,15,8)+" "+STR(p01.z,15,8));
+  LST_LIN("p11 "+STR(p11.x,15,8)+" "+STR(p11.y,15,8)+" "+STR(p11.z,15,8));
+
+  LST_EXI();
+  ENDIF;
+
+
+! +++
+! 5. Create points                
+! ---
+
+  POI_FREE(#11, VEC(BX(1,1),BY(1,1),BZ(1,1)):BLANK=b_val_p);  
+  POI_FREE(#12, VEC(BX(1,2),BY(1,2),BZ(1,2)):BLANK=b_val_p);  
+  POI_FREE(#13, VEC(BX(1,3),BY(1,3),BZ(1,3)):BLANK=b_val_p);  
+  POI_FREE(#14, VEC(BX(1,4),BY(1,4),BZ(1,4)):BLANK=b_val_p);  
+
+  POI_FREE(#21, VEC(BX(2,1),BY(2,1),BZ(2,1)):BLANK=b_val_p);  
+  POI_FREE(#22, VEC(BX(2,2),BY(2,2),BZ(2,2)):BLANK=b_val_p);  
+  POI_FREE(#23, VEC(BX(2,3),BY(2,3),BZ(2,3)):BLANK=b_val_p);  
+  POI_FREE(#24, VEC(BX(2,4),BY(2,4),BZ(2,4)):BLANK=b_val_p);  
+
+  POI_FREE(#31, VEC(BX(3,1),BY(3,1),BZ(3,1)):BLANK=b_val_p);  
+  POI_FREE(#32, VEC(BX(3,2),BY(3,2),BZ(3,2)):BLANK=b_val_p);  
+  POI_FREE(#33, VEC(BX(3,3),BY(3,3),BZ(3,3)):BLANK=b_val_p);  
+  POI_FREE(#34, VEC(BX(3,4),BY(3,4),BZ(3,4)):BLANK=b_val_p);  
+
+  POI_FREE(#41, VEC(BX(4,1),BY(4,1),BZ(4,1)):BLANK=b_val_p);  
+  POI_FREE(#42, VEC(BX(4,2),BY(4,2),BZ(4,2)):BLANK=b_val_p);  
+  POI_FREE(#43, VEC(BX(4,3),BY(4,3),BZ(4,3)):BLANK=b_val_p);  
+  POI_FREE(#44, VEC(BX(4,4),BY(4,4),BZ(4,4)):BLANK=b_val_p);  
+
+  IF     i_u  <    10 THEN
+   str_pat := "iu00"+STR(i_u,1,0);
+  ELIF   i_u  <   100 THEN
+   str_pat := "iu0" +STR(i_u,1,0);
+  ELIF   i_u  <  1000 THEN
+   str_pat := "iu"  +STR(i_u,1,0);
+  ELSE
+   str_pat := "";
+  ENDIF;
+  IF     i_v  <    10 THEN
+   str_pat := str_pat + "iv00"+STR(i_v,1,0);
+  ELIF   i_v  <   100 THEN
+   str_pat := str_pat + "iv0" +STR(i_v,1,0);
+  ELIF   i_v  <  1000 THEN
+   str_pat := str_pat + "iv"  +STR(i_v,1,0);
+  ELSE
+   str_pat := str_pat + "";
+  ENDIF;
+
+  GROUP(#111, "r11"+str_pat, GLOBAL_REF(#11));
+  GROUP(#112, "r12"+str_pat, GLOBAL_REF(#12));
+  GROUP(#113, "r13"+str_pat, GLOBAL_REF(#13));
+  GROUP(#114, "r14"+str_pat, GLOBAL_REF(#14));
+
+  GROUP(#121, "r21"+str_pat, GLOBAL_REF(#21));
+  GROUP(#122, "r22"+str_pat, GLOBAL_REF(#22));
+  GROUP(#123, "r23"+str_pat, GLOBAL_REF(#23));
+  GROUP(#124, "r24"+str_pat, GLOBAL_REF(#24));
+
+  GROUP(#131, "r31"+str_pat, GLOBAL_REF(#31));
+  GROUP(#132, "r32"+str_pat, GLOBAL_REF(#32));
+  GROUP(#133, "r33"+str_pat, GLOBAL_REF(#33));
+  GROUP(#134, "r34"+str_pat, GLOBAL_REF(#34));
+
+  GROUP(#141, "r41"+str_pat, GLOBAL_REF(#41));
+  GROUP(#142, "r42"+str_pat, GLOBAL_REF(#42));
+  GROUP(#143, "r43"+str_pat, GLOBAL_REF(#43));
+  GROUP(#144, "r44"+str_pat, GLOBAL_REF(#44));
+
+
+ENDMODULE

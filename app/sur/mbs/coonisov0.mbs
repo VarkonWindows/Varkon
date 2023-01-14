@@ -1,0 +1,329 @@
+!*********************** coonisov0 *********************************
+! +++
+!
+! Draw the isoparameter curves in the coons patch
+!
+! Revisions
+! ---------
+!
+! 1996-9-25 Elsa Rydman
+!
+! ---
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE  coonisov0 (
+    REF    u0_id > "Select U0 curve";
+    REF    u1_id > "Select U1 curve";
+    REF    v0_id > "Select V0 curve";
+    REF    v1_id > "Select V1 curve";
+    FLOAT  del_u :=0.1	> "Select steplenght in U direction";
+    FLOAT  del_v :=0.1	> "Select steplength in V direction";
+    INT    icase :=1  	> " =1: Only coordinates";
+    FLOAT  ctol  :=0.001> "Select tolerance for check of corner points";
+    INT    graphic> "Show: Eq.0:nothing  Eq.1:u-iso  Eq.2:v-iso  Eq.3:all");
+                  
+!sdesce Draw isoparameter curve in a coons patch
+!sdescs Rita isoparameter kurvor i coons
+
+
+! Internal variables:
+
+  FLOAT  u0_a;                  ! Total arclength U0 curve
+  FLOAT  u1_a;                  ! Total arclength U1 curve
+  FLOAT  v0_a;                  ! Total arclength V0 curve
+  FLOAT  v1_a;                  ! Total arclength V1 curve
+  
+  FLOAT  u0_v;                  ! Current parameter value U0 curve
+  FLOAT  u1_v;                  ! Current parameter value U1 curve
+  FLOAT  v0_u;                  ! Current parameter value V0 curve
+  FLOAT  v1_u;                  ! Current parameter value V1 curve
+  
+  VECTOR u0_p;                  ! Current point on the U0 curve
+  VECTOR u1_p;                  ! Current point on the U1 curve
+  VECTOR v0_p;                  ! Current point on the V0 curve
+  VECTOR v1_p;                  ! Current point on the V1 curve
+
+  VECTOR v0_tu;                 ! Tangent (dr/du) for the V0 curve
+  VECTOR v1_tu;                 ! Tangent (dr/du) for the V1 curve
+  VECTOR u0_tv;                 ! Tangent (dr/dv) for the U0 curve
+  VECTOR u1_tv;                 ! Tangent (dr/dv) for the U1 curve
+
+  VECTOR u0v0_p;                ! Corner point U=0 V=0
+  VECTOR u0v1_p;                ! Corner point U=0 V=1
+  VECTOR u1v0_p;                ! Corner point U=1 V=0
+  VECTOR u1v1_p;                ! Corner point U=1 V=1
+
+  FLOAT  u_temp;		! Temporary u-value
+  FLOAT  v_temp;		! Temporary v-value
+
+  INT 	 i;			! Loop index
+  INT    j;			! Loop index
+  INT    n_u;			! Number of u parameters
+  INT    n_v;			! number of v parameters
+
+  CONSTANT INT language= 1;     ! 1: English Eq. 2: Swedish
+
+  STRING   ermess1*40;          ! Error message
+  STRING   ermess2*40;          ! Error message
+  STRING   ermess3*40;          ! Error message
+  STRING   ermess4*40;          ! Error message
+  STRING   ermess5*40;          ! Error message
+  STRING   ermess6*40;          ! Error message
+
+                                ! For GETCURH:
+  INT      u0_ns_geo;           ! No geometry segments
+  INT      u1_ns_geo;           ! No geometry segments
+  INT      v0_ns_geo;           ! No geometry segments
+  INT      v1_ns_geo;           ! No geometry segments
+  INT      ns_gra;              ! No graphical segments
+  INT      fnt;                 ! Font typ,subtyp;
+  FLOAT    sl;                  ! Dash length
+
+  VECTOR   xyz;      		! Coordinates
+  VECTOR   drdu;     		! First derivative in U direction
+  VECTOR   drdv;     		! First derivative in V direction
+
+  VECTOR   pts(120);		! Vector of points
+  VECTOR   t_ptu(120);		! Vector of tangents with respect to u
+  VECTOR   t_ptv(120);		! Vector of tangents with respect to v
+  
+  INT      u_val;		! Show u-iso, yes or no
+  INT      v_val;		! Show v-iso, yes or no
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+
+IF   language = 1 THEN           	! English strings
+  ermess1:="Curves not "+        	!
+   "closed Check directions!";   	!
+  ermess2:="Case not yet "+      	!
+   "implemented";                	!
+  ermess3:="Tolerance not "+    	!
+   "between 0.0001 and 1.0";     	!
+  ermess4:="Check steplegth in u "+	!
+   "direction!";			!
+  ermess5:="Check steplegth in v "+	!
+   "direction!";			!
+  ermess6:="Steplength must be positiv";!
+ELIF language = 2 THEN           	! Swedish strings
+  ermess1:="Ingen sluten kurva"+ 	!
+   " Kontrollera riktningar!";  	!
+  ermess2:="Fallet ännu ej "+    	!
+   "implementerat";              	!
+  ermess3:="Tolerans inte "+     	!
+   "mellan 0.0001 och 1.0";      	!
+  ermess4:="Kolla steglängden i u-led";	!
+  ermess5:="Kolla steglängden i v-led";	!
+  ermess6:="Steglängden måste "+	!
+   "vara positiv";			!
+ELSE                             	!
+  EXIT("ma_surexdf: " +          	!
+       "Language error");        	!
+       
+ENDIF;                           	! Check icase
+  IF  icase = 1 THEN             	!
+    ;                            	!
+  ELSE                           	!
+     EXIT("coonisov0"+          	!
+     ermess2+STR(icase,-1,0));   	!
+  ENDIF;                         	!
+  
+  IF ctol > 0.0001 AND ctol < 1.0 THEN  ! Check ctol, tolerance
+     ;					!
+  ELSE					!
+     EXIT("coonisov0"+ ermess3);	!
+  ENDIF;				!
+  
+  IF del_u > 0.0 AND del_v > 0.0 THEN	! Check steplengths
+  					!
+    IF frac(1/del_u) = 0.0 THEN		! u direction
+       ;				!
+    ELSE				!
+       EXIT("coonisov0  "+ ermess4);	!
+    ENDIF;				!
+
+    IF frac(1/del_v) = 0.0 THEN		! v direction
+       ;				!
+    ELSE				!
+       EXIT("coonisov0  "+ ermess5);	!
+    ENDIF;				!
+  ELSE					!	
+    EXIT("coonisov0  "+ ermess6);	!
+  ENDIF;    				!
+
+! +++
+! 2. Calculate corner points
+! ---
+
+  GETCURH( u0_id,                        ! Retrieve no of u0_id segments
+   fnt,sl,u0_ns_geo,ns_gra);             !
+  GETCURH( u1_id,                        ! Retrieve no of u1_id segments
+   fnt,sl,u1_ns_geo,ns_gra);             !
+  GETCURH( v0_id,                        ! Retrieve no of v0_id segments
+   fnt,sl,v0_ns_geo,ns_gra);             !
+  GETCURH( v1_id,                        ! Retrieve no of v1_id segments
+   fnt,sl,v1_ns_geo,ns_gra);             !
+
+  u0v0_p := ON(u0_id,0.0);               ! Corner point U=0 V=0
+  u0v1_p := ON(v1_id,0.0);               ! Corner point U=0 V=1
+  u1v1_p := ON(v1_id,v1_ns_geo);         ! Corner point U=1 V=1
+  u1v0_p := ON(u1_id,0.0);               ! Corner point U=1 V=0
+
+  IF VECL( ON(v0_id, 0.0      )-          ! Check corner u0v0 
+               u0v0_p      ) > ctol THEN  !
+    EXIT("coonisov0 "+ermess1);          
+  ENDIF;                                 !
+  IF VECL( ON(u0_id,u0_ns_geo )-         ! Check corner u0v1 
+              u0v1_p      ) > ctol THEN  !
+    EXIT("coonisov0 "+ermess1);          !
+  ENDIF;                                 !
+  IF VECL( ON(u1_id,u1_ns_geo )-         ! Check corner u1v1 
+              u1v1_p      ) > ctol THEN  !
+    EXIT("coonisov0 "+ermess1);          !
+  ENDIF;                                 !
+  IF VECL( ON(v0_id,v0_ns_geo )-         ! Check corner u1v0 
+              u1v0_p      ) > ctol THEN  !
+    EXIT("coonisov0 "+ermess1);          !
+  ENDIF;                                 !
+
+ 
+! +++
+! 3. Calculate coordinates and derivatives
+! ---
+
+  n_u:=trunc(1/del_u);
+  n_v:=trunc(1/del_v);
+
+  u0_a := ARCL(u0_id);               	! Total arclength U0 curve
+  u1_a := ARCL(u1_id);               	! Total arclength U1 curve
+  v0_a := ARCL(v0_id);                	! Total arclength V0 curve
+  v1_a := ARCL(v1_id);                  ! Total arclength V1 curve
+
+
+! +++
+! 4. Graphics
+! ---
+
+    
+  IF graphic=1 OR graphic=3 THEN
+    u_val:=0;			! Show u_iso-curves
+  ELSE
+    u_val:=1;			! Don't show
+  ENDIF;
+  
+  IF graphic=2 OR graphic=3 THEN
+    v_val:=0;			! Show v-iso-curves
+  ELSE 
+    v_val:=1;			! Don't show
+  ENDIF;
+
+
+! +++
+! 5. First loop, draw u-isoparameters 
+! ---
+
+  FOR i :=0 TO n_u DO			! Loop over u parameters
+  
+    u_temp:=i*del_u;
+ 
+    FOR j :=0 TO n_v DO			! Loop over v parameters
+  
+      v_temp:=j*del_v;
+
+      u0_v := INV_ARCL(u0_id,v_temp*u0_a);   ! Current parameter value U0 curve
+      u1_v := INV_ARCL(u1_id,v_temp*u1_a);   ! Current parameter value U1 curve
+      v0_u := INV_ARCL(v0_id,u_temp*v0_a);   ! Current parameter value V0 curve
+      v1_u := INV_ARCL(v1_id,u_temp*v1_a);   ! Current parameter value V1 curve
+
+      u0_p := ON(u0_id,u0_v);                ! Current point on the U0 curve
+      u1_p := ON(u1_id,u1_v);                ! Current point on the U1 curve
+      v0_p := ON(v0_id,v0_u);                ! Current point on the V0 curve
+      v1_p := ON(v1_id,v1_u);                ! Current point on the V1 curve
+
+      v0_tu := TANG(v0_id,v0_u);             ! Tangent (dr/du) for the V0 curve
+      v1_tu := TANG(v1_id,v1_u);             ! Tangent (dr/du) for the V1 curve
+      u0_tv := TANG(u0_id,u0_v);             ! Tangent (dr/dv) for the U0 curve
+      u1_tv := TANG(u1_id,u1_v);             ! Tangent (dr/dv) for the U1 curve
+
+      xyz := (1.0-u_temp)*u0_p + u_temp  *u1_p +    
+                 (1.0-v_temp)*v0_p + v_temp  *v1_p -  
+        ((1.0-u_temp)*u0v0_p+u_temp*u1v0_p)*(1.0-v_temp) - 
+        ((1.0-u_temp)*u0v1_p+u_temp*u1v1_p)*v_temp;      
+
+      drdu := - u0_p + u1_p + (1.0-v_temp)*v0_tu + v_temp*v1_tu  
+         + (1.0-v_temp)*(u1v0_p-u0v0_p) - v_temp*(u1v1_p-u0v1_p);
+
+      drdv := - v0_p + v1_p + (1.0-u_temp)*u0_tv + u_temp*u1_tv  
+         + (1.0-u_temp)*(u0v1_p-u0v0_p) + u_temp*(u1v1_p-u1v0_p);
+
+
+      pts(j+1):=xyz;			! Vector of points
+      t_ptu(j+1):=drdu;			! Tangent vector with respect to u
+      t_ptv(j+1):=drdv;			! Tangent vector with respect to v
+  
+    ENDFOR;
+  
+    CUR_SPLARR(#39, "FREE", j+1, pts:PEN=3, LEVEL=2, BLANK=u_val);	! Draw u-iso
+  
+  ENDFOR;
+  
+  
+! +++
+! 5. Second loop, draw v_isoparameters
+! ---
+
+  FOR i :=0 TO n_v DO			! Loop over v parameters
+  
+    v_temp:=i*del_v;
+ 
+    FOR j :=0 TO n_u DO			! Loop over u parameters
+  
+      u_temp:=j*del_u;
+
+      u0_v := INV_ARCL(u0_id,v_temp*u0_a);   ! Current parameter value U0 curve
+      u1_v := INV_ARCL(u1_id,v_temp*u1_a);   ! Current parameter value U1 curve
+      v0_u := INV_ARCL(v0_id,u_temp*v0_a);   ! Current parameter value V0 curve
+      v1_u := INV_ARCL(v1_id,u_temp*v1_a);   ! Current parameter value V1 curve
+
+      u0_p := ON(u0_id,u0_v);                ! Current point on the U0 curve
+      u1_p := ON(u1_id,u1_v);                ! Current point on the U1 curve
+      v0_p := ON(v0_id,v0_u);                ! Current point on the V0 curve
+      v1_p := ON(v1_id,v1_u);                ! Current point on the V1 curve
+
+      v0_tu := TANG(v0_id,v0_u);             ! Tangent (dr/du) for the V0 curve
+      v1_tu := TANG(v1_id,v1_u);             ! Tangent (dr/du) for the V1 curve
+      u0_tv := TANG(u0_id,u0_v);             ! Tangent (dr/dv) for the U0 curve
+      u1_tv := TANG(u1_id,u1_v);             ! Tangent (dr/dv) for the U1 curve
+
+
+      xyz := (1.0-u_temp)*u0_p + u_temp  *u1_p +    
+                 (1.0-v_temp)*v0_p + v_temp  *v1_p -  
+        ((1.0-u_temp)*u0v0_p+u_temp*u1v0_p)*(1.0-v_temp) - 
+        ((1.0-u_temp)*u0v1_p+u_temp*u1v1_p)*v_temp;      
+
+      drdu := - u0_p + u1_p + (1.0-v_temp)*v0_tu + v_temp*v1_tu  
+         + (1.0-v_temp)*(u1v0_p-u0v0_p) - v_temp*(u1v1_p-u0v1_p);
+
+      drdv := - v0_p + v1_p + (1.0-u_temp)*u0_tv + u_temp*u1_tv  
+         + (1.0-u_temp)*(u0v1_p-u0v0_p) + u_temp*(u1v1_p-u1v0_p);
+
+
+      pts(j+1):=xyz;			! Vector of points
+      t_ptu(j+1):=drdu;			! Tangent vector with respect to u
+      t_ptv(j+1):=drdv;			! Tangent vector with respect to v
+  
+      ENDFOR;
+  
+    CUR_SPLARR(#49, "FREE", j+1, pts:PEN=4, LEVEL=2, BLANK=v_val);	! Draw v-iso
+  
+  ENDFOR;
+
+ENDMODULE

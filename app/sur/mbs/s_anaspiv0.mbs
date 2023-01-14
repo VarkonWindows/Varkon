@@ -1,0 +1,349 @@
+! ******************* s_anaspiv0 ******************************
+! +++ 
+!
+! The function analyses input data for one strip to LFT_SUR surface
+!
+! P-value curve cannot be defined. Will be implemented in the future ..
+! --- 
+!
+!
+! Revision history
+! _______________ 
+!
+! 1996-11-04 Gunnar Liden
+!
+! ************************************************************
+
+!sdesce Show all spine planes for one strip to a LFT_SUR surface
+!sdescs Visa alla plan till en strip av en LFT_SUR yta
+
+GLOBAL GEOMETRY MODULE s_anaspiv0 (
+REF  spine_id         >"@t8 Select spine";
+REF  lim1_id          >"@t8 Select limit   curve 1 (#0 = Not defined)";
+REF  tan1_id          >"@t8 Select tangent curve 1 (#0 = Not defined)";
+STRING fmid*1 := "M"  >"Eq. M: Mid R*3 curve  Eq. P: Mid P value curve";
+REF  mid_id   := #0   >"@t8 Select mid curve (#0 = Not defined)";
+REF  lim2_id          >"@t8 Select limit   curve 2 (#0 = Not defined)";
+REF  tan2_id          >"@t8 Select tangent curve 2 (#0 = Not defined)";
+INT  graphic  := 1    >"Eq. 1: Show planes Eq. 2: Show more");
+
+
+! +++
+! Internal variables:
+
+  REF      splan_id;            ! Referens to start spine plane
+  REF      eplan_id;            ! Referens to end   spine plane
+  FLOAT    splan_uv;            ! Parameter value for start plane intersect
+  FLOAT    eplan_uv;            ! Parameter value for end   plane intersect  
+! ---
+
+  INT      i_cur;               ! Loop index curve
+  REF      cur_id;              ! Current curve
+  INT      i_poi;               ! Loop index curve point
+  FLOAT    u_spine;             ! Parameter for closest point
+  VECTOR   c_poi;               ! Current point on the curve
+  VECTOR   s_poi;               ! Closest point on the spine
+  VECTOR   s_tan;               ! Spine tangent for s_tan
+
+  VECTOR   s_poi_p;             ! Previous point on the spine 
+  FLOAT    dist;                ! Distance
+
+  REF      csys_id;             ! Reference to coordinate system
+
+  FLOAT    b_size;              ! Size of B-plane
+
+  INT      n_plane;             ! Number of generated planes
+
+  INT      n_curint;            ! Number of intersect points
+  VECTOR   splan_r3;            ! Start plane intersect point
+  VECTOR   eplan_r3;            ! End   plane intersect point
+
+  FLOAT    end_tol;             ! Tolerance for start and points spine
+  VECTOR   spine_tan;           ! Spine tangent
+    
+  INT      i_u;                 ! Loop index U value
+  INT      n_u;                 ! Total number of U values
+  FLOAT    all_u(800);          ! All U values
+  FLOAT    all_u_o(800);        ! All U values ordered
+
+  INT      n_u_o;               ! Number of ordered U values
+  FLOAT    min_u;               ! Minimum U value
+  INT      i_min;               ! Address in all_u for min value
+
+                                ! For GETCURH:
+  INT      ns_geo;              ! No of geometry segments
+  INT      ns_gra;              ! No of graphical segments
+  INT      fnt;                 ! Font typ,subtyp;
+  FLOAT    sl;                  ! Dash length
+
+
+BEGINMODULE
+
+! +++ 
+! Algorithm
+! _________ 
+! --- 
+
+  b_size := 0.1*ARCL(spine_id);
+
+  n_plane := 0;
+
+  splan_id := #0;
+  eplan_id := #0;
+  splan_uv := -1.23456789;
+  eplan_uv := -1.23456789;
+
+  end_tol  := 0.01;
+      
+  n_u := 0;
+  FOR i_u := 1 TO 800 DO
+    all_u(i_u)   := -1.23456789;
+    all_u_o(i_u) := -1.23456789;
+  ENDFOR;
+
+! +++ 
+! Start loop all curves spine_id, lim1_id, ...
+! --- 
+
+  FOR  i_cur := 1 TO 6 DO 
+
+! +++
+!   Goto notdef if curve not is defined (= #0)
+! ---
+  IF     i_cur = 1 THEN 
+    IF   spine_id = #0 THEN
+      EXIT("anaspiv0 Spine must be defined");
+    ELSE  
+    cur_id := spine_id;
+    ENDIF;
+  ELIF   i_cur = 2 THEN 
+    IF    lim1_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      cur_id := lim1_id;
+    ENDIF;
+  ELIF   i_cur = 3 THEN 
+    IF    tan1_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      cur_id := tan1_id;
+    ENDIF;
+  ELIF   i_cur = 4 AND fmid = "M" THEN 
+    IF     mid_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      cur_id :=  mid_id;
+    ENDIF;
+  ELIF   i_cur = 4 AND fmid = "P" THEN 
+    IF     mid_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      EXIT("s_anaspiv0 P value curve not yet implemented");
+      cur_id :=  mid_id;
+    ENDIF;
+  ELIF   i_cur = 5 THEN 
+    IF    lim2_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      cur_id := lim2_id;
+    ENDIF;
+  ELIF   i_cur = 6 THEN 
+    IF    tan2_id = #0 THEN
+      GOTO notdef;
+    ELSE  
+      cur_id := tan2_id;
+    ENDIF;
+  ENDIF;
+
+! +++
+!   Retrieve no of segments for the current curve
+! ---
+
+    GETCURH( cur_id, fnt,sl,ns_geo,ns_gra);
+
+! +++
+!   Calculate parameter values for start of surface splan_uv 
+!   and end of surface eplan_uv
+! ---
+
+    IF i_cur = 1 THEN
+      GOTO  noparam;
+    ENDIF;
+    n_curint := N_INTERSECT(splan_id, cur_id, 1);
+    IF  n_curint = 0 THEN
+      LST_INI("anaspiv0 ERROR ERROR ERROR ERROR");
+      LST_LIN("Start spine plane "+RSTR(splan_id)+" do not intersect curve "+
+               RSTR(cur_id));
+      LST_EXI();
+      GOTO nxtcur;
+    ENDIF;
+    splan_r3 := INTERSECT(splan_id, cur_id, 1);
+    splan_uv := INV_ON(cur_id, splan_r3,1);
+
+    n_curint := N_INTERSECT(eplan_id, cur_id, 1);
+    IF  n_curint = 0 THEN
+      LST_INI("anaspiv0 ERROR ERROR ERROR ERROR");
+      LST_LIN("End   spine plane "+RSTR(eplan_id)+" do not intersect curve "+
+               RSTR(cur_id));
+      LST_EXI();
+      GOTO nxtcur;
+    ENDIF;
+    eplan_r3 := INTERSECT(eplan_id, cur_id, 1);
+    eplan_uv := INV_ON(cur_id, eplan_r3,1);
+
+
+noparam:; ! Label: First curve which is the spine
+
+! +++
+!   Start loop all points in the curve              
+! ---
+
+    FOR  i_poi := 1 TO ns_geo + 1 DO
+
+! +++
+!     Current point c_poi on the curve 
+!     Goto nxtpoi if parameter value not is between splan_uv and eplan_uv
+! ---
+
+      IF  i_cur  >  1  THEN
+        IF   i_poi-1.0 >= splan_uv AND 
+             i_poi-1.0 <= eplan_uv      THEN
+         ; ! Continue
+        ELSE
+          GOTO nxtpoi;
+        ENDIF;
+      ENDIF;
+
+      IF    i_cur = 1 AND i_poi = 1 THEN
+        spine_tan := EVAL(cur_id,"DRDT", VEC(0,0,0) );
+        u_spine     := end_tol/VECL(spine_tan);
+        c_poi     := ON ( cur_id, u_spine );
+      ELIF  i_cur = 1 AND i_poi = ns_geo+1 THEN
+        spine_tan := EVAL(cur_id,"DRDT", VEC(ns_geo,0,0) );
+        u_spine     := ns_geo - end_tol/VECL(spine_tan);
+        c_poi     := ON ( cur_id, u_spine );        
+      ELSE
+        c_poi := ON(cur_id, i_poi-1.0);
+      ENDIF;
+
+      IF   graphic = 2 THEN
+        POI_FREE(#10, c_poi :PEN=2);
+      ENDIF;
+      
+! +++
+!     Closest point on the spine
+! ---
+
+      u_spine := INV_ON(spine_id, c_poi, 1 );
+
+! +++
+!     Create plane for the closest point. This plane will be 
+!     a patch boundary when the LFT_SUR surface is created            
+! ---
+
+      s_poi :=   ON(spine_id, u_spine);
+      s_tan := TANG(spine_id, u_spine);
+
+      n_u := n_u + 1;
+      IF  n_u > 800 THEN
+        EXIT("s_anaspiv0 More than 800 patch boundaries");
+      ENDIF;
+      all_u(n_u) := u_spine;
+
+      IF  i_cur = 1 THEN
+        CSYS_3P(#4, "SPINE", s_poi, s_poi+s_tan);
+!  Gamla AIX versionen CSYS_3P(#4, "SPINE", s_poi, s_poi+s_tan,c_poi);
+        csys_id := GLOBAL_REF(#4);
+      ELSE
+        CSYS_3P(#3, "SPINE", s_poi, s_poi+s_tan,c_poi);
+        csys_id := GLOBAL_REF(#3);
+      ENDIF;
+
+      MODE_LOCAL(csys_id);
+      B_PLANE( #1,
+             VEC( 0.0, -b_size, -b_size),
+             VEC( 0.0,  b_size, -b_size),
+             VEC( 0.0,  b_size,  b_size),
+             VEC( 0.0, -b_size,  b_size));
+      B_PLANE( #2,
+             VEC( 0.0, -b_size, -b_size),
+             VEC( 0.0, -b_size,  b_size),
+             VEC( 0.0,  b_size,  b_size),
+             VEC( 0.0,  b_size, -b_size));
+
+! +++
+!     Register start and end spine plane (id's splan_id and eplan_id)
+! ---
+      n_plane := n_plane + 1;
+      IF   i_cur = 1 AND i_poi = 1 THEN
+        splan_id:= GLOBAL_REF(REFC(1,n_plane));
+      ENDIF;
+      IF   i_cur = 1 AND i_poi = ns_geo + 1 THEN
+        eplan_id:= GLOBAL_REF(REFC(1,n_plane));
+      ENDIF;
+
+      DEL(csys_id);
+
+! +++
+nxtpoi:; ! Label: Point from curve not between start and end spine plane
+! ---
+    ENDFOR;
+! +++
+!   End loop points on curve
+! ---
+
+nxtcur:; ! Label: No intersect between start or en spine plane and curve
+
+! +++
+notdef:; ! Label: Curve is not defined
+! ---
+
+  ENDFOR;
+
+! +++
+! End loop curves spine_id, ....
+! ---
+
+! +++ 
+! Order the U values
+! --- 
+
+  n_u_o :=      0;
+  i_min := -12345;
+
+nxtu:; ! Label next U value
+
+  min_u := 50000.0;
+
+  FOR  i_u := 1 TO n_u DO
+    IF  all_u(i_u) < min_u THEN
+      min_u := all_u(i_u);
+      i_min := i_u;
+    ENDIF;
+  ENDFOR;
+
+  n_u_o := n_u_o + 1;
+  all_u_o(n_u_o) := min_u;
+  all_u(i_min)   := 50000.0;
+  IF  n_u_o < n_u THEN
+    GOTO nxtu;
+  ENDIF;
+
+! +++ 
+! Result to X window
+! --- 
+
+  LST_INI("Analysis of spine plane (s_anaspiv0)");
+  FOR  i_u := 2 TO n_u DO
+  s_poi_p   := ON(spine_id,all_u_o(i_u-1));
+  s_poi     := ON(spine_id,all_u_o(i_u  ));
+  dist    := VECL(s_poi-s_poi_p);
+  IF  i_u = 2 THEN
+    LST_LIN(STR(i_u,3,0)+" U= "+STR(all_u_o(i_u-1),8,6));
+  ENDIF;
+  LST_LIN(STR(i_u,3,0)+" U= "+STR(all_u_o(i_u),8,6)+
+           " Distance= "+STR(dist,20,10));
+  ENDFOR;
+  LST_EXI();
+
+ENDMODULE

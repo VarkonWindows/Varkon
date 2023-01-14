@@ -1,0 +1,268 @@
+! ***************** s_adeve2v0 ****************************
+!
+! +++
+! Put data in array for the surface creation
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-15 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Put data in array for the developed surface creation
+!sdescs Stoppa data i array för skapandet av utbredda ytan
+
+GLOBAL GEOMETRY MODULE s_adeve2v0 (
+
+    INT    sur_no;              ! Surface number 1, 2, 3, 4
+    INT    iu_mid;              ! Mid U point number  
+    INT    iv_mid;              ! Mid V point number
+    VECTOR p_uv_start;          ! Start UV point
+    FLOAT  u_delta;             ! Delta U with sign
+    FLOAT  v_delta;             ! Delta V with sign
+    VECTOR p1_dev_start;        ! Start development point 1
+    VECTOR p2_dev_start;        ! Start development point 2
+    VECTOR utan_dev_start;      ! Start development U tangent
+    VECTOR vtan_dev_start;      ! Start development V tangent
+    VECTOR p1_dev_end;          ! End   development point 1
+    VECTOR p2_dev_end;          ! End   development point 2
+    VECTOR utan_dev_end;        ! End   development U tangent
+    VECTOR vtan_dev_end;        ! End   development V tangent
+VAR VECTOR poi(40,40);          ! Surface points
+VAR VECTOR tanu(40,40);         ! Surface U tangents
+    INT    idum);
+
+! Internal variables
+
+  INT    iu_p1_dev_start;        ! Adress to U patch corner for p1
+  INT    iv_p1_dev_start;        ! Adress to V patch corner for p1
+  FLOAT  du_p1_dev_start;        ! Decimal part of adress to U patch corner for p1
+  FLOAT  dv_p1_dev_start;        ! Decimal part of adress to V patch corner for p1
+  INT    iu_p2_dev_start;        ! Adress to U patch corner for p1
+  INT    iv_p2_dev_start;        ! Adress to V patch corner for p1
+  FLOAT  du_p2_dev_start;        ! Decimal part of adress to U patch corner for p1
+  FLOAT  dv_p2_dev_start;        ! Decimal part of adress to V patch corner for p1
+  INT    iu_p1_dev_end;          ! Adress to U patch corner for p1
+  INT    iv_p1_dev_end;          ! Adress to V patch corner for p1
+  FLOAT  du_p1_dev_end;          ! Decimal part of adress to U patch corner for p1
+  FLOAT  dv_p1_dev_end;          ! Decimal part of adress to V patch corner for p1
+  INT    iu_p2_dev_end;          ! Adress to U patch corner for p1
+  INT    iv_p2_dev_end;          ! Adress to V patch corner for p1
+  FLOAT  du_p2_dev_end;          ! Decimal part of adress to U patch corner for p1
+  FLOAT  dv_p2_dev_end;          ! Decimal part of adress to V patch corner for p1
+
+  INT    iu_add;                 ! Addition in adress for current surface
+  INT    iv_add;                 ! Addition in adress for current surface
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks              
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF  DEBUG = 2  THEN
+  s:= INPMT("s_adeve2v0 p_uv_start "+STR(p_uv_start.x,10,4)+" "
+                                    +STR(p_uv_start.y,10,4),"y",1);
+  IF  s <> "y" THEN
+    EXIT("s_adeve2v0 User interruption");
+  ENDIF;
+  ENDIF;
+
+  iu_p1_dev_start := -12345;   
+  iv_p1_dev_start := -12345;  
+  du_p1_dev_start := -0.12345; 
+  dv_p1_dev_start := -0.12345;
+  iu_p2_dev_start := -12345; 
+  iv_p2_dev_start := -12345;
+  du_p2_dev_start := -0.12345; 
+  dv_p2_dev_start := -0.12345;
+  iu_p1_dev_end := -12345;   
+  iv_p1_dev_end := -12345;  
+  du_p1_dev_end := -0.12345;  
+  dv_p1_dev_end := -0.12345; 
+  iu_p2_dev_end := -12345;  
+  iv_p2_dev_end := -12345; 
+  du_p2_dev_end := -0.12345;
+  dv_p2_dev_end := -0.12345;
+  iu_add        := -12345; 
+  iv_add        := -12345;
+
+! +++
+! 2. Address addition for the different surfaces 
+! ---
+
+  IF       sur_no = 1 THEN
+    iu_add := 0;
+    iv_add := 0;
+  ELIF     sur_no = 2 THEN
+    iu_add := iu_mid;
+    iv_add := 0;
+  ELIF     sur_no = 3 THEN
+    iu_add := 0;
+    iv_add := iv_mid;
+  ELIF     sur_no = 4 THEN
+    iu_add := iu_mid;
+    iv_add := iv_mid;
+  ENDIF;
+
+
+! +++
+! 3. Determine if corner points are on original U,V lines
+! ---
+
+  iu_p1_dev_start := TRUNC(p_uv_start.x+        0.000001);
+  iv_p1_dev_start := TRUNC(p_uv_start.y+        0.000001);
+  du_p1_dev_start := p_uv_start.x - iu_p1_dev_start;
+  dv_p1_dev_start := p_uv_start.y - iv_p1_dev_start;
+  IF  ABS(du_p1_dev_start) < 0.0001 AND  ABS(dv_p1_dev_start) < 0.0001 THEN
+    iu_p1_dev_start := iu_p1_dev_start + 1 + iu_add;
+    iv_p1_dev_start := iv_p1_dev_start + 1 + iv_add;
+  ELSE
+    iu_p1_dev_start := -12345;
+    iv_p1_dev_start := -12345;
+  ENDIF;
+
+
+  iu_p2_dev_start := TRUNC(p_uv_start.x+u_delta+0.000001);
+  iv_p2_dev_start := TRUNC(p_uv_start.y+        0.000001);
+  du_p2_dev_start := p_uv_start.x+u_delta - iu_p2_dev_start;
+  dv_p2_dev_start := p_uv_start.y         - iv_p2_dev_start;
+  IF  ABS(du_p2_dev_start) < 0.0001 AND  ABS(dv_p2_dev_start) < 0.0001 THEN
+    iu_p2_dev_start := iu_p2_dev_start + 1 + iu_add;
+    iv_p2_dev_start := iv_p2_dev_start + 1 + iv_add;
+  ELSE
+    iu_p2_dev_start := -12345;
+    iv_p2_dev_start := -12345;
+  ENDIF;
+
+
+  iu_p1_dev_end   := TRUNC(p_uv_start.x+        0.000001);
+  iv_p1_dev_end   := TRUNC(p_uv_start.y+v_delta+0.000001);
+  du_p1_dev_end   := p_uv_start.x         - iu_p1_dev_end;   
+  dv_p1_dev_end   := p_uv_start.y+v_delta - iv_p1_dev_end;   
+  IF  ABS(du_p1_dev_end  ) < 0.0001 AND  ABS(dv_p1_dev_end  ) < 0.0001 THEN
+    iu_p1_dev_end   := iu_p1_dev_end   + 1 + iu_add;
+    iv_p1_dev_end   := iv_p1_dev_end   + 1 + iv_add;
+  ELSE
+    iu_p1_dev_end   := -12345;
+    iv_p1_dev_end   := -12345;
+  ENDIF;
+
+  iu_p2_dev_end   := TRUNC(p_uv_start.x+u_delta+0.000001);
+  iv_p2_dev_end   := TRUNC(p_uv_start.y+v_delta+0.000001);
+  du_p2_dev_end   := p_uv_start.x+u_delta - iu_p2_dev_end;   
+  dv_p2_dev_end   := p_uv_start.y+v_delta - iv_p2_dev_end;   
+  IF  ABS(du_p2_dev_end  ) < 0.0001 AND  ABS(dv_p2_dev_end  ) < 0.0001 THEN
+    iu_p2_dev_end   := iu_p2_dev_end   + 1 + iu_add;
+    iv_p2_dev_end   := iv_p2_dev_end   + 1 + iv_add;
+  ELSE
+    iu_p2_dev_end   := -12345;
+    iv_p2_dev_end   := -12345;
+  ENDIF;
+
+
+
+! +++
+! 4. Output points to arrays
+! ---
+
+  IF  iu_p1_dev_start > 0 THEN
+    poi(iu_p1_dev_start,iv_p1_dev_start) :=  p1_dev_start;
+    IF  DEBUG = 3  THEN
+    POI_FREE(#101, poi(iu_p1_dev_start,iv_p1_dev_start):PEN=1);
+    s:= INPMT("s_adeve2v0 uv1 start  "+STR(p_uv_start.x        ,10,4)+" "
+                                      +STR(p_uv_start.y        ,10,4)
+      +" iu "+STR(iu_p1_dev_start,4,0)+" iv "+STR(iv_p1_dev_start,4,0),"y",1);
+    DEL(GLOBAL_REF(#101));
+    IF  s <> "y" THEN
+      EXIT("s_adeve2v0 User interruption");
+    ENDIF;
+    ENDIF;
+  ENDIF;
+
+  IF  iu_p2_dev_start > 0 THEN
+    poi(iu_p2_dev_start,iv_p2_dev_start) :=  p2_dev_start;
+    IF  DEBUG = 3  THEN
+    POI_FREE(#102, poi(iu_p2_dev_start,iv_p2_dev_start):PEN=2);
+    s:= INPMT("s_adeve2v0 uv2 start  "+STR(p_uv_start.x+u_delta,10,4)+" "
+                                      +STR(p_uv_start.y        ,10,4)
+      +" iu "+STR(iu_p2_dev_start,4,0)+" iv "+STR(iv_p2_dev_start,4,0),"y",1);
+    DEL(GLOBAL_REF(#102));
+    IF  s <> "y" THEN
+      EXIT("s_adeve2v0 User interruption");
+    ENDIF;
+    ENDIF;
+  ENDIF;
+  IF  iu_p1_dev_end   > 0 THEN
+    poi(iu_p1_dev_end  ,iv_p1_dev_end  ) :=  p1_dev_end;
+    IF  DEBUG = 3  THEN
+    POI_FREE(#103, poi(iu_p1_dev_end  ,iv_p1_dev_end  ):PEN=3);
+    s:= INPMT("s_adeve2v0 uv1 end    "+STR(p_uv_start.x        ,10,4)+" "
+                                      +STR(p_uv_start.y+v_delta,10,4)
+      +" iu "+STR(iu_p1_dev_end  ,4,0)+" iv "+STR(iv_p1_dev_end  ,4,0),"y",1);
+    DEL(GLOBAL_REF(#103));
+    IF  s <> "y" THEN
+      EXIT("s_adeve2v0 User interruption");
+    ENDIF;
+    ENDIF;
+  ENDIF;
+  IF  iu_p2_dev_end   > 0 THEN
+    poi(iu_p2_dev_end  ,iv_p2_dev_end  ) :=  p2_dev_end;
+    IF  DEBUG = 3  THEN
+    POI_FREE(#104, poi(iu_p2_dev_end  ,iv_p2_dev_end  ):PEN=4);
+    s:= INPMT("s_adeve2v0 uv2 end    "+STR(p_uv_start.x+u_delta,10,4)+" "
+                                      +STR(p_uv_start.y+v_delta,10,4)
+      +" iu "+STR(iu_p2_dev_end  ,4,0)+" iv "+STR(iv_p2_dev_end  ,4,0),"y",1);
+    DEL(GLOBAL_REF(#104));
+    IF  s <> "y" THEN
+      EXIT("s_adeve2v0 User interruption");
+    ENDIF;
+    ENDIF;
+  ENDIF;
+
+  IF  DEBUG = 3  THEN
+  s:= INPMT("s_adeve2v0 p_uv_start "+STR(p_uv_start.x, 6,3)+" "
+                                    +STR(p_uv_start.y, 6,3)+
+             " u_delta "+STR(u_delta,5,3)+" v_delta "+STR(v_delta,5,3),"y",1);
+  IF  s <> "y" THEN
+    EXIT("s_adeve2v0 User interruption");
+  ENDIF;
+  ENDIF;
+
+  
+  IF  DEBUG  =  1  THEN
+  LST_INI("s_adeve2v0 Debug printout");
+  LST_LIN("uv1 start"+STR(p_uv_start.x        ,10,4)+" "+STR(p_uv_start.y        ,10,4));
+  LST_LIN("uv2 start"+STR(p_uv_start.x        ,10,4)+" "+STR(p_uv_start.y+v_delta,10,4));
+  LST_LIN("uv1 end  "+STR(p_uv_start.x+u_delta,10,4)+" "+STR(p_uv_start.y        ,10,4));
+  LST_LIN("uv2 end  "+STR(p_uv_start.x+u_delta,10,4)+" "+STR(p_uv_start.y+v_delta,10,4));
+  LST_LIN("iu_p1_dev_start "+STR(iu_p1_dev_start,5,0)+
+         " iv_p1_dev_start "+STR(iv_p1_dev_start,5,0));
+  LST_LIN("iu_p2_dev_start "+STR(iu_p2_dev_start,5,0)+
+         " iv_p2_dev_start "+STR(iv_p2_dev_start,5,0));
+  LST_LIN("iu_p1_dev_end   "+STR(iu_p1_dev_end  ,5,0)+
+         " iv_p1_dev_end   "+STR(iv_p1_dev_end  ,5,0));
+  LST_LIN("iu_p2_dev_end   "+STR(iu_p2_dev_end  ,5,0)+
+         " iv_p2_dev_end   "+STR(iv_p2_dev_end  ,5,0));
+  LST_LIN("p1_dev_start "+STR(p1_dev_start.x,10,4)+" "+STR(p1_dev_start.y,10,4));
+  LST_LIN("p2_dev_start "+STR(p2_dev_start.x,10,4)+" "+STR(p2_dev_start.y,10,4));
+  LST_LIN("p1_dev_end   "+STR(p1_dev_end.x  ,10,4)+" "+STR(p1_dev_end.y  ,10,4));
+  LST_LIN("p2_dev_end   "+STR(p2_dev_end.x  ,10,4)+" "+STR(p2_dev_end.y  ,10,4));
+  LST_LIN("u_delta "+STR(u_delta,10,4)+" v_delta "+STR(v_delta  ,10,4));
+  LST_EXI();
+  ENDIF;
+  
+  
+ENDMODULE

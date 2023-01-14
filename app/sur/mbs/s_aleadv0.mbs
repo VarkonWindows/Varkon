@@ -1,0 +1,350 @@
+!********************** s_aleadv0  ********************************
+! +++ 
+!
+! Create isoparameter leading edge curve for a wing type surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-05-04 Gunnar Liden
+! 1997-10-07 Bug corrected, V wing profiles trail. edge added G Liden
+!
+!******************************************************************
+
+GLOBAL GEOMETRY MODULE s_aleadv0  (
+REF    s_id                        >"@t16 Surface";
+REF    c_id      := #0             >"@ @t8192 Coordinate system <CR>= Global";
+VECTOR v_lead    := VEC(0,0,1)     >"Vector criterion for leading edge";
+INT    n_add     :=   0            >"Number of added pts 0: Only patch boundaries";
+INT    graphic   :=   1            >"Graphics 0: No curve 1: Curve 2: All");
+
+!sdesce Create isoparameter leading edge curve for a wing type surface
+!sdescs Skapa isoparameter framkantskurva för yta av vingtyp
+
+
+! Internal variables
+
+  INT    DEBUG;                   ! Eq. 0: No      debug
+                                  ! Eq. 1: Full    debug
+                                  ! Eq. 2: Reduced debug
+
+  VECTOR v_l_tr;                  ! Transformed vector criterion for leading edge
+
+  STRING p_case*1;                ! Profile case: U or V profiles
+  STRING i_case*1;                ! Iso-p.  case: V or U leading edge
+
+  VECTOR s_n;                     ! Current surface normal
+
+  VECTOR s_n_us_vs;               ! Surface normal for us,vs
+  VECTOR s_n_ue_vs;               ! Surface normal for ue,vs
+  VECTOR s_n_us_ve;               ! Surface normal for us,ve
+  VECTOR s_n_ue_ve;               ! Surface normal for ue,ve
+
+  FLOAT  dot_start;               ! Start scalar product s_n*v_l_tr
+  FLOAT  dot;                     ! Current scalar product s_n*v_l_tr
+  VECTOR uv_sur;                  ! Parameter point on the surface
+  INT    l_v;                     ! Leading edge patch boundary V value
+  INT    l_u;                     ! Leading edge patch boundary U value
+  INT    l_add;                   ! Leading edge boundary V value
+  FLOAT  d_iso;                   ! Delta parameter value
+  INT    i_add;                   ! Loop index added lines
+
+  INT    npatu;                   ! Number of U patches
+  INT    npatv;                   ! Number of V patches
+  INT    i_u;                     ! Loop index U line
+  INT    i_v;                     ! Loop index V line
+
+  FLOAT  l_par;                   ! Leading edge parameter value
+  FLOAT  e_par;                   ! End parameter value for isoparameter
+  
+  INT    b_val_a;                 ! Blank value for all geometry
+  INT    b_val_c;                 ! Blank value for curve
+
+  STRING s*1;                     ! For Debug 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! Initializations and checks
+! ---
+
+  DEBUG:= 0;                            ! Change to 0, 1 or 2
+
+  IF    graphic = 0 THEN                ! Check graphics
+    b_val_c := 1;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 1 THEN                !
+    b_val_c := 0;                       !
+    b_val_a := 1;                       !
+  ELIF  graphic = 2 THEN                !
+    b_val_c := 0;                       !
+    b_val_a := 0;                       !
+  ELSE                                  !
+    EXIT("s_aleadv0  Graphic not OK");  !
+  ENDIF;                                !
+
+  IF   n_add < 0 THEN                   !
+    EXIT("s_aleadv0  n_add < 0");       !
+  ENDIF;
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_INI("Debug printout from "+       !
+          "s_aleadv0 ");                !
+  ENDIF;                                !
+
+  l_u       := 123456789;
+  l_v       := 123456789;
+
+  dot_start := -0.123456789;            !
+  dot       := -0.123456789;            !
+  p_case    := "N";                     ! 
+
+! +++
+! Retrieve number of patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);          ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);          ! Retrieve number of V patches
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Number of U patches npatu "+STR(npatu,4,0)); 
+  LST_LIN("Number of V patches npatv "+STR(npatv,4,0)); 
+  ENDIF;             
+
+! +++
+! Transformation of leading edge vector
+! ---
+
+  IF  c_id = #0  THEN
+    v_l_tr := v_lead;
+  ELSE
+    EXIT("s_aleadv0 Transf. not yet implemented");
+  ENDIF;
+
+! +++
+! Determine if U or V lines are profile sections in the wing
+! ---
+
+!QQ  s_n_us_vs := NORM(s_id,VEC( 0.0 , 0.0 ));   ! Surface normal for us,vs
+!QQ  s_n_ue_vs := NORM(s_id,VEC(npatu, 0.0 ));   ! Surface normal for ue,vs
+!QQ  s_n_us_ve := NORM(s_id,VEC( 0.0 ,npatv));   ! Surface normal for us,ve
+!QQ  s_n_ue_ve := NORM(s_id,VEC(npatu,npatv));   ! Surface normal for ue,ve
+
+!QQ  IF    s_n_us_vs*s_n_ue_vs > 0 AND s_n_us_ve*s_n_ue_ve > 0 AND
+!QQ        s_n_us_vs*s_n_us_ve < 0 AND s_n_ue_vs*s_n_ue_ve < 0     THEN
+!QQ    p_case := "U";
+!QQ  ELSE
+!QQ    p_case := "V";
+!QQ    IF  DEBUG = 1 THEN  
+!QQ    LST_LIN("The wing profiles are "+p_case+" curves in the surface"); 
+!QQ    ENDIF;
+!QQ    EXIT("s_aleadv0 Wing with V iso-profiles not yet impl.");
+!QQ  ENDIF;
+
+  PART (#4, s_awisov0  ( s_id, p_case));
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("The wing profiles are "+p_case+" curves in the surface"); 
+  ENDIF;             
+
+
+
+  IF  p_case = "U" THEN  
+! +++
+! Find leading edge patch boundary: V case
+! ---
+
+  l_v := -12345;                        ! Leading edge V value
+
+  FOR i_v:= 0 TO npatv DO               ! Start loop V lines
+
+    uv_sur := VEC(npatu/2.0,i_v);       !
+    s_n := NORM(s_id,uv_sur);           ! Current surface normal
+    IF i_v   = 0 THEN                   ! 
+      dot_start := s_n*v_l_tr;          ! Start scalar product s_n*v_l_tr
+    ELSE                                !
+      dot       := s_n*v_l_tr;          ! Current scalar product s_n*v_l_tr
+      IF    dot_start > 0 AND           !
+            dot       < 0    THEN       !
+        l_v  := i_v;                    ! Leading edge
+        dot_start := 0.0;               !
+!19971007      ELIF  dot_start > 0 AND           !
+!19971007            dot       < 0    THEN       !
+      ELIF  dot_start < 0 AND           !
+            dot       > 0    THEN       !
+        l_v  := i_v;                    ! Leading edge
+        dot_start := 0.0;               !
+      ENDIF;                            !
+    ENDIF;                              !
+
+  ENDFOR;                               ! End  loop V lines
+
+  IF  l_v <= 0 THEN                     ! 
+    EXIT("s_aleadv0  Leading edge");    !
+  ENDIF;                                !
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Leading edge patch boundary l_v "+STR(l_v,3,0)); 
+  ENDIF;             
+
+  IF  n_add = 0 THEN                    ! Only patch boundaries
+    l_par := l_v;                       !
+    e_par := npatu;                     !
+    GOTO creiso;                        !
+  ENDIF;
+
+
+
+  ELSE
+! +++
+! Find leading edge patch boundary: U case
+! ---
+
+  l_u := -12345;                        ! Leading edge U value
+
+  FOR i_u:= 0 TO npatu DO               ! Start loop U lines
+
+    uv_sur := VEC(i_u,npatv/2.0);       !
+    s_n := NORM(s_id,uv_sur);           ! Current surface normal
+    IF i_u   = 0 THEN                   ! 
+      dot_start := s_n*v_l_tr;          ! Start scalar product s_n*v_l_tr
+    ELSE                                !
+      dot       := s_n*v_l_tr;          ! Current scalar product s_n*v_l_tr
+      IF    dot_start > 0 AND           !
+            dot       < 0    THEN       !
+        l_u  := i_u;                    ! Leading edge
+        dot_start := 0.0;               !
+!19971007      ELIF  dot_start > 0 AND           !
+!19971007            dot       < 0    THEN       !
+      ELIF  dot_start < 0 AND           !
+            dot       > 0    THEN       !
+        l_u  := i_u;                    ! Leading edge
+        dot_start := 0.0;               !
+      ENDIF;                            !
+    ENDIF;                              !
+
+  ENDFOR;                               ! End  loop V lines
+
+  IF  l_u <= 0 THEN                     ! 
+    IF DEBUG = 1 THEN
+      LST_EXI();
+    ENDIF;
+    EXIT("s_aleadv0  Leading edge U case");    !
+  ENDIF;                                !
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Leading edge patch boundary l_u "+STR(l_u,3,0)); 
+  ENDIF;             
+
+  IF  n_add = 0 THEN                    ! Only patch boundaries
+    l_par := l_u;                       !
+    e_par := npatv;                     !
+    GOTO creiso;                        !
+  ENDIF;
+
+  ENDIF;
+
+! +++
+! Find leading edge with step n_add
+! ---
+
+  l_add := -12345;                      ! Leading edge V value
+  d_iso := 1.0/(n_add+1);               !
+
+  FOR i_add:= 0 TO 2*n_add+1 DO         ! Start loop added V lines
+
+    IF  p_case = "U" THEN  
+      uv_sur := VEC(npatu/2.0,            !
+               l_v-1+i_add*d_iso);      !
+    ELSE
+      uv_sur := VEC(
+               l_u-1+i_add*d_iso,npatv/2.0);      !
+    ENDIF;
+    s_n := NORM(s_id,uv_sur);           ! Current surface normal
+    IF i_add = 0 THEN                   ! 
+      dot_start := s_n*v_l_tr;          ! Start scalar product s_n*v_l_tr
+    ELSE                                !
+      dot       := s_n*v_l_tr;          ! Current scalar product s_n*v_l_tr
+      IF    dot_start > 0 AND           !
+            dot       < 0    THEN       !
+        l_add  := i_add;                ! Leading edge
+        dot_start := 0.0;               !
+!19971007      ELIF  dot_start > 0 AND           !
+!19971007            dot       < 0    THEN       !
+      ELIF  dot_start < 0 AND           !
+            dot       > 0    THEN       !
+        l_add  := i_add;                ! Leading edge
+        dot_start := 0.0;               !
+      ENDIF;                            !
+    ENDIF;                              !
+
+  ENDFOR;                               ! End  loop V lines
+
+  IF  l_add <= 0 THEN                     ! 
+    EXIT("s_aleadv0  Leading edge l_add");    !
+  ENDIF;                                !
+
+  IF  p_case = "U" THEN  
+    l_par :=  l_v-1.0+l_add*d_iso;
+    e_par :=  npatu;
+  ELSE
+    l_par :=  l_u-1.0+l_add*d_iso;
+    e_par :=  npatv;
+  ENDIF;
+
+  IF  DEBUG = 1 THEN  
+  LST_LIN("Leading edge patch boundary l_add "+STR(l_add,3,0)); 
+  ENDIF;             
+
+creiso:;
+
+! +++
+! Create isoparameter for leading edge
+! ---
+
+  IF  p_case = "U" THEN
+    i_case := "V";
+  ELSE
+    i_case := "U";
+  ENDIF;
+
+  IF  DEBUG = 1 THEN  
+    IF  p_case = "U" THEN
+      LST_LIN("Leading edge V isoparameter value "+STR(l_par,5,2)); 
+    ELSE
+      LST_LIN("Leading edge U isoparameter value "+STR(l_par,5,2)); 
+    ENDIF;
+  ENDIF;             
+
+  CUR_ISO(#1,s_id,i_case,l_par,0.0,e_par:BLANK=b_val_c);
+
+! +++
+! Create isoparameter for also for trailing edge
+! ---
+
+! Use same variables (not nice programming ..)
+  IF  p_case = "U" THEN
+    l_par := 0.0;
+    e_par := npatu;     
+  ELSE
+    l_par := 0.0;
+    e_par := npatv;     
+  ENDIF;
+
+  CUR_ISO(#2,s_id,i_case,l_par,0.0,e_par:BLANK=b_val_c);
+
+  IF  DEBUG = 1 THEN                    ! Debug
+  LST_EXI();                            !
+  ENDIF;                                !
+
+
+
+
+ENDMODULE
+

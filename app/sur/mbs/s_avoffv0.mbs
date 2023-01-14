@@ -1,0 +1,117 @@
+!************************* s_avoffv0 ***************************
+! +++                                                          *
+! Evaluation of coordinates in the thickness                   *
+! surface.                                                     *
+!                                                              *
+! Input:  Curve and a value on the curve and thickness surface *
+!                					       *
+! Output: Point on offset and derivatives with respect to the  *
+!         curve						       *
+!                                                              *
+! ---                                                          *
+!***************************************************************
+
+!sdesce From U on curve to corr. point in thickness surface
+
+!sdescs Från U pa kurvan till motsvarande punkt i tjockytan
+
+
+GLOBAL GEOMETRY MODULE s_avoffv0 (
+
+REF  		cur_id >	"@t8 Select a curve";
+REF 		thi_id > 	"@t16 Select a thickness surface";
+FLOAT 		u_cur > 	"Give a value on the curve";
+
+VAR VECTOR 	p_off;      	! Point in offset surface
+VAR VECTOR 	droffdc );  	! Derivatives in offset surface with
+              	         	! respect to the curve
+	
+ 
+REF    sur_id;    		! Surface identity 
+
+FLOAT  u_loc;    		! Local parameter value, U 
+FLOAT  v_loc;    		! Local parameter value, V 
+FLOAT  thickness;		! Distance to offset surface
+FLOAT  dtdu;     		! Derivatives of the thickness
+FLOAT  dtdv;     		! surface with respect to u,v
+FLOAT  dudc;     		! Derivatives of surface point 
+FLOAT  dvdc;     		! with respect to curve
+
+VECTOR sur_uv;   		! Surface point (U,V)
+ 
+VECTOR drdu;     		! Derivatives in surface point
+VECTOR drdv;     		! with respect to u,v
+VECTOR droffdu;  		! Derivatives in offset surface
+VECTOR droffdv;  		! with respect to u,v 
+
+VECTOR normal;   		! Normal vector to the surface point
+VECTOR dndu;     		! Derivatives with respect to 
+VECTOR dndv;     		! u,v
+VECTOR duvdc;    		! Derivatives (dudc, dvdc)
+
+
+BEGINMODULE
+
+
+  
+! +++
+! 1. Determine coordinates of surface point
+! ---
+
+  part(#1,eval_utouv(cur_id,        	! Call subrutine 
+   u_cur, sur_id, sur_uv));         	! eval_utouv
+
+  u_loc:= sur_uv.x - trunc(sur_uv.x);	! Truncate the coord.
+  v_loc:= sur_uv.y - trunc(sur_uv.y);	! Now between (0-1)
+
+
+
+! +++
+! 2. Determine the thickness and its derivatives 
+! ---
+  
+  part(#2,s_bvoffv0(u_loc, v_loc,      	! Call subrutine
+   thi_id, thickness, dtdu, dtdv));     ! s_bvoffv0
+
+! +++
+! 3. Get analys data by calling subrutine eval
+! ---
+
+  drdu:= eval(sur_id, "DRDU", sur_uv);	
+  drdv:= eval(sur_id, "DRDV", sur_uv);
+  
+  normal:= eval(sur_id, "NORMAL", sur_uv);
+  
+  dndu:= eval(sur_id, "DNDU", sur_uv);
+  dndv:= eval(sur_id, "DNDV", sur_uv);
+
+  duvdc:= eval(cur_id, "DUVDT", vec(u_cur,0,0));
+  
+  dudc:= duvdc.x;
+  dvdc:= duvdc.y;
+  
+! +++
+! 4. Determine point in thickness surface and its derivatives
+! ---
+
+  p_off:= on(sur_id, sur_uv)+thickness*normal;	! New point in the thickness surface
+  
+  droffdu:= drdu+dtdu*normal+thickness*dndu;	! Derivatives in p_off with 
+  droffdv:= drdv+dtdv*normal+thickness*dndv;	! respect to u, v
+
+  droffdc:= dudc*droffdu + dvdc*droffdv;    !Derivative in p_off with respect to curve 
+
+ poi_free(#3,p_off);             ! Draw the point
+ lin_free(#4,on(sur_id, sur_uv), ! Draw a line between
+ p_off:PEN=3);                   ! point and curve
+
+! lst_ini("Test-printout from s_avoffv0");
+! lst_lin("droffdu" + str(droffdu.x,15,8) + str(droffdu.y,15,8) + str(droffdu.z,15,8));
+! lst_lin("droffdv" + str(droffdv.x,15,8) + str(droffdv.y,15,8) + str(droffdv.z,15,8));
+! lst_lin("droffdc" + str(droffdc.x,15,8) + str(droffdc.y,15,8) + str(droffdc.z,15,8));
+! lst_lin("uv" + str(sur_uv.x, 15, 8) + ", " + str(sur_uv.y, 15, 8));
+! lst_lin("sur_id=" + rstr(sur_id));
+! lst_lin("u-cur"+str(u_cur,15,8));
+! lst_exi();
+
+ENDMODULE

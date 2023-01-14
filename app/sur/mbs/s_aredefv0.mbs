@@ -1,0 +1,154 @@
+!********************* s_aredefv0*************************************
+! +++
+! The function recreates a surface with new vector lengths
+!
+! Revision history
+! ________________
+!
+! 1995-11-30 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+!sdesce The function recreates a surface with new vector lengths
+!sdescs Återskapa en yta med nya tangentvektorlängder
+
+GLOBAL  GEOMETRY MODULE s_aredefv0(
+REF     sur_id                >"@t16 Select surface to be redefined";
+INT     f_closed :=  0        >"=1: Closed surface along V line";
+STRING  metod*15 := "ADINI_1" >"Method tangent lengths ZEROTWIST_1 or ADINI_1";
+INT     graphic  :=  1        >"0= None, 1= Surface , 2= All ");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  INT    nu,nv;                ! Number of patches
+
+  INT    add_nv;               ! Additional nv lines for closed surface
+
+  INT    i_x;                  ! Loop index point in x direction
+  INT    j_y;                  ! Loop index point in y direction
+
+! ---
+
+  VECTOR uv;                   ! U,V for current point
+  VECTOR poi(140,140);         ! Points for SUR_SPLARR
+  VECTOR tanu(140,140);        ! U tangents for SUR_SPLARR
+  VECTOR tanv(140,140);        ! V tangents for SUR_SPLARR
+
+  INT    iu,iv;                ! Point number
+
+  FLOAT  dist;                 ! For check of distance between points
+
+  INT    b_val_s;              ! BLANK value surface
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+!    Open input file with points
+
+  DEBUG := 0;                 ! Debug =1 or 0
+
+  IF   graphic = 0 THEN       ! Graphics
+    b_val_s:= 1;              !
+  ELIF graphic = 1 THEN       ! 
+    b_val_s:= 0;              !
+  ELIF graphic = 2 THEN       !
+    b_val_s:= 0;              !
+  ELSE                        !
+   EXIT("s_redefv0 graphic" + !
+         " not OK");          !
+  ENDIF;                      !
+
+!  IF graphic < 2  THEN        ! Blank input surface
+!    BLANK(sur_id);
+!  ENDIF;
+
+  GETSURH(sur_id,"NPATU",nu); ! Number of U patches
+  GETSURH(sur_id,"NPATV",nv); ! Number of V patches
+
+  IF    f_closed =  0  THEN   ! Not a closed surface
+    add_nv := 0;              !
+  ELIF  f_closed =  1  THEN   ! Closed surface along V line
+    add_nv := 4;              !
+  ELSE                        !
+   EXIT("s_redefv0 f_closed"+ !
+         " not OK");          !
+  ENDIF;                      !
+
+! +++
+! 3. Selection of points
+!
+! ---
+
+! +++
+! Start loop i_x  = 0, 1, 2, ........ , nu
+!   Start loop j_y  = 0, 1, 2,......... , nv + add_nv
+! ---
+
+  iu  := 0;
+
+  FOR i_x  := 0       TO nu      DO   ! Start loop U points
+    iu := iu + 1;
+    iv := 0;
+    FOR j_y  := 0       TO nv + add_nv   DO   ! Start loop V points
+      iv := iv + 1;
+      IF j_y > nv THEN
+        uv := VEC(i_x, j_y - nv );
+      ELSE
+        uv := VEC(i_x, j_y);
+      ENDIF;
+      poi (iu,iv):= ON(sur_id, uv   );
+      tanu(iu,iv):= VECN(EVAL(sur_id,"DRDU",uv));
+      tanv(iu,iv):= VECN(EVAL(sur_id,"DRDV",uv));
+      IF graphic = 2 THEN  
+       POI_FREE(#21,poi(iu,iv):PEN=4);!
+      ENDIF;              
+    ENDFOR;
+  ENDFOR;
+
+! +++
+!   End   loop j_y  = 0,1,2, .......... nv                       
+! End   loop i_x  = 0,1,2, .......... nu                       
+! ---
+
+! +++
+! 3. Create surface
+! ---
+
+! +++
+! Check distance between input points if DEBUG = 1
+! ---
+
+  IF DEBUG = 1 THEN
+  FOR i_x  := 1 TO iu-1  DO            ! Start loop U points
+    dist:= VECl(poi(i_x,1)-poi(i_x+1,1));
+    IF dist < 0.1 THEN
+      POI_FREE(#12,poi(i_x,1):PEN=2);
+      EXIT();
+    ENDIF;
+  ENDFOR;
+
+  ENDIF;
+
+
+  SUR_SPLARR(#1,metod,iu,iv,poi,tanu,tanv:BLANK=b_val_s);
+
+
+  IF    f_closed <> 0  THEN   ! A closed surface
+   s:= INPMT("s_redefv0 Trimming of the surface not yet implemented"," ",1);
+  ENDIF;                      !
+
+ENDMODULE

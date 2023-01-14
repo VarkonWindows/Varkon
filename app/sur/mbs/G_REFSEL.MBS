@@ -1,0 +1,34 @@
+!******************** G_REFSEL **********************
+!
+! Mark a global reference with ## if not.
+!
+! 1994-01-31 Ronny Gyllensten
+! 1996-02-14 Comments           G Liden
+!
+!****************************************************
+
+!sdesce Mark a global reference with ## if not (Do not use !)
+!sdescs Lägg till # om nödvändigt (Ska ej användas!)
+
+MACRO GEOMETRY MODULE g_refsel  (
+
+  VAR REF         id);         ! Global reference to an entity
+
+! Internal variable:
+
+  STRING      ids*132;         ! Reference id as a string
+
+
+BEGINMODULE
+
+    ids:= RSTR(id);            ! Convert reference to a string
+
+    IF SUBSTR(ids,1,2) <> "##" THEN  ! Check if ids has ## 
+                               !       (=id is global)
+       ids := "#"+ids;         ! Add # to the string
+
+        id := RVAL(ids);       ! Convert string to a reference
+
+    ENDIF;
+
+ENDMODULE

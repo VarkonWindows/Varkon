@@ -1,0 +1,364 @@
+!*********************** s_ameshv0  *********************************
+! +++
+!
+! Creation of an arclength mesh of points from a closed curve on a surface
+!
+! Input data is a closed curve on one surface or on many surfaces
+! The curve must be closed and there must be four corner points, 
+! i.e. kinks in the curve
+!
+!
+! Revisions
+! ---------
+!
+! 1995-11-27 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE  s_ameshv0  (
+REF    u0_id              >"@t8 Reference to U0 curve";
+REF    u1_id              >"@t8 Reference to U1 curve";
+REF    v0_id              >"@t8 Reference to V0 curve";
+REF    v1_id              >"@t8 Reference to V1 curve";
+INT    no_dir1 := 10      >"Number of mesh points in direction 1 (3-50)";
+INT    no_dir2 := 20      >"Number of mesh points in direction 2 (3-50)";
+FLOAT  offset  :=  3.4    >"Offset for mesh points";
+INT    print   :=  1      >"Print case =1: To file format xxx ";
+STRING fname*20 := "mesh" >"File name .DAT will be added";
+INT    graphic    := 2         
+>"@ =0: Show nothing =1: Show mesh =2: Show mesh and curves =3: All  " );
+
+!sdesce Arclength mesh of points from a closed curve on a surface
+!sdescs Skapa en punktmängd från sluten kurva på en yta eller ytor
+
+
+! Internal variables:
+
+  INT    i_u;                   ! Loop index point in U direction
+  INT    i_v;                   ! Loop index point in U direction
+  FLOAT  u0_t;                  ! Total arclength U0 curve
+  FLOAT  u1_t;                  ! Total arclength U1 curve
+  FLOAT  v0_t;                  ! Total arclength V0 curve
+  FLOAT  v1_t;                  ! Total arclength V1 curve
+  FLOAT  u0_d;                  ! Delta arclength U0 curve
+  FLOAT  u1_d;                  ! Delta arclength U1 curve
+  FLOAT  v0_d;                  ! Delta arclength V0 curve
+  FLOAT  v1_d;                  ! Delta arclength V1 curve
+  FLOAT  u0_u;                  ! Current parameter value U0 curve
+  FLOAT  u1_u;                  ! Current parameter value U1 curve
+  FLOAT  v0_u;                  ! Current parameter value V0 curve
+  FLOAT  v1_u;                  ! Current parameter value V1 curve
+  VECTOR u0_p;                  ! Current point on the U0 curve
+  VECTOR u1_p;                  ! Current point on the U1 curve
+  VECTOR v0_p;                  ! Current point on the V0 curve
+  VECTOR v1_p;                  ! Current point on the V1 curve
+  VECTOR u0v0_p;                ! Corner point U=0 V=0
+  VECTOR u0v1_p;                ! Corner point U=0 V=1
+  VECTOR u1v0_p;                ! Corner point U=1 V=0
+  VECTOR u1v1_p;                ! Corner point U=1 V=1
+
+  FLOAT  u_rel;                 ! Relative U arclength
+  FLOAT  v_rel;                 ! Relative V arclength
+
+  VECTOR p_mesh;                ! Mesh point
+
+  INT    i_seg;                 ! Loop index curve segment
+  VECTOR s_point;               ! Start point
+  VECTOR e_point;               ! End   point
+  VECTOR s_tang;                ! Start tangent
+  VECTOR e_tang;                ! End   tangent
+  INT    n_kink;                ! Number of kinks in input curve
+  FLOAT  p_kink(4);             ! Kink parameter values
+
+                                ! For coonseval1:
+  INT    icase;                 ! =1: Only coordinates
+  FLOAT  ctol;                  ! tolerance for check of corner points
+  VECTOR drdu;                  ! First derivative in U direction
+  VECTOR drdv;                  ! First derivative in V direction
+  INT    graphic_coon;          ! =0: Show nothing =1: Show point =2: + tangents =3: All
+
+                                ! For GETCURH:
+  INT    u0_ns_geo;             ! No geometry segments
+  INT    u1_ns_geo;             ! 
+  INT    v0_ns_geo;             !
+  INT    v1_ns_geo;             !
+  INT    ns_gra;                ! No graphical segments
+  INT    fnt;                   ! Font typ,subtyp;
+  FLOAT  sl;                    ! Dash length
+
+                                ! For GETSEG:
+  INT    reptype;               ! Requested type (curve):
+                                ! Eq. 0: Geometry
+                                ! Eq. 1: Graphic
+  FLOAT  segdata(4,4);          ! Segment coefficients
+  FLOAT  c_offset;              ! Curve offset
+  INT    type;                  ! Curve segment type
+                                ! Eq. 1: A  R*3 (free)    segment
+                                ! Eq. 2: An U,V (surface) segment
+  INT    subtype;               ! Curve segment subtype
+                                ! Eq. 0:
+                                ! Eq. 1:
+                                ! Eq. 2:
+  REF    sur1_id;               ! Reference to surface 1
+  REF    sur2_id;               ! Reference to surface 2
+
+  REF    all_sur(30);           ! References to all surfaces
+  INT    n_sur;                 ! Number of surfaces
+  INT    i_sur;                 ! Loop index surface
+
+
+
+                                ! For s_linsurv0:
+  VECTOR p_ext;                 ! Start point for intersect line
+  VECTOR v_proj;                ! Projection direction (line tangent)
+  INT    i_case;                ! Intersect calculation case
+  VECTOR r3_int;                ! Intersect point in R*3
+  VECTOR uv_int;                ! Intersect point in U,V
+  REF    id_int;                ! Identity for intersect point surface  
+  INT    status;                ! Error code = -1: No intersection
+  INT    graphic_int;           ! =0: No graphic =1: Show point =2: Show all
+
+  VECTOR p_off;                 ! Offset (output) mesh point
+
+  INT    b_val_a;               ! Blank value for all other entities
+  INT    b_val_p;               ! Blank value for the points        
+
+  INT    DEBUG;                 !
+  STRING s*1;                   ! For debug printout to screen
+
+  INT    nu,nv;                ! Number of patches
+  VECTOR poi( 40, 40);         ! Points for SUR_SPLARR
+  VECTOR tanu( 40, 40);        ! U tangents for SUR_SPLARR
+  VECTOR tanv( 40, 40);        ! V tangents for SUR_SPLARR
+  STRING metod*15;             ! Method for tangent length calculation 
+                               ! ZEROTWIST_1 or ADINI_1
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+! +++
+! Check graphic case
+! ---
+
+  IF    graphic = 0 THEN                 !
+    b_val_p := 1;                        !
+    b_val_a := 1;                        !
+  ELIF  graphic = 1 THEN                 !
+    b_val_p := 0;                        !
+    b_val_a := 1;                        !
+  ELIF  graphic = 2 THEN                 !
+    b_val_p := 0;                        !
+    b_val_a := 0;                        !
+  ELIF  graphic = 3 THEN                 !
+    b_val_p := 0;                        !
+    b_val_a := 0;                        !
+  ELSE                                   !
+    EXIT("s_ameshv0 graphic "+           !
+    STR(graphic,-1,0)+" not OK");        !
+  ENDIF;                                 !
+
+! +++
+! Check number of mesh points
+! ---
+
+  IF no_dir1 > 1 AND no_dir1 < 51  THEN  ! Check number of mesh points
+     ;                                   !
+  ELSE                                   !
+     EXIT("s_ameshv0 no_dir1 not "+      !
+          "between 2 and 50");           !
+  ENDIF;                                 !
+  IF no_dir2 > 1 AND no_dir2 < 51  THEN  ! Check number of mesh points
+     ;                                   !
+  ELSE                                   !
+     EXIT("s_ameshv0 no_dir2 not "+      !
+          "between 2 and 50");           !
+  ENDIF;                                 !
+
+! +++
+! Check the four input boundary curves u0, v0, u1 and v1
+! ---
+
+  GETCURH(  u0_id,                       ! Retrieve no segments
+   fnt,sl,u0_ns_geo,ns_gra);             !
+  GETCURH(  u1_id,                       !
+   fnt,sl,u1_ns_geo,ns_gra);             !
+  GETCURH(  v0_id,                       !
+   fnt,sl,v0_ns_geo,ns_gra);             !
+  GETCURH(  v1_id,                       !
+   fnt,sl,v1_ns_geo,ns_gra);             !
+
+  
+  e_point:=   ON(u0_id,u0_ns_geo);       ! End   point   for u0
+  s_point:=   ON(v1_id,  0.0    );       ! Start point   for v1
+  e_tang := TANG(u0_id,u0_ns_geo);       ! End   tangent for u0
+  s_tang := TANG(v1_id,  0.0    );       ! Start tangent for v1
+
+  IF  VECL(e_point-s_point) > 0.1 THEN   ! Check corner point
+    EXIT("s_ameshv0 Not closed curve "+  !
+         "u0-v1");                       !
+  ENDIF;                                 !
+  IF ABS(e_tang*s_tang-1.0) > 0.001 THEN ! Scalar product is one (1) 
+    ;                                    ! if tangents are parallell
+  ELSE                                   !
+    EXIT("s_ameshv0 Parallell tangents " !
+           +" u0-v1");                   !
+  ENDIF;                                 !
+
+! +++
+! 2. Retrieve identities for the surfaces
+! ---
+
+  n_sur := 0;                            ! Initialize number of surfaces
+  FOR i_seg:= 1 TO u0_ns_geo DO          ! Start loop segments in curve
+    reptype:= 0;                         ! Get surface id (coefficients)
+    GETSEG( u0_id, i_seg, reptype,       ! 
+        segdata,c_offset,type,           !
+        subtype,sur1_id,sur2_id);        !
+    IF  type = 1 THEN                    ! R*3 segment ?
+      GOTO nxtseg_u0;                    ! Yes, continue with next segment
+    ENDIF;                               !
+    FOR  i_sur:= 1 TO n_sur DO           ! Start loop prev. found surfaces
+      IF sur1_id = all_sur(i_sur) THEN   ! Surface id already found ?
+        GOTO nxtseg_u0;                  ! Yes, continue with next segment
+      ENDIF;                             !
+    ENDFOR;                              ! End   loop prev. found surfaces
+    n_sur := n_sur + 1;                  ! An additional surface
+    all_sur(n_sur):= sur1_id;            ! Surface to array
+nxtseg_u0:;                              ! Label: Surface already found
+  ENDFOR;                                ! End   loop segments in curve
+  FOR i_seg:= 1 TO u1_ns_geo DO          ! Start loop segments in curve
+    reptype:= 0;                         !
+    GETSEG( u1_id, i_seg, reptype,       ! 
+        segdata,c_offset,type,           !
+        subtype,sur1_id,sur2_id);        !
+    IF  type = 1 THEN                    ! 
+      GOTO nxtseg_u1;                    !
+    ENDIF;                               !
+    FOR  i_sur:= 1 TO n_sur DO           ! 
+      IF sur1_id = all_sur(i_sur) THEN   !
+        GOTO nxtseg_u1;                  !
+      ENDIF;                             !
+    ENDFOR;                              !
+    n_sur := n_sur + 1;                  !
+    all_sur(n_sur):= sur1_id;            !
+nxtseg_u1:;                              !
+  ENDFOR;                                ! End   loop segments in curve
+  FOR i_seg:= 1 TO v0_ns_geo DO          ! Start loop segments in curve
+    reptype:= 0;                         !
+    GETSEG( v0_id, i_seg, reptype,       ! 
+        segdata,c_offset,type,           !
+        subtype,sur1_id,sur2_id);        !
+    IF  type = 1 THEN                    ! 
+      GOTO nxtseg_v0;                    !
+    ENDIF;                               !
+    FOR  i_sur:= 1 TO n_sur DO           ! 
+      IF sur1_id = all_sur(i_sur) THEN   !
+        GOTO nxtseg_v0;                  !
+      ENDIF;                             !
+    ENDFOR;                              !
+    n_sur := n_sur + 1;                  !
+    all_sur(n_sur):= sur1_id;            !
+nxtseg_v0:;                              !
+  ENDFOR;                                ! End   loop segments in curve
+  FOR i_seg:= 1 TO v1_ns_geo DO          ! Start loop segments in curve
+    reptype:= 0;                         !
+    GETSEG( v1_id, i_seg, reptype,       ! 
+        segdata,c_offset,type,           !
+        subtype,sur1_id,sur2_id);        !
+    IF  type = 1 THEN                    ! 
+      GOTO nxtseg_v1;                    !
+    ENDIF;                               !
+    FOR  i_sur:= 1 TO n_sur DO           ! 
+      IF sur1_id = all_sur(i_sur) THEN   !
+        GOTO nxtseg_v1;                  !
+      ENDIF;                             !
+    ENDFOR;                              !
+    n_sur := n_sur + 1;                  !
+    all_sur(n_sur):= sur1_id;            !
+nxtseg_v1:;                              !
+  ENDFOR;                                ! End   loop segments in curve
+
+
+  IF n_sur = 0 THEN                      ! Check number of surfaces
+    EXIT("s_ameshv0 Number of "+         !
+          "surfaces is 0");              !
+  ENDIF;                                 !
+
+! +++
+! 4. Calculate mesh points
+! ---
+
+  nu  := 0;
+
+  FOR i_u:= 1 TO no_dir1 DO              ! Start loop U points
+   nu := nu + 1;
+   nv := 0;
+   FOR i_v:= 1 TO no_dir2 DO             ! Start loop V points
+    nv := nv + 1;
+  
+    u_rel := (i_u-1)/(no_dir1-1);        ! Current relative U arclength
+    v_rel := (i_v-1)/(no_dir2-1);        ! Current relative V arclength
+
+    IF DEBUG = 1 THEN                    !
+      s:= INPMT("s_ameshv0 u_rel "+      !
+          STR(u_rel,10,6)+" v_rel " +    !
+          STR(v_rel,10,6)," ",1);        !
+    ENDIF;                               !
+
+    icase := 1;                          ! Calculate Coon's patch point
+    ctol  := 0.1;                        !
+    graphic_coon:= 3;                    !
+    PART(#6,  coonevalv0 (               !
+    u0_id, u1_id, v0_id, v1_id,          !
+    u_rel, v_rel, icase, ctol,           !
+    p_mesh, drdu, drdv, graphic_coon));  !
+
+    v_proj:= VECN(VPROD(drdu,drdv));     ! Shooting direction is surface normal
+                                         ! in Coon's patch
+
+!    i_case := 1;                         ! No start point given
+!    graphic_int := 0;                    !
+!    PART ( #9, s_linsurv0 (              ! Intersect line/surface
+!    p_mesh , v_proj,                     ! 
+!    n_sur, all_sur,                      !
+!    i_case,                              !
+!    r3_int    , uv_int    , id_int    ,  !
+!    status    , graphic_int));           !
+!
+!    IF status = 0    THEN                !
+!     p_off:= r3_int +                    ! Offset point
+!       offset*NORM(id_int,uv_int);       !
+!     IF graphic >= 1 THEN                !
+!       POI_FREE(#11,p_off:PEN=2);        !
+!     ENDIF;                              !
+!    ELSE                                 !
+!     IF graphic >= 1 THEN                !
+!       LIN_FREE(#12,p_mesh,              !
+!          p_mesh+30*v_proj:PEN=4);       !
+!     ENDIF;                              !
+!     p_off:= VEC(0,0,0);                 ! 
+!    ENDIF;                               !
+
+      poi (nu,nv):= p_mesh;           
+      tanu(nu,nv):= VECN(drdv);                         
+      tanv(nu,nv):= VECN(drdu);                         
+   ENDFOR;                               ! End   loop V points
+  ENDFOR;                                ! End   loop U points
+
+!  metod := "ADINI_1";  
+  metod := "ZEROTWIST_1";  
+
+!  SUR_SPLARR(#20,metod,nu,nv,poi,tanu,tanv);
+
+ENDMODULE

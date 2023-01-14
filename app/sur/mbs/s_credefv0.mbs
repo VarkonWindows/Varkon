@@ -1,0 +1,341 @@
+!********************* s_credefv0 *************************************
+! +++
+! Use an approx. FLT_SUR to redefine a part of another surface
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-02-06 Gunnar Liden
+!
+! 
+!********************************************************************
+
+!sdesce Use an approx. FLT_SUR to redefine a part of another surface
+!sdescs Använd en LFT_SUR för att omdefiniera del av annan yta
+
+GLOBAL  GEOMETRY MODULE s_credefv0 (
+REF     sur_id                    >"@t16 Select surface to be redefined";
+VECTOR  spine_dir:=  VEC(0,1,0)   >"Direction for spine to CON_SUR";
+FLOAT   mid_v    :=  48.0         >"Mid V curve (leading edge e.g.)";
+FLOAT   delta_v  :=   1.0         >"Delta V parameter value";
+INT     no_v     :=   5           >"Number of V lines (no_v*2)";
+FLOAT   start_u_i:=  -1.0         >"Start U parameter value ( -1 => Whole U)";
+FLOAT   end_u_i  :=  -1.0         >"End   U parameter value ( -1 => Whole U)";
+INT     add_u    :=   1           >"Number of added U lines 0, 1, ..";
+INT     add_v    :=   3           >"Number of added V lines 0, 1, ..";
+INT     no_rad   :=  15           >"No of porcupine lines (< 1: No analysis)";
+FLOAT   l_scale  :=   0.1         >"Scaling factor (negative also allowed)";
+INT     rn_poi   :=   2           >"No of lines per segment";
+INT     graphic  :=   1           >"0= None, 1= Surface , 2= All ");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  FLOAT  start_v;              ! Start V parameter value
+  FLOAT  end_v;                ! End   V parameter value
+
+  INT    nu,nv;                ! Number of patches
+
+  REF    lim1_id;              ! Reference limit   1 curve
+  REF    lim2_id;              ! Reference limit   2 curve
+  REF    lim3_id;              ! Reference limit   3 curve
+  REF    tan1_id;              ! Reference tangent 1 curve
+  REF    tan2_id;              ! Reference tangent 2 curve
+  REF    tan3_id;              ! Reference tangent 3 curve
+  REF    mid1_id;              ! Reference mid     1 curve
+  REF    mid2_id;              ! Reference mid     2 curve
+  REF    lft_id;               ! Reference Conic Lofting surface
+  REF    apr_id;               ! Reference to approximate surface
+  REF    trim1_id;             ! Reference to trimmed surface 1
+  REF    trim2_id;             ! Reference to trimmed surface 2
+  
+  
+! ---
+
+  FLOAT  start_u;              ! Start U value 
+  FLOAT  end_u;                ! End   U value 
+
+  FLOAT  isov;                 ! Direktrix V value
+  FLOAT  startu;               ! Start U value direktrix (-1: Whole surf.)
+  FLOAT  endu;                 ! End   U value direktrix (-1: Surf. end)
+  INT    cur_no;               ! Limit curve number in surface (0= Undefined)
+  STRING lim_name*60;          ! Name of limit   curve
+  STRING tan_name*60;          ! Name of tangent curve
+  INT    case;                 ! Eq. 1: No reduction Eq. 11: Mid curve  
+                               ! Eq. 2: Reduce
+  FLOAT  c_tol;                ! Coordinate tolerance  (mm)
+  FLOAT  a_tol;                ! Tangent    tolerance (degrees)
+  INT    n_poi;                ! Accuracy pts/segment tangent curve 
+  INT    graphic_lim;          ! Eq. 0: All blanked Eq. 1: Show curves
+
+  VECTOR p_s;                  ! Start point for spine
+  VECTOR p_e;                  ! End   point for spine
+  VECTOR p_e_v;                ! End   point of v_mid isoparameter curve
+  FLOAT  dot_dist;             ! Projected length of p_e_v-p_s (spine length)
+  REF    spine_id;             ! Identity for spine curve
+
+  FLOAT  rdelta_u;             ! Delta for curvature analysis
+  INT    i_rad;                ! Loop index porcupine lines
+  INT    apr_nu;               ! Number of U lines in apr_id
+  INT    apr_nv;               ! Number of V lines in apr_id
+  REF    iso_id;               ! Isoparameter curve 
+  FLOAT  l_max;!               ! Maximum plotted radius (green line)
+  INT    c_list;               ! Eq. 0: No printout  Eq. 1: Print curvature
+  INT    graphic_rad;          ! Graphic 0: None 1: Porcupine 2: All
+
+
+  INT    b_val_s;              ! BLANK value surface
+  INT    b_val_a;              ! BLANK value other entities
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+
+  DEBUG := 0;                 ! Debug =1 or 0
+
+  IF DEBUG = 1 THEN  
+    LST_INI("s_redefv0 Debug output ");
+  ENDIF;
+
+! Check graphic parameter
+  IF   graphic = 0 THEN
+    b_val_s:= 1;
+    b_val_a:= 1;
+    graphic_lim := 0;
+  ELIF graphic = 1 THEN
+    b_val_s:= 0;
+    b_val_a:= 1;
+    graphic_lim := 0;
+  ELIF graphic = 2 THEN
+    b_val_s:= 0;
+    b_val_a:= 0;
+    graphic_lim := 1;
+  ELSE  
+   EXIT("s_credefv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Get nuber of surface patches
+  GETSURH(sur_id,"NPATU",nu);
+  GETSURH(sur_id,"NPATV",nv);
+
+! Check spine direction
+  IF  VECL(spine_dir) < 0.01 THEN
+    EXIT("s_credefv0 Spine vector length < 0.01");
+  ENDIF;
+
+! Start and end V values
+  IF  no_v < 1 THEN
+    EXIT("s_credefv0 no_v < 1");
+  ENDIF;
+  IF  delta_v <  0.0 THEN
+    EXIT("s_credefv0 delta_v < 0.0");
+  ENDIF;
+  start_v := mid_v - no_v*delta_v;
+  end_v   := mid_v + no_v*delta_v;
+  IF  start_v <  0.0 THEN
+    EXIT("s_credefv0 start_v < 0.0");
+  ENDIF;
+  IF    end_v > nv   THEN
+    EXIT("s_credefv0 start_v > "+ STR(nv,-1,0));
+  ENDIF;
+
+
+! Start and end U values
+  IF  ABS(start_u_i+1.0) < 0.00001  AND
+      ABS(  end_u_i+1.0) < 0.00001      THEN
+!   Whole surface in U direction
+    start_u := 0.0;
+    end_u   := nu;
+    startu  := start_u_i;
+    endu    := end_u_i;
+  ELSE
+    start_u := start_u_i;
+    end_u   := end_u_i;
+    startu  := start_u_i;
+    endu    := end_u_i;
+  ENDIF;
+
+  IF      start_u <  0.0 THEN
+    EXIT("s_credefv0 start_u < 0.0");
+  ENDIF;
+  IF      end_u > nu   THEN
+    EXIT("s_credefv0 start_u > "+ STR(nu,-1,0));
+  ENDIF;
+  IF    add_u < 0 THEN
+    EXIT("s_credefv0 add_u <  0");
+  ENDIF;
+  IF    add_v < 0 THEN
+    EXIT("s_credefv0 add_v <  0");
+  ENDIF;
+
+! +++
+! 2. Create directrices    
+! ---
+
+! Attribute values 
+
+
+  a_tol       := 0.05;
+  n_poi       := 5;
+
+  IF  add_u > 0 THEN
+    case        := 3;
+    c_tol       := add_u + 0.0001;
+  ELSE
+    case        := 1;
+    c_tol       := 0.01;
+  ENDIF;
+  
+  isov        := start_v;
+  lim_name    := "LIM1";
+  tan_name    := "TAN1";
+  cur_no      := 1;
+
+  PART(#2, s_alimitv1 ( sur_id, isov, startu, endu, cur_no, lim_name, tan_name,
+                        case, c_tol, a_tol, n_poi, graphic_lim));
+               
+  lim1_id := GLOBAL_REF(#2#7);
+  tan1_id := GLOBAL_REF(#2#2);
+  
+
+                                 
+
+  isov        := mid_v;
+  lim_name    := "LIM2";
+  tan_name    := "TAN2";
+  cur_no      := 2;
+
+  PART(#3, s_alimitv1 ( sur_id, isov, startu, endu, cur_no, lim_name, tan_name,
+                        case, c_tol, a_tol, n_poi, graphic_lim));
+  lim2_id := GLOBAL_REF(#3#7);
+  tan2_id := GLOBAL_REF(#3#2);
+
+  isov        := end_v;
+  lim_name    := "LIM3";
+  tan_name    := "TAN3";
+  cur_no      := 3;
+
+  PART(#4, s_alimitv1 ( sur_id, isov, startu, endu, cur_no, lim_name, tan_name,
+                        case, c_tol, a_tol, n_poi, graphic_lim));
+  lim3_id := GLOBAL_REF(#4#7);
+  tan3_id := GLOBAL_REF(#4#2);
+  
+! +++
+! 3. Create a spine curve             
+! ---
+
+  p_s      := ON(sur_id, VEC(start_u,mid_v));
+  p_e_v    := ON(sur_id, VEC(  end_u,mid_v));
+  dot_dist := (p_e_v-p_s)*VECN(spine_dir);
+  IF   ABS(dot_dist) < 1.0 THEN
+    EXIT("s_credefv0 Spine direction prob. not OK");
+  ELIF     dot_dist > 0.0  THEN
+    p_e := p_s + dot_dist*VECN(spine_dir);
+  ELSE
+    p_e := p_s - dot_dist*VECN(spine_dir);
+  ENDIF;
+
+! Spine as line
+  LIN_FREE(#5, p_s, p_e :BLANK= b_val_a);
+! Convert to curve
+  CUR_COMP(#6, GLOBAL_REF(#5) :BLANK= b_val_a);
+  spine_id := GLOBAL_REF(#6);
+
+! +++
+! 4. Create mid curves    
+! ---
+
+  isov        := start_v + 0.5*(mid_v-start_v);
+  lim_name    := "MID1";
+  tan_name    := "Not_used";
+  cur_no      := 1;
+
+  PART(#7, s_alimitv1 ( sur_id, isov, startu, endu, cur_no, lim_name, tan_name,
+                        case, c_tol, a_tol, n_poi, graphic_lim));
+  mid1_id := GLOBAL_REF(#7#7);
+
+  isov        := mid_v + 0.5*(end_v-mid_v);
+  lim_name    := "MID2";
+  tan_name    := "Not_used";
+  cur_no      := 1;
+
+  PART(#8, s_alimitv1 ( sur_id, isov, startu, endu, cur_no, lim_name, tan_name,
+                        case, c_tol, a_tol, n_poi, graphic_lim));
+  mid2_id := GLOBAL_REF(#8#7);
+ 
+  
+! +++
+! 5. Create a conic lofting surface 
+! ---
+
+  SUR_CONIC(#9, spine_id,
+               lim1_id, tan1_id, "M", mid1_id,
+               lim2_id, tan2_id, "M", mid2_id,
+               lim3_id, tan3_id :BLANK=b_val_a);
+     
+   lft_id := GLOBAL_REF(#9);
+             
+! +++
+! 6. Create an approximate bicubic surface for the LFT_SUR surface
+! ---
+     
+!? SUR_APPROX(#10, lft_id, "CUB_SUR", 1, add_u+1, no_v+add_v:BLANK=b_val_s);   
+!? apr_id := GLOBAL_REF(#10);
+   SUR_APPROX(#10, lft_id, "CUB_SUR", 1, 1 , no_v+add_v:BLANK=b_val_s);   
+   apr_id := GLOBAL_REF(#10);
+
+! +++
+! 7. Create the output bicubic surface 
+! ---
+
+  SUR_TRIM(#11, sur_id, start_u, end_u, 0.0, start_v:BLANK=b_val_s);
+  trim1_id := GLOBAL_REF(#11);
+  
+  SUR_TRIM(#12, sur_id, start_u, end_u, end_v, nv:BLANK=b_val_s);
+  trim2_id := GLOBAL_REF(#12);  
+  
+! +++
+! 8. Curvature analysis if no_rad > 0      
+! ---
+
+  IF no_rad < 1 THEN
+    GOTO noanal;
+  ENDIF;
+
+! Get nuber of surface patches in apr_id
+  GETSURH(apr_id,"NPATU",apr_nu);
+  GETSURH(apr_id,"NPATV",apr_nv);
+
+  rdelta_u :=  apr_nu/(no_rad-1);
+  l_scale  := 0.1;
+  l_max    := 10000.0;
+  c_list   := 0;
+  graphic_rad := 1;
+  
+  FOR  i_rad := 1 TO  no_rad DO
+    CUR_ISO(#31, apr_id, "U", (i_rad-1)*rdelta_u, 0.0, apr_nv);
+    iso_id := GLOBAL_REF(REFC(31,i_rad));
+    PART(#32, c_anaradv0( iso_id, rn_poi, l_scale, l_max, c_list, graphic_rad));
+  ENDFOR;
+
+
+noanal:;  ! No analysis
+
+ IF DEBUG = 1 THEN  
+   LST_EXI();
+ ENDIF;
+
+ENDMODULE

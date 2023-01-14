@@ -1,0 +1,104 @@
+!************************ s_ivoffv0 *********************
+! +++							*
+! Evaluation of the curve joined by a specific number 	*
+! of points in the thickness surface with regard to	*
+! their tangents.					*
+!							*
+! Input: Curve, thickness surface, value on curve,	*
+!	 step length, number of iterations		*
+! ---							*
+!							*
+! Revision history					*
+! ----------------					*
+! 1996-12 Elsa Rydman					*
+!							*
+!********************************************************
+
+!sdesce Evaluation of deformation surface with points
+
+!sdescs Framtagning av kurva mha tangenterna i tjockytepunkterna
+
+
+GLOBAL GEOMETRY MODULE s_ivoffv0(
+
+REF 	sur_id > 	"@8 Select a curve";
+REF 	def_id > 	"Select thickness surface");
+
+! +++
+! Internal variables
+! ---
+
+INT	i;		! Counter
+INT	j;		! Counter
+
+INT     npat_u;
+INT     npat_v;
+INT     n_u;
+INT     n_v;
+
+INT 	n_pts;		! Number of points
+
+FLOAT   u_temp;		! Temporary u_value
+FLOAT   v_temp;		! Temporary v_value
+
+FLOAT   del;
+FLOAT   thickness;
+
+VECTOR  p_sur; 
+VECTOR  p_def;
+VECTOR  n_int;
+VECTOR  p;
+
+VECTOR  pts_sur(200);
+VECTOR  pts_def(200);
+
+
+BEGINMODULE
+
+! +++
+! 1. Number of patches in u- and v-direction
+! ---
+
+  getsurh(sur_id, "NPATU", npat_u);
+  getsurh(sur_id, "NPATV", npat_v);
+  
+  del:=0.2;
+  
+  n_u:=trunc(1/del)*npat_u-1;
+  n_v:=trunc(1/del)*npat_v-1;
+  
+  
+! +++
+! 2. 
+! ---			
+
+ 
+  n_pts:=0;
+  
+  FOR i := 1 TO n_u DO
+    
+      u_temp:= i*del;			! Next point
+      
+      FOR j := 1 TO n_v DO
+      
+          v_temp:=j*del;   
+      
+          part(#1, s_rbvoffv0(sur_id, def_id	! Call subrutine s_rbvoffv0
+            , u_temp, v_temp, 0, thickness));	!
+            
+          p_sur:=on(sur_id,vec(u_temp,v_temp)); ! Point on surface
+                    
+          n_int:=eval(sur_id, "NORMAL", vec(u_temp,v_temp));
+          
+  	  p_def:=p_sur + thickness*n_int;		! New point, outside surface
+           
+          
+          POI_FREE(#2,p_def:PEN=3);
+          LIN_FREE(#3,p_sur, p_def);
+      ENDFOR;      
+           
+  ENDFOR;
+  
+  
+  
+ENDMODULE

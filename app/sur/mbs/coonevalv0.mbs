@@ -1,0 +1,404 @@
+!*********************** coonevalv0 *********************************
+! +++
+!
+! Coons patch coordinates and derivatives for given relative arclengths
+!
+! Revisions
+! ---------
+!
+! 1995-11-30 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE  coonevalv0 (
+    REF    u0_id;    ! Reference to U0 curve
+    REF    u1_id;    ! Reference to U1 curve
+    REF    v0_id;    ! Reference to V0 curve
+    REF    v1_id;    ! Reference to V1 curve
+    FLOAT  rel_u;    ! Relative U arclength
+    FLOAT  rel_v;    ! Relative V arclength
+    INT    icase;    ! =1: Only coordinates
+    FLOAT  ctol;     ! Tolerance for check of corner points
+VAR VECTOR xyz;      ! Coordinates
+VAR VECTOR drdu;     ! First derivative in U direction
+VAR VECTOR drdv;     ! First derivative in V direction
+    INT    graphic); ! =0: Show nothing =1: Show point =2: + tangents =3: All
+
+!sdesce Coons patch coordinates and derivatives for given relative arclengths
+!sdescs Coons koordinater och derivator för givna relativa båglängder
+
+
+! Internal variables:
+
+  FLOAT  u0_a;                  ! Total arclength U0 curve
+  FLOAT  u1_a;                  ! Total arclength U1 curve
+  FLOAT  v0_a;                  ! Total arclength V0 curve
+  FLOAT  v1_a;                  ! Total arclength V1 curve
+  FLOAT  u0_v;                  ! Current parameter value U0 curve
+  FLOAT  u1_v;                  ! Current parameter value U1 curve
+  FLOAT  v0_u;                  ! Current parameter value V0 curve
+  FLOAT  v1_u;                  ! Current parameter value V1 curve
+  VECTOR u0_p;                  ! Current point on the U0 curve
+  VECTOR u1_p;                  ! Current point on the U1 curve
+  VECTOR v0_p;                  ! Current point on the V0 curve
+  VECTOR v1_p;                  ! Current point on the V1 curve
+
+
+  VECTOR v0_tu;                 ! Tangent (dr/du) for the V0 curve
+  VECTOR v1_tu;                 ! Tangent (dr/du) for the V1 curve
+  VECTOR u0_tv;                 ! Tangent (dr/dv) for the U0 curve
+  VECTOR u1_tv;                 ! Tangent (dr/dv) for the U1 curve
+
+  VECTOR u0v0_p;                ! Corner point U=0 V=0
+  VECTOR u0v1_p;                ! Corner point U=0 V=1
+  VECTOR u1v0_p;                ! Corner point U=1 V=0
+  VECTOR u1v1_p;                ! Corner point U=1 V=1
+
+  INT    i_seg;                 ! Loop index curve segment
+  VECTOR s_tang;                ! Start tangent
+  VECTOR e_tang;                ! End   tangent
+  INT    n_kink;                ! Number of kinks in input curve
+  FLOAT  p_kink(4);             ! Kink parameter values
+
+  FLOAT  s_delta;               ! Delta arclength
+  FLOAT  s_total;               ! Total arclength
+  FLOAT  cur_u;                 ! Current curve parameter value
+  VECTOR cur_p;                 ! Point 
+  VECTOR cur_t;                 ! Tangent (normalised)
+
+  CONSTANT INT language= 1;     ! 1: English Eq. 2: Swedish
+
+  STRING   ermess1*40;          ! Error message
+  STRING   ermess2*40;          ! Error message
+  STRING   ermess3*40;          ! Error message
+  STRING   ermess4*40;          ! Error message
+  STRING   ermess5*50;          ! Error message
+  STRING   ermess6*50;          ! Error message
+
+                                ! For GETCURH:
+  INT      u0_ns_geo;           ! No geometry segments
+  INT      u1_ns_geo;           ! No geometry segments
+  INT      v0_ns_geo;           ! No geometry segments
+  INT      v1_ns_geo;           ! No geometry segments
+  INT      ns_gra;              ! No graphical segments
+  INT      fnt;                 ! Font typ,subtyp;
+  FLOAT    sl;                  ! Dash length
+
+  VECTOR   s_n;                 ! Surface normal
+
+  VECTOR   t_part;              ! Tangent part of expression for xyz
+  VECTOR   p_part;              ! Point   part of expression for xyz
+  VECTOR   f_part;              ! First  part of expression for xyz
+  VECTOR   s_part;              ! Second part of expression for xyz
+
+  INT      DEBUG;               !
+  STRING   s*1;                 ! For debug printout to screen
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+! +++
+! 1. Initializations and check of input data
+! ---
+
+
+  DEBUG := 0;                    ! Change to 0 or 1
+
+  IF DEBUG = 1 THEN              !
+    LST_INI("coonevalv0");       !
+  ENDIF;                         !
+
+IF   language = 1 THEN           ! English strings
+  ermess1:="Not valid graphic "; !
+  ermess2:="Curves not "+        !
+   "closed Check directions!";   !
+  ermess3:="Case not yet "+      !
+   "implemented";                !
+  ermess4:="Relative u not "+    !
+   "between 0 and 1";            !
+  ermess5:="Relative v not "+    !
+   "between 0 and 1";            !
+  ermess6:="Tolerance not "+     !
+   "between 0.0001 and 1.0";     !
+ELIF language = 2 THEN           ! Swedish strings
+  ermess1:="Ej tillåten grafik ";!
+  ermess2:="Ingen sluten kurva"+ !
+   " Kontrollera riktningar!";   !
+  ermess3:="Fallet ännu ej "+    !
+   "implementerat";              !
+  ermess4:="Relativa u ej  "+    !
+   "mellan  0 och 1";            !
+  ermess5:="Relativa v ej  "+    !
+   "mellan  0 och 1";            !
+  ermess6:="Tolerance not "+     !
+   "between 0.0001 and 1.0";     !
+ELSE                             !
+  EXIT("ma_surexdf: " +          !
+       "Language error");        !
+ENDIF;                           !
+
+! +++
+! Check graphic case
+! ---
+
+  IF    graphic = 0 THEN        !
+    ;                           !
+  ELIF  graphic = 1 THEN        !
+    ;                           !
+  ELIF  graphic = 2 THEN        !
+    ;                           !
+  ELIF  graphic = 3 THEN        !
+    ;                           !
+  ELSE                          !
+     EXIT("coonevalv0"+         !
+     ermess1+STR(graphic,-1,0));!
+  ENDIF;                        !
+
+  IF  icase = 1 THEN            !
+    ;                           !
+  ELSE                          !
+     EXIT("coonevalv0"+         !
+     ermess3+STR(icase,-1,0));  !
+  ENDIF;                        !
+
+  IF  rel_u >= 0.0 AND rel_u <= 1.0 THEN !
+    ;                                    !
+  ELSE                                   !
+     EXIT("coonevalv0"+ ermess4);        !
+  ENDIF;                                 !
+  IF  rel_v >= 0.0 AND rel_v <= 1.0 THEN !
+    ;                                    !
+  ELSE                                   !
+     EXIT("coonevalv0"+ ermess5);        !
+  ENDIF;                                 !
+
+  IF ctol > 0.001 AND ctol < 1.0 THEN    ! Check ctol
+    ;                                    !
+  ELSE                                   !
+     EXIT("coonevalv0"+ ermess6);        !
+  ENDIF;                                 !
+
+! +++
+! 2. Calculate corner points
+! ---
+
+  GETCURH( u0_id,                        ! Retrieve no of u0_id segments
+   fnt,sl,u0_ns_geo,ns_gra);             !
+  GETCURH( u1_id,                        ! Retrieve no of u1_id segments
+   fnt,sl,u1_ns_geo,ns_gra);             !
+  GETCURH( v0_id,                        ! Retrieve no of v0_id segments
+   fnt,sl,v0_ns_geo,ns_gra);             !
+  GETCURH( v1_id,                        ! Retrieve no of v1_id segments
+   fnt,sl,v1_ns_geo,ns_gra);             !
+
+  u0v0_p := ON(u0_id,0.0);               ! Corner point U=0 V=0
+  u0v1_p := ON(v1_id,0.0);               ! Corner point U=0 V=1
+  u1v1_p := ON(v1_id,v1_ns_geo);         ! Corner point U=1 V=1
+  u1v0_p := ON(u1_id,0.0);               ! Corner point U=1 V=0
+
+  IF VECL( ON(v0_id, 0.0      )-         ! Check corner u0v0 
+              u0v0_p      ) > ctol THEN  !
+    EXIT("coonevalv0 "+ermess2);         !
+  ENDIF;                                 !
+  IF VECL( ON(u0_id,u0_ns_geo )-         ! Check corner u0v1 
+              u0v1_p      ) > ctol THEN  !
+    EXIT("coonevalv0 "+ermess2);         !
+  ENDIF;                                 !
+  IF VECL( ON(u1_id,u1_ns_geo )-         ! Check corner u1v1 
+              u1v1_p      ) > ctol THEN  !
+    EXIT("coonevalv0 "+ermess2);         !
+  ENDIF;                                 !
+  IF VECL( ON(v0_id,v0_ns_geo )-         ! Check corner u1v0 
+              u1v0_p      ) > ctol THEN  !
+    EXIT("coonevalv0 "+ermess2);         !
+  ENDIF;                                 !
+
+  IF graphic = 4 THEN                    ! Show corner points for graphic= 4
+    POI_FREE(#41, u0v0_p:PEN=3);         !
+    POI_FREE(#42, u0v1_p:PEN=3);         !
+    POI_FREE(#43, u1v0_p:PEN=3);         !
+    POI_FREE(#44, u1v1_p:PEN=3);         !
+  ENDIF;                                 !
+ 
+! +++
+! 3. Calculate coordinates and derivatives
+! ---
+
+  u0_a := ARCL(u0_id);                   ! Total arclength U0 curve
+  u1_a := ARCL(u1_id);                   ! Total arclength U1 curve
+  v0_a := ARCL(v0_id);                   ! Total arclength V0 curve
+  v1_a := ARCL(v1_id);                   ! Total arclength V1 curve
+
+
+  u0_v := INV_ARCL(u0_id,rel_v*u0_a);    ! Current parameter value U0 curve
+  u1_v := INV_ARCL(u1_id,rel_v*u1_a);    ! Current parameter value U1 curve
+  v0_u := INV_ARCL(v0_id,rel_u*v0_a);    ! Current parameter value V0 curve
+  v1_u := INV_ARCL(v1_id,rel_u*v1_a);    ! Current parameter value V1 curve
+
+  u0_p := ON(u0_id,u0_v);                ! Current point on the U0 curve
+  u1_p := ON(u1_id,u1_v);                ! Current point on the U1 curve
+  v0_p := ON(v0_id,v0_u);                ! Current point on the V0 curve
+  v1_p := ON(v1_id,v1_u);                ! Current point on the V1 curve
+
+  v0_tu := TANG(v0_id,v0_u);             ! Tangent (dr/du) for the V0 curve
+  v1_tu := TANG(v1_id,v1_u);             ! Tangent (dr/du) for the V1 curve
+  u0_tv := TANG(u0_id,u0_v);             ! Tangent (dr/dv) for the U0 curve
+  u1_tv := TANG(u1_id,u1_v);             ! Tangent (dr/dv) for the U1 curve
+
+  IF graphic = 4  THEN                   ! Show curve points for graphic= 4
+    LIN_FREE(#31, u0_p,u0_p+0.7*u0_a*u0_tv:PEN=1);           !
+    LIN_FREE(#32, u1_p,u1_p+0.7*u1_a*u1_tv:PEN=2);           !
+    LIN_FREE(#33, v0_p,v0_p+0.7*v0_a*v0_tu:PEN=3);           !
+    LIN_FREE(#34, v1_p,v1_p+0.7*v1_a*v1_tu:PEN=4);           !
+  ENDIF;                                 !
+ 
+!*                          _      _                        _   _
+!*              _       _  !        !    _              _  !     !
+!*    _        !         ! ! u0_p   !   !                ! ! 1-v !
+!*    r(u,v) = ! (1-u) u !*!        ! + ! v0_p    v1_p   !*!     !  -
+!*             !_       _! ! u1_p   !   !_              _! !  v  !
+!*                         !_      _!                      !_   _!
+!*
+!*                          _              _   _   _
+!*                         !                ! !     !
+!*                         ! u0v0_p  u0v1_p ! ! 1-v !
+!*           - ! (1-u) u !*!                !*!     !
+!*                         ! u1v0_p  u1v1_p ! !     !
+!*                         !_              _! !  v  !
+!*                                            !_   _!
+!*
+  xyz := (1.0-rel_u)*u0_p + rel_u  *u1_p +    
+             (1.0-rel_v)*v0_p + rel_v  *v1_p -  
+    ((1.0-rel_u)*u0v0_p+rel_u*u1v0_p)*(1.0-rel_v) - 
+    ((1.0-rel_u)*u0v1_p+rel_u*u1v1_p)*rel_v;      
+
+  drdu := - u0_p + u1_p + (1.0-rel_v)*v0_tu + rel_v*v1_tu  
+     + (1.0-rel_v)*(u1v0_p-u0v0_p) - rel_v*(u1v1_p-u0v1_p);
+
+!rel_v= 0:   drdu := - u0_p(v=0) + u1_p(v=0) + v0_tu - u1v0_p+u0v0_p 
+!rel_v= 1:   drdu := - u0_p(v=1) + u1_p(v=1) + v1_tu  - u1v1_p+u0v1_p;
+
+!1995-11-30      -((1.0-rel_v)*(u1v0_p-u0v0_p) - rel_v*(u1v1_p-u0v1_p));
+  drdv := - v0_p + v1_p + (1.0-rel_u)*u0_tv + rel_u*u1_tv  
+     + (1.0-rel_u)*(u0v1_p-u0v0_p) + rel_u*(u1v1_p-u1v0_p);
+
+
+!rel_u=0:     drdv := - v0_p(u=0) + v1_p(u=0) + u0_tv  - u0v1_p+u0v0_p
+!rel_u=1:     drdv := - v0_p(u=1) + v1_p(u=1) + u1_tv  + u1v0_p-u1v1_p;
+
+
+!1995-11-30      -((1.0-rel_u)*(u0v1_p-u0v0_p) + rel_u*(u1v1_p-u1v0_p));
+
+!1995-11-29 Derivering  drdu := -u0_p +  u1_p +    
+!1995-11-29 Derivering             (1.0-rel_v)*dv0du +   
+!1995-11-29 Derivering                 rel_v  *dv1du -  
+!1995-11-29 Derivering    (-u0v0_p+u1v0_p)*(1.0-rel_v) - 
+!1995-11-29 Derivering    (-u0v1_p+u1v1_p)*rel_v;      
+
+
+
+! drdu := -u0_p + u1_p + (1.0-rel_v)*v0_tu + rel_v*v1_tu +
+!       (u1v0_p-u0v0_p)*(1.0-rel_v) - (u1v1_p-u0v1_p)*rel_v;
+
+
+!1995-11-29 Derivering  drdv := (1.0-rel_u)*du0dv + rel_u  *du1dv  - v0_p +  v1_p +  
+!1995-11-29 Derivering    ((1.0-rel_u)*u0v0_p+rel_u*u1v0_p) - 
+!1995-11-29 Derivering    ((1.0-rel_u)*u0v1_p+rel_u*u1v1_p);      
+
+
+! drdv := (1.0-rel_u)*u0_tv + rel_u*u1_tv - v0_p + v1_p +
+!       ((1.0-rel_u)*u0v0_p+rel_u*u1v0_p) - 
+!       ((1-rel_u)*u0v1_p+rel_u*u1v1_p);
+
+!   v_x= (1.0-s_l)*out_0tÄ3Å + s_l*out_1tÄ3Å - out_s0Ä0Å + out_s1Ä0Å  + 
+!        ((1.0-s_l)*r00.x_gm+s_l*r10.x_gm) - 
+!        ((1-s_l)*r01.x_gm+s_l*r11.x_gm);
+!C*              _       _  !        !    _              _  !     !
+!C*    _        !         ! ! dR0T/dt!   !                ! ! -1  !
+!C*   dr/t    = ! (1-S) S !*!        ! + ! RS0     RS1    !*!     !  -
+!C*             !_       _! ! dR1T/dt!   !_              _! !  1  !
+!C*                         !_      _!                      !_   _!
+!C*
+!C*                          _              _   _   _
+!C*                         !                ! !     !
+!C*                         ! P_R00   P_R01  ! ! -1  !
+!C*           - ! (1-S) S !*!                !*!     !
+!C*                         ! P_R10   P_R11  ! !     !
+!C*                         !_              _! !  1  !
+!C*                                            !_   _!
+!C*    _
+!C*   dr/t    = (1-S)*dR0T/dt + S*dR1T/dt - RS0 + RS1  -
+!C*
+!C*             ((1-S)*P_R00+S*P_R10)*(-1) - ((1-S)*P_R01+S*P_R11)
+!C*    
+!C*  XYZ(1,3) = (1-S)*P_R0T(4) + S*P_R1T(4) - P_RS0(1) + P_RS1(1)  -
+!C*
+!C*           ((1-S)*P_R00(1)+S*P_R10(1))*(-1) - ((1-S)*P_R01(1)+S*P_R11(1))
+!C*    
+!C*  XYZ(2,3) = (1-S)*P_R0T(5) + S*P_R1T(5) - P_RS0(2) + P_RS1(2)  -
+!C*
+!!   u_x= -out_0tÄ0Å +out_1tÄ0Å + out_s0Ä3Å*(1.0-t_l)+ out_s1Ä3Å*t_l-    
+!!        (r10.x_gm-r00.x_gm)*(1.0-t_l) - (r11.x_gm-r01.x_gm)*t_l;
+!   v_x= (1.0-s_l)*out_0tÄ3Å + s_l*out_1tÄ3Å - out_s0Ä0Å + out_s1Ä0Å  + 
+!        ((1.0-s_l)*r00.x_gm+s_l*r10.x_gm) - 
+!        ((1-s_l)*r01.x_gm+s_l*r11.x_gm);
+
+  IF DEBUG = 1  THEN
+    LST_LIN("rel_u "+STR(rel_u,6,4) + " rel_v "+STR(rel_v,6,4) );
+    LST_LIN("u0_v  "+STR(u0_v, 6,4) + " v0_u  "+STR(v0_u ,6,4) );
+    LST_LIN("u1_v  "+STR(u1_v, 6,4) + " v1_u  "+STR(v1_u ,6,4) );
+    LST_LIN("u0_p   "+STR(u0_p.x,10,3)+" "+STR(u0_p.y,10,3) +" "+STR(u0_p.z,10,3) );
+    LST_LIN("u1_p   "+STR(u1_p.x,10,3)+" "+STR(u1_p.y,10,3) +" "+STR(u1_p.z,10,3) );
+    LST_LIN("v0_p   "+STR(v0_p.x,10,3)+" "+STR(v0_p.y,10,3) +" "+STR(v0_p.z,10,3) );
+    LST_LIN("v1_p   "+STR(v1_p.x,10,3)+" "+STR(v1_p.y,10,3) +" "+STR(v1_p.z,10,3) );
+    LST_LIN("u0v0_p "+STR(u0v0_p.x,10,3)+" "+STR(u0v0_p.y,10,3) +" "+STR(u0v0_p.z,10,3));
+    LST_LIN("u1v0_p "+STR(u1v0_p.x,10,3)+" "+STR(u1v0_p.y,10,3) +" "+STR(u1v0_p.z,10,3));
+    LST_LIN("u0v1_p "+STR(u0v1_p.x,10,3)+" "+STR(u0v1_p.y,10,3) +" "+STR(u0v1_p.z,10,3));
+    LST_LIN("u1v1_p "+STR(u1v1_p.x,10,3)+" "+STR(u1v1_p.y,10,3) +" "+STR(u1v1_p.z,10,3));
+    f_part := (1.0-rel_u)*u0_p + rel_u *u1_p + (1.0-rel_v)*v0_p +  rel_v  *v1_p;   
+    s_part := - ((1.0-rel_u)*u0v0_p+rel_u*u1v0_p)*(1.0-rel_v) - 
+                ((1.0-rel_u)*u0v1_p+rel_u*u1v1_p)*rel_v;      
+    LST_LIN("First part "+STR(f_part.x,10,3)+" "+STR(f_part.y,10,3) +" "+STR(f_part.z,10,3));
+    LST_LIN("Sec.  part "+STR(s_part.x,10,3)+" "+STR(s_part.y,10,3) +" "+STR(s_part.z,10,3));
+    LST_LIN("xyz    "+STR(xyz   .x,10,3)+" "+STR(xyz   .y,10,3) +" "+STR(xyz   .z,10,3));
+    LST_LIN("drdu   "+STR(drdu.x,10,3)+" "+STR(drdu.y,10,3) +" "+STR(drdu.z,10,3)+" Red");
+    f_part := -u0_p + u1_p + (1.0-rel_v)*v0_tu + rel_v*v1_tu; 
+    s_part :=  (u1v0_p-u0v0_p)*(1.0-rel_v) - (u1v1_p-u0v1_p)*rel_v;
+    LST_LIN("First part "+STR(f_part.x,10,3)+" "+STR(f_part.y,10,3) +" "+STR(f_part.z,10,3));
+    LST_LIN("Sec.  part "+STR(s_part.x,10,3)+" "+STR(s_part.y,10,3) +" "+STR(s_part.z,10,3));
+    LST_LIN("drdv   "+STR(drdv.x,10,3)+" "+STR(drdv.y,10,3) +" "+STR(drdv.z,10,3)+" Green");
+    t_part := (1.0-rel_u)*u0_tv + rel_u *u1_tv;   
+    p_part := -v0_p +  v1_p;   
+    f_part := (1.0-rel_u)*u0_tv + rel_u *u1_tv  -v0_p +  v1_p;   
+    s_part :=   ((1.0-rel_u)*u0v0_p+rel_u*u1v0_p) - 
+                ((1.0-rel_u)*u0v1_p+rel_u*u1v1_p);      
+    LST_LIN("Tang  part "+STR(t_part.x,10,3)+" "+STR(t_part.y,10,3) +" "+STR(t_part.z,10,3));
+    LST_LIN("Point part "+STR(p_part.x,10,3)+" "+STR(p_part.y,10,3) +" "+STR(p_part.z,10,3));
+    LST_LIN("First part "+STR(f_part.x,10,3)+" "+STR(f_part.y,10,3) +" "+STR(f_part.z,10,3));
+    LST_LIN("Sec.  part "+STR(s_part.x,10,3)+" "+STR(s_part.y,10,3) +" "+STR(s_part.z,10,3));
+  ENDIF;   
+
+  IF graphic >= 1 THEN                   ! Show point for graphic= 1
+    POI_FREE(#35, xyz   :PEN=2);         !
+  ENDIF;                                 !
+  IF graphic >= 3 THEN                   ! Show point for graphic= 3
+    LIN_FREE(#36, xyz,                   !
+       xyz+0.25*v0_a*VECN(drdu) :PEN=2); !
+    LIN_FREE(#37, xyz,                   !
+       xyz+0.25*u0_a*VECN(drdv) :PEN=3); !
+    s_n:= VECN(VPROD(drdu,drdv));        !
+    LIN_FREE(#38, xyz,                   !
+       xyz+0.25*u0_a*s_n        :PEN=4); !
+  ENDIF;                                 !
+
+
+  IF DEBUG = 1 THEN                      !
+    LST_EXI();                           !
+  ENDIF;                                 !
+
+ENDMODULE

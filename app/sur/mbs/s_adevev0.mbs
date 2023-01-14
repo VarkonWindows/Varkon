@@ -1,0 +1,549 @@
+! ***************** s_adevev0 ****************************
+!
+! +++
+! Development of a surface with arclength/geodesic method
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-16 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Development of a surface with arclength/geodesic method
+!sdescs Utbredning av yta med båglängds/geodesic metod
+
+GLOBAL GEOMETRY MODULE s_adevev0 (
+
+REF    s_id                         > "@t16 Select surface";
+REF    csys_id                      > "@t8192 Select coordinate system";
+VECTOR uv_start := VEC(-0.1,-0.1,0) >"UV start point (<0 Mid point)";
+INT    n_add    := 0                >"Number of added UV lines";
+INT    graphic:= 1                  > "Eq. 0: No surface Eq.1: Surface Eq. 2: All");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  
+  FLOAT  d_uv;                   ! Delta UV corresp. to n_add
+
+  INT    iu_mid;                 ! Address to start patch corner
+  INT    iv_mid;                 !
+
+  INT    t_case;                 ! Trim case
+  REF    s1_id;                  ! Trimmed surface 1
+  REF    s2_id;                  ! Trimmed surface 2
+  REF    s3_id;                  ! Trimmed surface 3
+  REF    s4_id;                  ! Trimmed surface 4
+  
+  FLOAT  u_param;                ! U parameter value   
+  FLOAT  v_param;                ! V parameter value   
+    
+  
+      
+  INT    i_u;                    ! Loop index U parameters
+  INT    i_a_u;                  ! Loop index additional U lines
+  INT    i_a_v;                  ! Loop index additional V lines
+  INT    i_v;                    ! Loop index V parameters
+  
+  REF    s_t_id;                 ! Trimmed surface        
+  VECTOR p_uv_start;             ! Start UV point
+  FLOAT  u_delta;                ! Delta U with sign
+  FLOAT  v_delta;                ! Delta V with sign
+  VECTOR p1_dev_start;           ! Start development point 1
+  VECTOR p1_dev_start_u;         ! Start development point 1 for next U
+  VECTOR p2_dev_start;           ! Start development point 2
+  VECTOR utan_dev_start;         ! Start development U tangent
+  VECTOR vtan_dev_start;         ! Start development U tangent
+  VECTOR p1_dev_end;             ! End   development point 1
+  VECTOR p2_dev_end;             ! End   development point 2
+  VECTOR utan_dev_end;           ! End   development U tangent
+  VECTOR vtan_dev_end;           ! End   development U tangent
+  INT    graphic_dev;            ! Eq. 0: No graphic Eq.1: Curves  Eq. 2: All;
+
+
+  INT    nu,nv;                ! Number of patches
+  VECTOR poi( 40, 40);         ! Points for SUR_SPLARR
+  VECTOR tanu( 40, 40);        ! U tangents for SUR_SPLARR
+!  VECTOR tanv( 40, 40);        ! V tangents for SUR_SPLARR
+  STRING metod*15;             ! Method for tangent length calculation 
+                               ! ZEROTWIST_1 or ADINI_1
+  INT    i_p_u;                ! Loop index U point
+  INT    i_p_v;                ! Loop index V point
+
+
+
+  INT    bflag_i;                ! Blank flag for isoparameters
+  INT    bflag_a;                ! Blank flag for all other entities
+  INT    bflag_s;                ! Blank flag for surface
+ 
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks              
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   DEBUG = 1 THEN
+    LST_INI("s_adevev0 Debug Printout");
+  ENDIF;
+  
+  
+  IF    graphic = 0 THEN         ! 
+    bflag_i := 1;                ! Blank flag isoparameters
+    bflag_a := 1;                ! Blank flag all other entities
+    bflag_s := 1;                ! Blank flag surface
+    graphic_dev := 0;            ! Graphic patch development
+  ELIF    graphic = 1 THEN       ! 
+    bflag_i := 1;                ! Blank flag isoparameters
+    bflag_a := 1;                ! Blank flag all other entities
+    bflag_s := 0;                ! Blank flag surface
+    graphic_dev := 0;            ! Graphic patch development
+  ELIF    graphic = 2 THEN       ! 
+    bflag_i := 0;                ! Blank flag isoparameters
+    bflag_a := 1;                ! Blank flag all other entities
+    bflag_s := 0;                ! Blank flag surface
+    graphic_dev := 1;            ! Graphic patch development
+  ELSE                           !
+    EXIT("s_adevev0 graphic not OK");
+  ENDIF;                         !
+
+  FOR  i_p_u:= 1 TO 40 DO 
+    FOR  i_p_v:= 1 TO 40 DO 
+      poi (i_p_u,i_p_v) := VEC(-0.12345,-0.12345,-0.12345);
+      tanu(i_p_u,i_p_v) := VEC(-0.12345,-0.12345,-0.12345);
+    ENDFOR;                
+  ENDFOR;                
+
+! +++
+! Retrieve surface data. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+  
+  IF   DEBUG = 1 THEN
+    LST_LIN("Number of patches  npatu  "+STR(npatu,5,0)+
+                              " npatv  "+STR(npatv,5,0));
+  ENDIF;
+  
+  IF DEBUG = 3 THEN              ! Debug to screen
+   s:= INPMT("s_adevev0 "   +    !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+  IF  npatu <= 39 AND npatv <= 39 THEN
+    nu := npatu;                   ! Number of U patches in output surface
+    nv := npatv;                   ! Number of V patches in output surface
+  ELSE
+    EXIT("s_adevev0 Max. dimension of surface array 40X40");
+  ENDIF;
+
+! +++
+! Calculate delta UV corresponding to n_add
+! ---
+
+  IF  n_add > 10 THEN
+    EXIT("s_adevev0 Maximum n_add is 10");
+  ELIF  n_add  >=  0  THEN
+    d_uv := 1.0/(n_add+1.0);
+  ELSE
+    EXIT("s_adevev0 n_add is negative");
+  ENDIF;
+  
+  IF   DEBUG = 1 THEN
+    LST_LIN("Number of additional patches n_add "+STR(n_add,5,0)+
+                             " d_uv "+STR(d_uv,8,5));
+  ENDIF;
+  
+! +++
+! 2. Create (1, 2 or 4) trimmed surfaces for the given start point
+! ---
+
+  s1_id := #0.1;
+  s2_id := #0.1; 
+  s3_id := #0.1;
+  s4_id := #0.1;
+    
+  IF  uv_start.x <  0.0 THEN
+    iu_mid := TRUNC(npatu/2.0);
+    iv_mid := TRUNC(npatv/2.0);
+  ELSE
+    iu_mid := TRUNC(uv_start.x);
+    iv_mid := TRUNC(uv_start.y);  
+    IF  uv_start.x - iu_mid > 0.00001 OR
+        uv_start.y - iv_mid > 0.00001     THEN
+      EXIT("s_adevev0 Start only in patch corner");
+    ENDIF;
+  ENDIF;
+  
+  IF   DEBUG = 1 THEN
+    LST_LIN("Start patch corner iu_mid "+STR(iu_mid,5,0)+
+                             " iv_mid "+STR(iv_mid,5,0));
+  ENDIF;
+  
+  t_case :=  11;
+
+  IF   iu_mid > 0 AND  iv_mid >  0  THEN  
+   SUR_TRIM(#11, s_id, 0.0, iu_mid, 0.0, iv_mid, t_case
+           :BLANK=bflag_a);
+   s1_id := GLOBAL_REF(#11);
+   SUR_TRIM(#12, s_id, iu_mid, npatu, 0.0, iv_mid, t_case
+           :BLANK=bflag_a);
+   s2_id := GLOBAL_REF(#12);   
+   SUR_TRIM(#13, s_id, 0.0, iu_mid, iv_mid,npatv, t_case
+           :BLANK=bflag_a);
+   s3_id := GLOBAL_REF(#13);   
+   SUR_TRIM(#14, s_id, iu_mid, npatu, iv_mid, npatv, t_case
+           :BLANK=bflag_a);
+   s4_id := GLOBAL_REF(#14);   
+  ELSE
+     EXIT("s_adevev0 iu_mid,iv_mid case not impl.");
+  ENDIF;           
+           
+! +++
+! 3. Develop lower left part of surface (=surface 1)
+! ---
+
+  s_t_id := s1_id;                       ! Current trimmed surface        
+  u_delta := -d_uv;                      ! Delta U with sign
+  v_delta := -d_uv;                      ! Delta V with sign
+  p1_dev_start    := VEC(0,0,0);         ! Start development point
+  utan_dev_start  := VEC(0,-1,0);        ! Start development U tangent
+  vtan_dev_start  := VEC(-1,0,0);        ! Start development V tangent
+
+  p2_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  p2_dev_start    := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_start_u  := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  utan_dev_end    := VEC(-0.12345,-0.12345,-0.12345);
+  vtan_dev_end    := VEC(-0.12345,-0.12345,-0.12345); 
+
+  IF  DEBUG = 2 THEN
+  LST_INI("s_deve1v0 Debug printout  DEBUG= 2");
+  ENDIF;
+
+
+  FOR i_u:= iu_mid TO 1 STEP -1 DO               ! Start loop U patches
+    i_p_u := i_u;
+    FOR  i_a_u := 0 TO n_add   STEP 1 DO         ! Start loop extra U
+      u_param := i_u + i_a_u*u_delta;            ! Current U parameter value
+      FOR  i_v := iv_mid TO 1 STEP -1 DO         ! Start loop V patches
+        i_p_v := i_v;
+        FOR  i_a_v := 0 TO n_add   STEP 1 DO     ! Start loop extra V
+          v_param  :=   i_v + i_a_v*v_delta;     ! Start V value 
+          IF   DEBUG = 1 THEN                    ! Debug
+            LST_LIN("i_a_v "+STR(i_a_v,4,0) +    !
+                    " V start "+                 !
+                     STR(v_param,5,3));          !
+          ENDIF;                                 !
+          p_uv_start:= VEC(u_param,v_param,0);   ! Start UV point
+          PART(#5, s_adeve1v0 (                  ! Develop patch
+                s_t_id, p_uv_start,              !
+                u_delta, v_delta, csys_id,       !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                graphic_dev ));                  !
+          IF   graphic <= 1 THEN                 ! Delete patch developm.
+            DEL(GLOBAL_REF(#5));                 !
+          ENDIF;                                 !
+  IF  DEBUG = 2 THEN
+  LST_LIN("i_u "+STR(i_u,5,0)+" i_a_u "+STR(i_a_u,5,0)+
+         " i_v "+STR(i_v,5,0)+" i_a_v "+STR(i_a_v,5,0));
+  LST_LIN("p_uv_start     "+STR(p_uv_start.x,10,4)+" "+STR(p_uv_start.y,10,4));
+! LST_LIN("p1_dev_start   "+STR(p1_dev_start.x,10,4)+" "+STR(p1_dev_start.y,10,4));
+! LST_LIN("p2_dev_start   "+STR(p2_dev_start.x,10,4)+" "+STR(p2_dev_start.y,10,4));
+! LST_LIN("utan_dev_start "+STR(utan_dev_start.x,10,6)+" "+STR(utan_dev_start.y,10,6));
+! LST_LIN("vtan_dev_start "+STR(vtan_dev_start.x,10,6)+" "+STR(vtan_dev_start.y,10,6));
+! LST_LIN("p1_dev_end     "+STR(p1_dev_end.x,10,4)+" "+STR(p1_dev_end.y,10,4));
+! LST_LIN("p2_dev_end     "+STR(p2_dev_end.x,10,4)+" "+STR(p2_dev_end.y,10,4));
+  ENDIF;
+          PART(#21, s_adeve2v0 (  1,             ! Points to array
+                iu_mid, iv_mid,                  !
+                p_uv_start,                      !
+                u_delta, v_delta,                !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                poi, tanu,1 ):SAVE=0);           !
+
+          IF i_v = iv_mid AND i_a_v = 0 THEN     !
+            p1_dev_start_u := p2_dev_start;      !
+! IF  DEBUG = 2 THEN
+! LST_LIN("p1_dev_start_u "+STR(p1_dev_start_u.x,10,4)+" "+STR(p1_dev_start_u.y,10,4));
+! ENDIF;
+          ENDIF;                                 !
+          p1_dev_start := p1_dev_end;            !
+          p2_dev_start := p2_dev_end;            !
+          utan_dev_start := utan_dev_end;        !
+          vtan_dev_start := vtan_dev_end;        !
+
+        ENDFOR;                                  ! End   loop extra V
+      ENDFOR;                                    ! End   loop V patches
+      p1_dev_start := p1_dev_start_u;            !
+      p2_dev_start := VEC(-0.12345,-0.12345,-0.12345);     !
+!   IF  DEBUG = 2 THEN
+!   LST_LIN("p1_dev_start   "+STR(p1_dev_start.x,10,4)+" "+STR(p1_dev_start.y,10,4));
+!   LST_LIN("p2_dev_start   "+STR(p2_dev_start.x,10,4)+" "+STR(p2_dev_start.y,10,4));
+!   s:= INPMT("s_adeve1v0 Continue y/n ?","y",1);
+!   IF s <> "y" THEN
+!     LST_EXI();
+!     EXIT("s_adevev0 Execution interrupted");
+!   ENDIF;
+!   ENDIF;
+    ENDFOR;                                      ! End   loop extra U
+  ENDFOR;                                        ! End   loop U patches 
+
+  IF  DEBUG = 2 THEN
+  LST_EXI();
+  ENDIF;
+
+!QQ  IF  DEBUG = 5 THEN
+!QQ  MODE_LOCAL(csys_id);
+!QQ  LST_INI("s_deve1v0 Debug printout  DEBUG= 5");
+!QQ  LST_LIN("Surface 1: Points i_p_u= 1 to iu_mid+1= "+STR(iu_mid+1,5,0)); 
+!QQ  LST_LIN("           Points i_p_v= 1 to iv_mid+1= "+STR(iv_mid+1,5,0)); 
+!QQ  FOR  i_p_u:= 1 TO iu_mid+1 DO 
+!QQ  FOR  i_p_v:= 1 TO iv_mid+1 DO
+!QQ  POI_FREE(#100, poi(i_p_u,i_p_v)); 
+!QQ  LST_LIN("i_p_u "+STR(i_p_u,3,0)+  " i_p_v "+STR(i_p_v,3,0)+
+!QQ          " poi "+STR(poi(i_p_u,i_p_v).x,10,4)+" "+STR(poi(i_p_u,i_p_v).y,10,4));
+!QQ  ENDFOR;                
+!QQ  ENDFOR;                
+!QQ  LST_EXI();
+!QQ  MODE_GLOBAL();
+!QQ  ENDIF;
+
+! +++
+! 4. Develop lower right part of surface (=surface 2)
+! ---
+
+  s_t_id := s2_id;                       ! Current trimmed surface        
+  u_delta :=  d_uv;                      ! Delta U with sign
+  v_delta := -d_uv;                      ! Delta V with sign
+  p1_dev_start    := VEC(0,0,0);         ! Start development point
+  utan_dev_start  := VEC(0,-1,0);        ! Start development U tangent
+  vtan_dev_start  := VEC( 1,0,0);        ! Start development V tangent
+
+  p2_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  p2_dev_start    := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_start_u  := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  utan_dev_end    := VEC(-0.12345,-0.12345,-0.12345);
+  vtan_dev_end    := VEC(-0.12345,-0.12345,-0.12345); 
+
+  FOR i_u:= 0 TO iu_mid-1 STEP 1 DO              ! Start loop U patches
+    FOR  i_a_u := 0 TO n_add   STEP 1 DO         ! Start loop extra U
+      u_param := i_u + i_a_u*u_delta;            ! Current U parameter value
+      FOR  i_v := iv_mid TO 1 STEP -1 DO         ! Start loop V patches
+        FOR  i_a_v := 0 TO n_add   STEP 1 DO     ! Start loop extra V
+          v_param  :=   i_v + i_a_v*v_delta;     ! Start V value 
+          p_uv_start:= VEC(u_param,v_param,0);   ! Start UV point
+          PART(#2, s_adeve1v0 (                  ! Develop patch
+                s_t_id, p_uv_start,              !
+                u_delta, v_delta, csys_id,       !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                graphic_dev ));                  !
+          IF   graphic <= 1 THEN                 ! Delete patch developm.
+            DEL(GLOBAL_REF(#2));                 !
+          ENDIF;                                 !
+          PART(#22, s_adeve2v0 (  2,             ! Points to array
+                iu_mid, iv_mid,                  !
+                p_uv_start,                      !
+                u_delta, v_delta,                !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                poi, tanu,1 ):SAVE=0);           !
+
+          IF i_v = iv_mid AND i_a_v = 0 THEN     !
+            p1_dev_start_u := p2_dev_start;      !
+          ENDIF;                                 !
+          p1_dev_start := p1_dev_end;            !
+          p2_dev_start := p2_dev_end;            !
+          utan_dev_start := utan_dev_end;        !
+          vtan_dev_start := vtan_dev_end;        !
+        ENDFOR;                                  ! End   loop extra V
+      ENDFOR;                                    ! End   loop V patches
+      p1_dev_start := p1_dev_start_u;              !
+      p2_dev_start := VEC(-0.12345,-0.12345,-0.12345);     !
+    ENDFOR;                                      ! End   loop extra U
+  ENDFOR;                                        ! End   loop U patches 
+
+! +++
+! 5. Develop upper left part of surface (=surface 3)
+! ---
+
+  s_t_id := s3_id;                       ! Current trimmed surface        
+  u_delta := -d_uv;                      ! Delta U with sign
+  v_delta :=  d_uv;                      ! Delta V with sign
+  p1_dev_start    := VEC(0,0,0);         ! Start development point
+  utan_dev_start  := VEC(0, 1,0);        ! Start development U tangent
+  vtan_dev_start  := VEC(-1,0,0);        ! Start development V tangent
+
+  p2_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  p2_dev_start    := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_start_u  := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  utan_dev_end    := VEC(-0.12345,-0.12345,-0.12345);
+  vtan_dev_end    := VEC(-0.12345,-0.12345,-0.12345); 
+
+  FOR i_u:= iu_mid TO 1 STEP -1 DO               ! Start loop U patches
+    FOR  i_a_u := 0 TO n_add   STEP 1 DO         ! Start loop extra U
+      u_param := i_u + i_a_u*u_delta;            ! Current U parameter value
+      FOR  i_v := 0 TO iv_mid-1 STEP  1 DO         ! Start loop V patches
+        FOR  i_a_v := 0 TO n_add   STEP 1 DO     ! Start loop extra V
+          v_param  :=   i_v + i_a_v*v_delta;     ! Start V value 
+          p_uv_start:= VEC(u_param,v_param,0);   ! Start UV point
+          PART(#3, s_adeve1v0 (                  ! Develop patch
+                s_t_id, p_uv_start,              !
+                u_delta, v_delta, csys_id,       !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                graphic_dev ));                  !
+          IF   graphic <= 1 THEN                 ! Delete patch developm.
+            DEL(GLOBAL_REF(#3));                 !
+          ENDIF;                                 !
+          PART(#23, s_adeve2v0 (  3,             ! Points to array
+                iu_mid, iv_mid,                  !
+                p_uv_start,                      !
+                u_delta, v_delta,                !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                poi, tanu,1 ):SAVE=0);           !
+
+          IF i_v =  0     AND i_a_v = 0 THEN     !
+            p1_dev_start_u := p2_dev_start;      !
+          ENDIF;                                 !
+          p1_dev_start := p1_dev_end;            !
+          p2_dev_start := p2_dev_end;            !
+          utan_dev_start := utan_dev_end;        !
+          vtan_dev_start := vtan_dev_end;        !
+        ENDFOR;                                  ! End   loop extra V
+      ENDFOR;                                    ! End   loop V patches
+      p1_dev_start := p1_dev_start_u;              !
+      p2_dev_start := VEC(-0.12345,-0.12345,-0.12345);     !
+    ENDFOR;                                      ! End   loop extra U
+  ENDFOR;                                        ! End   loop U patches 
+
+
+
+! +++
+! 6. Develop upper right part of surface (=surface 4)
+! ---
+
+  s_t_id := s4_id;                       ! Current trimmed surface        
+  u_delta :=  d_uv;                      ! Delta U with sign
+  v_delta :=  d_uv;                      ! Delta V with sign
+  p1_dev_start    := VEC(0,0,0);         ! Start development point
+  utan_dev_start  := VEC(0, 1,0);        ! Start development U tangent
+  vtan_dev_start  := VEC( 1,0,0);        ! Start development V tangent
+
+  p2_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  p2_dev_start    := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_start_u  := VEC(-0.12345,-0.12345,-0.12345);
+  p1_dev_end      := VEC(-0.12345,-0.12345,-0.12345);
+  utan_dev_end    := VEC(-0.12345,-0.12345,-0.12345);
+  vtan_dev_end    := VEC(-0.12345,-0.12345,-0.12345); 
+
+  FOR i_u:= 0 TO iu_mid-1 STEP 1 DO              ! Start loop U patches
+    FOR  i_a_u := 0 TO n_add   STEP 1 DO         ! Start loop extra U
+      u_param := i_u + i_a_u*u_delta;            ! Current U parameter value
+      FOR  i_v := 0 TO iv_mid-1 STEP  1 DO         ! Start loop V patches
+        FOR  i_a_v := 0 TO n_add   STEP 1 DO     ! Start loop extra V
+          v_param  :=   i_v + i_a_v*v_delta;     ! Start V value 
+          p_uv_start:= VEC(u_param,v_param,0);   ! Start UV point
+          PART(#4, s_adeve1v0 (                  ! Develop patch
+                s_t_id, p_uv_start,              !
+                u_delta, v_delta, csys_id,       !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                graphic_dev ));                  !
+          IF   graphic <= 1 THEN                 ! Delete patch developm.
+            DEL(GLOBAL_REF(#4));                 !
+          ENDIF;                                 !
+          PART(#24, s_adeve2v0 (  4,             ! Points to array
+                iu_mid, iv_mid,                  !
+                p_uv_start,                      !
+                u_delta, v_delta,                !
+                p1_dev_start, p2_dev_start,      !
+                utan_dev_start, vtan_dev_start,  !
+                p1_dev_end,   p2_dev_end,        !
+                utan_dev_end,   vtan_dev_end,    !
+                poi, tanu,1 ):SAVE=0);           !
+
+          IF i_v =  0     AND i_a_v = 0 THEN     !
+            p1_dev_start_u := p2_dev_start;      !
+          ENDIF;                                 !
+          p1_dev_start := p1_dev_end;            !
+          p2_dev_start := p2_dev_end;            !
+          utan_dev_start := utan_dev_end;        !
+          vtan_dev_start := vtan_dev_end;        !
+        ENDFOR;                                  ! End   loop extra V
+      ENDFOR;                                    ! End   loop V patches
+      p1_dev_start := p1_dev_start_u;              !
+      p2_dev_start := VEC(-0.12345,-0.12345,-0.12345);     !
+    ENDFOR;                                      ! End   loop extra U
+  ENDFOR;                                        ! End   loop U patches 
+
+
+
+  IF  DEBUG = 5 THEN
+  MODE_LOCAL(csys_id);
+  LST_INI("s_deve1v0 Debug printout  DEBUG= 5");
+  LST_LIN("Surface 1: Points i_p_u= 1 to npatu +1= "+STR(npatu +1,5,0)); 
+  LST_LIN("           Points i_p_v= 1 to npatv +1= "+STR(npatv +1,5,0)); 
+  FOR  i_p_u:= 1 TO npatu +1 DO 
+  FOR  i_p_v:= 1 TO npatv +1 DO
+  POI_FREE(#100, poi(i_p_u,i_p_v)); 
+  LST_LIN("i_p_u "+STR(i_p_u,3,0)+  " i_p_v "+STR(i_p_v,3,0)+
+          " poi "+STR(poi(i_p_u,i_p_v).x,10,4)+" "+STR(poi(i_p_u,i_p_v).y,10,4));
+  ENDFOR;                
+  ENDFOR;                
+  LST_EXI();
+  MODE_GLOBAL();
+  ENDIF;
+
+  metod := "ZEROTWIST_1";  
+
+!  SUR_SPLARR(#1 ,metod,nu+1,nv+1,poi,tanu,tanv:BLANK=bflag_s );
+  SUR_SPLARR(#1 ,metod,nu+1,nv+1,poi:BLANK=bflag_s );
+
+
+
+
+
+  IF   DEBUG = 1 THEN
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE

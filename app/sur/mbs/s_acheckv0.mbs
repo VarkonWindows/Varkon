@@ -1,0 +1,413 @@
+!*********************  s_acheckv0 ************************************
+! +++
+! Check continuity between two surfaces along a boundary 
+!
+! Revision history
+! ________________
+!
+! 1995-11-13 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+!sdesce Check continuity between two surfaces along a boundary 
+!sdescs Kontrollera kontinuitet mellan två ytor längs en randkurva
+
+GLOBAL  GEOMETRY MODULE  s_acheckv0 (
+REF     sur1_id                >"@t16 Select surface 1";
+STRING  bound1*10 := "vstart"  >"Boundary ustart, uend, vstart or vend surface 1";
+REF     sur2_id                >"@t16 Select surface 2";
+STRING  bound2*10 := "vend"    >"Boundary ustart, uend, vstart or vend surface 2";
+INT     c_case   := 1          >"Check ... not yet used ... ";
+FLOAT   d_len    :=  2.0       >"Delta arclength for the check (boundary 1)";
+INT     list     := 1          >"List flag  Eq. 1: List data on screen";
+INT     graphic  := 2          >"=0: No graphic =1: Show ..... =2: Show all");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  INT    nu1,nv1;              ! Number of patches in surface 1
+  INT    nu2,nv2;              ! Number of patches in surface 2
+
+  REF    cur1_id;              ! Boundary curve surface 1
+  REF    cur2_id;              ! Boundary curve surface 2
+
+  STRING iso1_d*1;             ! Isoparameter 1 direction (U or V)
+  STRING iso2_d*1;             ! Isoparameter 2 direction (U or V)
+  FLOAT  iso1_v;               ! Isoparameter 1 value
+  FLOAT  iso2_v;               ! Isoparameter 1 value
+  FLOAT  iso1_s;               ! Isoparameter 1 start value
+  FLOAT  iso2_s;               ! Isoparameter 2 start value
+  FLOAT  iso1_e;               ! Isoparameter 1 end   value
+  FLOAT  iso2_e;               ! Isoparameter 2 end   value
+
+  FLOAT  tot_arc1;             ! Total arclength input curve
+
+  FLOAT  u1_arc;               ! Parameter value for p_1 (def. by arclength)
+  FLOAT  u2_par;               ! Parameter value for p_2
+  INT    n_pts;                ! Number of curve points for the check
+  INT    i_x;                  ! Loop index curve points
+
+  INT    n_int;                ! Number of intersect points
+
+  VECTOR p_1;                  ! Check     point on curve 1
+  VECTOR p_2;                  ! Intersect point on curve 2
+  VECTOR n_1;                  ! Surface normal in p_1        
+  VECTOR n_2;                  ! Surface normal in p_2        
+
+  FLOAT  dot;                  ! Scalar product
+
+  INT    graphic_pla;          ! Graphic for c_bplanev0
+
+  INT    i_che;                ! Loop index checked points
+  INT    n_che;                ! Number of checked points
+  FLOAT  dist_all(900);        ! All deviation distances
+  FLOAT  ang_all(900);         ! All deviation angles
+  VECTOR uv1_all(900);         ! All uv1 U,V points
+
+  VECTOR uv1;                  ! Surface parameter for p_1
+  VECTOR uv2;                  ! Surface parameter for p_2
+
+  FLOAT  ang_max;              ! Maximum angle deviation
+  VECTOR uv1_max_a;            ! uv1 for maximum angle
+  FLOAT  pos_max;              ! Maximum position deviation
+  VECTOR uv1_max_p;            ! uv1 for maximum deviation in position
+
+  INT    b_val_c;              ! Blank flag curve
+  INT    b_val_a;              ! Blank flag all other entities
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations and checks
+!
+
+  DEBUG := 0;                       ! Debug =1 or 0
+
+  IF   graphic    = 0 THEN          ! Graphics
+    b_val_c:= 1;                    !
+    b_val_a:= 1;                    !
+  ELIF graphic    = 1 THEN          ! 
+    b_val_c:= 0;                    !
+    b_val_a:= 1;                    !
+  ELIF graphic    = 2 THEN          !
+    b_val_c:= 0;                    !
+    b_val_a:= 0;                    !
+  ELSE                              !
+   EXIT("s_acheckv0graphic" +       !
+         " not OK");                !
+  ENDIF;                            !
+
+! +++
+! Retrieve number of patches for both surfaces
+! ---
+
+  GETSURH(sur1_id,"NPATU",nu1);     ! Surface 1
+  GETSURH(sur1_id,"NPATV",nv1);     !
+  GETSURH(sur2_id,"NPATU",nu2);     ! Surface 2
+  GETSURH(sur2_id,"NPATV",nv2);     !
+
+! +++
+! Create boundary curves for surface 1 and surface 2
+! ---
+
+  IF    bound1 = "ustart" OR        !
+        bound1 = "USTART"    THEN   !
+    iso1_d:= "U";                   !
+    iso1_v:=  0.0;                  !
+    iso1_s:=  0.0;                  !
+    iso1_e:=  nv1;                  !
+  ELIF  bound1 = "uend"   OR        !
+        bound1 = "UEND"      THEN   !
+    iso1_d:= "U";                   !
+    iso1_v:=  nu1;                  !
+    iso1_s:=  0.0;                  !
+    iso1_e:=  nv1;                  !
+  ELIF  bound1 = "vstart" OR        !
+        bound1 = "VSTART"    THEN   !
+    iso1_d:= "V";                   !
+    iso1_v:=  0.0;                  !
+    iso1_s:=  0.0;                  !
+    iso1_e:=  nu1;                  !
+  ELIF  bound1 = "vend"   OR        !
+        bound1 = "VEND"      THEN   !
+    iso1_d:= "V";                   !
+    iso1_v:=  nv1;                  !
+    iso1_s:=  0.0;                  !
+    iso1_e:=  nu1;                  !
+  ELSE                              !
+    EXIT("s_acheckv0 bound1 "+      !
+         bound1 +"not OK");         !
+  ENDIF;                            !
+
+  CUR_ISO( #2,sur1_id,              !
+              iso1_d, iso1_v,       !
+              iso1_s, iso1_e        !
+              :PEN=2);              !
+  cur1_id:= GLOBAL_REF(#2);         !
+
+
+  IF    bound2 = "ustart" OR        !
+        bound2 = "USTART"    THEN   !
+    iso2_d:= "U";                   !
+    iso2_v:=  0.0;                  !
+    iso2_s:=  0.0;                  !
+    iso2_e:=  nv2;                  !
+  ELIF  bound2 = "uend"   OR        !
+        bound2 = "UEND"      THEN   !
+    iso2_d:= "U";                   !
+    iso2_v:=  nu2;                  !
+    iso2_s:=  0.0;                  !
+    iso2_e:=  nv2;                  !
+  ELIF  bound2 = "vstart" OR        !
+        bound2 = "VSTART"    THEN   !
+    iso2_d:= "V";                   !
+    iso2_v:=  0.0;                  !
+    iso2_s:=  0.0;                  !
+    iso2_e:=  nu2;                  !
+  ELIF  bound2 = "vend"   OR        !
+        bound2 = "VEND"      THEN   !
+    iso2_d:= "V";                   !
+    iso2_v:=  nv2;                  !
+    iso2_s:=  0.0;                  !
+    iso2_e:=  nu2;                  !
+  ELSE                              !
+    EXIT("s_acheckv0 bound2 "+      !
+         bound2 +"not OK");         !
+  ENDIF;                            !
+
+  CUR_ISO( #3,sur2_id,              !
+              iso2_d, iso2_v,       !
+              iso2_s, iso2_e        !
+              :PEN=2);              !
+  cur2_id:= GLOBAL_REF(#3);         !
+
+
+
+
+! +++
+! Calculate number of points for the given delta value (d_len)
+! ---
+
+  tot_arc1:= ARCL(cur1_id);         ! Total arc length
+  IF d_len < 0.02 THEN              !
+   EXIT("s_acheckv0 d_len <" +      !
+         " 0.02  ");                !
+  ENDIF;                            !
+
+  n_pts   := ROUND(tot_arc1/        ! Number of check points
+                   d_len)+2;        !
+
+  n_che:= 0;                        ! Number of checked points
+
+  FOR i_x := 1 TO n_pts   DO        ! Start loop curve points
+
+    u1_arc := INV_ARCL(cur1_id,     ! Parameter value for current arc length
+    (i_x-1)*tot_arc1/(n_pts-1));    !
+      
+    IF  DEBUG  = 3  THEN
+    s:= INPMT("s_acheckv0 u1_arc "+STR(u1_arc,-25,20)," ",1);
+    ENDIF;       
+
+    p_1  :=   ON(cur1_id,u1_arc);   ! Check point         on curve 1
+
+    IF graphic = 2 THEN             ! Show check point     
+     POI_FREE(#11,p_1:PEN=1);       !
+    ENDIF;                          !
+
+    graphic_pla:= 1;                !
+    PART( #4, c_bplanev0 ( cur1_id, ! Create plane with normal equal to tangent
+              u1_arc, graphic_pla));!
+
+    IF  DEBUG  = 3  THEN
+    s:= INPMT("s_acheckv0 Plane created in c_bplanev0 "," ",1);
+    ENDIF;       
+
+    n_int := N_INTERSECT ( cur2_id, !
+      GLOBAL_REF(#4#1), 1);         !
+    IF  DEBUG  = 3  THEN
+    s:= INPMT("s_acheckv0 n_int "+STR(n_int ,-1,0)," ",1);
+    ENDIF;       
+
+    IF n_int >  0 THEN              !
+      ;                             !
+    ELSE                            !
+      GOTO  nxtpt;                  !
+    ENDIF;                          !
+
+    p_2:= INTERSECT ( cur2_id,      ! Intersect point
+      GLOBAL_REF(#4#1), 1);         !
+
+    IF graphic = 2 THEN             ! Show check point     
+     POI_FREE(#12,p_2:PEN=4);       !
+    ENDIF;                          !
+
+    IF VECL(p_2-ON(cur2_id,0.0)) < 0.02 THEN !!!! Tillfällig fix !!!!!!
+      u2_par:= 0.0;                 !
+    ELSE
+    u2_par:= INV_ON(cur2_id,        ! Parameter value for intersect point
+             p_2,1);                !
+    ENDIF; 
+
+    IF  DEBUG  = 3  THEN
+    s:= INPMT("s_acheckv0 u2_par "+STR(u2_par,-15,8)," ",1);
+    ENDIF;       
+
+    uv1  := EVAL(cur1_id,"UV",      ! Surface parameter point for p_1
+            VEC(u1_arc,0,0));       !
+    uv1  := uv1 - VEC(1.0,1.0,0);   !
+    uv2  := EVAL(cur2_id,"UV",      ! Surface parameter point for p_2
+            VEC(u2_par,0,0));       !
+    uv2  := uv2 - VEC(1.0,1.0,0);   !
+
+    IF uv1.x < 0.0 AND uv1.x > -0.000001 THEN
+       uv1.x := 0.0;
+    ENDIF;
+    IF uv1.y < 0.0 AND uv1.y > -0.000001 THEN
+       uv1.y := 0.0;
+    ENDIF;
+    IF uv2.x < 0.0 AND uv2.x > -0.000001 THEN
+       uv2.x := 0.0;
+    ENDIF;
+    IF uv2.y < 0.0 AND uv2.y > -0.000001 THEN
+       uv2.y := 0.0;
+    ENDIF;
+    IF uv1.x > nu1 AND uv1.x < nu1 + 0.000001 THEN
+       uv1.x := nu1;
+    ENDIF;
+    IF uv1.y > nv1 AND uv1.y < nv1 + 0.000001 THEN
+       uv1.y := nv1;
+    ENDIF;
+    IF uv2.x > nu2 AND uv2.x < nu2 + 0.000001 THEN
+       uv2.x := nu2;
+    ENDIF;
+    IF uv2.y > nv2 AND uv2.y < nv1 + 0.000001 THEN
+       uv2.y := nv2;
+    ENDIF;
+
+    IF  DEBUG  = 3  THEN
+    s:= INPMT("s_acheckv0 u1_par "
+        +STR(u1_arc,8,4)+" uv1 "+STR(uv1.x,8,4)+" "
+                                +STR(uv1.y,8,4)," ",1);
+    s:= INPMT("s_acheckv0 u2_par "
+        +STR(u2_par,8,4)+" uv2 "+STR(uv2.x,8,4)+" "
+                                +STR(uv2.y,8,4),"y",1);
+    IF  s <> "y" THEN
+     EXIT("s_acheckv0 User interruption");
+    ENDIF;
+    ENDIF;       
+
+    n_1:=EVAL(sur1_id,"NORMAL",uv1);! Surface normal in p_1
+    n_2:=EVAL(sur2_id,"NORMAL",uv2);! Surface normal in p_2
+
+    dot := n_1*n_2;                 ! Scalar product
+    IF     dot  > 1.0 THEN          !
+      dot := 1.0;                   !
+    ENDIF;                          !
+    IF     dot < -1.0 THEN          !
+      dot := -1.0;                  !
+    ENDIF;                          !
+
+    n_che:= n_che + 1;              ! Number of checked points
+    dist_all(n_che):= VECL(p_1-p_2);! Distance
+    ang_all(n_che) := ARCCOS(dot);  !
+    uv1_all(n_che) := uv1;          !
+
+
+nxtpt:;                             ! Next point
+
+    DEL(GLOBAL_REF(#4));            ! Delete part which creates B_PLANE
+
+  ENDFOR;                           ! End loop curve points
+
+! +++
+! End   loop i_x  = 1, 2,  ..... , n_pts
+! ---
+
+  ang_max := 0;
+  uv1_max_a := VEC(-1,-1,0);
+  FOR  i_che:= 1 TO n_che DO
+    IF ang_all(i_che) > ang_max THEN
+      ang_max:= ang_all(i_che);
+      uv1_max_a:= uv1_all(i_che);
+    ENDIF;
+  ENDFOR;
+  
+  pos_max := -50000.0;
+  uv1_max_p := VEC(-1,-1,0);
+  FOR  i_che:= 1 TO n_che DO
+    IF dist_all(i_che) > pos_max THEN
+      pos_max:= dist_all(i_che);
+      uv1_max_p:= uv1_all(i_che);
+    ENDIF;
+  ENDFOR;
+  
+  IF list = 1 THEN
+  LST_INI("Continuity analysis between surfaces "+ RSTR(sur1_id) +
+          " and "+ RSTR(sur2_id)); 
+
+  LST_LIN("  "); 
+
+  LST_LIN("Master isoparameter curve is "+iso1_d+STR(iso1_v,-3,0)+" on surface "+RSTR(sur1_id)); 
+  LST_LIN("Slave  isoparameter curve is "+iso2_d+STR(iso2_v,-3,0)+" on surface "+RSTR(sur2_id)); 
+
+  LST_LIN("  "); 
+
+
+  LST_LIN("  Position deviation "+         !   Skriv tabellhuvud.
+            " Normal deviation "+
+            "          U "+
+            "          V ");
+
+
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+  FOR  i_che:= 1 TO n_che DO
+    LST_LIN( STR(dist_all(i_che),15,8)+ " "+ STR( ang_all(i_che),21,6 )+
+             "          " +
+             STR(uv1_all(i_che).x,7,4) + " "+STR(uv1_all(i_che).y,7,4) );
+  ENDFOR;
+
+  LST_LIN(" ");
+  LST_LIN("   -------------- Maximum deviations -----------------------");
+  LST_LIN(" ");
+
+  LST_LIN("Position "+STR(pos_max,25,10)+" for U,V "+ STR(uv1_max_p.x,10,6) 
+                                        +" "+         STR(uv1_max_p.y,10,6) );
+
+  LST_LIN("Angle    "+STR(ang_max,25,10)+" for U,V "+ STR(uv1_max_a.x,10,6) 
+                                        +" "+         STR(uv1_max_a.y,10,6) );
+
+  LST_LIN(" ");
+  LST_EXI();
+
+  ENDIF; ! End list= 1
+
+! +++
+! Graphical representation of maximum angle
+! --
+
+  IF graphic = 0 THEN
+   EXIT();
+  ENDIF;
+
+  LIN_FREE(#5,     ON(sur1_id,uv1_max_p),  
+                   ON(sur1_id,uv1_max_p)+
+    tot_arc1*0.2*NORM(sur1_id,uv1_max_p):PEN=4);
+  LIN_FREE(#6,     ON(sur1_id,uv1_max_a),  
+                   ON(sur1_id,uv1_max_a)+
+    tot_arc1*0.2*NORM(sur1_id,uv1_max_a):PEN=2);
+
+
+ENDMODULE

@@ -1,0 +1,263 @@
+!********************* s_bredefv0 *************************************
+! +++
+! The function recreates a surface with new patch boundaries
+!
+! The input surface will be approximated to a CUB_SUR surface.
+!
+! The function SUR_APPROX should be used for this type of 
+! calculation but there is (for the moment) no option in 
+! SUR_APPROX for the creation of a surface with fewer patches.
+! 
+! The CUB_SUR surface is a surface type which normally requires
+! more patches than any of the other surface types in VARKON. 
+! The function will give a warning if the surface is of another
+! type and if the number of patches will be fewer. 
+!
+! The maximum number of U and V lines in the output surface 
+! is 100 X 100.
+!
+! ---
+! Revision history
+! ________________
+!
+! 1996-04-28 Gunnar Liden
+!
+! 
+!********************************************************************
+
+!sdesce The function recreates a surface with new patch boundaries
+!sdescs Återskapa en yta med nya patch gränser
+
+GLOBAL  GEOMETRY MODULE s_bredefv0 (
+REF     sur_id                    >"@t16 Select surface to be redefined";
+FLOAT   start_u  :=   1.0         >"Start U parameter value";
+FLOAT   delta_u  :=   0.5         >"Delta U parameter value";
+FLOAT   end_u    :=   6.0         >"End   U parameter value";
+FLOAT   start_v  :=   0.0         >"Start V parameter value";
+FLOAT   delta_v  :=   3.0         >"Delta V parameter value";
+FLOAT   end_v    := 140.0         >"End   V parameter value";
+STRING  metod*15 := "ZEROTWIST_1" >"Method SUR_SPLARR:  ZEROTWIST_1 or ADINI_1";
+INT     graphic  :=   1           >"0= None, 1= Surface , 2= All ");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  INT    nu,nv;                ! Number of patches
+
+  INT    i_x;                  ! Loop index point in x direction
+  INT    j_y;                  ! Loop index point in y direction
+
+! ---
+
+  VECTOR uv;                   ! U,V for current point
+  VECTOR poi(100,100);         ! Points for SUR_SPLARR
+  VECTOR tanu(100,100);        ! U tangents for SUR_SPLARR
+  VECTOR tanv(100,100);        ! V tangents for SUR_SPLARR
+
+  INT    iu,iv;                ! Point number
+
+  FLOAT  dist;                 ! For check of distance between points
+
+  INT    b_val_s;              ! BLANK value surface
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+!    Open input file with points
+
+  DEBUG := 0;                 ! Debug =1 or 0
+
+  IF DEBUG = 1 THEN  
+    LST_INI("s_redefv0 Debug output ");
+  ENDIF;
+
+  IF   graphic = 0 THEN       ! Graphics
+    b_val_s:= 1;              !
+  ELIF graphic = 1 THEN       ! 
+    b_val_s:= 0;              !
+  ELIF graphic = 2 THEN       !
+    b_val_s:= 0;              !
+  ELSE                        !
+   EXIT("s_bredefv0 graphic"+ !
+         " not OK");          !
+  ENDIF;                      !
+
+  GETSURH(sur_id,"NPATU",nu); ! Number of U patches
+  GETSURH(sur_id,"NPATV",nv); ! Number of V patches
+
+  IF  start_u <  0.0 THEN     !
+    EXIT("s_bredefv0 "+       !
+    "start_u < "+             !
+    " 0.0");                  !
+  ENDIF;                      !
+  IF    end_u > nu   THEN     !
+    EXIT("s_bredefv0 "+       !
+    "start_u > "+             !
+    STR(nu,-1,0));            !
+  ENDIF;                      !
+  IF  start_v <  0.0 THEN     !
+    EXIT("s_bredefv0 "+       !
+    "start_v < "+             !
+    " 0.0");                  !
+  ENDIF;                      !
+  IF    end_v > nv   THEN     !
+    EXIT("s_bredefv0 "+       !
+    "start_v > "+             !
+    STR(nv,-1,0));            !
+  ENDIF;                      !
+  IF    delta_v > 0.0 AND     !
+      start_v > end_v   THEN  !
+    EXIT("s_bredefv0 "+       !
+    "delta_v "+               !
+    STR(delta_v,4,1)+" > 0"); !
+  ENDIF;                      !
+
+  IF ABS(delta_u) < 0.05 THEN !
+    EXIT("s_bredefv0 "+       !
+    "delta_u "+               !
+    STR(delta_u,4,1)+         !
+    " < 0.05");               !
+  ENDIF;                      !
+  IF ABS(delta_v) < 0.05 THEN !
+    EXIT("s_bredefv0 "+       !
+    "delta_v "+               !
+    STR(delta_v,4,2)+         !
+    " < 0.05");               !
+  ENDIF;                      !
+
+  IF ABS(start_u-end_u) <     !
+            0.05 THEN         !
+    EXIT("s_bredefv0 "+       !
+    "start_u-end_u "+         !
+    STR(start_u-end_u,5,2)+   !
+    " < 0.05");               !
+  ENDIF;                      !
+  IF ABS(start_v-end_v) <     !
+            0.05 THEN         !
+    EXIT("s_bredefv0 "+       !
+    "start_v-end_v "+         !
+    STR(start_v-end_v,5,2)+   !
+    " < 0.05");               !
+  ENDIF;                      !
+
+  IF    delta_v < 0.0 AND     !
+      start_v < end_v   THEN  !
+    EXIT("s_bredefv0 "+       !
+    "delta_v "+               !
+    STR(delta_v,4,1)+" < 0"); !
+  ENDIF;                      !
+  IF    delta_u > 0.0 AND     !
+      start_u > end_u   THEN  !
+    EXIT("s_bredefv0 "+       !
+    "delta_u "+               !
+    STR(delta_u,4,1)+" > 0"); !
+  ENDIF;                      !
+  IF    delta_u < 0.0 AND     !
+      start_u < end_u   THEN  !
+    EXIT("s_bredefv0 "+       !
+    "delta_u "+               !
+    STR(delta_v,4,1)+" < 0"); !
+  ENDIF;                      !
+
+! +++
+! 3. Selection of points
+!
+! ---
+
+
+! +++
+! Start loop i_x  =  1, 2, ........ ,  100
+!   Start loop j_y  =  1, 2,......... ,  100
+! ---
+
+  iu  := 0;
+  iv  := 0;
+
+  FOR i_x  := 1       TO   100   DO   ! Start loop U points
+    FOR j_y  := 1       TO   100         DO   ! Start loop V points
+      uv := VEC(start_u+(i_x-1)*delta_u, start_v+(j_y-1)*delta_v,0.0);
+      IF uv.y > end_v OR uv.y < 0.0 THEN
+        iv := j_y-1;
+        GOTO endv;
+      ENDIF;
+      IF uv.x > end_u OR uv.x < 0.0 THEN
+        iu := i_x-1;
+        GOTO endu;
+      ENDIF;
+      poi (i_x,j_y):= ON(sur_id, uv   );
+      tanu(i_x,j_y):= VECN(EVAL(sur_id,"DRDU",uv));
+      tanv(i_x,j_y):= VECN(EVAL(sur_id,"DRDV",uv));
+      IF DEBUG = 1 THEN  
+        LST_LIN("Point poi("+STR(i_x,-1,0)+", "+STR(j_y,-1,0)+") = "+
+                STR(poi(i_x,j_y).x,15,8)+" "+ 
+                STR(poi(i_x,j_y).y,15,8)+" "+  
+                STR(poi(i_x,j_y).z,15,8) );
+        LST_LIN("Point poi("+STR(i_x,-1,0)+", "+STR(j_y,-1,0)+")   "+
+                STR(          uv.x,15,8)+" "+ 
+                STR(          uv.y,15,8)+" Corresponding U,V");
+      ENDIF;
+      IF graphic = 2 THEN  
+       POI_FREE(#21,poi(i_x,j_y):PEN=4);!
+      ENDIF;              
+    ENDFOR;
+endv:;
+  ENDFOR;
+
+  EXIT("s_bredefv0 Number of U or V points > 100");
+
+endu:;
+
+ IF DEBUG = 1 THEN  
+   LST_LIN("Number of points for surface iu= "+STR(iu,-1,0)+" iv= "+STR(iv,-1,0));
+ ENDIF;
+
+! +++
+!   End   loop j_y  = 1,2, ..........  100                     
+! End   loop i_x  = 1,2, ..........  100                     
+! ---
+
+! +++
+! 3. Create surface
+! ---
+
+! +++
+! Check distance between input points if DEBUG = 1
+! ---
+
+  IF DEBUG = 1 THEN
+  FOR i_x  := 1 TO iu-1  DO            ! Start loop U points
+    dist:= VECl(poi(i_x,1)-poi(i_x+1,1));
+    IF dist < 0.1 THEN
+!      LST_INI("s_redefv0 Error Error Error");
+!      LST_LIN("Point "+STR(i_x,-1,0)+" and "+STR(i_x+1,-1,0)+" are equal");
+!      LST_LIN("A red point is created !");
+!      LST_EXI();
+      POI_FREE(#12,poi(i_x,1):PEN=2);
+      EXIT();
+    ENDIF;
+  ENDFOR;
+
+  ENDIF;
+
+
+  SUR_SPLARR(#1,metod,iu,iv,poi,tanu,tanv:BLANK=b_val_s);
+
+
+ IF DEBUG = 1 THEN  
+   LST_LIN("Surface created with method "+ metod );
+   LST_EXI();
+ ENDIF;
+
+ENDMODULE

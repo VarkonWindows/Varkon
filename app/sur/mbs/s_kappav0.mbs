@@ -1,0 +1,255 @@
+! ***************** s_kappav0  ****************************
+!
+! +++
+! Curvature analysis of surfaces
+!
+! 1994-05-23 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Curvature analysis of surfaces
+!sdescs Krökningsanalys i ytor
+
+
+GLOBAL GEOMETRY MODULE s_kappav0  (
+
+REF    s_id                     >"@t16 Select surface";
+REF    c_id                     >"@t8192 Select U,V coordinate system";
+STRING kcase*10:="devan"        >"Case: maxp minp gauss devan";
+INT    iu_d   := 3              >"@ Step in U direction";
+INT    iv_d   := 3              >"@ Step in V direction";
+FLOAT  lklim  := 0.00000000001  >"@ Lower (zero) limit for devan";
+FLOAT  uklim  := 0.000000001    >"@ Upper        limit for devan";
+FLOAT  pcrit  := 0.00000001     >"@ Criterion for planar surface";
+STRING rflag*3:= "ALL"          >"@ Representation R*3, U,V or ALL";
+FLOAT  rleng  := 15.0           >"@ Length of lines in R*3 space";
+FLOAT  uleng  := 30.0           >"@ Length of lines in U,V plane";
+FLOAT  kleng  := 50000000.0     >"@ Length of gaussian lines ";
+INT    kpen   :=  2             >"@ Pen (colour) for curvature lines";
+INT    upen   :=  6             >"@ Pen (colour) for U,V grid";
+INT    graphic:= 1              >"@ Graphic Eq 1: Lines Eq 2: ..");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  INT    i_l;                    ! Loop index for U,V grid
+
+  INT    iu;                     ! Loop index U points 
+  INT    iv;                     ! Loop index V points 
+
+  FLOAT  ustep;                  ! U step within patch  
+  FLOAT  vstep;                  ! V step within patch  
+
+  FLOAT  uglob;                  ! U surface global parameter
+  FLOAT  vglob;                  ! V surface global parameter
+
+  VECTOR uv;                     ! Vector for EVAL function
+  VECTOR d_a;                    ! Vector for EVAL function
+  VECTOR d_b;                    ! Vector for EVAL function
+  VECTOR s_p;                    ! Surface point
+  VECTOR s_n;                    ! Surface normal
+  STRING ecase1*10;              ! Case 1 for EVAL
+  STRING ecase2*10;              ! Case 2 for EVAL
+  STRING ecase3*10;              ! Case 3 for EVAL
+
+  FLOAT  pleng;                  ! Minimum length of gaussian lines
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+! ---
+! 0. Initiations and checks      
+!
+
+  DEBUG := 0;                    ! Debug printout
+
+  PART(#2,G_REFSEL(s_id));       ! Add # to reference if necessary
+  PART(#3,G_REFSEL(c_id));       ! Add # to reference if necessary
+
+  IF   kcase="maxp" OR           ! EVAL cases
+       kcase="MAXP"     THEN     !
+     ecase1:= "UVMAX";           !
+     ecase2:= "R3MAX";           !
+     ecase3:= "UNDEF";           !
+  ELIF kcase="minp" OR           !
+       kcase="MINP"     THEN     !
+     ecase1:= "UVMIN";           !
+     ecase2:= "R3MIN";           !
+     ecase3:= "UNDEF";           !
+  ELIF kcase="devan" OR          !
+       kcase="DEVAN"    THEN     !
+     ecase1:= "UVMIN";           !
+     ecase2:= "R3MIN";           !
+     ecase3:= "KAPPAMIN";        !
+  ELIF kcase="gauss" OR          !
+       kcase="GAUSS"    THEN     !
+     ecase1:= "UVMIN";           !
+     ecase2:= "R3MIN";           !
+     ecase3:= "GAUSSIAN";        !
+  ELSE                           !
+    EXIT("s_kappav0: kcase "+    !
+          kcase);                !
+  ENDIF;                         !
+
+!+++
+!    Retrieve number of patches. Calls of GETSURH.
+!---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("s_kappav0  "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 1. Grid of lines for UV graphical representation
+!
+!    Create a grid of U,V lines corresponding to the number
+!    of patches in U and V direction in the XY plane of the
+!    selected coordinate system.
+! ---
+
+IF rflag="U,V" OR rflag="u,v" OR   ! Case: rcase= U,V or ALL
+   rflag="ALL" OR rflag="all" THEN !
+  SET(PEN=upen);                   ! Pen (colour)
+  MODE_LOCAL(c_id);                ! Activate local  system
+  FOR i_l:=1 TO npatu + 1 DO       ! Start loop U lines
+    LIN_FREE(#15,                  ! Create line
+    VEC(100+(i_l-1)*100,100,0),    !
+    VEC(100+(i_l-1)*100,           !
+         100*(npatv+1),0));        !
+  ENDFOR;                          ! End   loop U lines
+  FOR i_l:=1 TO npatv + 1 DO       ! Start loop V lines
+    LIN_FREE(#16,                  ! Create line
+    VEC(100,100+(i_l-1)*100,0),    !
+    VEC(100*(npatu+1),             !
+         100+(i_l-1)*100,0));      !
+  ENDFOR;                          ! End   loop V lines
+  SET(PEN=1   );                   ! Pen (colour)
+  MODE_GLOBAL();                   ! Activate global system
+ENDIF;                             ! End rcase=U,V or ALL
+
+! +++
+! 2. Curvature calculation
+!
+!    Calculate curvature and create geometry (lines) 
+!    showing the curvature.
+! ---
+
+ustep := 1.0/iu_d;                 ! U parameter step
+vstep := 1.0/iv_d;                 ! V parameter step
+
+SET(PEN=kpen);                     ! Pen (colour)
+
+IF DEBUG = 1  THEN                 ! Debug to screen
+     s:= INPMT("s_kappav0  "   +   !
+      " ustep "+STR(ustep,-12,6)+  !
+      " ustep "+STR(vstep,-12,6),  !
+      "",1);                       !
+ENDIF;                             !
+
+FOR iu:=1 TO npatu*iu_d+1 DO       ! Start loop U points
+  FOR iv:=1 TO npatv*iv_d+1 DO     ! Start loop V points
+    uglob:= (iu-1)*ustep;          ! U global parameter
+    vglob:= (iv-1)*vstep;          ! V global parameter
+    uv := VEC(uglob,vglob,0);      !
+
+    IF rflag="U,V" OR              ! Case: rcase= U,V or ALL
+       rflag="u,v" OR              !
+       rflag="ALL" OR              !
+       rflag="all" THEN            !
+       d_a:= EVAL(s_id,ecase1,uv); ! Calculate curvature
+       MODE_LOCAL(c_id);           ! Activate local  system
+
+       IF ecase3 <> "UNDEF" THEN   ! Case: ecase3 <> UNDEF (start)
+       d_b:=EVAL(s_id,ecase3  ,uv);! Curvature           
+       pleng:= kleng*d_b.x;        ! 
+         IF kcase = "devan" OR     ! Case: devan (start)
+            kcase = "DEVAN"   THEN !
+           IF ABS(d_b.x)<lklim THEN!
+             LIN_FREE( #8,         ! Create line
+             VEC(100+uglob*100,    !
+               100+vglob*100,0),   !
+             VEC(100+uglob*100,    !
+               100+vglob*100,0)  + !
+             VEC(d_a.x*uleng,      !
+               d_a.y*uleng, 0));   !
+           ENDIF;                  !
+         ELSE                      ! Case: Not devan
+           IF ABS(pleng)<0.5 THEN  !
+           pleng:= 0.5;            !
+           ENDIF;                  !
+           LIN_FREE( #7,           ! Create line
+           VEC(100+uglob*100,      !
+           100+vglob*100,0),       !
+           VEC(100+uglob*100,      !
+           100+vglob*100,pleng));  !
+         ENDIF;                    ! Case: devan (end)
+
+
+       ELSE                        ! Case: ecase =  UNDEF (else)
+         LIN_FREE( #5,             ! Create line
+         VEC(100+uglob*100,        !
+           100+vglob*100,0),       !
+         VEC(100+uglob*100,        !
+           100+vglob*100,0)  +     !
+         VEC(d_a.x*uleng,          !
+           d_a.y*uleng, 0));       !
+       ENDIF;                      ! Case: ecase <> UNDEF (end)
+
+       MODE_GLOBAL();              ! Activate global system
+    ENDIF;                         ! Case: rcase= U,V or ALL
+
+    IF rflag="R*3" OR              ! Case: rcase= R*3 or ALL
+       rflag="r*3" OR              !
+       rflag="ALL" OR              !
+       rflag="all" THEN            !
+
+       d_a:= EVAL(s_id,ecase2,uv); ! Calculate curvature
+       s_p:= EVAL(s_id,"XYZ",uv);  ! Surface point       
+
+       IF ecase3 <> "UNDEF" THEN   ! Case: ecase3 <> UNDEF (start)
+       s_n:=EVAL(s_id,"NORMAL",uv);! Surface normal      
+       d_b:=EVAL(s_id,ecase3  ,uv);! Curvature           
+       pleng:= kleng*d_b.x;        ! 
+
+         IF kcase = "devan" OR     ! Case: devan (start)
+            kcase = "DEVAN"   THEN !
+           IF ABS(d_b.x)<lklim THEN!
+             LIN_FREE(#10,s_p,s_p+ ! Create min curve line
+                     rleng*d_a);   ! if curvature > lklim
+           ENDIF;                  !
+         ELSE                      ! Case: Not devan
+           IF ABS(pleng)<0.5 THEN  !
+           pleng:= 0.5;            !
+           ENDIF;                  !
+           LIN_FREE( #9,s_p, s_p + ! Create line
+           s_n*pleng);             !
+         ENDIF;                    ! Case: devan (end)
+
+       ELSE                        ! Case: ecase =  UNDEF (else)
+       LIN_FREE( #6, s_p, s_p +    ! Create line
+                     rleng*d_a);   !
+       ENDIF;                      ! Case: ecase <> UNDEF (end)
+
+    ENDIF;                         ! Case: rcase= U,V or ALL
+
+  ENDFOR;                          ! End   loop V points
+ENDFOR;                            ! End   loop U points
+
+SET(PEN= 1  );                     ! Pen (colour)
+ENDMODULE

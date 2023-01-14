@@ -1,0 +1,124 @@
+! ***************** s_isopatch ****************************
+!
+! +++
+! Create isoparameter curves on the patches
+!
+! 1994-11-03 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create isoparameter curves on patches  
+!sdescs Skapa isoparameterkurvor på "patches"
+
+GLOBAL GEOMETRY MODULE s_isopatch (
+
+REF    s_id                  > "@t16 Select surface";
+FLOAT  eps      := 0.01      > "Distance parameter";
+INT    graphic:= 1           > "@ Graphical case");
+
+
+! Internal variables
+
+  INT    npatu;                  ! No patches in U direction
+  INT    npatv;                  ! No patches in V direction
+
+  STRING iso_c*1;                ! Isoparameter U or V
+  FLOAT  start_p;                ! Parameter for start point
+  FLOAT  end_p;                  ! Parameter for end   point
+
+  INT    i_u;                    ! Loop index U parameters
+
+  INT    i_v;                    ! Loop index V parameters
+
+  INT    no_cur;                 ! Number of curves
+
+  INT    bflag_i;                ! Blank flag for isoparameters
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+!                  0. Initiations and checks      
+!                  =========================        
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF graphic = 1 THEN            ! 
+    bflag_i := 0;                ! Blank flag isoparameters
+  ELSE                           !
+    bflag_i := 1;                ! Blank flag isoparameters
+  ENDIF;                         !
+
+  PART(#9,G_REFSEL(s_id));       ! Add # to reference if necessary
+
+
+! +++
+! 1. Retrieve surface data 
+!
+! Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s_id,"NPATU",npatu);   ! Retrieve number of U patches
+  GETSURH(s_id,"NPATV",npatv);   ! Retrieve number of V patches
+
+  IF DEBUG = 1 THEN              ! Debug to screen
+   s:= INPMT("s_isoparam "   +   !
+    " npatu "+STR(npatu,-1,0)+   !
+    " npatu "+STR(npatv,-1,0),   !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 2. Create U parameter lines
+!
+! Loop for all patches in the surface. Calls of CUR_ISO.
+! ---
+
+  no_cur := 0;                   ! Initial value
+
+  FOR i_u:= 0 TO npatu-1 DO      ! Start loop U curves
+    FOR i_v:= 0 TO npatv-1 DO    ! Start loop V curves
+
+    no_cur := no_cur + 1;        ! An additional curve
+    iso_c  := "U";               ! Type of isoparameter
+    start_p:= i_v+eps;           ! Start value 
+    end_p  := i_v+1.0-eps;       ! End   value
+    CUR_ISO(#1,s_id,iso_c,       ! Isoparameter
+               i_u+eps,          !
+        start_p,end_p:PEN=4);    !
+    PART(#5,cpil2( 5, 10,        !
+     ON(REFC(1,  no_cur ),0.5),  !
+     ON(REFC(1,  no_cur ),0.9)));!
+    CUR_ISO(#2,s_id,iso_c,       ! Isoparameter
+               i_u+1.0-eps,      !
+        start_p,end_p:PEN=4);    !
+    PART(#6,cpil2( 5, 10,        !
+     ON(REFC(2,  no_cur ),0.5),  !
+     ON(REFC(2,  no_cur ),0.9)));!
+    iso_c  := "V";               ! Type of isoparameter
+    start_p:= i_u+eps;           ! Start value 
+    end_p  := i_u+1.0-eps;       ! End   value
+    CUR_ISO(#3,s_id,iso_c,       ! Isoparameter
+               i_v+eps,          !
+        start_p,end_p:PEN=4);    !
+    PART(#7,cpil2( 5, 10,        !
+     ON(REFC(3,  no_cur ),0.5),  !
+     ON(REFC(3,  no_cur ),0.9)));!
+    CUR_ISO(#4,s_id,iso_c,       ! Isoparameter
+               i_v+1.0-eps,      ! 
+        start_p,end_p:PEN=4);    !
+    PART(#8,cpil2( 5, 10,        !
+     ON(REFC(4,  no_cur ),0.5),  !
+     ON(REFC(4,  no_cur ),0.9)));!
+    ENDFOR;                      ! End   loop V curves    
+  ENDFOR;                        ! End   loop U curves    
+
+ENDMODULE

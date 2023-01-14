@@ -1,0 +1,136 @@
+!************************ s_ldeforv0 **********************
+! +++
+! Evaluate optimization curve
+! ---
+!
+! Revision History
+! ----------------
+!
+! 1996-11-11 Elsa Rydman
+!
+!**********************************************************
+
+!sdesce 
+!sdescs
+
+GLOBAL MODULE s_ldeforv0(
+REF    s_id              >"Surface reference";
+FLOAT  p1_y :=   1.0     >"Point1, y coordinate";
+FLOAT  t1_x :=   2.0     >"Tangent1, x coordinate";
+FLOAT  t1_y :=  -1.5     >"Tangent1, y coordinate";
+FLOAT  p2_y :=   0.3     >"Point2, y coordinate";
+FLOAT  t2_x :=   1.0     >"Tangent2, x coordinate";
+FLOAT  t2_y :=  -0.8     >"Tangent2, y coordinate";
+FLOAT  p3_y :=  -0.3     >"Point3, y coordinate";
+FLOAT  t3_x :=   1.0     >"Tangent3, x coordinate";
+FLOAT  t3_y :=  -0.1     >"Tangent3, y coordinate";
+FLOAT  p4_y :=  -0.1     >"Point4, y coordinate";
+FLOAT  t4_x :=   1.5     >"Tangent4, x coordinate";
+FLOAT  t4_y :=   0.6     >"Tangent4, y coordinate";
+FLOAT  p5_y :=   0.5     >"Point5, y coordinate";
+FLOAT  t5_x :=   1.0     >"Tangent5, x coordinate";
+FLOAT  t5_y :=   1.0     >"Tangent5, y coordinate");
+
+! Internal variables
+
+REF ang_id;
+REF sur_id;
+
+VECTOR poi(80); 
+VECTOR t_poi(80);
+
+INT    i;
+FLOAT  p_value(80);
+STRING metod(80)*1;
+VECTOR mpos(80);
+
+VECTOR v_lead; 
+INT    graphic;
+
+VECTOR point1;
+VECTOR point2;
+VECTOR point3;
+VECTOR poi1_clo;
+VECTOR poi2_clo;
+VECTOR poi3_clo;
+FLOAT  dist1;
+FLOAT  dist2;
+FLOAT  dist3;
+FLOAT  sum;
+
+
+BEGINMODULE
+
+  poi(1):=VEC(0,p1_y,0);
+  poi(2):=VEC(1,p2_y,0);
+  poi(3):=VEC(2,p3_y,0);
+  poi(4):=VEC(3,p4_y,0);
+  poi(5):=VEC(4,p5_y,0);
+  
+  POI_FREE(#1,poi(1));
+  POI_FREE(#2,poi(2));
+  POI_FREE(#3,poi(3));
+  POI_FREE(#4,poi(4));
+  POI_FREE(#5,poi(5));
+   
+  t_poi(1):=VEC(-t1_x,t1_y,0) + poi(1);
+  t_poi(2):=VEC(t2_x,t2_y,0) + poi(2);
+  t_poi(3):=VEC(t3_x,t3_y,0) + poi(3);
+  t_poi(4):=VEC(t4_x,t4_y,0) + poi(4);
+  t_poi(5):=VEC(t5_x,t5_y,0) + poi(5);
+
+  FOR i:=1 TO 5 DO
+    p_value(i):=0.45; 
+    metod(i):="P";
+    mpos(i):=VEC(0,0,0);
+  ENDFOR;
+  
+  CUR_CONARR(#6,"FREE", 5, poi, t_poi,metod, p_value,mpos:PEN=2);  
+      
+  ang_id:=GLOBAL_REF(#6);
+  
+  graphic:=2;
+  v_lead:=VEC(0,0,1);
+  
+  PART(#7,s_cdeforv0(s_id,ang_id,v_lead,graphic,sur_id));
+  
+  point1:=vec(16294,3819,-1490);
+  POI_FREE(#11,point1:PEN=3);
+  LIN_FREE(#12,vec(16294,3819,-2000),vec(16294,3819,-1000):BLANK=0);
+  
+  poi1_clo:=intersect(sur_id,global_ref(#12),1);
+  POI_FREE(#13,poi1_clo:PEN=4);  
+  dist1:=vecl(poi1_clo-point1);
+
+  point2:=vec(17046,1419,-1250);
+  POI_FREE(#14,point2:PEN=3);
+  LIN_FREE(#15,vec(17046,1419,-2000),vec(17046,1419,-1000):BLANK=0);
+  
+  poi2_clo:=intersect(sur_id,global_ref(#15),1);
+  POI_FREE(#16,poi2_clo:PEN=4);  
+  dist2:=vecl(poi2_clo-point2);
+  
+  point3:=vec(16746,8357,-1995);
+  POI_FREE(#17,point3:PEN=3);
+  LIN_FREE(#18,vec(16746,8357,-2500),vec(16746,8357,-1500):BLANK=0);
+  
+  poi3_clo:=intersect(sur_id,global_ref(#18),1);
+  POI_FREE(#19,poi3_clo:PEN=4);  
+  dist3:=vecl(poi3_clo-point3);
+  
+  sum:=dist1 + dist2 + dist3;
+
+  PART(#20,OPT_FUNCV0(sum));
+  
+  PART(#21,OPT_LIMV0(#0,12, 1,10,3));
+  PART(#22,OPT_LIMV0(#0,12,-10,10,4));
+  PART(#23,OPT_LIMV0(#0,12, 1,10,6));
+  PART(#24,OPT_LIMV0(#0,12,-10,10,7));
+  PART(#25,OPT_LIMV0(#0,12, 1,10,9));
+  PART(#26,OPT_LIMV0(#0,12,-10,10,10));
+  PART(#27,OPT_LIMV0(#0,12, 1,10,12));
+  PART(#28,OPT_LIMV0(#0,12,-10,10,13));
+  PART(#29,OPT_LIMV0(#0,12, 1,10,15));
+  PART(#30,OPT_LIMV0(#0,12,-10,10,16));
+            
+ENDMODULE  

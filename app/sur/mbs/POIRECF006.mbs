@@ -1,0 +1,134 @@
+!*********************  POIRECF006 ***********************************
+! +++
+! Write point number, surface point, surface normal, curvature,
+! tangents and twist vector to a file in SUR_POINTS format,
+! i.e. in a format that the surface creation VARKON standard
+! function SUR_POINTS can read.
+!      
+!
+! Revision history
+! ________________
+!
+! 1994-05-29 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Write surface point data to file in SUR_POINTS format
+!sdescs Skriv yt punkt med data till fil i SUR_POINTS format
+
+MACRO GEOMETRY MODULE  POIRECF006 (
+VAR FILE     f;                   ! Output file
+    INT      iu;                  ! U point number
+    INT      iv;                  ! V point number
+    VECTOR   s_pt;                ! Surface point
+    VECTOR   s_n;                 ! Surface normal
+    VECTOR   kap1;                ! Principal curv. direction 1
+    VECTOR   kap2;                ! Principal curv. direction 2
+    FLOAT    k1;                  ! Principal curv. 1
+    FLOAT    k2;                  ! Principal curv. 2
+    VECTOR   utan;                ! Tangent in U direction
+    VECTOR   vtan;                ! Tangent in V direction
+    VECTOR   twist);              ! Twist vector
+
+! Internal variables:
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+!
+!
+! Write all input parameter values to output file.
+!
+! ---
+
+! Surface point address iu,iv
+
+OUTSTR(f,"pointadr "   +   STR(       iu  ,-21,0 )+
+                 " "   +   STR(       iv  ,-21,0 ));
+OUTLIN(f);
+
+! Surface point s_pt 
+
+OUTSTR(f,"xyz      "   +   STR(     s_pt.x,-21,14)+
+                 " "   +   STR(     s_pt.y,-21,14)+
+                 " "   +   STR(     s_pt.z,-21,14));
+OUTLIN(f);
+
+! Tangent in U direction
+
+OUTSTR(f,"drdu     "   +   STR(     utan.x,-21,14)+
+                 " "   +   STR(     utan.y,-21,14)+
+                 " "   +   STR(     utan.z,-21,14));
+OUTLIN(f);
+
+! Tangent in V direction
+
+OUTSTR(f,"drdv     "   +   STR(     vtan.x,-21,14)+
+                 " "   +   STR(     vtan.y,-21,14)+
+                 " "   +   STR(     vtan.z,-21,14));
+OUTLIN(f);
+
+! Twist vector       
+
+OUTSTR(f,"d2rdudv  "   +   STR(    twist.x,-21,14)+
+                 " "   +   STR(    twist.y,-21,14)+
+                 " "   +   STR(    twist.z,-21,14));
+OUTLIN(f);
+
+! Surface normal s_n 
+
+OUTSTR(f,"normal   "   +   STR(      s_n.x,-21,14)+
+                 " "   +   STR(      s_n.y,-21,14)+
+                 " "   +   STR(      s_n.z,-21,14));
+OUTLIN(f);
+
+! Principal curvatures k1 and k2
+! Principal curvature directions kap1 and kap2
+
+IF  ABS(k1) <= ABS(k2) THEN
+
+OUTSTR(f,"kappamin "   +   STR(       k1  ,-21,14));
+OUTLIN(f);
+
+
+OUTSTR(f,"kappamax "   +   STR(       k2  ,-21,14));
+OUTLIN(f);
+
+
+OUTSTR(f,"r3min    "   +   STR(     kap1.x,-21,14)+
+                 " "   +   STR(     kap1.y,-21,14)+
+                 " "   +   STR(     kap1.z,-21,14));
+OUTLIN(f);
+
+OUTSTR(f,"r3max    "   +   STR(     kap2.x,-21,14)+
+                 " "   +   STR(     kap2.y,-21,14)+
+                 " "   +   STR(     kap2.z,-21,14));
+OUTLIN(f);
+
+ELSE
+
+OUTSTR(f,"kappamin "   +   STR(       k2  ,-21,14));
+OUTLIN(f);
+
+
+OUTSTR(f,"kappamax "   +   STR(       k1  ,-21,14));
+OUTLIN(f);
+
+
+OUTSTR(f,"r3min    "   +   STR(     kap2.x,-21,14)+
+                 " "   +   STR(     kap2.y,-21,14)+
+                 " "   +   STR(     kap2.z,-21,14));
+OUTLIN(f);
+
+OUTSTR(f,"r3max    "   +   STR(     kap1.x,-21,14)+
+                 " "   +   STR(     kap1.y,-21,14)+
+                 " "   +   STR(     kap1.z,-21,14));
+OUTLIN(f);
+
+ENDIF;
+
+
+ENDMODULE

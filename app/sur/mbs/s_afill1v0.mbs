@@ -1,0 +1,224 @@
+! ***************** s_afill1v0  ****************************
+! +++
+! Fillet point on the curve for the given angle
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-07-02 Gunnar Liden
+! 1997-05-16 Debug        Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Fillet point on intersect curve for the given angle
+!sdescs Fillet punkt på skärningskurva för givna vinkeln
+
+
+GLOBAL GEOMETRY MODULE s_afill1v0  (
+    REF    csys_id;              ! Intersect coord. system identity
+    REF    s_id;                 ! Surface
+    FLOAT  c_angle;              ! Constant angle defining curve
+    INT    no_branch;            ! Number of      intersect branch curves
+VAR REF    bra_id(50);           ! Identities for intersect branch curves
+VAR REF    cur_id;               ! Curve branch identity for output point
+VAR FLOAT  u_angle;              ! Parameter value for output point
+    INT    graphic);             ! Eq. 0: Show nothing Eq. 2: Show all
+
+
+! Internal variables
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! No of geometrical segments
+  INT    ns_gra;                 ! No of graphical   segments
+  INT    fnt;                    ! Font type, subtype
+  FLOAT  sl;                     ! Dash length 
+
+  INT    i_b;                    ! Loop index intersect branch
+  INT    i_s;                    ! Loop index segment  
+
+  FLOAT  u_d;                    ! Delta   curve parameter value
+  FLOAT  u_c;                    ! Current curve parameter value
+  VECTOR p1_c;                   ! Start point   of the curve segment
+  VECTOR p2_c;                   ! End   point   of the curve segment
+  VECTOR t1_c;                   ! Start tangent of the curve segment
+  VECTOR t2_c;                   ! End   tangent of the curve segment
+
+  VECTOR p1_e;                   ! Normalized vector 1 to external point
+  VECTOR p2_e;                   ! Normalized vector 2 to external point
+  FLOAT  dot1;                   ! Scalar product t1_c*p1_e
+  FLOAT  dot2;                   ! Scalar product t2_c*p2_e  
+  FLOAT  ang1;                   ! Angle t1_c*p1_e
+  FLOAT  ang2;                   ! Angle t2_c*p2_e  
+ 
+  FLOAT  u_c_interp;             ! Circular interpolated U value
+  FLOAT  d_c_interp;             ! Distance to interpolated point
+  INT    f_inter;                ! Flag for interpolation
+                                 ! Eq. 0: No interpolation possible
+  FLOAT  dist_min;               ! For selection of point with min. dist.
+  
+  VECTOR sur_uv;                 ! Surface point (U,V)
+
+  INT    graphic_2;              ! Graphic for s_afill2v0
+
+  INT    bflag_a;                ! Blank flag for all 
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  graphic_2 := 0; 
+
+  IF   graphic = 0 THEN
+    bflag_a := 1;   
+  ELIF graphic = 1 THEN
+    bflag_a := 1;   
+  ELIF graphic = 2 THEN
+    bflag_a := 0;   
+  ELSE             
+    EXIT("s_afill1v0 Graphic not 0, 1 or 2");
+  ENDIF;         
+
+  cur_id  := #0;          
+  u_angle := -1.23456789;
+
+  IF DEBUG = 1 THEN 
+  LST_INI("s_afill1v0 Debug printout");
+  LST_LIN("no_branch "+STR(no_branch,3,0)+" c_angle "+STR(c_angle,6,2));
+  ENDIF;
+
+! +++
+! 2. Find the right segment
+! ---
+
+! +++
+! Start loop all intersect curve branches   
+! ---
+
+  dist_min := 50000.0;
+  
+  FOR i_b:= 1 TO no_branch DO 
+
+!  Get number of segments for the current branch
+   GETCURH(bra_id(i_b), fnt,sl,ns_geo,ns_gra); 
+
+!  Start loop all segments of the current curve branch
+   u_d := 1.0;
+   FOR i_s:= 1 TO ns_geo    DO 
+!   Current parameter value u_c for start of segment
+    u_c := (i_s-1)*u_d;
+
+    MODE_LOCAL(csys_id);
+!   Current start point   on curve segment
+    p1_c :=   ON(bra_id(i_b),u_c);
+!   Current end   point   on curve segment
+    p2_c :=   ON(bra_id(i_b),u_c + u_d);
+!   Current start tangent on curve segment
+    t1_c := TANG(bra_id(i_b),u_c);
+!   Current end   tangent on curve segment
+    t2_c := TANG(bra_id(i_b),u_c + u_d);
+    IF graphic = 3 THEN
+      LIN_FREE(#100,p1_c,p2_c:PEN=4);
+    ENDIF;
+!   Normalized vectors to external point    
+    p1_e := VECN(p1_c);
+    p2_e := VECN(p2_c);
+    dot1 := t1_c*p1_e;
+    dot2 := t2_c*p2_e;
+
+!   Calculate angles
+    IF    dot1 >  1.0 THEN
+      ang1 :=   0.0;
+    ELIF  dot1 < -1.0 THEN
+      ang1 := 180.0;      
+    ELSE
+      ang1 := ARCCOS(dot1);
+    ENDIF;
+    IF    dot2 >  1.0 THEN
+      ang2 :=   0.0;
+    ELIF  dot2 < -1.0 THEN
+      ang2 := 180.0;      
+    ELSE
+      ang2 := ARCCOS(dot2);
+    ENDIF;                 
+    MODE_GLOBAL();
+    IF DEBUG = 1 THEN 
+     LST_LIN("i_b "+STR(i_b,3,0)+" i_s "+STR(i_s,3,0)+
+             " p1_c "+STR(p1_c.x,10,2)+" "+STR(p1_c.y,10,2)+
+                                       " "+STR(p1_c.z,10,2));
+     LST_LIN("i_b "+STR(i_b,3,0)+" i_s "+STR(i_s,3,0)+
+             " ang1 "+STR(ang1,10,2)+" ang2 "+STR(ang2,10,2));
+                                                                           
+    ENDIF;
+ 
+    f_inter  := 0;
+    IF    c_angle >= ang1  AND  c_angle <= ang2 THEN
+     f_inter  := 1;
+     IF DEBUG = 1 THEN 
+     LST_LIN("i_b "+STR(i_b,3,0)+" i_s "+STR(i_s,3,0)+
+             " ang1 "+STR(ang1,10,2)+
+             " c_angle "+STR(c_angle,10,2)+
+             " ang2 "+STR(ang2,10,2));
+                                                                           
+     ENDIF;    
+    ELIF  c_angle <= ang1  AND  c_angle >= ang2 THEN
+     f_inter  := 2;
+     IF DEBUG = 1 THEN 
+     LST_LIN("i_b "+STR(i_b,3,0)+" i_s "+STR(i_s,3,0)+
+             " ang2 "+STR(ang2,10,2)+
+             " c_angle "+STR(c_angle,10,2)+
+             " ang1 "+STR(ang1,10,2));
+                                                                           
+     ENDIF; 
+    ENDIF;
+    
+    IF  f_inter <> 0 THEN
+      PART(#9, s_afill2v0  ( csys_id, c_angle, bra_id(i_b),
+             u_c, ang1, ang2, u_c_interp, d_c_interp , graphic_2));
+      IF DEBUG = 1 THEN 
+      LST_LIN("i_b "+STR(i_b,3,0)+" i_s "+STR(i_s,3,0)+
+             " u_c_interp "+STR(u_c_interp,10,4)+
+             " d_c_interp "+STR(d_c_interp,15,4));
+      ENDIF;
+
+      IF  u_c_interp <  0.0  THEN
+        GOTO nxtbra;
+!1997-05-16        u_angle := -12.3456789;
+!1997-05-16        EXIT();
+      ENDIF;
+            
+      IF  dist_min >  d_c_interp AND  u_c_interp >= 0.0 THEN
+        dist_min := d_c_interp;
+        cur_id   := bra_id(i_b);
+        u_angle  := u_c_interp; ! Only approximate solution impl. !!!!!!
+      ENDIF;
+      
+    ENDIF;     
+
+   ENDFOR; ! End segments
+
+nxtbra:;   ! Label: Next curve branch
+  ENDFOR;  ! End branches
+
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("Exit dist_min "+STR(dist_min,10,4)+" cur_id "+RSTR(cur_id)+
+             " u_angle "+STR(u_angle,10,4));
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE
