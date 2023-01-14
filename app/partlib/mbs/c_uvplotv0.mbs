@@ -1,0 +1,211 @@
+!********************* c_uvplotv0 ***********************
+! +++
+! Plots the UV curve. Options for scaling and translation
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1997-01-31  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Ritar UV kurva. Skalning och translation möjlig
+!sdesce Plots the UV curve. Options for scaling and translation
+
+LOCAL  GEOMETRY MODULE c_uvplotv0(
+
+REF   cur_id           > "@t8  Select curve";
+INT   n_poi  := 1      > "Number of added points per segment 0. 1, 2, 3, ..";
+FLOAT l_scale:= 100.0  > "Scaling factor UV points and tangents";
+FLOAT t_x    := 100.0  > "Translation in X";
+FLOAT t_y    := 100.0  > "Translation in Y";
+FLOAT c_scale:= 10.0   > "Scaling factor curvature vectors";
+INT   c_list := 0      > "Eq. 0: No printout  Eq. 1: Printout";
+INT   graphic:= 2      
+>"Graphic 0: None 1: Curve 2: poi+tan 3: Curvat. 4: R3 curvat");
+
+! Internal variables:
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in segment
+  
+  INT        ns_geo;             ! Number of geometric segments
+  INT        ns_gra;             ! Number of graphical segments
+  INT        fnt;                ! Font 
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      delta;              ! Delta parameter value
+
+  INT        n_tot;              ! Total number of points
+
+  FLOAT      e_u;                ! Current parameter value 
+  VECTOR     s_pt;               ! Previous UV point
+  VECTOR     e_pt;               ! Current  UV point
+  VECTOR     e_tan;              ! Current  UV tangent 
+  VECTOR     e_uvmin;            ! Direction minimum curvature
+  VECTOR     e_uvmax;            ! Direction maximum curvature
+  VECTOR     e_r3pt;             ! R*3 point
+  VECTOR     e_r3min;            ! Direction minimum curvature
+  VECTOR     e_r3max;            ! Direction maximum curvature
+
+  REF        sur_id;             ! Surface identity
+  VECTOR     uv_sur;             ! Surface U,V(,W) point
+                                 ! No surface segment: uv_sur= (-1,-1,-1) 
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_pflag;            ! BLANK value porcupine
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! List window
+  IF    c_list = 1  THEN
+  LST_INI("Printout of UV points and tangents for "+RSTR(cur_id));
+  ELIF  c_list = 0  THEN
+    ;
+  ELSE
+    EXIT("c_uvplotv0 Print flag not OK");
+  ENDIF;
+
+! Check number of added points
+  IF n_poi < 0   THEN
+    EXIT("c_uvplotv0: n_poi <  0");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    ;
+  ELIF  graphic = 1  THEN 
+    ;
+  ELIF  graphic = 2  THEN
+    ;
+  ELIF  graphic = 3  THEN
+    ;
+  ELIF  graphic = 4  THEN
+    ;
+  ELSE 
+    EXIT("c_uvplotv0: graphic not OK");
+  ENDIF;
+
+
+! Retrieve number of segments
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra);
+
+  IF DEBUG = 1 THEN 
+    s:=INPMT("c_uvplotv0 ns_geo " +STR(ns_geo,-1,0),"",1);
+  ENDIF;
+
+! +++
+! 2. Plot of curve as straight lines optionally with tangents
+! ---
+
+! Number of created lines
+  n_tot:= 0;
+
+! Delta U 
+  delta := 1.0/(n_poi+1);
+
+! Start loops segments and points within segment
+  FOR  i_seg:= 1 TO ns_geo DO
+    FOR  i_poi := 0 TO n_poi+1 DO
+
+!     An additional point
+      n_tot := n_tot + 1;
+
+!     Current parameter value
+      e_u  := i_seg - 1.0 + i_poi*delta;
+
+!     End point of current segment
+      IF  i_poi = n_poi + 1 THEN
+        e_u := e_u - 0.000001;
+      ENDIF;
+
+      PART(#10,eval_utouv(cur_id,e_u,sur_id,uv_sur):SAVE=0);
+
+!     Current UV point
+      e_pt := uv_sur;
+
+!     Current UV tangent
+      e_tan :=  EVAL(cur_id,"DUVDT",VEC(e_u,0,0));
+
+!     Max and min UV curvature directions 
+      e_uvmin :=  EVAL(sur_id,"UVMIN",uv_sur);
+      e_uvmax :=  EVAL(sur_id,"UVMAX",uv_sur);
+
+!     R3 point
+      e_r3pt  :=  EVAL(sur_id,"XYZ"  ,uv_sur);
+
+!     Max and min R3 curvature directions 
+      e_r3min :=  EVAL(sur_id,"R3MIN",uv_sur);
+      e_r3max :=  EVAL(sur_id,"R3MAX",uv_sur);
+
+
+!     Write data
+      IF    c_list = 1  THEN
+      LST_LIN(STR(n_tot,5,0)+
+              " U "+STR(e_u,5,3)+
+              " UV "+STR(e_pt.x,6,4)+" "+STR(e_pt.y,6,4));
+      ENDIF; 
+
+!     Scale and translate point       
+      e_pt := l_scale*e_pt + VEC(t_x,t_y,0);
+
+!     Let the start point be previous point for first point
+      IF  n_tot = 1 THEN
+        s_pt := e_pt;
+      ENDIF;
+
+
+!     Plot line 
+      IF  n_tot > 1 AND graphic >= 1 THEN
+        IF  VECL(s_pt-e_pt) > 0.02 THEN
+          LIN_FREE(#1, s_pt, e_pt );
+        ENDIF;
+        s_pt := e_pt;
+      ENDIF;
+
+!     Plot point and tangent for graphic= 2
+      IF  graphic = 2 THEN
+        POI_FREE(#2, e_pt);
+        LIN_FREE(#3, e_pt, e_pt + l_scale*e_tan );
+      ENDIF;
+
+!     Plot minimum and maximum UV curvature directions
+      IF  graphic = 3 THEN
+        LIN_FREE(#4, e_pt, e_pt + c_scale*e_uvmin:PEN=3 );
+        LIN_FREE(#5, e_pt, e_pt + c_scale*e_uvmax:PEN=2 );
+      ENDIF;
+
+!     Plot minimum and maximum R3 curvature directions
+      IF  graphic = 4 THEN
+        LIN_FREE(#6, e_r3pt, e_r3pt + c_scale*e_r3min:PEN=3 );
+        LIN_FREE(#7, e_r3pt, e_r3pt + c_scale*e_r3max:PEN=2 );
+      ENDIF;
+
+!   End loops
+    ENDFOR;
+  ENDFOR;
+
+  IF    c_list = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+
+ENDMODULE

@@ -1,0 +1,130 @@
+! ***************** c_bconicv0 ****************************
+!
+! +++
+! Create a conic segment from one surface point, P value   
+! end point and end tangent (NOT tangent point).
+!
+! 1995-01-24 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Conic: Surface point + P value + End pt + End tangent
+!sdescs K{gelsnitt: Ytpunkt + P v{rde + Slut pkt + Slut tangent
+
+GLOBAL GEOMETRY MODULE c_bconicv0 (
+
+REF    s1_id                    >"@t16 Select surface 1";
+VECTOR uv1    := VEC(1.1,2.1,0) >"U,V v{rde f|r punkt 1";
+STRING dir1*1 := "V"            >"Tangent riktning f|r pkt 1 (U eller V)";
+FLOAT  pval   :=  0.41          >"P v{rde f|r k{gelsnitt";
+VECTOR poi2   := VEC(2000,0,0 ) >"Slut punkt   f|r k{gelsnitt";
+VECTOR tan2   := VEC(1, 0 ,0.1) >"Slut tangent f|r k{gelsnitt";
+INT    graphic:= 1              > "@ Grafik");
+
+
+! Internal variables
+
+  INT    npatu_1;                ! No patches in U direction surface 1
+  INT    npatv_1;                ! No patches in V direction surface 1
+
+  VECTOR poi1;                   ! Start point
+  VECTOR tan1;                   ! Start tangent
+  
+  INT    bflag_i;                ! Blank flag for curve
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                       ! Debug printout
+
+  IF graphic = 1 THEN               ! 
+    bflag_i := 0;                   ! Blank flag curve
+  ELSE                              !
+    bflag_i := 1;                   ! Blank flag curve
+  ENDIF;                            !
+
+  PART(#2,G_REFSEL(s1_id):SAVE=0);  ! Add # to reference if necessary
+
+! +++
+!  Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s1_id,"NPATU",npatu_1);   ! Retrieve number of U patches
+  GETSURH(s1_id,"NPATV",npatv_1);   ! Retrieve number of V patches
+
+  IF DEBUG = 1 THEN                 ! Debug to screen
+   s:= INPMT("c_bconicv0 "   +      !
+    " npatu_1 "+STR(npatu_1,-1,0)+  !
+    " npatu_1 "+STR(npatv_1,-1,0),  !
+    "",1);                          !
+  ENDIF;                            !
+
+  IF uv1.x >= 0.0 AND               ! Check uv1
+     uv1.x<=npatu_1+.000000001 THEN !
+    ;                               !
+  ELSE                              !
+      EXIT("c_bconicv0 "+           !
+     "U "+STR(uv1.x,-4,1)+          !
+     " outside surface");           !
+  ENDIF;                            !
+  IF uv1.y >= 0.0 AND               !
+     uv1.y<=npatv_1+.000000001 THEN !
+    ;                               !
+  ELSE                              !
+      EXIT("c_bconicv0 "+           !
+     "V "+STR(uv1.y,-4,1)+          !
+     " outside surface");           !
+  ENDIF;                            !
+
+
+! +++
+! 2. Create points and tangent points
+! ---
+
+  poi1 := ON(s1_id,uv1);            ! Start point 
+
+  IF   dir1= "U" OR dir1= "u" THEN  ! Tangent for point 1
+    tan1:= EVAL(s1_id,"DRDV",uv1);  !
+  ELIF dir1= "V" OR dir1= "v" THEN  !
+    tan1:= EVAL(s1_id,"DRDU",uv1);  !
+  ELSE                              !
+      EXIT("c_bconicv0 "+           !
+     "riktning pkt 1 ej U eller V");!
+  ENDIF;                            !
+
+  IF DEBUG = 1 THEN                 ! Create points for Debug
+    POI_FREE(#11,poi1);             !
+    POI_FREE(#12,poi1+tan1);        !
+    POI_FREE(#14,poi2);             !
+    POI_FREE(#15,poi2+tan2);        !
+    LIN_FREE(#16,poi1,poi2:PEN=4);  !
+    LIN_FREE(#19,poi1,              !
+                 poi1+tan1:PEN=2);  !
+    LIN_FREE(#20,poi2,              !
+                 poi2+tan2:PEN=2);  !
+  ENDIF;                            !
+
+! +++
+! 3. Create output conic segment
+! ---
+
+  CUR_CONIC(#1,"FREE",              ! Create conic
+   poi1, poi1 + tan1 ,              !
+   pval,                            !
+   poi2, poi2 + tan2                !
+   :BLANK=bflag_i );                !
+
+ENDMODULE

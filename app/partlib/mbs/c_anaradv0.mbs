@@ -1,0 +1,161 @@
+!********************* c_anaradv0 ***********************
+! +++
+!  Creates a porcupine showing the curvature radius for a curve.            
+! 
+! Inga nya segment skarvpunkter skapas.
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-02-05  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Skapar staket som visar krökningsradie för en kurva
+!sdesce Create a porcupine defined by curvature radius for a crv             
+
+GLOBAL GEOMETRY MODULE c_anaradv0(
+
+REF   cur_id           > "@t8  Select curve";
+INT   n_poi  := 1      > "Number of added points per segment 0. 1, 2, 3, ..";
+FLOAT l_scale:= 1.5    > "Scaling factor (negative also allowed)";
+FLOAT l_max  := 6000.0 >"Maximum plotted radius (green line)";
+INT   c_list := 0      > "Eq. 0: No printout  Eq. 1: Print curvature";
+INT   graphic:= 1      >"Graphic 0: None 1: Porcupine 2: All");
+
+! Internal variables:
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in segment
+  
+  INT        ns_geo;             ! Number of geometric segments
+  INT        ns_gra;             ! Number of graphical segments
+  INT        fnt;                ! Font 
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      delta;              ! Delta parameter värde
+
+  INT        n_tot;              ! Totala antalet punkter
+
+  FLOAT      s_u;                ! Start punkt parametervärde
+  VECTOR     s_pt;               ! Start punkt
+  VECTOR     s_rad;              ! Start tangent punkt
+
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_pflag;            ! BLANK value porcupine
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! List window
+  IF    c_list = 1  THEN
+  LST_INI("Printout of curvature");
+  ELIF  c_list = 0  THEN
+    ;
+  ELSE
+    EXIT("c_anaradv0 Print flag not OK");
+  ENDIF;
+
+! Check number of added points
+  IF n_poi < 0   THEN
+    EXIT("c_anaradv0: n_poi <  0");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    b_aflag:= 1;
+    b_pflag:= 1;
+  ELIF  graphic = 1  THEN 
+    b_aflag:= 1;
+    b_pflag:= 0;
+  ELIF  graphic = 2  THEN
+    b_aflag:= 0;
+    b_pflag:= 0; 
+  ELSE 
+    EXIT("c_anaradv0: graphic not OK");
+  ENDIF;
+
+
+! Retrieve number of segments
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra);
+
+  IF DEBUG = 1 THEN 
+    s:=INPMT("c_anaradv0 ns_geo " +STR(ns_geo,-1,0),"",1);
+  ENDIF;
+
+! +++
+! 2. Calculate radius of curvature and create porcupine
+! ---
+
+! Number of created lines
+  n_tot:= 0;
+
+! Delta U 
+  delta := 1.0/(n_poi+1);
+
+! Start loops segments and points within segment
+  FOR  i_seg:= 1 TO ns_geo DO
+    FOR  i_poi := 0 TO n_poi+1 DO
+
+!     Current parameter value
+      s_u  := i_seg - 1.0 + i_poi*delta;
+
+!     End point of current segment
+      IF  i_poi = n_poi + 1 THEN
+        s_u := s_u - 0.01;
+      ENDIF;
+
+!     Current point on curve  
+      s_pt :=  ON(cur_id,s_u);
+
+!     Current curvature point (radius)
+      s_rad:= CENTRE(cur_id,s_u);
+
+!     Create porcupine line (scaled)
+      IF    VECL(s_pt-s_rad) > 0.1   AND  
+            VECL(s_pt-s_rad) < l_max AND       
+            i_poi  < n_poi + 1             THEN
+        LIN_FREE(#1, s_pt, s_pt + l_scale*(s_rad-s_pt):PEN=2);
+      ELIF  VECL(s_pt-s_rad) > 0.1   AND  
+            VECL(s_pt-s_rad) < l_max AND       
+            i_poi  = n_poi + 1             THEN
+        LIN_FREE(#2, s_pt, s_pt + l_scale*(s_rad-s_pt):PEN=4);
+      ELIF  VECL(s_pt-s_rad) > l_max   THEN
+        LIN_FREE(#3, s_pt, s_pt + l_scale*l_max*VECN(s_rad-s_pt):
+                 LFONT=1, LDASHL= 50.0, PEN=3);
+      ENDIF;
+
+!     Write data
+      IF    c_list = 1  THEN
+      LST_LIN(STR(n_tot,5,0)+" U "+STR(s_u,5,3)+ " X " + STR(s_pt.x,9,1)+
+      " Radius "+STR(VECL(s_pt-s_rad),25,1));
+      ENDIF; 
+
+!   End loops
+    ENDFOR;
+  ENDFOR;
+
+  IF    c_list = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+
+ENDMODULE

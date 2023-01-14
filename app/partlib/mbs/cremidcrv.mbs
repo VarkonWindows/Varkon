@@ -1,0 +1,408 @@
+
+!******************** cremidcrv ***************************************
+!
+!  The function creates a mid curve in a Conic Lofting Surface,
+!  i.e approximates the P-value curve (a scalar function).
+!
+!  The spine determines the number of segments in the output
+!  mid curve.....  Nu blir det altid 25 segment !
+!
+!
+!  Input:  A part with longitudinal curves marked SPINE, LIM01,
+!          LIM02,.. TAN01, TAN02,.. PFN01, PFN02.. or MID01, MID02,
+!          The adresses and number of conic strips in the surface
+!          is retrieved with function GET_IDCRVS.
+!  Output: One section curve defined in a MBS program
+!          The curve is marked MIDnn (VARKON groups), where nn
+!          is the strip number.
+!
+!  1992-12-10  Gunnar Liden
+!  1993-01-20  Curve array sizes from (25) to (26)  Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE cremidcrv (
+
+REF    part_id                 >"@t16384 Select Conic Lofting surface";
+
+STRING version*3  := "_A1"     >"Surface and curve versions";
+
+INT    strip      := 2         >"Which strip in the surface ?"        ;
+
+INT    case       := 1         >"@ Computation case (only 1 implem.)" ;
+
+INT    graphic    := 1         >"@ Graphical representation "        );
+
+
+
+! Internal variables:
+
+FLOAT  s_start;!    := 0.0       >"Start parameter for spine (0-1)"     ;
+                                  
+FLOAT  s_delta;!    := 0.05      >"Delta parameter for spine (>0 & <1)" ;
+
+FLOAT  s_end;!      := 1.0       >"End   parameter for spine (0-1)"     ;
+
+                                ! For routine GET_IDCRVS
+  INT     no_strips;            ! Number of strips in the surface
+  REF     spine_id;             ! Identity of spine in surface (part)
+  STRING  lim_type(25)*20;      ! Limit   curves types
+  REF     lim_id(25,4);         ! Limit   curves (# id's)
+  STRING  tan_type(25)*20;      ! Tangent curves types
+  REF     tan_id(25,4);         ! Tangent curves (# id's)
+  STRING  pfn_type(25)*20;      ! Pvalue  curve  types
+  REF     pfn_id(25,4);         ! Pvalue  curves (# id's)
+  STRING  mid_type(25)*20;      ! Mid     curve  types
+  REF     mid_id(25,4);         ! Mid     curves (# id's)
+
+                                ! For routine GETCUR:
+  INT    spine_ns;              ! Number of segments in the curve
+  INT    fnt;                   ! Font for the curve (solid, dashed, )
+  INT    plank;                 ! Flag for planar curve (plank=1)
+  FLOAT  sl;                    ! Length for dashed curve
+  FLOAT  kdat(4,4);             ! Curve plane (matrix) for plank=1
+  FLOAT  offset(25);            ! Offset for each segment in the curve
+  FLOAT  sdat(25,4,4);          ! Coefficients for the curve
+
+
+  STRING  curcode*20;           ! Curve (GROUP) name: GEN001, GEN002, ..
+
+  INT     blank_flag;           ! Input to BLANK= defined by graphic
+
+  FLOAT   c_param;              ! Current parameter value on spine
+
+  REF     curve_id;             ! Identity of curve
+
+  VECTOR  c_point;              ! Current point   on the spine
+  VECTOR  c_tang;               ! Current tangent on the spine
+  VECTOR  xaxis;                ! X axis for current intersect plane
+  VECTOR  yaxis;                ! Y axis for current intersect plane
+  VECTOR  pvalpunkt;            ! Current point on P-value curve
+
+  INT     no_segment;           ! Number of segments (2)
+
+  INT     no_sekt;              ! Number of sections
+
+  VECTOR  psektI(26);           ! Points        for generatrix crv
+  VECTOR  tpsektI(26);          ! Tangentpoints for generatrix crv
+  FLOAT   pvalsektI(26);        ! P values      for generatrix crv
+
+  STRING curtype*5;             ! Type of curve: LIM, TAN, MID ....
+  STRING curname*9;             ! Name of curve MBS module
+
+  FLOAT   u;                    ! Parameter for stiffness spline
+
+  VECTOR  midcrvp(26);          ! Points            for mid curve
+  VECTOR  midcrvpt(26);         ! Tangent points    for mid curve
+  FLOAT  pvlineI(26);           ! P values          for mid curve
+
+
+  INT     isekt;                ! Loop index: Generatrix number
+
+  INT     iseg;                 ! Loop index: Segment in generatrix
+
+  FLOAT   s_cur;                ! Current parameter value on curve
+
+
+  INT      i;                   ! Loop index: ???
+
+  INT      ix1;                 ! Temporarely used oop index
+
+  STRING   s*1;                 ! For debug printout to screen
+
+
+
+BEGINMODULE
+
+!               1. Initializations and check of input data
+!               ------------------------------------------
+
+
+  IF graphic = 2 THEN           ! Graphical representation
+    blank_flag:= 0;             !   ????????????
+  ELSE                          !
+    blank_flag:= 1;             !
+  ENDIF;                        !
+
+!              2. Data from the referenced surface (part)
+!              ------------------------------------------
+
+  part(#2,GET_IDCRVS(part_id,   ! Retrieve number of strips and
+            no_strips,spine_id, ! references (# id's) from the 
+            lim_type,lim_id,    ! surface (the input part)
+            tan_type,tan_id,    !
+            pfn_type,pfn_id,    !
+            mid_type,mid_id)    !
+            :SAVE=0);           ! Part (call) not saved in GM
+
+  IF no_strips > 24 THEN        ! Program error: no_strips > 24
+    EXIT("cremidcrv: no_strips" !
+       +" > 24 ");              !
+  ENDIF;
+
+
+!   s:=INPMT("cremidcrv:"+       ! Debug printout
+!   " no_strips= "+              !
+!    str(no_strips ,-1,0),"",1); !
+
+  IF strip    < 1 OR            ! Check of strip
+     strip    > no_strips  THEN !
+    EXIT("cremidcrv: strip no"  !
+       +" not OK ");            !
+  ENDIF;
+
+!   s:=INPMT("cremidcrv:"+       ! Debug printout
+!   " pfn_type(strip)= "+        !
+!     pfn_type(strip)   +        !
+!   " mid_type(strip)= "+        !
+!     mid_type(strip)            !
+!       ,"",1);                  !
+
+  IF SUBSTR(pfn_type(strip),1,3)!
+        ="PFN"                  !
+  AND mid_type(strip)           !
+        ="UNDEFINED"            !
+            THEN                !
+      ;
+!     OK
+  ELSE                          !
+      EXIT("cremidcrv: strip"+  ! The strip is not defined by a
+      " not defined by PFNnn"); ! P-value curve
+  ENDIF;                        !
+
+  spine_id :=                   ! Input curve is a one level 
+  global_ref(spine_id,1);       ! reference
+
+!   s:=INPMT("cremidcrv:"+       ! Debug printout to screen
+!   " spine_id="+                !
+!    rstr(spine_id),"",1);       !
+
+
+
+!              3.Calculate spine relative arclengths
+!              -------------------------------------
+                 ! I framtiden, .. nu endast parameterv{rden
+                 ! d{r man struntar i var skarvarna finns
+
+  GETCUR(spine_id,fnt,sl,       ! Get curve data from GM
+  spine_ns,sdat,offset,plank,   ! (number of segments)
+  kdat);                        !
+
+  s_start  := 0.01;             ! Tillf{lligt
+  s_delta  := 0.0408 ;
+  s_end    := 0.99;
+
+
+!                  4. Create generatrix curves
+!                  ---------------------------
+
+
+  no_sekt := 0;                 ! Initialize number of sections
+
+
+  FOR isekt:=1 TO 200  DO       ! Start outer loop: All sections
+
+    no_sekt := no_sekt+1;       ! Number of output sections
+
+    s_cur:= s_start +           ! Current spine arclength
+       s_delta*(no_sekt-1);     !
+
+    IF s_cur > s_end THEN       ! All sections calculated ?
+        GOTO end;               !
+    ENDIF;                      !
+
+    c_param:= INV_ARCL(spine_id,! Curve parameter for the current
+       s_cur*ARCL(spine_id));   ! relative arclength on the spine
+
+!QQQ    c_param := isekt-1;         ! Parameter value on spine
+    c_point :=                  ! Point and tangent for current 
+      ON(spine_id,c_param);     ! parameter value on the spine
+    c_tang  :=                  !
+      TANG(spine_id,c_param);   !
+
+                                ! Intersection plane (coordinate
+                                ! system):
+    IF    c_tang.x >= c_tang.y  ! 
+      AND c_tang.x >= c_tang.z  ! 
+             THEN               ! X axis perpendicular to c_tang 
+      xaxis.y := 1.0;           ! Choose the axis direction, which
+      xaxis.z := 1.0;           ! gives a numerically well conditioned
+      xaxis.x :=                ! calculation. Two of the xaxis 
+     (-c_tang.y-c_tang.z)/      ! components are defined this way and
+       c_tang.x;                ! the third is calculated as the 
+    ELIF  c_tang.y >= c_tang.x  ! the component, which makes the 
+      AND c_tang.y >= c_tang.z  ! dot product between the xaxis and
+             THEN               ! the tangent to zero, i.e that makes
+      xaxis.x := 1.0;           ! the vectors perpendicular.
+      xaxis.z := 1.0;           !
+      xaxis.y :=                !
+     (-c_tang.x-c_tang.z)/      !
+       c_tang.y;                !
+    ELIF  c_tang.z >= c_tang.x  !
+      AND c_tang.z >= c_tang.y  !
+            THEN                !
+      xaxis.x := 1.0;           !
+      xaxis.y := 1.0;           !
+      xaxis.z :=                !
+     (-c_tang.x-c_tang.y)/      !
+       c_tang.z;                !
+    ELSE                        !
+      EXIT("cremidcrv: Program"+! Program error (tangent not OK)
+      " error xaxis");          !
+    ENDIF;                      !
+
+    IF ABS(xaxis*c_tang)        ! Program check of dot product
+       > 0.0001 THEN            ! X axis and tangent
+      EXIT("cremidcrv: Program "!
+      +"error xaxis*c_tang");   !
+    ENDIF;                      !
+
+
+    yaxis:=VPROD(c_tang,xaxis); ! Y axis perpendicular to c_tang 
+                                ! and X axis (vector product)
+
+    csys_3p(#5,"CSY"+           ! Create (intersection) coordinate
+    str(isekt,-1,0),c_point,    ! system
+    c_point+xaxis,c_point+yaxis !
+    :BLANK=blank_flag);         !
+
+
+!Q    FOR iseg:=1 TO no_strips+1  ! Start inner loop: Segments in
+    no_segment := 0;            ! Initialize no segments
+    FOR iseg:=strip TO strip+1  ! Start inner loop: Segments in
+              DO                ! the generatrix curve (all
+                                ! strips in the surface)
+
+    no_segment := no_segment+1; ! Increase no segments
+
+      curve_id:=lim_id(iseg,1); ! Reference (adress) to limit curve
+      curve_id :=               ! One level reference
+      global_ref(curve_id,1);   !
+
+!      s:=INPMT("cremidcrv: "+   ! Debug printout to screen
+!      "limit   curve_id="       !
+!       +rstr(curve_id)          !
+!         ,"",1);                !
+
+      poi_free(#10,intersect    ! Intersect with limit curve
+      (curve_id,REFC(5,1),1)    !
+      :BLANK=blank_flag);       !
+          
+!Q      psektI(iseg):=            ! Intersect point (#10.1) to
+      psektI(no_segment):=      ! Intersect point (#10.1) to
+      ON(refc(10,1),0);         ! to array psektI for creusectp
+!      s:=INPMT("creidcrv: "+    ! Debug printout to screen
+!      "limit  id 10,1="         ! (Reference will always be
+!       +rstr(refc(10,1))        !  #10.1 in the loop since the
+!         ,"",1);                !  point is deleted when used).
+      DEL(refc(10,1));          ! Delete intersect point
+
+      curve_id:=tan_id(iseg,1); ! Reference to tangent curve
+      curve_id :=               ! One level reference
+       global_ref(curve_id,1);  !
+
+      poi_free(#11,intersect    ! Intersect with tangent curve
+      (curve_id,REFC(5,1),1)    !
+      :BLANK=blank_flag);       !
+
+      tpsektI(no_segment):=     ! Intersect point (#11.1) to
+      ON(refc(11,1),0);         ! to array tpsektI for creusectp
+      DEL(refc(11,1));          ! Delete intersect point
+          
+
+      IF iseg < no_strips+1 THEN ! 
+                                 ! 
+        curve_id:=pfn_id(iseg,1);! Reference to p function curve
+        curve_id :=              ! One level reference
+        global_ref(curve_id,1);  !
+                                 !
+        poi_free(#12,intersect   ! Intersect with P value function
+        (curve_id,REFC(5,1)      !
+        ,1):BLANK=blank_flag);   !
+        pvalpunkt:=              ! Intersect point (#12.1) to
+         ON(refc(12,1),0);       ! vector pvalpunkt
+         DEL(refc(12,1));        ! Delete intersect point
+                                 !
+        pvalsektI(no_segment):=  ! pvalpunkt y component to
+        pvalpunkt.y/10.0;        ! array for creusectp
+                                 !
+      ELSE                       !
+        ;                        !
+      ENDIF;                     !
+          
+
+    ENDFOR;                      ! End inner loop: Current strip in surface
+
+
+
+!Q      PART(#1,creusectp         ! with creusectp
+!Q      (REFC(5,1),no_strips+1    !
+!Q      ,psektI,tpsektI,          !
+!Q       pvalsektI));             !
+      PART(#1,creusectp         ! One segment section with creusectp
+      (REFC(5,1), 2             !
+      ,psektI,tpsektI,          !
+       pvalsektI));             !
+
+!   s:=INPMT("cremidcrv:"+       ! Debug printout to screen
+!   " gener_id="+                !
+!    RSTR(REFC(1,isekt,1)),"",1);!
+
+     midcrvp(no_sekt):=
+     ON(REFC(1,isekt,1),0.5);        ! Point for mid curve to array
+
+!Q      IF   isekt <   10  THEN   ! Mark the output generatrix
+!Q        curcode:="GEN00"+       ! curve GEN001, GEN002, ....
+!Q        STR(isekt,-1,0);        ! which means that the curve
+!Q      ELIF isekt <  100  THEN   ! will be put in a GROUP with
+!Q        curcode:="GEN0"+        ! this name.
+!Q        STR(isekt,-1,0);        !
+!Q      ELIF isekt < 1000  THEN   !
+!Q        curcode:="GEN"+         !
+!Q        STR(isekt,-1,0);        !
+!Q      ELSE                      !
+!Q        curcode:="GEN_ERROR";   !
+!Q      ENDIF;                    !
+!Q      GROUP(#3,curcode,         ! Curve code for generatrix
+!Q              refc(1,isekt,1)); !
+
+      DEL(REFC(5,1));           ! Delete coordinate system
+
+  ENDFOR;                       ! End outer loop: Sections
+
+end:                            ! Label: All sections are created
+  ;                             ! Dummy statement necessary
+
+!  s:=INPMT("cremidrv:  No sections= "+str(no_sekt-1 ,-1,0),"",1);
+
+  FOR ix1 := 1 TO 25 DO
+      DEL(REFC(1,ix1,1));       ! Delete generatrix curves
+  ENDFOR;
+
+
+  FOR ix1 := 1 TO 25 DO
+      midcrvpt(ix1):=vec(0,0,0); ! No tangent points for mid curve
+  ENDFOR;
+
+  PART(#7,crestiff(25,midcrvp,   ! Create stiffness spline
+     midcrvpt));                 !
+
+
+!            Create longitudinal curves and P value functions
+!            as MBS (source code) and MBO (compiled) modules.
+
+  FOR ix1 := 1 TO 25 DO            ! 
+      u := ix1-1.0;                ! Tangents from stiffness
+      midcrvpt(ix1):=TANG(#7#1,u); ! spline
+      pvlineI(ix1) := 0.5;         ! P-values equal to 0.5
+  ENDFOR;
+                                   ! 
+  curtype:= "MID";                 ! The mid curve
+  curname:=curtype+                ! Name of the curve with
+             str(strip,-1,0)+      ! version: MIDi_A1
+             version;              !
+      part(#8,curvembs(            ! Write MBS curve file
+         curname,25,               !
+       midcrvp,midcrvpt,pvlineI)); !
+
+ENDMODULE

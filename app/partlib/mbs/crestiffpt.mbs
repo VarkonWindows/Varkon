@@ -1,0 +1,458 @@
+!******************** crestiffpt ************************************
+!
+!  Funktionen skapar en plan (projicerad) stiffness spline,
+!  som ocks} transformeras med indata systemet
+!
+!  1992-12-11  Gunnar Liden
+!  1993-01-20 Declaration of curve point arrays changed
+!             from (25) to (26) (max number of segments 
+!             is 25 in VARKON)                          Gunnar Liden
+!  1994-03-07 G_REFSEL          Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE crestiffpt (
+
+REF    csys_id;                  ! Projection coordinate system
+
+INT    nopoints;
+
+VAR VECTOR pcurve(26);
+
+VAR VECTOR tpcurve(26));
+
+
+
+!Internal variables
+
+INT   i_c;                     ! Loop index
+
+
+beginmodule
+
+!   Lokala systemet aktivt 
+!1994-03-07    csys_id := global_ref(csys_id,1);
+    PART(#27,G_REFSEL(csys_id));
+    mode_local(csys_id);
+
+! Skapa kurva 
+! ===================
+
+    if nopoints = 2  then
+        cur_spline(#2,"FREE",pcurve(1),tpcurve(1),
+                             pcurve(2),tpcurve(2):BLANK=1);
+                   
+    elif nopoints = 3  then
+        CUR_SPLINE(#3,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3):BLANK=1);
+                   
+    elif nopoints = 4  then
+        CUR_SPLINE(#4,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4):BLANK=1);
+                   
+    elif nopoints = 5  then
+        CUR_SPLINE(#5,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5):BLANK=1);
+                   
+    elif nopoints = 6  then
+        CUR_SPLINE(#6,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5),
+                            pcurve(6),tpcurve(6):BLANK=1);
+                   
+
+    elif nopoints = 7  then
+        CUR_SPLINE(#7,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5),
+                            pcurve(6),tpcurve(6),
+                            pcurve(7),tpcurve(7):BLANK=1);
+                   
+    elif nopoints = 8  then
+        CUR_SPLINE(#8,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5),
+                            pcurve(6),tpcurve(6),
+                            pcurve(7),tpcurve(7),
+                            pcurve(8),tpcurve(8):BLANK=1);
+                   
+    elif nopoints = 9  then
+        CUR_SPLINE(#9,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5),
+                            pcurve(6),tpcurve(6),
+                            pcurve(7),tpcurve(7),
+                            pcurve(8),tpcurve(8),
+                            pcurve(9),tpcurve(9):BLANK=1);
+                   
+    elif nopoints = 10 then
+        CUR_SPLINE(#10,"FREE",pcurve(1),tpcurve(1),
+                            pcurve(2),tpcurve(2),
+                            pcurve(3),tpcurve(3),
+                            pcurve(4),tpcurve(4),
+                            pcurve(5),tpcurve(5),
+                            pcurve(6),tpcurve(6),
+                            pcurve(7),tpcurve(7),
+                            pcurve(8),tpcurve(8),
+                            pcurve(9),tpcurve(9),
+                            pcurve(10),tpcurve(10):BLANK=1);
+                   
+    elif nopoints = 11 then
+        CUR_SPLINE(#11,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11):BLANK=1);
+                   
+    elif nopoints = 12 then
+        CUR_SPLINE(#12,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12):BLANK=1);
+                   
+    elif nopoints = 13 then
+        CUR_SPLINE(#13,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13):BLANK=1);
+                   
+    elif nopoints = 14 then
+        CUR_SPLINE(#14,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14):BLANK=1);
+                   
+    elif nopoints = 15 then
+        CUR_SPLINE(#15,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15):BLANK=1);
+                   
+    elif nopoints = 16 then
+        CUR_SPLINE(#16,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16):BLANK=1);
+                   
+    elif nopoints = 17 then
+        CUR_SPLINE(#17,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17):BLANK=1);
+
+    elif nopoints = 18 then
+        CUR_SPLINE(#18,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18):BLANK=1);
+
+    elif nopoints = 19 then
+        CUR_SPLINE(#19,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19):BLANK=1);
+
+
+    elif nopoints = 20 then
+        CUR_SPLINE(#20,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20):BLANK=1);
+
+    elif nopoints = 21 then
+        CUR_SPLINE(#21,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21):BLANK=1);
+
+    elif nopoints = 22 then
+        CUR_SPLINE(#22,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21),
+                             pcurve(22),tpcurve(22):BLANK=1);
+
+
+    elif nopoints = 23 then
+        CUR_SPLINE(#23,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21),
+                             pcurve(22),tpcurve(22),
+                             pcurve(23),tpcurve(23):BLANK=1);
+
+
+    elif nopoints = 24 then
+        CUR_SPLINE(#24,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21),
+                             pcurve(22),tpcurve(22),
+                             pcurve(23),tpcurve(23),
+                             pcurve(24),tpcurve(24):BLANK=1);
+
+
+    elif nopoints = 25 then
+        CUR_SPLINE(#25,"FREE",pcurve(1), tpcurve(1), 
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21),
+                             pcurve(22),tpcurve(22),
+                             pcurve(23),tpcurve(23),
+                             pcurve(24),tpcurve(24),
+                             pcurve(25),tpcurve(25):BLANK=1);
+    elif nopoints = 26 then
+        CUR_SPLINE(#26,"FREE",pcurve(1), tpcurve(1),
+                             pcurve(2), tpcurve(2), 
+                             pcurve(3), tpcurve(3), 
+                             pcurve(4), tpcurve(4), 
+                             pcurve(5), tpcurve(5), 
+                             pcurve(6), tpcurve(6), 
+                             pcurve(7), tpcurve(7), 
+                             pcurve(8), tpcurve(8), 
+                             pcurve(9), tpcurve(9), 
+                             pcurve(10),tpcurve(10),
+                             pcurve(11),tpcurve(11),
+                             pcurve(12),tpcurve(12),
+                             pcurve(13),tpcurve(13),
+                             pcurve(14),tpcurve(14),
+                             pcurve(15),tpcurve(15),
+                             pcurve(16),tpcurve(16),
+                             pcurve(17),tpcurve(17),
+                             pcurve(18),tpcurve(18),
+                             pcurve(19),tpcurve(19),
+                             pcurve(20),tpcurve(20),
+                             pcurve(21),tpcurve(21),
+                             pcurve(22),tpcurve(22),
+                             pcurve(23),tpcurve(23),
+                             pcurve(24),tpcurve(24),
+                             pcurve(25),tpcurve(25),
+                             pcurve(26),tpcurve(26):BLANK=1);
+    endif;
+
+!   Create a planar curve which always will have the reference #1.1
+!Q    csys_id := global_ref(csys_id,1);
+!Q    mode_local(csys_id);
+
+    FOR  i_c := 2 TO 26 DO
+       IF i_c = nopoints THEN
+            cur_offs(#1,refc(nopoints),0.0);
+       ENDIF;
+   ENDFOR;
+
+   mode_global();
+
+endmodule

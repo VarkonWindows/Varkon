@@ -1,0 +1,251 @@
+!********************* c_atrimv0  ***********************
+! +++
+! Trimming of a curve with a B_PLANE.                    
+! ---
+!
+! Revision history
+! ________________
+!
+! 1995-05-11  Gunnar Liden
+! 1995-11-29  Case Positive or Negative Gunnar Liden
+! 1996-05-26  Debug                     Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Trimma kurva med B_PLANE               
+!sdesce Trimming of a curve with a B_PLANE.                    
+
+GLOBAL GEOMETRY MODULE c_atrimv0 (
+
+    REF      cur_id        > "@t8     Select curve";
+    REF      bpl_id        > "@t32768 Select B_PLANE";
+    STRING   c_prt*1:= "s" 
+> "Eq. S: Start crv  Eq. E: End crv Eq. P: Positive Eq. N: Negative B-plane";
+    INT      intno  := 1   > "Requested intersect number";
+    INT      graphic:= 1 
+>"Graphical representation 0: None  1: Blank input 2: Show both crvs");
+
+! Internal variables:
+
+  
+  INT        ns_geo;             ! No geometric segments
+  INT        ns_gra;             ! No graphical segments    
+  INT        fnt;                ! Font type
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      u_cur;              ! Current parameter value
+  VECTOR     p_cur;              ! Current point
+  INT        n_tot;              ! Total number of intersects
+  INT        clono;              ! Requested closest point
+  VECTOR     p_clo;              ! Check   point
+  FLOAT      dist;               ! Check distance 
+  VECTOR     p_trims;            ! Check   point for trim
+  VECTOR     p_trime;            ! Check   point for trim
+  FLOAT      u_end;              ! Parameter for end of curve
+
+  VECTOR     p1,p2,p3,p4;        ! B-plane corner points
+  VECTOR     v_b;                ! B-plane normal
+  VECTOR     v_t;                ! Curve tangent  
+  FLOAT      dot;                ! Scalar product 
+
+  FLOAT      s_par;              ! Start parameter value
+  FLOAT      e_par;              ! End   parameter value
+
+  INT        b_flag;             ! Blank value for output curve
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks of input data
+! --- 
+
+   DEBUG := 0;                   ! Change to 0 or 1
+
+   IF intno  <  1 THEN           ! Check req. intersect
+     EXIT("c_atrimv0: intno < "  !
+          + " 1   ");            !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Blank variable 
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_atrimv0 : graphic " !
+          + "not OK");           !
+   ENDIF;                        !
+
+   IF  DEBUG =  2  THEN
+     PART(#100,su_pla2(bpl_id,0.0,1):PEN=3);
+   ENDIF;
+
+! +++
+! 2. Retrieve number of curve segments
+! --- 
+
+  GETCURH(cur_id,                ! No segments
+   fnt,sl,ns_geo,ns_gra);        !
+
+! +++
+! 3. Calculate intersect parameter value
+! --- 
+
+  n_tot:= N_INTERSECT            ! Total number of intersects
+          (cur_id,bpl_id);       !
+
+
+  IF DEBUG = 1 THEN              !
+   IF intno > n_tot THEN         ! Check req. intersect
+     EXIT("c_atrimv0: intno > "  !
+     + " total= "                !
+     +STR(n_tot,-1,0));          !
+    ENDIF;                       !
+  ENDIF;                         !
+  
+  p_cur:= INTERSECT              ! Intersect point
+          (cur_id,bpl_id,intno); !
+
+  clono := 1;                    ! Requested pt
+
+nxtclo:;                         ! Label next closest pt
+
+  u_cur:= INV_ON(cur_id,p_cur,   ! Par. value closest point
+          clono);                !
+
+  p_clo:= ON(cur_id,u_cur);      ! Check point
+
+  dist := VECL(p_cur-p_clo);     ! Check distance
+
+  IF  DEBUG = 3  THEN            !
+    s:= INPMT(RSTR(cur_id)+      !
+      " dist "+STR(dist,8,4) +   !
+      " u_cur "+STR(u_cur,8,6) , !
+      " ",1);                    !
+  ENDIF;
+
+  IF dist > 0.05 THEN            ! 
+    clono:= clono+1;             !
+    IF clono < 4 THEN            !
+      GOTO nxtclo;               !
+    ELSE                         !
+     EXIT("c_atrimv0: clono = "  !
+     +STR(clono,-1,0));          !
+    ENDIF;                       !
+  ENDIF;                         !
+
+! +++
+! 4. Graphical representation    
+! --- 
+
+  IF graphic = 0 OR              !
+     graphic = 1     THEN        !
+    BLANK(cur_id);               !
+  ENDIF;                         !
+
+! +++
+! 5. Create output trimmed curve
+! --- 
+
+
+  GETBPL(bpl_id,p1,p2,p3,p4);    ! Get B-plane corner points
+  v_b := VPROD(p2-p1,p4-p1);     ! B_PLANE normal
+  v_t := TANG(cur_id,u_cur);     ! Curve tangent
+  dot := v_b*v_t;                ! Scalar product for direction
+
+  IF   c_prt = "s" OR            ! Trim parameter values
+       c_prt = "S"     THEN      !
+    s_par := 0.0;                !
+    e_par := u_cur;              !
+  ELIF c_prt = "e" OR            !
+       c_prt = "E"     THEN      !
+    s_par := u_cur;              !
+    e_par := ns_geo;             !
+  ELIF c_prt = "p" OR            !
+       c_prt = "P"     THEN      !
+    IF dot > 0.0 THEN            !
+      s_par := u_cur;            !
+      e_par := ns_geo;           !
+    ELSE                         !
+      s_par := u_cur;            ! Not reverse curve direction ....
+      e_par := 0.0;              !
+    ENDIF;                       !
+  ELIF c_prt = "n" OR            ! Undrar om detta {r r{tt .....???
+       c_prt = "N"     THEN      !
+    IF dot > 0.0 THEN            !
+      s_par :=  0.0;             !
+      e_par := u_cur;            !
+    ELSE                         !
+      s_par := ns_geo;           !
+      e_par :=  u_cur;           !
+    ENDIF;                       !
+  ELSE                           !
+     EXIT("c_atrimv0: c_prt = "  !
+     +c_prt+" not OK");          !
+  ENDIF;                         !
+
+  IF  DEBUG = 1 THEN             ! Debug
+    s:= INPMT("c_prt "+c_prt+    !
+    " dot "+STR(dot,5,1) +       !
+    " s_par "+STR(s_par,4,2) +   !
+    " e_par "+STR(e_par,4,2) ,   !
+    " ",1);                      !
+  ENDIF;                         !
+
+  CUR_TRIM(#1,cur_id,s_par,e_par ! Create curve
+          :BLANK=b_flag);        !
+
+  IF  DEBUG  =  3  THEN
+    u_end := INV_ARCL(GLOBAL_REF(#1),ARCL(GLOBAL_REF(#1)));
+    p_trims:= ON(GLOBAL_REF(#1),0.0); 
+    p_trime:= ON(GLOBAL_REF(#1),u_end);
+    dist := VECL(p_trims-p_clo); 
+    s:= INPMT(RSTR(cur_id)+
+      " dist "+STR(dist,4,2) +       !
+      " s_par "+STR(s_par,8,6) +   !
+      " e_par "+STR(e_par,8,6) ,   !
+      " ",1);                      !
+    IF     dist <= 0.001                 THEN 
+      ;
+    ELIF   dist >  0.001 AND dist <  1.0 THEN 
+      s:= INPMT("Trim error "+
+      " dist "+STR(dist,5,3) +       !
+      " s_par "+STR(s_par,4,3) +   !
+      " e_par "+STR(e_par,4,3) ,   !
+      " ",1);                      !
+    ELIF   dist >= 1.0                   THEN 
+      ;
+    ENDIF;
+    dist := VECL(p_trime-p_clo); 
+    s:= INPMT(RSTR(cur_id)+
+      " dist "+STR(dist,4,2) +       !
+      " s_par "+STR(s_par,8,6) +   !
+      " e_par "+STR(e_par,8,6) ,   !
+      " ",1);                      !
+    IF     dist <= 0.001                 THEN 
+      ;
+    ELIF   dist >  0.001 AND dist <  1.0 THEN 
+      s:= INPMT("Trim error "+
+      " dist "+STR(dist,5,3) +       !
+      " s_par "+STR(s_par,4,2) +   !
+      " e_par "+STR(e_par,4,2) ,   !
+      " ",1);                      !
+    ELIF   dist >= 1.0                   THEN 
+      ;
+    ENDIF;
+  ENDIF;
+    
+
+ENDMODULE

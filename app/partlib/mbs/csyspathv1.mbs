@@ -1,0 +1,206 @@
+! *************** csyspathv1 *******************************************
+! +++ 
+! Definition of (search) path for coordinate system libraries      
+!
+! Add the following tow lines for a new directory;
+! n_path := n_path + 1
+! path(n_path) := /home/ultra4/varkon/csyslib/New_directory/
+!
+!
+! Remark:
+!
+! Replace directory names with $VARKON_CSYSLIB/SF340/
+! when Johan has implemented this possibility in Varkon
+!
+! 1996-02-13  Gunnar Liden      gäller csyspathv0
+! 1996-04-02  37  R Gyllensten  gäller csyspathv0
+!
+! 1996-04-25  Karl-Erik Eklund  Anpassat mot COGNAC tillagt flera projekt
+!
+! 1996-09-20  Karl-Erik Eklund  Kompletterat med projekt i retur
+! 1996-10-22  SU added       Gunnar Liden
+! 1996-11-14  39S added      Gun-Britt Ekros
+! 1997-02-25  darkstar       Gunnar Liden       
+! 1997-03-03  usr->u         Gunnar Liden       
+!
+! --- 
+! ***********************************************************************
+
+!sdesce Definition of (search) path for coordinate system libraries      
+!sdescs Definierar sökväg för koordinatsystem
+
+BASIC  GEOMETRY MODULE csyspathv1   (
+VAR STRING  path(20)*50;            ! Output directories
+VAR STRING  projekt(20)*25;         ! Project name 
+VAR STRING  csys(20)*25;            ! Basic system for the project
+VAR INT     n_path);                ! Number of directories
+
+! Internal variables
+
+  INT  i_d;                         ! Loop index directory
+  STRING host*132;                  ! Host
+
+BEGINMODULE
+
+! +++ 
+! 1. Initializations
+! ---
+
+  n_path:= 0;                       ! Initialize n_path
+
+  FOR  i_d:= 1 TO 20 DO
+    path(i_d):= "Undefined_surface_library";
+  ENDFOR;
+
+! +++ 
+! 2. Saab surface libraries
+! ---
+
+  host  := ACT_HOST();             ! Active host
+
+  IF    host = "sco1geo" OR 
+        host = "sco2geo" OR 
+        host = "darkstar" OR 
+        host = "tigris"    THEN  
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/32/";
+    projekt(n_path):= "32";
+    csys(n_path):= "1";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/35/";
+    projekt(n_path):= "35";
+    csys(n_path):= "1";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/37/";
+    projekt(n_path):= "37";
+    csys(n_path):= "65";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/39/";
+    projekt(n_path):= "39";
+    csys(n_path):= "85";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/39B/";
+    projekt(n_path):= "39B";
+    csys(n_path):= "85";
+    
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/39S/";
+    projekt(n_path):= "39S";
+    csys(n_path):= "85";
+
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/105/";
+    projekt(n_path):= "105";
+    csys(n_path):= "63";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/RB15/";
+    projekt(n_path):= "RB15";
+    csys(n_path):= "83";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/SF340/";
+    projekt(n_path):= "SF340";
+    csys(n_path):= "79";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/ODIN/";
+    projekt(n_path):= "ODIN";
+    csys(n_path):= "87";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/SIRIUS2/";
+    projekt(n_path):= "SIRIUS2";
+    csys(n_path):= "A";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/DC9-80/";
+    projekt(n_path):= "DC9-80";
+    csys(n_path):= "W";
+
+  ELIF  host = "darkstar"      THEN
+
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/u/csyslib/SIRIUS2/";
+    projekt(n_path):= "SIRIUS2";
+    csys(n_path):= "A";
+
+  ELSE
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/32/";
+    projekt(n_path):= "32";
+    csys(n_path):= "1";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/35/";
+    projekt(n_path):= "35";
+    csys(n_path):= "1";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/37/";
+    projekt(n_path):= "37";
+    csys(n_path):= "65";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/39/";
+    projekt(n_path):= "39";
+    csys(n_path):= "85";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/39B/";
+    projekt(n_path):= "39B";
+    csys(n_path):= "85";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/39S/";
+    projekt(n_path):= "39S";
+    csys(n_path):= "85";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/105/";
+    projekt(n_path):= "105";
+    csys(n_path):= "63";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/RB15/";
+    projekt(n_path):= "RB15";
+    csys(n_path):= "83";
+  
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/SF340/";
+    projekt(n_path):= "SF340";
+    csys(n_path):= "79";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/ODIN/";
+    projekt(n_path):= "ODIN";
+    csys(n_path):= "87";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/SIRIUS2/";
+    projekt(n_path):= "SIRIUS2";
+    csys(n_path):= "A";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/DC9-80/";
+    projekt(n_path):= "DC9-80";
+    csys(n_path):= "W";
+
+    n_path:= n_path + 1; 
+    path(n_path):= "/home/ultra4/varkon/csyslib/SU/";
+    projekt(n_path):= "SU";
+    csys(n_path):= "SUBASIC";
+
+  ENDIF;
+
+
+
+ENDMODULE

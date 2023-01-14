@@ -1,0 +1,362 @@
+!********************* c_c1cir    ***********************
+! +++
+!  Find U values for approximating circles  circles
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1998-02-21  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Hitta U varden for approximerande cirklar
+!sdesce Find U values for approximating circles 
+
+GLOBAL GEOMETRY MODULE c_c1cir   (
+
+    REF     cur_id;             ! Curve
+    FLOAT   line_crit;          ! Criterion (radius) for line
+    VECTOR  pla_normal;         ! Curve plane normal
+    INT     n_poi;              ! Number of check points per segment
+VAR FLOAT   u_cir_s(100);       ! Start of circles defined by steps
+                                ! in the curvature
+VAR INT     n_u_cir_s;          ! Number of values in u_cir_s
+INT         graphic);           ! 0: None 1: Circles 2: All
+
+! +++
+! Parameters (criteria) for the calculation 
+! -----------------------------------------
+
+! Internal variables:
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in curve segment
+
+  FLOAT      kappa;              ! Curvature for current point
+  VECTOR     bi_normal;          ! Binormal (for kappa sign)
+  VECTOR     kappa_seg(20);      ! Curvature for n_poi pts in segment
+
+  FLOAT      u_cir_s_t(100);     ! Start of circles (temporary array)
+
+  INT        i_u_cir_s;          ! Loop index element in u_cir_s
+  INT        i_u_cir_s_t;        ! Loop index element in u_cir_s_t
+  INT        i_max;              ! Index for sorting
+
+  INT        ns_geo;             ! Number of geometric segments
+  INT        ns_gra;             ! Number of graphical segments
+  INT        fnt;                ! Font 
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      delta;              ! Delta parameter value
+
+  FLOAT      u_start;            ! Circle start parameter value
+  FLOAT      u_end;              ! Circle end   parameter value
+  FLOAT      u_mid;              ! Curve  mid   parameter value
+
+  FLOAT      comptol;            ! Computer accuracy 
+
+  VECTOR     v_kappa;            ! Vector for kappa value
+
+  INT        n_int;              ! Number of intersect points
+  INT        i_int;              ! Loop index intersect
+  VECTOR     p_int;              ! Intersect point
+
+  FLOAT      s_u;                ! Current curve parameter value
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_pflag;            ! BLANK value porcupine
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Initialization of output variables
+  n_u_cir_s    := -12345;
+  FOR  i_u_cir_s := 1 TO 100 DO
+    u_cir_s  (i_u_cir_s) := -0.123456789;
+    u_cir_s_t(i_u_cir_s) := -0.123456789;
+  ENDFOR;
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+  IF  DEBUG = 1 THEN
+    LST_INI("c_c1cir Debug");
+  ENDIF;
+
+! Computer accuracy (for address to right curve segment)
+  comptol := 0.0000001;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    b_aflag:= 1;
+    b_pflag:= 1;
+  ELIF  graphic = 1  THEN 
+    b_aflag:= 1;
+    b_pflag:= 0;
+  ELIF  graphic = 2  THEN
+    b_aflag:= 0;
+    b_pflag:= 0; 
+  ELSE 
+    EXIT("c_c1cir graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialize local variables
+  u_start      := -0.123456789;
+  u_end        := -0.123456789;
+  u_mid        := -0.123456789;
+  kappa        := -0.123456789;
+  delta        := -0.123456789;
+  n_int        := -12345;
+
+  FOR  i_poi := 1 TO 20 DO
+    kappa_seg(i_poi) := VEC(-0.12345,-0.12345,-0.12345);
+  ENDFOR;
+
+  bi_normal    := VEC(-0.12345,-0.12345,-0.12345);
+  v_kappa      := VEC(-0.12345,-0.12345,-0.12345);
+  p_int        := VEC(-0.12345,-0.12345,-0.12345);
+
+! Retrieve number of segments
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra);
+
+! +++
+! 2. Circle start points because of steps in curvature  
+! ---
+
+! +++
+! The output from this phase of the calculation are all
+! start/end segment points, but with the points eliminated
+! where the curvature step is less than a given value (formula ??)
+! Points are added within the segment if there is an inflexion
+! point.
+! ---
+
+! Initialize the number of elements in u_cir_s
+  n_u_cir_s := 1;
+  u_cir_s_t(n_u_cir_s) := 0.0;
+  IF    DEBUG  = 1  THEN
+    LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(p_int.x,5,3)+ 
+                 " Start of curve  ");
+  ENDIF; 
+
+! Delta U 
+  delta := 1.0/(n_poi+1);
+
+! Lines used to find inflexion points and start of straight lines
+  MODE_BASIC();
+  LIN_FREE(#3, VEC(-1.0,0,0),VEC(ns_geo+1.0,0.0));
+  LIN_FREE(#4, VEC(    -1.0,  -1.0/line_crit , 0.0),
+               VEC(ns_geo+1.0,-1.0/line_crit , 0.0));
+  LIN_FREE(#5, VEC(    -1.0,   1.0/line_crit , 0.0),
+               VEC(ns_geo+1.0, 1.0/line_crit , 0.0));
+  MODE_GLOBAL();
+
+! Start loops segments and points within segment
+  FOR  i_seg:= 1 TO ns_geo DO
+    FOR  i_poi := 0 TO n_poi+1 DO
+
+!     Current parameter value
+      s_u  := i_seg - 1.0 + i_poi*delta;
+
+!     End point of current segment
+      IF  i_poi = n_poi + 1 THEN
+        s_u := s_u - comptol;
+      ENDIF;
+
+!     Current curvature value to array
+      v_kappa   :=  EVAL(cur_id,"kappa", VEC(s_u,0,0));
+      kappa     :=  v_kappa.x;
+      bi_normal :=  EVAL(cur_id,"binormal", VEC(s_u,0,0));
+      IF  bi_normal*pla_normal < 0.0 THEN
+        kappa := -kappa;
+      ENDIF;
+      kappa_seg(i_poi+1) := VEC(s_u, kappa, 0.0);
+     
+
+!     Write data
+      IF    DEBUG  = 1  THEN
+      LST_LIN("i_seg= "+STR(i_seg,3,0)+" i_poi "+STR(i_poi,5,0)
+                 +" U "+STR(s_u,5,3)+ 
+               " Kappa  "+STR(kappa,15,10));
+      ENDIF; 
+
+!   End point loop
+    ENDFOR;
+
+!   Find inflexion points
+!   Activate basic  system
+    MODE_BASIC();
+    FOR  i_poi := 0 TO n_poi   DO
+
+!     Create line
+      LIN_FREE(#2, kappa_seg(i_poi+1), kappa_seg(i_poi+2));
+
+      n_int := N_INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#3));
+      IF   n_int > 0 THEN
+        p_int := INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#3),1);
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := p_int.x;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(p_int.x,5,3)+ 
+                 " Kappa  "+STR(p_int.y,15,10)+" Inflexion");
+        ENDIF; 
+      ENDIF; 
+      n_int := N_INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#4));
+      IF   n_int > 0 THEN
+        p_int := INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#4),1);
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := p_int.x;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(p_int.x,5,3)+ 
+                 " Kappa  "+STR(p_int.y,15,10)+" Line (-)");
+        ENDIF; 
+      ENDIF; 
+      n_int := N_INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#5));
+      IF   n_int > 0 THEN
+        p_int := INTERSECT(GLOBAL_REF(#2),GLOBAL_REF(#5),1);
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := p_int.x;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(p_int.x,5,3)+ 
+                 " Kappa  "+STR(p_int.y,15,10)+" Line (+)");
+        ENDIF; 
+      ENDIF; 
+
+!     Delete temporary element
+      DEL(GLOBAL_REF(#2));
+
+!   End point loop
+    ENDFOR;
+
+!   Determine if a circle must start in the segment end point
+    IF   i_seg < ns_geo THEN
+!     Current parameter value
+      s_u  := i_seg + comptol;
+!     Current curvature value 
+      v_kappa   :=  EVAL(cur_id,"kappa", VEC(s_u,0,0));
+      kappa     :=  v_kappa.x;
+      bi_normal :=  EVAL(cur_id,"binormal", VEC(s_u,0,0));
+      IF  bi_normal*pla_normal < 0.0 THEN
+        kappa := -kappa;
+      ENDIF;
+      IF   ABS(kappa)             < 1/line_crit  AND 
+           ABS(kappa_seg(n_poi+2).y) < 1/line_crit         THEN
+!       Straight line. No start of circle necessary
+        ;
+      ELIF   kappa  <  0.0 AND kappa_seg(n_poi+2).y > 0.0 THEN
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := i_seg;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(i_seg,5,3)+ 
+          " K next "+STR(kappa,15,10) +
+          " K end "+STR(kappa_seg(n_poi+2).y,15,10)+" Inflexion 1 ");
+        ENDIF; 
+      ELIF   kappa  >  0.0 AND kappa_seg(n_poi+2).y < 0.0 THEN
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := i_seg;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(i_seg,5,3)+ 
+          " K next "+STR(kappa,15,10) +
+          " K end "+STR(kappa_seg(n_poi+2).y,15,10)+" Inflexion 1 ");
+        ENDIF; 
+      ELIF ABS(1.0/kappa - 1.0/kappa_seg(n_poi+2).y) > 0.3*line_crit  THEN
+!       Step in curvature too big
+        n_u_cir_s := n_u_cir_s + 1;
+        u_cir_s_t(n_u_cir_s) := i_seg;
+        IF    DEBUG  = 1  THEN
+        LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(i_seg,5,3)+ 
+          " K next "+STR(kappa,15,10) +
+          " K end "+STR(kappa_seg(n_poi+2).y,15,10)+" Step ");
+        ENDIF; 
+      ENDIF;
+
+
+    ENDIF;
+
+
+
+!   Activate global system
+    MODE_GLOBAL();
+
+! End curve segment loop
+  ENDFOR;
+
+
+! Delete temporary elements
+  DEL(GLOBAL_REF(#3));
+  DEL(GLOBAL_REF(#4));
+  DEL(GLOBAL_REF(#5));
+
+! End element in u_cir_s
+  n_u_cir_s := n_u_cir_s + 1;
+  u_cir_s_t(n_u_cir_s) := ns_geo;
+
+
+
+  IF    DEBUG  = 1  THEN
+    LST_LIN("n_u_cir_s= "+STR(n_u_cir_s,3,0)
+                   +" U "+STR(ns_geo,5,3)+ 
+                 " End   of curve  ");
+    FOR  i_u_cir_s := 1 TO n_u_cir_s  DO
+      LST_LIN("i_u_cir_s= "+STR(i_u_cir_s,3,0)
+        +" u_cir_s_t "+STR(u_cir_s_t(i_u_cir_s),10,5));
+    ENDFOR;
+  ENDIF; 
+
+
+  IF    DEBUG  = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+! +++
+! 3. Order the parameter values and check differences
+! ---
+
+  FOR  i_u_cir_s := 1 TO n_u_cir_s  DO
+    u_cir_s(i_u_cir_s) := 5000.0;
+    i_max := -12345;
+    FOR  i_u_cir_s_t := 1 TO n_u_cir_s  DO
+      IF  u_cir_s_t(i_u_cir_s_t) < u_cir_s(i_u_cir_s) THEN
+        i_max := i_u_cir_s_t;
+        u_cir_s(i_u_cir_s) := u_cir_s_t(i_max);
+      ENDIF;
+    ENDFOR;
+    u_cir_s_t(i_max)   := 50000.0;
+  ENDFOR;
+
+
+
+  FOR  i_u_cir_s := 1 TO n_u_cir_s - 1 DO
+    IF   u_cir_s(i_u_cir_s+1) <= u_cir_s(i_u_cir_s) THEN
+      LST_INI("ERROR-ERROR-c_c1cir-ERROR-ERROR");
+      LST_LIN("U values not increasing");
+      FOR  i_u_cir_s := 1 TO n_u_cir_s  DO
+        LST_LIN("i_u_cir_s= "+STR(i_u_cir_s,3,0)
+          +" u_cir_s "+STR(u_cir_s(i_u_cir_s),10,5));
+      ENDFOR;
+      LST_EXI();
+      EXIT("c_c1cir U values not increasing");
+    ENDIF;
+  ENDFOR;
+
+
+ENDMODULE

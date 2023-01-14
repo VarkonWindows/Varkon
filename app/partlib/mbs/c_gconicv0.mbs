@@ -1,0 +1,327 @@
+!******************** c_gconicv0      **************************
+! +++
+! Create conic from points and start and end curvature radii 
+!
+! All input data must be in the same plane. The start and end
+! tangents cannot be parallell to the chord.
+!
+! Revision history
+! ________________
+!
+! 1995-06-14  Gunnar Liden
+! ---
+!*****************************************************************
+
+GLOBAL GEOMETRY MODULE c_gconicv0 (
+VECTOR p0  :=VEC(  0.0,0.0,0.0)   > "Start point";
+VECTOR t0  :=VEC(1.0,  0.1, 0.0)  > "Start tangent   ";
+FLOAT  r0  :=  200.0              > "Start curvature radius";
+FLOAT  r2  :=   50.0              > "End   curvature radius";
+VECTOR p2  :=VEC(100.0,0.0,0.0)   > "End   point";
+FLOAT  l_pv:=    0.2              > "Lower limit P value for case= 2";
+FLOAT  u_pv:=    0.7              > "Upper limit P value for case= 2";
+INT    case:=  1                  > "=1: Normal =2: Change to limit (for opt.)");
+
+!sdesce Create conic from pts, tangents, chord length in plane and radius
+!sdescs Skapa k{gelsnitt fr}n tangenter, korda i plan och kr|kningsradier
+
+! +++
+! Theory
+! ______
+! 
+! References:
+! 1. Computational Geometry ..., Faux & Pratt p143, p65
+! 2. Farin                                    p177-186
+!
+! Notations:
+!
+! k   =        Curvature
+! cl  =        Chord length between start and end point of conic
+! k0  =        Curvature in start point of conic
+! k2  =        Curvature in end   point of conic
+! pval=        Conic P-value
+! w0  =        Weight in start point
+! w1  =        Weight in hard  point (tangent intersect point)
+! w2  =        Weight in end   point
+! p0  =        Start point of conic
+! p1  =        Tangents intersect point for conic
+! p2  =        End point of conic
+! a   =        Length of side p0 to p1 in triangle p0-p1-p2
+! c   =        Length of side p1 to p2 in triangle p0-p1-p2
+! phi =        Angle between chord (p0 to p2) and side p0 to p1
+!
+!
+!
+!        (1-pval)**2      w0 * w2
+! k**2 = --------      = ----------              (1)
+!         pval**2           w1**2
+! 
+!       a**3
+! k2  = ----- * k0                               (2)
+!       c**3
+!
+! c**2 = (a*sin(phi))**2 + (cl-a*cos(phi))**2    (3)
+!
+! (2) + (3) gives a
+!
+!          cl*cos(phi)            (cl*cos(phi))**2      cl*cos(phi)
+! a    = - -----------  +/- SQRT( -----------------  +  -----------  )
+!           denom                    denom**2             denom
+!
+! osv ... Se handskrivet ....
+! ---
+
+! Internal variables
+
+  VECTOR  p0_l;                        ! p0 in local coordinates
+  VECTOR  t0_l;                        ! t0 in local coordinates
+  VECTOR  p2_l;                        ! p2 in local coordinates
+  VECTOR  p1_l;                        ! p1 in local coordinates
+
+  VECTOR  t0_c;                        ! t0 in same direction as chord
+
+  FLOAT   k0;                          ! Curvature for u= 0.0
+  FLOAT   k2;                          ! Curvature for u= 0.0
+  FLOAT   phi_deg ;                    ! Start angle in degrees
+  FLOAT   cl ;                         ! Chord length 
+
+  FLOAT   x0 , y0 ;                    ! Conic start point   in local system
+  FLOAT   x1 , y1 ;                    ! Conic tangent point in local system
+  FLOAT   x2 , y2 ;                    ! Conic end point     in local system
+  FLOAT   pval;                        ! P-value          
+
+  FLOAT   pval1 ;                      ! P-value               (root 1)
+  FLOAT   pval2 ;                      ! P-value               (root 2)
+
+
+  FLOAT   a_l;                         ! Length from P0 to P1
+  FLOAT   a1_l;                        ! Candidate 1 for a_l      
+  FLOAT   a2_l;                        ! Candidate 2 for a_l      
+
+  FLOAT   ddum1,ddum2 ;                ! Dummy float variables 
+
+
+  INT     DEBUG;                       ! =1: Check formula 
+  INT     b_flag;                      ! Blank value 
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! Initializations
+
+  DEBUG := 0;                         ! Change to 0 or 1
+
+  IF DEBUG = 0 THEN                   ! Blank value
+    b_flag:= 1;                       !
+  ELSE                                !
+    b_flag:= 0;                       !
+  ENDIF;                              !
+
+
+  IF case = 1 OR case = 2 THEN        ! Check case
+    ;                                 !
+  ELSE                                !
+    EXIT("c_gconicv0 Case not "+      !
+         "equal to 1 or 2");          !
+  ENDIF;                              !
+
+! +++
+! Let curvature k0= 1/r0 (r0 is the input curvature radius)
+! and curvature k2= 1/r2 
+! ---
+
+  IF r0 < 0.0001  THEN                !
+    EXIT("c_gconicv0 Input radius "+  !
+         "r1 less or equal to zero"); !
+  ELSE                                !
+    k0 := 1.0/r0;                     ! Curvature
+  ENDIF;                              !
+  IF r2 < 0.0001  THEN                !
+    EXIT("c_gconicv0 Input radius "+  !
+         "r2 less or equal to zero"); !
+  ELSE                                !
+    k2 := 1.0/r2;                     ! Curvature
+  ENDIF;                              !
+
+
+! +++
+! 
+! Create tangent which have the same direction as the chord
+! ---
+
+  IF t0*(p2-p0) < 0.0 THEN             ! Tangents in same direction as chord
+     t0_c := -1.0*t0;                  !
+  ELSE                                 !
+     t0_c :=      t0;                  !
+  ENDIF;                               !
+
+! +++
+! Create input points and tangent points in global system
+! ---
+
+  POI_FREE(#2,p0      :BLANK=b_flag);  ! Start point
+  POI_FREE(#3,p0+t0_c :BLANK=b_flag);  ! Start tangent point
+  POI_FREE(#4,p2      :BLANK=b_flag);  ! End   point
+
+! +++
+! Create local system with p0 as origin, p2-p0 as X axis and 
+! Y axis close to vector t0.  Check first that start tangent 
+! not is parallell to chord.
+! ---
+
+  IF ABS(VECN(t0_c)*VECN(p2-p0)-1.0) < ! Check if parallell
+              0.00001 THEN             !
+    EXIT("c_gconicv0 Start tangent "+  !
+    "is parallell to chord");          !
+  ENDIF;                               !
+
+  CSYS_3P(#6,"Conic", p0, p2, p0+t0_c  ! Coordinate system 
+                 :BLANK=b_flag);       !
+
+! +++
+! Activate local system and get local coordinates for the input points.
+! ---
+
+  MODE_LOCAL(GLOBAL_REF(#6));          ! Activate local system
+
+  p0_l := ON(GLOBAL_REF(#2));          ! p0 in local coordinates
+  t0_l := ON(GLOBAL_REF(#3))  -        ! t0 in local coordinates
+          ON(GLOBAL_REF(#2));          ! 
+  p2_l := ON(GLOBAL_REF(#4));          ! p2 in local coordinates
+
+  x0   := p0_l.x;                      ! Start point
+  y0   := p0_l.y;                      !
+  x2   := p2_l.x;                      ! End   point
+  y2   := p2_l.y;                      !
+
+! +++
+! Calculate and check start angle. 
+! ---
+
+  phi_deg  := ANGLE(t0_l.x,t0_l.y);    ! Start angle in degrees
+
+  IF phi_deg < 0.001 THEN              ! Check start angle
+    EXIT("c_gconicv0 Program "+        !
+         "error Start angle < 0");     !
+  ENDIF;                               !
+
+! +++
+! Calculate length of line from p0 to p1 (tangents intersect)
+! ---
+
+  IF k2 < 0.000000001  THEN            !
+    EXIT("c_gconicv0 Input radius "+   !
+         "r2 is too big");             !
+  ENDIF;                               !
+
+  ddum1 := k0/k2 ;                     !
+  ddum1 := ddum1**(2.0/3.0)  - 1.0 ;   !
+
+  IF   ddum1*ddum1 < 0.0000000001 THEN ! Program check
+    EXIT("c_gconicv0 Program "+        !
+         "error ddum1 P value");       !
+  ENDIF;                               !
+
+  ddum1 := 1.0/ddum1 ;                 !
+
+  cl    := x2;                         ! Chord length
+
+  ddum2 := cl*cl*                      !
+           COS(phi_deg)*COS(phi_deg)*  !
+           ddum1*ddum1 + cl*cl*ddum1;  !
+
+  IF   ddum2*ddum2 < 0.0000000001 THEN ! Program check
+    EXIT("c_gconicv0 Program "+        !
+         "error ddum2 P value");       !
+  ENDIF;                               !
+
+  a1_l:= -cl*COS(phi_deg)*ddum1 +      !
+             SQRT(ddum2) ;             !
+  a2_l:= -cl*COS(phi_deg)*ddum1 -      !
+             SQRT(ddum2) ;             !
+
+  IF   a1_l > 0.0 AND a1_l < cl  THEN  ! Select candidate
+    a_l  := a1_l  ;                    !
+  ELIF a2_l > 0.0 AND a2_l < cl  THEN  !
+    a_l  := a2_l  ;                    !
+  ELSE                                 !
+    EXIT("c_gconicv0 Program "+        !
+         "error select a_l value");    !
+  ENDIF;                               !
+
+
+! +++
+! P-value for the conic
+! ---
+
+  ddum1:=2.0*k0*a_l*a_l/cl/SIN(phi_deg)!
+          - 1.0 ;                      !
+
+  IF   ddum1*ddum1 < 0.0000001 THEN    ! Program check
+    EXIT("c_gconicv0 Program "+        !
+         "error ddum1 for P value");   !
+  ENDIF;                               !
+
+
+  ddum1 := 1.0/ddum1 ;
+
+  ddum2 := ddum1*ddum1 + ddum1 ;
+
+
+  IF   ddum2*ddum2 < 0.0000000001 THEN ! Program check
+    EXIT("c_gconicv0 Program "+        !
+         "error ddum2 P value");       !
+  ENDIF;                               !
+
+
+  pval1 := -1.0*ddum1 + SQRT(ddum2) ;  ! Root 1
+
+  pval2 := -1.0*ddum1 - SQRT(ddum2) ;  ! Root 2
+
+  IF   pval1> 0.0 AND pval1< 1.0 THEN  ! Select root
+    pval := pval1 ;                    !
+  ELIF pval2> 0.0 AND pval2< 1.0 THEN  !
+    pval := pval2 ;                    !
+  ELSE                                 !
+    EXIT("c_gconicv0 Program "+        !
+         "error ddum2 P value");       !
+  ENDIF;                               !
+
+  IF case = 2 THEN                     ! Case for optimization ...
+    IF pval < l_pv       THEN          ! 
+      pval := l_pv;                    !
+    ENDIF;                             !
+    IF pval > u_pv       THEN          ! 
+      pval := u_pv;                    !
+    ENDIF;                             !
+  ENDIF;                               !
+
+! +++
+! Point p1        
+! ---
+
+  x1 := a_l*COS(phi_deg) ;             ! Tangent intersect point
+  y1 := a_l*SIN(phi_deg) ;
+  p1_l := VEC(x1,y1,0.0);              !
+  
+  IF DEBUG = 1 THEN                    !
+    POI_FREE(#7,VEC(x1,y1,0));         ! Graphic check for Debug
+  ENDIF;                               !
+
+
+! +++
+! Create conic in the local system
+! ---
+
+  CUR_CONIC(#1,"PROJ",                 ! Create conic
+        p0_l, p1_l, pval,              !
+        p2_l, p1_l);                   !
+
+  MODE_GLOBAL();                       ! Activate global system
+
+ENDMODULE

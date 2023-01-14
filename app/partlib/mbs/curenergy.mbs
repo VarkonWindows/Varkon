@@ -1,0 +1,221 @@
+!***********************************************************************
+!                                                                      *
+!  Program:  curenergy                                                 *
+!                                                                      *
+!                                                                      *
+!  Purpose:  Calculates the energy of a curve, the integral of         *
+!            curvature**2                                              *
+!                                                                      *
+!                                                                      *
+!  Parms:                                                              *
+!                                                                      *
+!                                                                      *
+!                                                                      *
+!                                                                      *
+!  Remarks:                                                            *
+!                                                                      *
+!                                                                      *
+!  Formulae:                                                           *
+!                                                                      *
+!                                                                      *
+!  Rev hist: 1993-05-04 Gunnar Liden                                   *
+!                                                                      *
+!***********************************************************************
+
+
+BASIC GEOMETRY MODULE curenergy (
+REF  idc              > "@t8  Indicate curve ");
+
+!  Interna variabler:
+
+   INT    ns;             ! Antal segment i kurvan
+   INT    fnt;            ! Font (hur kurvan ritas)
+   INT    plank;          ! Flagga som anger om kurvan {r plan (plank=1)
+   FLOAT  sl;             ! Streckl{ngd f|r streckad kurva
+   FLOAT  kdat(4,4);      ! Kurvplan (f|r plan kurva)
+   VECTOR p_s;            ! Startpunkt i varje segment
+   VECTOR t_s;            ! Starttangent i varje segment
+   VECTOR p_e;            ! Slutpunkt p} kurvan
+   VECTOR t_e;            ! Sluttangent p} kurvan
+   VECTOR c_s;            ! Kr|kningscenter f|r startpunkt
+   VECTOR c_e;            ! Kr|kningscenter f|r  slutpunkt
+   FLOAT  radius;         ! Kr|kningsradie
+   FLOAT  kappa;          ! Kr|kning
+   FLOAT  energy;         ! Energin i kurvan
+   FLOAT  param;          ! Parameterv{rde p} kurva
+   INT    i;              ! Loop variabel
+
+   FLOAT  offset(25);     ! Offset f|r varje segment p} kurvan
+   FLOAT  sdat(25,4,4);   ! Koefficienterna
+
+   INT    DEBUG;          ! =0 No debug   =1 Debug
+
+  STRING      name_out*132 ;   ! Name of (path for) the variable
+
+  STRING  s*1;                       ! For debug printout to screen
+
+
+BEGINMODULE
+
+!  1. Initieringar
+!  ===============
+
+  DEBUG:=1;                       !   [ndra till 0 eller 1
+
+  energy:= 0.0;                   !   Start energi
+
+  idc := global_ref(idc,2);       !   Referenserna (namnen) ska kunna
+                                  !   n}s fr}n tv} niv}er (ref(...,2)).
+
+  name_out:= " ";
+
+  IF DEBUG = 1 THEN               ! F|r Debug
+!  PART(#3,ANA_NAME(idc,name_out));! Omvandla adress till "path"
+
+
+  LST_INI("Analysis of"+          ! Initiera utskrift p} sk{rm.
+          " curvature for"+       !
+          " definition points"+   !
+          " in curve " +          !
+           RSTR(idc));            !
+                                  !   Skriv |verskrift.
+
+  LST_LIN(name_out);              !   Skriv "path"
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+  LST_LIN("  PNR       X"+        !   Skriv tabellhuvud.
+            "          Y"+
+            "          Z"+
+            "          CX"+
+            "          CY"+
+            "          CZ");
+
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+  ENDIF;                          !  End Debug
+
+
+
+  GETCUR(idc,   +                 !  L{s kurvdata ur GM.
+         fnt,   +                 !  GM = det som blir .RES n{r
+         sl,    +                 !  VARKON jobb avslutas.
+         ns,    +
+         sdat,  +
+         offset,+
+         plank ,+
+         kdat);
+                                            
+                                            
+
+
+!  2. Skriv ut punkter och tangenter
+!  =================================
+
+   FOR i := 1 TO ns DO
+
+     param := i-1.0;
+     p_s :=   ON(idc,param);      ! Startpunkt i varje segment.
+     t_s := TANG(idc,param);      ! Starttangent i varje segment.
+     c_s := CENTRE(idc,param);    ! Kr|kningscentrum
+
+     radius := VECL(p_s-c_s);     !
+     IF radius > 0.0000001 THEN   !
+       kappa:= 1.0/radius;        !
+     ELSE                         !
+       kappa:= 10000.0;           !
+     ENDIF;                       !
+     energy := energy+kappa;      !
+                                 
+     IF DEBUG = 1 THEN            ! Debug
+!     LST_LIN("   " +              !Skriv startpunkt och centrum p} sk{rm
+!            str(i,-5,0)  +
+!            str(p_s.x,-12,5) +
+!            str(p_s.y,-12,5) +
+!            str(p_s.z,-12,5) +
+!            str(c_s.x,-12,8) +
+!            str(c_s.y,-12,8) +
+!            str(c_s.z,-12,8));
+
+     PART(#1,IND_STAR(p_s,2.0,2)   !
+             :SAVE=0);             ! Grafisk representation
+     ENDIF;                        ! End Debug
+
+     param := i-0.5;              ! F|r MITTPUNKT p} segment
+     p_s :=   ON(idc,param);      ! Startpunkt i varje segment.
+     t_s := TANG(idc,param);      ! Starttangent i varje segment.
+     c_s := CENTRE(idc,param);    ! Kr|kningscentrum
+
+     radius := VECL(p_s-c_s);     !
+     IF radius > 0.0000001 THEN   !
+       kappa:= 1.0/radius;        !
+     ELSE                         !
+       kappa:= 10000.0;           !
+     ENDIF;                       !
+     energy := energy+kappa;      !
+
+     IF DEBUG = 1 THEN            ! Debug
+     LST_LIN("   " +              !Skriv startpunkt och centrum p} sk{rm
+            str(i,-5,0)  +
+            str(p_s.x,-12,5) +
+            str(p_s.y,-12,5) +
+            str(p_s.z,-12,5) +
+            str(kappa,-20,10) +
+            str(radius,-15,4));
+      ENDIF;
+
+
+     IF i = ns THEN
+
+         param := i;
+         p_e :=   ON(idc,param);       ! Ta hand om slutpunkt p} kurvan.
+         t_e := TANG(idc,param);
+         c_e := CENTRE(idc,param);    ! Kr|kningscentrum
+         radius := VECL(p_s-c_s);     !
+         IF radius > 0.0000001 THEN   !
+           kappa:= 1.0/radius;        !
+         ELSE                         !
+           kappa:= 10000.0;           !
+         ENDIF;                       !
+         energy := energy+kappa;      !
+
+                                  
+
+     IF DEBUG = 1 THEN            ! Debug
+     LST_LIN("   " +              !Skriv startpunkt och centrum p} sk{rm
+            str(i,-5,0)  +
+            str(p_s.x,-12,5) +
+            str(p_s.y,-12,5) +
+            str(p_s.z,-12,5) +
+            str(kappa,-20,10) +
+            str(radius,-15,4));
+     !   LST_LIN("   " +          ! Skriv slutpunkt och tangent p} sk{rm
+     !          str(i+1,-5,0)  +
+     !          str(p_e.x,-12,5) +  
+     !          str(p_e.y,-12,5) +
+     !          str(p_e.z,-12,5) + 
+     !          str(c_e.x,-12,8) +
+     !          str(c_e.y,-12,8) +
+     !          str(c_e.z,-12,8));
+         PART(#2,IND_STAR(p_e,2.0,2)   !
+                 :SAVE=0);             ! Grafisk representation
+     ENDIF;                        ! End Debug
+
+     ENDIF;
+
+   ENDFOR;
+
+  s:=INPMT("The energy of the curve is "! Printout to screen
+     +str(energy,-15,8)+" "             !
+     ,"",1);                            !
+
+!  4. Avslutning
+!  =============
+
+
+  IF DEBUG = 1 THEN                  ! Debug
+    LST_EXI();                       ! St{ng utskrift p} sk{rmen.
+  ENDIF;                             ! End Debug
+
+
+ENDMODULE

@@ -1,0 +1,131 @@
+!*********************  c_cprojv0*************************************
+! +++
+! Projection of curve in a given direction onto all surfaces in GM
+!
+! Revision history
+! ________________
+!
+! 1995-11-14 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+!sdesce Projection of curve in a given direction onto all surfaces in GM
+!sdescs Projicera en kurva i en given riktning p} en alla ytor i GM
+
+GLOBAL  GEOMETRY MODULE  c_cprojv0(
+REF     cur_id                 >"@t13 Select curve, line or arc";
+REF     s_sur_id               >"@t16 Start surface for ordering of curves";
+VECTOR  v_proj   := VEC(0,0,1) >"Projection direction";
+INT     s_case   := 1          >"Projection case. Refer to ALL_INT_LIN_SUR";
+FLOAT   d_len    := 3.0        >"Delta arclength defining output segments";
+INT     graphic  := 1          >"=0: No graphic =1: Show curve =2: Show all");
+
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+                               ! For getid_gm:
+  INT    r_type;               ! Requested type
+  INT    no_ent;               ! Number of entities
+  REF    ent_id(3000);         ! References (# id's)
+
+                               ! For c_cprojv0:
+  REF    sur_id;               ! Current surface
+  VECTOR uv_all(200);          ! All UV points for curve
+  VECTOR tutv_all(200);        ! All UV tangents for curve (not yet implemented)
+  VECTOR r3_all(200);          ! All R*3 points for curve
+  VECTOR t3_all(200);          ! All R*3 tangents for curve
+  VECTOR n3_all(200);          ! All R*3 tangents for curve
+  INT    no_uv;                ! Number of UV points
+  INT    graphic_pro;          !=0: No graphic =1: Show curve =2: Show all
+
+  INT    i_sur;                ! Loop index surface
+
+  INT    b_val_c;              ! Blank flag curve
+  INT    b_val_a;              ! Blank flag all other entities
+
+  INT    i_p;                  ! Loop index point
+  FLOAT  dot;                  ! Scalar product
+  FLOAT  ang;                  ! Angle
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+
+  DEBUG := 1;                       ! Debug =1 or 0
+
+  IF  DEBUG = 1 THEN                !
+    LST_INI("c_cprojv0 ");          !
+  ENDIF;                            !
+
+  IF   graphic    = 0 THEN          ! Graphics
+    b_val_c:= 1;                    !
+    b_val_a:= 1;                    !
+    graphic_pro := 0;               !
+  ELIF graphic    = 1 THEN          ! 
+    b_val_c:= 0;                    !
+    b_val_a:= 1;                    !
+    graphic_pro := 1;               !
+  ELIF graphic    = 2 THEN          !
+    b_val_c:= 0;                    !
+    b_val_a:= 0;                    !
+    graphic_pro := 2;               !
+  ELSE                              !
+   EXIT("c_cprojv0 graphic" +       !
+         " not OK");                !
+  ENDIF;                            !
+
+! +++
+! Retrieve identities for all surfaces in GM
+! ---
+
+  r_type := 16;                     ! Requested type
+  PART (#2, getid_type (            !
+        r_type, no_ent, ent_id)     !
+        :SAVE=0);                   !
+
+
+! +++
+! Project curve to all surfaces
+! ---
+
+
+  FOR i_sur:= 1 TO no_ent DO        ! Start loop all surfaces
+    sur_id := ent_id(i_sur);        ! Current surface
+    PSH_PMT("c_cprojv0 Surface "+RSTR(sur_id));
+    PART (#3, c_bprojv0(            ! Project curve on current surface
+     cur_id, v_proj, sur_id,        !
+     s_case, d_len,                 !
+     uv_all, tutv_all,              !
+     r3_all, t3_all, n3_all, no_uv, !
+     graphic_pro));                 !
+     POP_PMT();
+
+  IF  DEBUG = 1 THEN                !
+    FOR i_p := 1 TO no_uv DO        !
+    dot:= VECN(n3_all(i_p))*VEC(0,0,1);
+    ang:= ARCCOS(dot);              !
+    LST_LIN(STR(i_p,3,0)+ " Angle to Z axis "+STR(ang,10,5)+" Surface "+RSTR(sur_id));
+    ENDFOR;                         !
+  ENDIF;                            !
+
+  ENDFOR;                           ! End   loop all surfaces
+
+  IF  DEBUG = 1 THEN                !
+    LST_EXI();                      !
+  ENDIF;                            !
+
+ENDMODULE

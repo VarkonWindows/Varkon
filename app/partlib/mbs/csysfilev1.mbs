@@ -1,0 +1,98 @@
+!********************  csysfilev1 **************************************
+!
+! +++
+! Get full file name for file with coordinate system data
+!
+! Revision history
+! ________________
+!
+! 1996-02-13  Gunnar Liden  gäller csysfilev0
+!
+! 1996-04-29  Karl-Erik Eklund   Anpassning av filnamn mot COGNAC
+!
+! 1996-08-26  Karl-Erik Eklund   Ändrat till stora bokstäver i filnamnet
+!
+! 1996-09-20  Karl-Erik Eklund   Kompletterat med projekt
+!
+! ---
+!*************************************************************************
+
+BASIC  GEOMETRY MODULE  csysfilev1 (
+    STRING csyname*10;       ! Coordinate system
+VAR STRING projectname*25;   ! Project name for the coord. system
+VAR STRING csy_basic*25;     ! Basic system for project  
+VAR STRING f_name*132);      ! Full file name   
+
+!sdesce Get full file name for file with coordinate system data
+!sdescs Hämta fullständigt namn för datafil med koordinatsystem
+
+! Internal variables:
+
+  STRING projekt(20)*25;     ! Project names 
+  STRING csys(20)*25;        ! Basic systems for the projects
+  STRING path(20)*50;        ! Output directories
+  INT    n_path;             ! Number of directories
+
+  INT    i_d;                ! Loop index directory
+
+  FILE   tmp;                ! File 
+
+  STRING s*1;                ! For INPMT
+  INT    DEBUG;              ! Eq. 0: No Debug  
+                             ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! 0. Initializations
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  projectname:= "Undefined";
+  csy_basic  := "Undefined";
+  f_name     := "Undefined";
+
+! +++
+!  Algorithm
+!  _________
+!
+!  1. Get names to all directories with coordinate system data
+! ---
+  
+   PART ( #1, csyspathv1   (       ! Get all directories
+    path, projekt, csys, n_path)   !
+    :SAVE=0);   
+
+
+! +++
+!  Loop for all subdirectories with surface data
+!  Try to open cosys_csyname.def
+! ---
+
+  FOR i_d:= 1 to n_path DO         ! Start loop n_path
+
+   f_name := path(i_d)+"COSYS_"+   ! 
+             csyname + ".DEF";     !
+   OPEN(tmp,"r",f_name );          ! Try to open file
+   IF (IOSTAT(tmp)<>0 ) THEN       ! 
+      ;                            ! Next directory
+   ELSE                            !
+     CLOSE(tmp);                   ! Close file
+     projectname:= projekt(i_d);   !
+     csy_basic:= csys(i_d);        !
+     GOTO   found;                 !
+   ENDIF;                          !
+
+  ENDFOR;                          ! End   loop n_path
+
+  LST_INI("csysfilev1 ERROR ERROR ERROR ERROR ERROR");
+  LST_LIN("There is no file COSYS_"+csyname+ ".DEF on directories:");
+  FOR  i_d := 1 TO n_path DO
+  LST_LIN(path(i_d));
+  ENDFOR;
+  LST_EXI();
+
+  EXIT("csysfile No file COSYS_"+csyname+".DEF");
+
+found:;                            ! File is found
+
+ENDMODULE

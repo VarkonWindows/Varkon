@@ -1,0 +1,94 @@
+! ***************** compl_conv ****************************
+!
+! +++
+! Converts a complex number from:
+!
+! the cartesian   form x + iy to 
+!
+!                           i*theta
+! the exponential form r * e 
+!
+!    or vice versa.
+!
+! Note that PART(#1,compl_code(Z1,"e","c",Z1) is OK
+! i.e. Z1:= Convert(Z1) is OK
+!
+! Revision history
+! ________________
+!
+! 1995-10-15 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Converts complex number from cartesian form x + iy to exponential form
+!sdescs Konverterar fr}n x + iy till exponential form
+
+BASIC  GEOMETRY MODULE compl_conv (
+    VECTOR  Z1;       ! Input complex number  Z1
+ 
+    STRING  type1*3;  ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+                      !        (theta in radians)
+    STRING  type2*3;  ! Eq. c or e
+
+VAR VECTOR  Z2);      ! Output complex number 
+
+! Internal variables
+
+  FLOAT  ang_d;       ! Angle in degrees 
+
+  INT    DEBUG;       ! Debug= 0 or =1
+  STRING s*1;         ! For INPMT
+
+BEGINMODULE
+
+  DEBUG:= 0;
+
+  ang_d:= -0.123456789;
+
+  IF   (type1 = "c"  OR  type1 = "C")  AND 
+       (type2 = "e"  OR  type2 = "E")      THEN
+    PART(#1 , compl_abs ( Z1, type1, Z2.x ) :SAVE=0);
+    PART(#2 , compl_ang ( Z1, type1, Z2.y ) :SAVE=0);
+    Z2.z := 0.0;
+  ELIF (type1 = "e"  OR  type1 = "E")  AND 
+       (type2 = "c"  OR  type2 = "C")      THEN
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_conv Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+    PART(#3 , rad_to_deg ( Z1.y, ang_d ) :SAVE=0);
+    Z2.x := Z1.x*COS(ang_d);
+    Z2.y := Z1.x*SIN(ang_d);
+    Z2.z := 0.0;
+  ELIF (type1 = "e"  OR  type1 = "E")  AND 
+       (type2 = "e"  OR  type2 = "E")      THEN
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_conv Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+    Z2.x := Z1.x;
+    Z2.y := Z1.y;
+    Z2.z := 0.0;
+  ELIF (type1 = "c"  OR  type1 = "C")  AND 
+       (type2 = "c"  OR  type2 = "C")      THEN
+    Z2.x := Z1.x;
+    Z2.y := Z1.y;
+    Z2.z := 0.0;
+  ELSE
+    Z2 := VEC(0,0,0);
+    EXIT("compl_conv Complex types "+type1+" -> "+type2+" not implemented");
+  ENDIF;
+
+  IF DEBUG = 1 THEN
+    s:= INPMT("compl_conv Z1.x= "+STR(Z1.x,-12,4)+" Z1.y= "+STR(Z1.y,-12,4)
+         ," ",1);
+    s:= INPMT("compl_conv ang_d= "+STR(ang_d,-10,2)+
+               " type1= "+type1+" type2= "+type2
+         ," ",1);
+    s:= INPMT("compl_conv Z2.x= "+STR(Z2.x,-12,4)+" Z2.y= "+STR(Z2.y,-12,4)
+         ," ",1);
+  ENDIF;
+
+ENDMODULE

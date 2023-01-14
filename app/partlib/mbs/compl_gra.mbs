@@ -1,0 +1,189 @@
+! ***************** compl_gra  ****************************
+!
+! +++
+! Graphics for a complex number
+!
+! Optional input forms for the complex number are:
+!
+! Cartesian   form Z= x + yi       (parameter type= c)
+!
+!                        theta*i
+! Exponential form Z= r*e          (parameter type= e)
+! where theta is in radians
+!
+!
+! Revision history
+! ________________
+!
+! 1995-10-12 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Graphics for a complex number
+!sdescs Grafik f|r ett komplext tal
+
+LOCAL   GEOMETRY MODULE compl_gra  (
+
+VECTOR  Z1     := VEC(-3.0,4.0) >"Input complex number  Z1";
+STRING  type*3 := "c"           >"Eq. c: Cartesian Eq. e: Exponential form";
+INT     graphic := 2            
+>"Eq. 1: Argand vector Eq. 2: Argand diagram with axis Eq. 3: Only Argand diagram");
+
+! Internal variables
+
+  VECTOR  Z_E;                  ! Complex number in exponential form
+  VECTOR  Z_C;                  ! Complex number in cartesian   form
+  FLOAT   axis_l;               ! Length of X and Y axis
+  FLOAT   radius;               ! Radius for circle
+  FLOAT   ang_d;                ! Angle in degrees 
+  FLOAT   v0;                   ! Start angle for circle
+  FLOAT   v1;                   ! End   angle for circle
+  FLOAT   ang_arrow;            ! Angle  for arrow
+  FLOAT   l_arrow;              ! Length for arrow     
+  VECTOR  p0;                   ! Start point for arrow  
+  VECTOR  p1;                   ! End   point for arrow 
+  INT     n_360;                ! If angle > 360
+
+
+  INT     DEBUG;                ! Debug= 0 or 1
+  STRING  s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! ---
+
+  DEBUG:= 0;
+
+  IF DEBUG = 1 THEN
+    v0    := -0.123456789;
+    v1    := -0.123456789;
+    ang_d := -0.123456789;
+    axis_l:= -0.123456789;
+    radius:= -0.123456789;
+    Z_E.x := -0.123456789;
+    Z_E.y := -0.123456789;
+    Z_E.z := -0.123456789;
+    Z_C.x := -0.123456789;
+    Z_C.y := -0.123456789;
+    Z_C.z := -0.123456789;
+  ENDIF;
+
+! +++
+! Convert to exponential (polar) form
+! ---
+
+  IF   type = "c"  OR  type = "C"  THEN
+    PART(#1 , compl_conv ( Z1, type, "e", Z_E ) :SAVE=0);
+    Z_C.x := Z1.x;               
+    Z_C.y := Z1.y;               
+    Z_C.z := 0.0;                
+  ELIF type = "e"  OR  type = "E"  THEN
+    PART(#2 , compl_conv ( Z1, type, "c", Z_C ) :SAVE=0);
+    Z_E.x := Z1.x;               
+    Z_E.y := Z1.y;               
+    Z_E.z := 0.0;                
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_gra  Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+  ELSE
+    EXIT("compl_gra  Complex type "+type+" not implemented");
+  ENDIF;
+
+  IF  graphic  = 1 OR graphic = 2 OR graphic = 3  THEN
+    GOTO  argand;
+  ELSE
+    EXIT("compl_gra  graphic "+STR(graphic,-1,0)+" not implemented");
+  ENDIF;
+
+argand:;              ! Label: Argand diagram
+
+
+! +++
+! Argand diagram:
+!
+! Create X and Y axis ....
+! ---
+
+  IF graphic = 1 THEN
+    GOTO nodiag;    
+  ENDIF;
+
+  axis_l := 1.3*Z_E.x;
+
+  LIN_FREE( #3, VEC(-axis_l,   0.0,  0.0), VEC(axis_l,   0.0,   0.0) :PEN= 4);
+  LIN_FREE( #4, VEC(  0.0  , -axis_l,0.0), VEC( 0.0  ,  axis_l, 0.0) :PEN= 4);
+
+  ang_arrow:= 10.0;
+  l_arrow  := 0.15*axis_l;
+  p0       := ON(GLOBAL_REF(#3),0.0);
+  p1       := ON(GLOBAL_REF(#3),1.0);
+  PART( #5, cpil2 ( ang_arrow , l_arrow, p0, p1 ):PEN=4);
+  p0       := ON(GLOBAL_REF(#4),0.0);
+  p1       := ON(GLOBAL_REF(#4),1.0);
+  PART( #6, cpil2 ( ang_arrow , l_arrow, p0, p1 ):PEN=4);
+  
+nodiag:;
+
+  IF graphic = 3 THEN
+    GOTO novect;    
+  ENDIF;
+
+  radius := 0.2*Z_E.x;
+
+  PART( #7, rad_to_deg ( Z_E.y, ang_d ):SAVE=0);
+
+  n_360:= TRUNC(ABS(ang_d)/360.0);
+  IF    n_360 > 0 AND  ang_d  >  0.0 THEN
+    ang_d:= ang_d - n_360*360.0;
+  ELIF  n_360 > 0 AND  ang_d  <  0.0 THEN
+    ang_d:= ang_d + n_360*360.0;
+  ENDIF;
+
+
+  IF  ang_d < 0.0 THEN
+    v0:=  -0.01;
+    v1:= ang_d;
+  ELSE
+    v0:=   0.0;      
+    v1:= ang_d;
+  ENDIF;
+
+  LIN_FREE( #9, VEC(0.0,0.0,0.0), VEC(Z_C.x , Z_C.y , 0.0) :PEN= 2);
+
+  ang_arrow:= 10.0;
+  l_arrow  := 0.15*Z_E.x;
+  p0       := ON(GLOBAL_REF(#9),0.0);
+  p1       := ON(GLOBAL_REF(#9),1.0);
+  PART(#10, cpil2 ( ang_arrow , l_arrow, p0, p1 ):PEN=2);
+
+  IF ABS (v0-v1) > 1.0 THEN
+    IF DEBUG = 1 THEN
+      s:= INPMT("compl_gra radius= "+STR(radius,-12,4)+
+                " v0= "+STR(v0,-8,2) +" v1= "+STR(v1,-8,2) ," ",1);
+    ENDIF;
+    ARC_1POS( #8, VEC(0,0,0), radius, v0 , v1  :PEN= 3);
+    l_arrow  := 0.1*ARCL(GLOBAL_REF(#8));
+    IF l_arrow > 1.0  THEN
+      ang_arrow:= 30.0;
+      p0       := ON(GLOBAL_REF(#8),0.95);
+      p1       := ON(GLOBAL_REF(#8),1.00);
+      PART(#11, cpil2 ( ang_arrow , l_arrow, p0, p1 ):PEN=3);
+    ENDIF;
+  ENDIF;
+
+
+
+  IF DEBUG = 2 THEN
+    s:= INPMT("compl_gra Z1.x= "+STR(Z1.x,-12,4)+" Z1.y= "+STR(Z1.y,-12,4)
+         ," ",1);
+    s:= INPMT("compl_gra ang_d= "+STR(ang_d,-10,2)+" v0= "+STR(v0,-10,2)
+         ," ",1);
+  ENDIF;
+
+novect:;
+
+
+ENDMODULE

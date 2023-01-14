@@ -1,0 +1,30 @@
+!******************** D_FLOAT1 *****************************************
+!
+! Skriver ut ett flyttals namn och v{rde.
+!
+! 1994-02-18 Ronny Gyllensten
+! 1994-02-22 Sm} bokst{ver i modulnamn Gunnar Liden
+!
+!***********************************************************************
+
+MACRO GEOMETRY MODULE d_float1  (
+
+INT      debug:= 1               >"DEBUG?(0=ingen utskrift,1=utskrift)";
+STRING   desc*10                 >"Beskrivning (flyttalets namn=)";
+FLOAT    f:= 10.0                >"Flyttal");
+
+! Internal variable:
+
+STRING   s*1;                    ! F|r INPMT
+
+
+BEGINMODULE
+
+    IF debug = 1 THEN            
+
+      s:=INPMT( desc + " = "+
+         STR(f,-15,8)+ " ","",1);
+
+    ENDIF;
+    ;
+ENDMODULE

@@ -1,0 +1,221 @@
+!********************* c_anangv0  ***********************
+! +++
+! Creates a porcupine showing the surface normal angle variation 
+! with respect to a given axis in a local coordinate system    
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1997-02-24  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Staket som visar ytnormal variation m.a.p given vektor
+!sdesce Porcupine showing angle variation w.r.t a given vector        
+
+GLOBAL GEOMETRY MODULE c_anangv0 (
+
+REF   cur_id           > "@t8  Select curve";
+REF   csys_id := #0    > "@ Coordinate system X axis for analysis <CR>==> Basic";
+STRING axis*3 := "Z"   >"Analysis with respect to X, Y or Z axis";
+INT   n_poi  := 1      > "Number of added points per segment 0. 1, 2, 3, ..";
+FLOAT l_scale:= 1.5    > "Scaling factor (negative also allowed)";
+FLOAT l_trl  := 20.0   > "Translation of angle value";
+INT   c_list := 1      > "Eq. 0: No printout  Eq. 1: Print angles";
+INT   graphic:= 1      >"Graphic 0: None 1: Porcupine 2: All");
+
+! Internal variables:
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in segment
+  
+  INT        ns_geo;             ! Number of geometric segments
+  INT        ns_gra;             ! Number of graphical segments
+  INT        fnt;                ! Font 
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      delta;              ! Delta parameter värde
+
+  INT        n_tot;              ! Totala antalet punkter
+
+  FLOAT      s_u;                ! Start punkt parametervärde
+  VECTOR     s_pt;               ! Start punkt
+  VECTOR     s_rad;              ! Start tangent punkt
+
+  REF        sur_id;             ! Reference to surface
+  VECTOR     uv_sur;             ! UV point on surface
+  VECTOR     s_n;                ! Current surface normal
+  VECTOR     s_n_t;              ! Current surface normal transformed csys_id
+
+  FLOAT      dot;                ! For the angle calculation
+  FLOAT      n_ang;              ! Angle to surface normal
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_pflag;            ! BLANK value porcupine
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! List window
+  IF    c_list = 1  THEN
+  LST_INI("Printout of angles (Module: c_anangv0)  ");
+  ELIF  c_list = 0  THEN
+    ;
+  ELSE
+    EXIT("c_anangv0  Print flag not OK");
+  ENDIF;
+
+! Check number of added points
+  IF n_poi < 0   THEN
+    EXIT("c_anangv0 : n_poi <  0");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    b_aflag:= 1;
+    b_pflag:= 1;
+  ELIF  graphic = 1  THEN 
+    b_aflag:= 1;
+    b_pflag:= 0;
+  ELIF  graphic = 2  THEN
+    b_aflag:= 0;
+    b_pflag:= 0; 
+  ELSE 
+    EXIT("c_anangv0 : graphic not OK");
+  ENDIF;
+
+! Check axis
+  IF    axis = "X" OR axis = "x" THEN
+    axis := "X";
+  ELIF  axis = "Y" OR axis = "y" THEN
+    axis := "Y";
+  ELIF  axis = "Z" OR axis = "z" THEN
+    axis := "Z";
+  ELSE
+    EXIT("c_anangv0 axis not X, Y or Z");
+  ENDIF;
+
+
+! Retrieve number of segments
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra);
+
+  IF DEBUG = 1 THEN 
+    s:=INPMT("c_anangv0  ns_geo " +STR(ns_geo,-1,0),"",1);
+  ENDIF;
+
+! +++
+! 2. Calculate angles and create porcupine
+! ---
+
+! Number of created lines
+  n_tot:= 0;
+
+! Delta U 
+  delta := 1.0/(n_poi+1);
+
+! Start loops segments and points within segment
+  FOR  i_seg:= 1 TO ns_geo DO
+    FOR  i_poi := 0 TO n_poi+1 DO
+
+!     An additional point
+      n_tot := n_tot + 1;
+
+!     Current parameter value
+      s_u  := i_seg - 1.0 + i_poi*delta;
+
+!     End point of current segment
+      IF  i_poi = n_poi + 1 THEN
+        s_u := s_u - 0.01;
+      ENDIF;
+
+!     Current R*3 point on curve  
+      s_pt :=  ON(cur_id,s_u);
+
+!     Current U,V point on surface 
+      PART(#30, eval_utouv ( cur_id, s_u , sur_id, uv_sur):SAVE=0);
+
+      IF uv_sur.x <  0.0 THEN
+!       Not a surface curve
+        IF  c_list = 1 THEN
+        LST_LIN(STR(n_tot,5,0)+" U "+STR(s_u,5,3)+ " Not a surface point (segment)" );
+        ENDIF;
+        GOTO nxtpt;
+      ENDIF;
+
+!     Current surface normal
+      s_n  := NORM(sur_id, uv_sur);
+
+!     Angle calculation
+      POI_FREE(#31, s_pt    :BLANK=1);
+      POI_FREE(#32, s_pt+s_n:BLANK=1);
+      IF  csys_id <> #0 THEN
+        MODE_LOCAL(csys_id);
+      ENDIF;
+      s_n_t := ON(GLOBAL_REF(#32))- ON(GLOBAL_REF(#31));
+      IF   axis = "X" THEN
+        dot:= s_n_t*VEC(1,0,0);
+      ELIF axis = "Y" THEN
+        dot:= s_n_t*VEC(0,1,0);
+      ELIF axis = "Z" THEN
+        dot:= s_n_t*VEC(0,0,1);
+      ENDIF;
+      MODE_GLOBAL();
+      DEL(GLOBAL_REF(#31));
+      DEL(GLOBAL_REF(#32));
+      IF   dot < -1.0 THEN
+        n_ang := -180.0;
+      ELIF dot >  1.0 THEN
+        n_ang :=    0.0;
+      ELSE
+        n_ang := ARCCOS(dot);
+      ENDIF;
+      
+
+!     Create porcupine line (scaled)
+      IF     l_trl + n_ang*l_scale  > 0.1 AND
+              i_poi  < n_poi + 1             THEN
+        LIN_FREE(#1, s_pt, s_pt + (l_trl+n_ang*l_scale)*s_n:PEN=2);
+      ELIF   l_trl + n_ang*l_scale  > 0.1 AND
+              i_poi  = n_poi + 1             THEN
+        LIN_FREE(#2, s_pt, s_pt + (l_trl+n_ang*l_scale)*s_n:PEN=4);
+      ENDIF;
+
+
+!     Write data
+      IF    c_list = 1  THEN
+      LST_LIN(STR(n_tot,5,0)+" U "+STR(s_u,5,3)+ 
+      " Angle "+STR(n_ang ,12,5)+" degrees");
+!      LST_LIN(STR(n_tot,5,0)+" s_n_t "+STR(s_n_t.x,9,4)+ 
+!                                 " "+STR(s_n_t.y,9,4)+ 
+!                                 " "+STR(s_n_t.z,9,4));
+      ENDIF; 
+
+nxtpt:; ! Label: Not a surface point (segment)
+
+!   End loops
+    ENDFOR;
+  ENDFOR;
+
+  IF    c_list = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+
+ENDMODULE

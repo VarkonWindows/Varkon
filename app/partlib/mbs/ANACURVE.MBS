@@ -1,0 +1,403 @@
+!***********************************************************************
+!                                                                      *
+!  Program:  anacurve                                                  *
+!                                                                      *
+!                                                                      *
+!  Purpose:  Skriver ut punkter och tangenter f|r en kurva.            *
+!                                                                      *
+!                                                                      *
+!  Rev hist: 10-JUN-1992, TUDKC8  Ronny Gyllensten                     *
+!            17-DEC-1992  TUD-G   Indikeringsstj{rna tillagt           *
+!            17-MAJ-1993  TUD-G   Utskrift av data tillagt             *
+!            21-JAN-1994  TUDKC8  Lokalt system R Gyllensten           *
+!            02-FEB-1994  TUDKC8  Anrop ANA_NAME bortkommenterad       *
+!            17-FEB-1994  TUDKC8  G_REFSEL                             *
+!            03-MAR-1994  TUD-G   GETCURH och stora bokst{ver G_REFSEL *
+!                                 Inget filename f|r X windows
+!            17-OCT-1994  TUD-G   param f|r sista pkt fel G. Liden     *
+!                                                                      *
+!***********************************************************************
+
+
+BASIC GEOMETRY MODULE anacurve (
+REF       idc                > "@t8  Indicate curve ";
+REF       csys               > "@t8192 Koordinatsystem");
+
+!  Interna variabler:
+
+   STRING  filename*132;   ! Output file name <CR>=screen
+   INT     DEBUG;          ! Debug variabel
+                           ! Eq. 0: Inga test utskrifter
+                           ! Eq. 1: Max. test utskrifter
+
+   FLOAT   kdata(4,4);     ! Transformationsmatris
+   STRING  knamn*10;       ! Namn p} system
+   FLOAT   a11,a12,a13,b1; ! Matris
+   FLOAT   a21,a22,a23,b2; ! Matris
+   FLOAT   a31,a32,a33,b3; ! Matris
+
+   INT     ns;             ! Antal segment i kurvan
+   INT     fnt;            ! Font (hur kurvan ritas)
+   INT     plank;          ! Flagga som anger om kurvan {r plan (plank=1)
+   FLOAT   sl;             ! Streckl{ngd f|r streckad kurva
+   FLOAT   kdat(4,4);      ! Kurvplan (f|r plan kurva)
+
+   VECTOR  p_s;            ! Startpunkt i varje segment
+   VECTOR  p_s_t;          ! Transformerad startpunkt i varje segment
+
+   VECTOR  t_s;            ! Starttangent i varje segment
+   VECTOR  t_s_t;          ! Transformerad starttangent i varje segment
+
+   VECTOR  p_e;            ! Slutpunkt p} kurvan
+   VECTOR  p_e_t;          ! Transformerad slutpunkt p} kurvan
+
+   VECTOR  t_e;            ! Sluttangent p} kurvan
+   VECTOR  t_e_t;          ! Transformerad sluttangent p} kurvan
+
+   VECTOR  t_s_p;          ! Slut-tangent i f|reg}ende segment
+   VECTOR  t_s_p_t;        ! Transformerad slut-tangent i f|reg segment
+
+   FLOAT   param;          ! Parameterv{rde p} kurva
+
+   FLOAT   dot;            ! Skal{rprodukt
+   FLOAT   ang;            ! Vinkel
+
+   INT     i;              ! Loop variabel
+
+   FLOAT   offset(25);     ! Offset f|r varje segment p} kurvan
+   FLOAT   sdat(25,4,4);   ! Koefficienterna
+
+                                 ! For GETCURH:
+  INT    font;                   ! Font
+  INT    length;                 ! Length for dashed curve
+  INT    ns_geo;                 ! No geometry  segments
+  INT    ns_gra;                 ! No graphical segments
+
+   STRING  name_out*132 ;  ! Name of (path for) the variable
+
+   STRING  s*1;            ! F|r INPMT
+
+   FILE    mbs;            ! Output .DAT file
+
+
+BEGINMODULE
+
+!  1. Initieringar
+!  ===============
+
+  DEBUG := 0;                     ! [ndra till  0 eller 1
+
+  filename:= " ";                 ! Output file name <CR>=screen
+  part(#4,G_REFSEL(idc));         ! Add # for global referens
+
+   IF filename <> " " THEN        ! \ppna fil
+     OPEN(mbs,"w",act_jobdir()+   ! 
+       filename+".DAT");          !
+
+     IF (IOSTAT(mbs)<>0 ) THEN    ! Kontrollera att det gick att |ppna
+      EXIT("Open of "             ! (programfel)
+      +filename+".DAT failed");   !
+     ENDIF;                       !
+
+   ENDIF;                         !
+
+!            Lokalt system f|r transformationen
+!            ----------------------------------
+
+!   IF csys = #0 THEN              ! Koordinatsystem ej definierat
+!      CSYS_1P(#3,"Basic",VEC(0,0,0),0,0,0:BLANK=1);
+!      csys:=#3;
+!   ENDIF;
+
+  part(#5,G_REFSEL(csys));        ! Add # for global referens
+
+
+  GETCSY(csys,knamn,kdata);       ! H{mta transformationsmatris
+
+  IF  DEBUG = 2 THEN              !
+     s:= INPMT("Koordinatsystem " !
+    +  "f|r transformationen {r "+!
+           knamn  +               !
+      " ",                        !
+      "",1);                      !
+  ENDIF;                          !
+
+   a11:= kdata(1,1);              ! Transformationsmatris
+   a12:= kdata(1,2);              ! 
+   a13:= kdata(1,3);              ! 
+   b1 := kdata(1,4);              ! 
+   a21:= kdata(2,1);              ! 
+   a22:= kdata(2,2);              ! 
+   a23:= kdata(2,3);              ! 
+   b2 := kdata(2,4);              ! 
+   a31:= kdata(3,1);              ! 
+   a32:= kdata(3,2);              ! 
+   a33:= kdata(3,3);              ! 
+   b3 := kdata(3,4);              ! 
+
+
+  IF  DEBUG = 2 THEN              !
+   s:= INPMT(                     !
+     " a11 "+
+     STR(a11,-10,6) +             !
+     " a12 "+
+     STR(a12,-10,6) +             !
+     " a13 "+
+     STR(a13,-10,6) +             !
+     " b1 "+
+     STR(b1 ,-12,2) +             !
+      " ",                        !
+      "",1);                      !
+   s:= INPMT(                     !
+     " a21 "+                     !
+     STR(a21,-10,6) +             !
+     " a22 "+                     !
+     STR(a22,-10,6) +             !
+     " a23 "+                     !
+     STR(a23,-10,6) +             !
+     " b2 "+                      !
+     STR(b2 ,-12,2) +             !
+      " ",                        !
+      "",1);                      !
+   s:= INPMT(                     !
+     " a31 "+                     !
+     STR(a31,-10,6) +             !
+     " a32 "+                     !
+     STR(a32,-10,6) +             !
+     " a33 "+                     !
+     STR(a33,-10,6) +             !
+     " b3 "+                      !
+     STR(b3 ,-12,2) +             !
+      " ",                        !
+      "",1);                      !
+  ENDIF;                          !
+
+
+!  PART(#3,ANA_NAME(idc,name_out));! Omvandla adress till "path"
+
+
+  LST_INI("Analysis of"+          ! Initiera utskrift p} sk{rm.
+          " definition points"+   !
+          " in curve " +          !
+           RSTR(idc));            !
+                                  !   Skriv |verskrift.
+
+!  LST_LIN(name_out);              !   Skriv "path"
+
+  LST_LIN("  ");                  !   Skriv tomrad.
+
+  LST_LIN("  KOORDINATSYSTEM: "  + knamn); !   Skriv koordinatsystem.
+
+  LST_LIN("  ");                  !   Skriv tomrad.
+
+  LST_LIN("  PNR      X"+         !   Skriv tabellhuvud.
+            "         Y"+
+            "         Z"+
+            "          TX"+
+            "          TY"+
+            "          TZ");
+
+
+  LST_LIN("  ");                  !  Skriv tomrad.
+
+                   
+!                    Header to filename.DAT
+!                    ----------------------
+
+  IF filename <> " " THEN      
+
+  OUTLIN(mbs);
+  OUTSTR(mbs,"Analysis of points in curve:   "+RSTR(idc));
+  OUTLIN(mbs);
+  OUTSTR(mbs,"__________________________________________________________ ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+!  OUTSTR(mbs,name_out);
+!  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  KOORDINATSYSTEM: "  + knamn); !   Skriv koordinatsystem.
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  PNR      X"+        !   Skriv tabellhuvud.
+            "         Y"+
+            "         Z"+
+            "          TX"+
+            "          TY"+
+            "          TZ");
+
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  ENDIF;
+
+
+!  GETCUR(idc,   +                 !  L{s kurvdata ur GM.
+!         fnt,   +                 !  GM = det som blir .RES n{r
+!         sl,    +                 !  VARKON jobb avslutas.
+!         ns,    +
+!         sdat,  +
+!         offset,+
+!         plank ,+
+!         kdat);
+                                            
+ 
+  GETCURH(idc ,font,length,     ! Curve header data
+    ns_geo , ns_gra);           !
+    ns := ns_geo;               !
+
+  IF  DEBUG = 1 THEN              !
+     s:= INPMT("Antal punkter   " !
+    +  STR(ns+1,-1,0)            +!
+      " ",                        !
+      "",1);                      !
+  ENDIF;                          !
+
+                                            
+
+!  2. Skriv ut punkter och tangenter
+!  =================================
+
+   FOR i := 1 TO ns DO
+
+     param := i-1.0;
+
+     p_s :=   ON(idc,param);      ! Startpunkt i varje segment.
+     t_s := TANG(idc              ! Starttangent i varje segment.
+        ,param+0.000001);         !
+                                 
+      p_s_t.x := a11*p_s.x+a12*p_s.y+a13*p_s.z+b1;
+      p_s_t.y := a21*p_s.x+a22*p_s.y+a23*p_s.z+b2;
+      p_s_t.z := a31*p_s.x+a32*p_s.y+a33*p_s.z+b3;
+                 
+      t_s_t.x := a11*t_s.x+a12*t_s.y+a13*t_s.z;
+      t_s_t.y := a21*t_s.x+a22*t_s.y+a23*t_s.z;
+      t_s_t.z := a31*t_s.x+a32*t_s.y+a33*t_s.z;
+
+     IF i > 1 THEN                !
+      t_s_p := TANG(idc,          ! Slut-tangent i f|reg}ende segment.
+             param-0.000001);     !
+      dot:= VECN(t_s)*VECN(t_s_p);!
+      ang:= ARCCOS(dot);          !
+      t_s_p_t.x := a11*t_s_p.x+a12*t_s_p.y+a13*t_s_p.z;
+      t_s_p_t.y := a21*t_s_p.x+a22*t_s_p.y+a23*t_s_p.z;
+      t_s_p_t.z := a31*t_s_p.x+a32*t_s_p.y+a33*t_s_p.z;
+     ELSE                         !
+       ang:= 0.0;                 !
+     ENDIF;                       !
+
+
+     IF  ABS(ang) > 0.005 THEN    !
+     LST_LIN("   " +              !Skriv startpunkt och tangent p} sk{rm
+            STR(i,-3,0)  +
+            STR(p_s_t.x,-11,4) +
+            STR(p_s_t.y,-11,4) +
+            STR(p_s_t.z,-11,4) +
+            STR(t_s_p_t.x,-12,8) +
+            STR(t_s_p_t.y,-12,8) +
+            STR(t_s_p_t.z,-12,8));
+     LST_LIN("                            Kn{ck  " + 
+            STR( ang     ,-11,4) +
+            " grader ");           
+     ENDIF;
+
+     LST_LIN("   " +              !Skriv startpunkt och tangent p} sk{rm
+            STR(i,-3,0)  +
+            STR(p_s_t.x,-11,4) +
+            STR(p_s_t.y,-11,4) +
+            STR(p_s_t.z,-11,4) +
+            STR(t_s_t.x,-12,8) +
+            STR(t_s_t.y,-12,8) +
+            STR(t_s_t.z,-12,8));
+
+     IF filename <> " " THEN
+            OUTSTR(mbs,"   " +    !Skriv startpunkt och tangent till fil
+            STR(i,-3,0)  +
+            STR(p_s_t.x,-11,4) +
+            STR(p_s_t.y,-11,4) +
+            STR(p_s_t.z,-11,4) +
+            STR(t_s_t.x,-12,8) +
+            STR(t_s_t.y,-12,8) +
+            STR(t_s_t.z,-12,8));
+
+            OUTLIN(mbs);
+     ENDIF;
+
+     PART(#1,IND_STAR(p_s,2.0,2)  !
+             :SAVE=0);            ! Grafisk representation
+
+     IF i = ns THEN
+
+!1994-10-17 param := i+1.0;
+         param := i;
+
+         p_e :=   ON(idc,param);  ! Ta hand om slutpunkt p} kurvan.
+         t_e := TANG(idc,param);
+
+         p_e_t.x := a11*p_e.x+a12*p_e.y+a13*p_e.z+b1;
+         p_e_t.y := a21*p_e.x+a22*p_e.y+a23*p_e.z+b2;
+         p_e_t.z := a31*p_e.x+a32*p_e.y+a33*p_e.z+b3;
+
+         t_e_t.x := a11*t_e.x+a12*t_e.y+a13*t_e.z;
+         t_e_t.y := a21*t_e.x+a22*t_e.y+a23*t_e.z;
+         t_e_t.z := a31*t_e.x+a32*t_e.y+a33*t_e.z;
+                                  
+
+         LST_LIN("   " +          ! Skriv slutpunkt och tangent p} sk{rm
+                STR(i+1,-3,0)  +
+                STR(p_e_t.x,-11,4) +
+                STR(p_e_t.y,-11,4) +
+                STR(p_e_t.z,-11,4) +
+                STR(t_e_t.x,-12,8) +
+                STR(t_e_t.y,-12,8) +
+                STR(t_e_t.z,-12,8));
+
+         LST_LIN("  ");            !  Skriv tomrader
+         LST_LIN("  ");            !  
+         LST_LIN("  ");            !  
+         LST_LIN("  ");            !  
+
+        IF filename <> " " THEN
+                OUTSTR(mbs,"   " + !Skriv startpunkt och tangent till fil
+                STR(i+1,-3,0)  +
+                STR(p_e_t.x,-11,4) +
+                STR(p_e_t.y,-11,4) +
+                STR(p_e_t.z,-11,4) +
+                STR(t_e_t.x,-12,8) +
+                STR(t_e_t.y,-12,8) +
+                STR(t_e_t.z,-12,8));
+
+        OUTLIN(mbs);
+        ENDIF;
+
+
+
+
+
+         PART(#2,IND_STAR(p_e,2.0,2)   !
+                 :SAVE=0);             ! Grafisk representation
+
+     ENDIF;
+
+   ENDFOR;
+
+
+!  3. Avslutning
+!  =============
+
+
+  IF filename <> " " THEN         ! St{ng MBS (.DAT) fil
+    CLOSE(mbs);                   !
+                                  !
+!    OS("PRTHPL "+act_jobdir()! Printout on HPL Varf|r g}r inte detta ??
+!       + filename+".DAT");       !
+
+!Gunnar    OS("PRTLNO/HPL "+act_jobdir() ! Printout on HPL
+!Gunnar       + filename+".DAT");        !
+
+                                  !
+  ENDIF;                          !
+
+  LST_EXI();                      ! St{ng utskrift p} sk{rmen.
+
+
+ENDMODULE

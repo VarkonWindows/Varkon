@@ -1,0 +1,55 @@
+! ***************** compl_prod ****************************
+!
+! +++
+! Product of two complex numbers
+!
+! Note that PART(#1,compl_prod(Z1,Z2,"c",Z1) is OK
+! i.e. Z1:= Z1*Z2 is OK
+!
+! Revision history
+! ________________
+!
+! 1995-10-15 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Product of two complex numbers
+!sdescs Produkten av tv} komplexa tal
+
+BASIC  GEOMETRY MODULE compl_prod (
+    VECTOR  Z1;       ! Input complex number  Z1
+    VECTOR  Z2;       ! Input complex number  Z2
+ 
+    STRING  type*3;   ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+                      !        (theta in radians)
+
+VAR VECTOR  Z3);      ! Output complex number Z3= Z1 * Z2
+
+! Internal variables
+
+BEGINMODULE
+
+  IF   type = "c"  OR  type = "C"  THEN
+     Z3.x:= Z1.x*Z2.x - Z1.y*Z2.y;
+     Z3.y:= Z1.x*Z2.y + Z1.y*Z2.x;
+     Z3.z:= 0.0;
+  ELIF type = "e"  OR  type = "E"  THEN
+     IF  Z1.x < 0.0 THEN
+       EXIT("compl_prod Modulus "+STR(Z1.x,-15,8)+" < 0");
+     ENDIF;
+     IF  Z2.x < 0.0 THEN
+       EXIT("compl_prod Modulus "+STR(Z2.x,-15,8)+" < 0");
+     ENDIF;
+     Z3.x:= Z1.x * Z2.x;
+     Z3.y:= Z1.y + Z2.y;
+     Z3.z:= 0.0;
+  ELSE
+    Z3 := VEC(0,0,0);
+    EXIT("compl_prod Complex type "+type+" not implemented");
+  ENDIF;
+
+ENDMODULE

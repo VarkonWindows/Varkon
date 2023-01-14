@@ -1,0 +1,115 @@
+!*********************  c_directv0 *************************************
+! +++
+! Show the direction of a curve with an arrow (graphical symbol)
+!
+! Revision history
+! ________________
+!
+! 1995-11-06 Gunnar Liden
+! 1995-11-22 Added a scale funktion for the arrow J Ankarswärd
+!
+! ---
+!********************************************************************
+
+!sdesce Show the direction of a curve with an arrow (graphical symbol)
+!sdescs Visa kurvriktningen med grafisk symbol i form av en pil
+
+GLOBAL  GEOMETRY MODULE  c_directv0 (
+REF     cur_id                 >"@t14 Select curve, arc or line");
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  FLOAT  tot_arc;              ! Total arclength input curve
+  FLOAT  u_arrow;              ! Parameter value for arrow position
+  FLOAT  scale;                ! Screen scale
+  FLOAT  l_s;                  ! Arrow lenght for current scale
+
+  FLOAT  ang_arrow;            ! Angle  for arrow
+  FLOAT  l_arrow;              ! Length for arrow     
+  VECTOR p0;                   ! Start point for arrow  
+  VECTOR p1;                   ! End   point for arrow 
+                               ! For function GETHDR:
+  INT    typ;                  ! Type of entity
+  INT    nref;                 ! ...
+  INT    blank;                ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    niv};                 ! The layer for the entity
+  INT    penna;                ! Pen number (colour)
+  REF    grupp_id(3);          ! Global identities for the
+                               ! groups, which the entity is part of ..
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+
+
+  DEBUG := 0;                       ! Debug =1 or 0
+
+  l_s := 10;                        ! Arrow lenght for current scale
+
+  IF  DEBUG = 1 THEN                !
+   s:= INPMT("c_direct cur_id "+    !
+       RSTR(cur_id)," ",1);         !
+  ENDIF;                            !
+
+  
+
+
+  GETHDR(cur_id,typ,nref,           ! Retrieve header for the entity
+    blank,niv},penna,grupp_id);     ! 
+
+  IF  DEBUG = 1 THEN                !
+   s:= INPMT("c_direct typ "+       !
+       STR(typ    , -1,0)," ",1);   !
+  ENDIF;                            !
+
+  tot_arc := ARCL( cur_id );        ! Tot arc lenght
+
+  IF  DEBUG = 1 THEN                !
+   s:= INPMT("c_direct tot_arc "+   !
+       STR(tot_arc,-15,8)," ",1);   !
+  ENDIF;                            !
+
+  IF  typ = 2 THEN                  ! Parameter value
+    u_arrow:= 0.5;                  ! Borde g|ra s} att INV_ARCL fungerar
+  ELSE                              ! f|r r{t linje !!!!!!!!!!!
+    u_arrow:= INV_ARCL( cur_id,     !
+       tot_arc/2.0);                !
+  ENDIF;                            !
+
+  IF  DEBUG = 1 THEN                !
+   s:= INPMT("c_direct u_arrow "+   !
+       STR(u_arrow,-15,8)," ",1);   !
+  ENDIF;                            !
+
+! +++
+! 1. Get the screen scale and decide the lenght of the arrow
+! ---
+
+  scale:= ACT_SCL();
+
+  IF DEBUG = 1 THEN                 !
+   s:= INPMT(" Screen scale " +     !
+       STR(scale,-15,8)," ",1);     !
+  ENDIF;                            !
+
+  ang_arrow:= 15.0;
+  l_arrow  := l_s/scale;
+  p0       := ON( cur_id,   0.0   );
+  p1       := ON( cur_id, u_arrow );
+
+  PART( #1, cpil2 ( ang_arrow , l_arrow, p0, p1 ):PEN=4);
+
+ENDMODULE

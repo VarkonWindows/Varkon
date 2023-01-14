@@ -1,0 +1,185 @@
+!********************* c_btrimv0  ***********************
+! +++
+! Trimming of a curve with a surface.                    
+! ---
+!
+! Revision history
+! ________________
+!
+! 1996-10-12  Gunnar Liden
+!
+!*******************************************************
+
+!sdescs Trimma kurva med yta               
+!sdesce Trimming of a curve with a surface                    
+
+GLOBAL GEOMETRY MODULE c_btrimv0 (
+
+    REF      cur_id        > "@t8     Select curve";
+    REF      sur_id        > "@t16    Select surface";
+    STRING   c_prt*1:= "s" 
+> "Eq. S: Start crv  Eq. E: End crv Eq. P: Positive Eq. N: Negative surface";
+    INT      intno  := 1   > "Requested intersect number";
+    INT      graphic:= 1 
+>"Graphical representation 0: None  1: Blank input 2: Show both crvs");
+
+! Internal variables:
+
+  
+  INT        ns_geo;             ! No geometric segments
+  INT        ns_gra;             ! No graphical segments    
+  INT        fnt;                ! Font type
+  FLOAT      sl;                 ! Dash length
+
+  VECTOR     uvu_int;            ! Parameter values surface and curve
+
+  FLOAT      u_cur;              ! Current parameter value
+  INT        n_tot;              ! Total number of intersects
+
+  VECTOR     p_trims;            ! Check   point for trim
+  VECTOR     p_trime;            ! Check   point for trim
+  FLOAT      u_end;              ! Parameter for end of curve
+
+  VECTOR     uv_sur;             ! UV point on surface
+  VECTOR     n_s;                ! Surface normal
+  VECTOR     v_t;                ! Curve tangent  
+  FLOAT      dot;                ! Scalar product 
+
+  FLOAT      s_par;              ! Start parameter value
+  FLOAT      e_par;              ! End   parameter value
+
+  INT        b_flag;             ! Blank value for output curve
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+  STRING    s*1;                 ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks of input data
+! --- 
+
+   DEBUG := 0;                   ! Change to 0 or 1
+
+   IF intno  <  1 THEN           ! Check req. intersect
+     EXIT("c_btrimv0: intno < "  !
+          + " 1   ");            !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Blank variable 
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_btrimv0 : graphic " !
+          + "not OK");           !
+   ENDIF;                        !
+
+
+! +++
+! 2. Retrieve number of curve segments
+! --- 
+
+  GETCURH(cur_id,                ! No segments
+   fnt,sl,ns_geo,ns_gra);        !
+
+! +++
+! 3. Calculate intersect parameter value
+! --- 
+
+  n_tot:= N_INTERSECT            ! Total number of intersects
+          (cur_id,sur_id);       !
+
+
+  IF DEBUG = 1 THEN              !
+   IF intno > n_tot THEN         ! Check req. intersect
+     EXIT("c_btrimv0: intno > "  !
+     + " total= "                !
+     +STR(n_tot,-1,0));          !
+    ENDIF;                       !
+  ENDIF;                         !
+  
+
+  uvu_int := INTERSECT( sur_id,  ! UV_INTERSECT (temp. fctn with pno+1000)
+        cur_id,intno+1000);      !
+  IF  uvu_int.x < 0.0 THEN       ! UV intersection failed ?
+    EXIT("c_atrim Program error");
+  ENDIF;                         !
+  uv_sur.x := uvu_int.x;         ! U,V surface 
+  uv_sur.y := uvu_int.y;         !
+  uv_sur.z := 0.0;               ! 
+  u_cur    := uvu_int.z;         !
+
+! +++
+! 4. Graphical representation    
+! --- 
+
+  IF graphic = 0 OR              !
+     graphic = 1     THEN        !
+    BLANK(cur_id);               !
+  ENDIF;                         !
+
+
+! +++
+! 5. Create output trimmed curve
+! --- 
+
+
+
+  n_s := NORM(sur_id,uv_sur);    ! Surface normal
+  v_t := TANG(cur_id,u_cur);     ! Curve tangent
+  dot := n_s*v_t;                ! Scalar product for direction
+
+  IF   c_prt = "s" OR            ! Trim parameter values
+       c_prt = "S"     THEN      !
+    s_par := 0.0;                !
+    e_par := u_cur;              !
+  ELIF c_prt = "e" OR            !
+       c_prt = "E"     THEN      !
+    s_par := u_cur;              !
+    e_par := ns_geo;             !
+  ELIF c_prt = "p" OR            !
+       c_prt = "P"     THEN      !
+    IF dot > 0.0 THEN            !
+      s_par := u_cur;            !
+      e_par := ns_geo;           !
+    ELSE                         !
+      s_par := u_cur;            ! Not reverse curve direction ....
+      e_par := 0.0;              !
+    ENDIF;                       !
+  ELIF c_prt = "n" OR            ! Undrar om detta är rätt .....???
+       c_prt = "N"     THEN      !
+    IF dot > 0.0 THEN            !
+      s_par :=  0.0;             !
+      e_par := u_cur;            !
+    ELSE                         !
+      s_par := ns_geo;           !
+      e_par :=  u_cur;           !
+    ENDIF;                       !
+  ELSE                           !
+     EXIT("c_btrimv0: c_prt = "  !
+     +c_prt+" not OK");          !
+  ENDIF;                         !
+
+  IF  DEBUG = 1 THEN             ! Debug
+    s:= INPMT("c_prt "+c_prt+    !
+    " dot "+STR(dot,5,1) +       !
+    " s_par "+STR(s_par,4,2) +   !
+    " e_par "+STR(e_par,4,2) ,   !
+    " ",1);                      !
+  ENDIF;                         !
+
+  CUR_TRIM(#1,cur_id,s_par,e_par ! Create curve
+          :BLANK=b_flag);        !
+
+ENDMODULE

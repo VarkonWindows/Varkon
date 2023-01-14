@@ -1,0 +1,83 @@
+! ***************** compl_ang  ****************************
+!
+! +++
+! Angle (argument) value of a complex number
+!
+! Revision history
+! ________________
+!
+! 1995-10-12 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Angle (argument) value of a complex number
+!sdescs Vinkel f|r ett komplext tal
+
+BASIC  GEOMETRY MODULE compl_ang  (
+    VECTOR  Z1;       ! Input complex number  Z1
+ 
+    STRING  type*3;   ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+                      !        (theta in radians)
+
+VAR FLOAT   argument);! Output argument (in radians) of the complex number 
+
+! Internal variables
+
+  FLOAT    ang_d;     ! Angle in degrees
+
+  INT      DEBUG;     ! Debug= 0 or 1
+  STRING   s*1;       ! For INPMT
+
+BEGINMODULE
+
+  DEBUG:= 0;
+
+  IF DEBUG = 0 THEN
+    ang_d:= -0.123456789;
+  ENDIF;
+
+  IF   type = "c"  OR  type = "C"  THEN
+    IF   ABS(Z1.x)  <  0.0000000001 AND Z1.y >= 0.0           THEN
+      argument :=  PI/2.0;         
+      ang_d    :=  90.0;
+    ELIF ABS(Z1.x)  <  0.0000000001 AND Z1.y <  0.0           THEN
+      argument := -PI/2.0;         
+      ang_d    := -90.0;
+    ELSE
+      ang_d := ARCTAN(Z1.y/Z1.x);
+      IF DEBUG = 1 THEN
+        s:= INPMT("compl_ang Z1.x= "+STR(Z1.x,-12,4)+" Z1.y= "+STR(Z1.y,-12,4)
+             ," ",1);
+        s:= INPMT("compl_ang ang_d= "+STR(ang_d,-10,2)
+             ," ",1);
+      ENDIF;
+      IF   ang_d < 0.0  AND  Z1.y >= 0.0 THEN 
+        ang_d := ang_d + 180.0;
+      ELIF ang_d > 0.0  AND  Z1.y <  0.0 THEN 
+        ang_d := ang_d - 180.0;
+      ENDIF;
+      PART(#1 , deg_to_rad ( ang_d, argument ) :SAVE=0);
+    ENDIF;
+  ELIF type = "e"  OR  type = "E"  THEN
+    argument:= Z1.y;               
+    IF  DEBUG = 1 THEN
+      PART( #2, rad_to_deg ( argument, ang_d ):SAVE=0);
+    ENDIF;
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_ang  Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+  ELSE
+    argument:= -0.123456789;
+    EXIT("compl_ang  Complex type "+type+" not implemented");
+  ENDIF;
+
+  IF DEBUG = 1 THEN
+    s:= INPMT("compl_ang ang_d= "+STR(ang_d,-10,2)+" argument= "+STR(argument,-10,2)
+         ," ",1);
+  ENDIF;
+
+ENDMODULE

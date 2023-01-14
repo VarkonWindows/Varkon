@@ -1,0 +1,442 @@
+!******************* c_c3cir ****************************************
+!
+! Two circle segments from end points and directions
+!
+! Two output radii equal to 50000.0 and output
+! angles < 0 (=-0.123456789) means that the input
+! data defines one (1) straight line.
+!
+! Hasse Persson, Saab developed the algorithm, which 
+! was used in the SAAB-ADAPT NC program.
+!
+! Source for this program is an Algol Genius program
+! and the SAAB-ADAPT documention (I think ...)
+!
+! There is a 2D module hasse_p, which documents
+! the algorithm. Module hasse_p is on figurblad
+!
+! Revision history
+! _________________
+!
+! 1998-02-28 Gunnar Liden
+!
+!
+!********************************************************************
+
+!sdescs Tva cirkelsegment fran start/slut punkter+derivator
+!sdesce Two circle segments from end points and directions
+
+BASIC GEOMETRY MODULE c_c3cir  (
+
+    FLOAT  X,Y;          ! Start point
+    FLOAT  X2,Y2;        ! End   point
+    FLOAT  VX_I,VY_I;    ! Start tangent
+    FLOAT  VX2_I,VY2_I;  ! End   tangent
+VAR FLOAT  XC,YC;        ! Centre for circle 1
+VAR FLOAT  XC2,YC2;      ! Centre for circle 2
+VAR FLOAT  R;            ! Radius for circle 1
+VAR FLOAT  R2;           ! Radius for circle 2
+VAR FLOAT  XP,YP;        ! End pt circle1, start pt circle 1
+VAR FLOAT  VXP,VYP;      ! Tangent for XP,YP
+VAR FLOAT  ANG1, ANG2);  ! Angle for circle 1 and circle 2
+
+! Internal variables
+
+  FLOAT  VX,VY;        ! Start tangent (normalized)
+  FLOAT  VX2,VY2;      ! End   tangent (normalized)
+  FLOAT  VKX,VKY;      ! Chord vector (End Pt - Start Pt)
+  FLOAT  RC;           ! Length of the chord
+  FLOAT  S1;           ! Dummy float:
+                       ! - Length of input end tangent
+                       ! - ..
+  FLOAT  RCOS;         ! Cosine for angle Chord-Start Tangent
+  FLOAT  RCOS2;        ! Cosine for angle Chord-End   Tangent
+  FLOAT  RK;           ! ??                 
+  FLOAT  RSIN;         ! Sine for angle Chord-Start Tangent
+  FLOAT  RSIN2;        ! Sine for angle Chord-End   Tangent
+  FLOAT  RX;           ! Distance x from start point to XP.YP
+  FLOAT  RY;           ! Distance y from start point to XP,YP
+  FLOAT  RYY;          ! RY**2
+  FLOAT  S3;           ! ???          
+  FLOAT  RTOLERANCE;   ! Identical points criterion (?)
+  FLOAT  SIGN_RK;      ! Sign of RK (+1.0 or -1.0)
+
+  FLOAT  comptol;      ! Computer accuracy
+  FLOAT  idangle;      ! Identical angles   
+
+  INT    DEBUG;        ! Debug
+
+  CONSTANT  FLOAT F_UNDEF = -0.123456789; ! Undefined value
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG := 0;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Output from module c_c3cir");
+  ENDIF;
+
+! +++
+! Initialization of output variables
+! ---
+
+  XC        := F_UNDEF;
+  YC        := F_UNDEF;
+  XC2       := F_UNDEF;
+  YC2       := F_UNDEF;
+  R         := F_UNDEF;
+  R2        := F_UNDEF;
+  XP        := F_UNDEF;
+  YP        := F_UNDEF;
+  VXP       := F_UNDEF;
+  VYP       := F_UNDEF;
+  ANG1      := F_UNDEF;
+  ANG2      := F_UNDEF;
+
+! +++
+! Initialization of internal variables
+! ---
+
+  VX             := F_UNDEF;
+  VY             := F_UNDEF;
+  VX2            := F_UNDEF;
+  VY2            := F_UNDEF;
+  VKX            := F_UNDEF;
+  VKY            := F_UNDEF;
+  RC             := F_UNDEF;
+  S1             := F_UNDEF;
+  RCOS           := F_UNDEF;
+  RCOS2          := F_UNDEF;
+  RK             := F_UNDEF;
+  RSIN           := F_UNDEF;
+  RSIN2          := F_UNDEF;
+  RX             := F_UNDEF;
+  RY             := F_UNDEF;
+  RYY            := F_UNDEF;
+  S3             := F_UNDEF;
+  SIGN_RK        := F_UNDEF;
+
+! +++
+! Computer accuracy
+! ---
+
+  comptol := 0.00000001;
+
+! +++
+! Identical points tolerance
+! ---
+
+  RTOLERANCE  := 0.01;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("RTOLERANCE (identical pts) "+STR(RTOLERANCE,15,8));
+  ENDIF;
+
+! +++
+! Identical angles tolerance
+! ---
+
+  idangle := 0.1;
+
+! Debug 
+  IF  DEBUG = 1 THEN
+  LST_LIN("X,Y     (Start point) "+STR(X  ,15,8)+
+                                " "+STR(Y  ,15,8));
+  LST_LIN("X2,Y2   (End   point) "+STR(X2 ,15,8)+
+                                " "+STR(Y2 ,15,8));
+  ENDIF;
+
+! +++
+! 2. Calculate circles
+! ---
+
+! +++
+! Chord vector and chord vector length
+! ---
+
+  VKX  := X2 - X;
+  VKY  := Y2 - Y;
+
+  RC   := SQRT(VKX*VKX + VKY*VKY);
+
+! +++
+! Check if chord vector length is zero (RTOLERANCE)
+! (Error in this case)
+! ---
+
+  IF   RC < RTOLERANCE THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir Distance start to end point zero");
+  ENDIF;
+
+  VKX  :=  VKX/RC;
+  VKY  :=  VKY/RC;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("VKX,VKY (Chord vector) "+STR(VKX,15,8)+
+                                " "+STR(VKY,15,8));
+  LST_LIN("RC (Chord length) "+STR(RC ,15,8));
+  ENDIF;
+
+
+! +++
+! Normalize input tangents
+! ---
+
+  S1   := SQRT(VX_I*VX_I + VY_I*VY_I);
+  IF   S1 < RTOLERANCE THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir Start tangent is zero");
+  ENDIF;
+  VX   :=  VX_I/S1;
+  VY   :=  VY_I/S1;
+
+  S1   := SQRT(VX2_I*VX2_I + VY2_I*VY2_I);
+  IF   S1 < RTOLERANCE THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir End tangent is zero");
+  ENDIF;
+  VX2   :=  VX2_I/S1;
+  VY2   :=  VY2_I/S1;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("VX ,VY  (Start tangent) "+STR(VX,15,8)+
+                                 " "+STR(VY,15,8));
+  LST_LIN("VX2,VY2 (End   tangent) "+STR(VX2,15,8)+
+                                 " "+STR(VY2,15,8));
+  ENDIF;
+
+! +++
+! Cosines for start and end vectors to the chord vector
+! ---
+
+  RCOS  :=  VX *VKX + VY *VKY;
+  RCOS2 :=  VX2*VKX + VY2*VKY;
+
+! +++
+! Numerical adjustment of cosine values if > 1.0
+! ---
+
+  IF  RCOS  > 1.0 THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("RCOS  (Adjustment to 1.0 ) "+STR(RCOS ,15,12));
+    ENDIF;
+    RCOS  := 1.0;
+  ENDIF;
+  IF  RCOS2 > 1.0 THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("RCOS2 (Adjustment to 1.0 ) "+STR(RCOS2,15,12));
+    ENDIF;
+    RCOS2 := 1.0;
+  ENDIF;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("RCOS  (Cosine chord-Start tangent) "+STR(RCOS ,15,8));
+  LST_LIN("RCOS2 (Cosine chord-End   tangent) "+STR(RCOS2,15,8));
+  ENDIF;
+
+  IF   RCOS  < 0.1  THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir Angle Start tangen to Chord > 84 degrees");
+  ENDIF;
+  IF   RCOS2 < 0.1  THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir Angle End tangen to Chord > 84 degrees");
+  ENDIF;
+
+! +++
+! Check if it is a straight line. Tolerance idangle
+! ---
+
+  IF ARCCOS(RCOS) < idangle AND ARCCOS(RCOS2) < idangle THEN
+    ANG1      := F_UNDEF;
+    ANG2      := F_UNDEF;
+    R         := 50000.0;
+    R2        := 50000.0;
+    XP        := X + 0.5*(X2-X);
+    YP        := Y + 0.5*(Y2-Y);
+    VXP       := VKX;
+    VYP       := VKY;
+    XC        := XP - R*VYP;
+    YC        := YP + R*VXP;
+    XC2       := XC;
+    YC2       := YC;
+    GOTO      one_line;
+  ENDIF;
+
+! +++
+! Calculate RK (?)
+! ---
+
+! Cross product ?????
+  S1  :=  VX*VY2 - VX2*VY;
+
+  IF  ABS(S1) <  comptol THEN
+    RK  := 0.0;
+  ELSE
+    RK  := (1.0 + VY*VY2 + VX*VX2)/S1;
+  ENDIF;
+
+  IF  RK  >  0.0 THEN
+    SIGN_RK  :=  1.0;
+  ELSE
+    SIGN_RK  := -1.0;
+  ENDIF;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("RK (??                           ) "+STR(RK   ,15,8));
+  ENDIF;
+
+! +++
+! Cosines for start and end vectors to the chord vector
+! ---
+
+  RSIN   := SQRT((1.0-RCOS )*(1.0+RCOS ));
+  RSIN2  := SQRT((1.0+RCOS2)*(1.0-RCOS2));
+
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("RSIN  (Sine   chord-Start tangent) "+STR(RSIN ,15,8));
+  LST_LIN("RSIN2 (Sine   chord-End   tangent) "+STR(RSIN2,15,8));
+  ENDIF;
+
+! +++
+! Delta distances from start point to XP,YP
+! ---
+
+  RX  := 2.0*(RSIN2+0.1)/(RSIN+RSIN2+0.2);
+  RY  := 0.5*RC*(RK-SQRT(RK*RK+2.0*RX-RX*RX)*SIGN_RK);
+  RX  := RX*0.5*RC;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("RX (Delta x to XP) "+STR(RX   ,15,8));
+  LST_LIN("RY (Delta y to YP) "+STR(RY   ,15,8));
+  ENDIF;
+
+! +++
+! End point circle 1 start point circle 2 (XP,YP)
+! ---
+
+  XP  :=  RX*VKX - RY*VKY + X;
+  YP  :=  RX*VKY + RY*VKX + Y;
+
+! +++
+! Radius and centre for circle 1
+! ---
+
+  RSIN := VX*(YP-Y) - VY*(XP-X);
+  RYY  := RY*RY;
+  S3   := RTOLERANCE*0.01;
+
+  IF   ABS(RSIN) > S3 THEN
+    R  := (RX*RX + RYY)/RSIN*0.5;
+  ELSE
+    R  := 50000.0; ! Straight line 
+  ENDIF;
+
+  XC  := X - R*VY;
+  YC  := Y + R*VX;
+
+  R   := ABS(R);
+
+! +++
+! Radius and centre for circle 2
+! ---
+
+  RSIN := VX2*(YP-Y2) - VY2*(XP-X2);
+  RX   := RX - RC;
+
+  IF   ABS(RSIN) > S3 THEN
+    R2 := (RX*RX + RYY)/RSIN*0.5;
+  ELSE
+    R2 := 50000.0; ! Straight line 
+  ENDIF;
+
+  XC2 := X2 - R2*VY2;
+  YC2 := Y2 + R2*VX2;
+
+  R2  := ABS(R2);
+
+! +++
+! Tangent for XP,YP
+! ---
+
+  VXP := -YP + YC;
+  VYP :=  XP - XC;
+  S1   := SQRT(VXP*VXP + VYP*VYP);
+
+  IF   S1 < RTOLERANCE THEN
+    IF  DEBUG = 1 THEN
+    LST_EXI();
+    ENDIF;
+    EXIT("c_c3cir Output tangent zero");
+  ENDIF;
+
+  VXP := VXP/S1;
+  VYP := VYP/S1;
+
+! +++
+! Angles for the circle segments
+! ---
+
+  RCOS  :=  ((X - XC )*(XP - XC)+(Y - YC )*(YP - YC)) /R/R;
+  IF  RCOS  > 1.0 THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("RCOS  (Adjustment to 1.0 ANG1) "+STR(RCOS ,15,12));
+    ENDIF;
+    RCOS  := 1.0;
+  ENDIF;
+  ANG1 := ARCCOS(RCOS);
+
+  RCOS  :=  ((X2- XC2)*(XP - XC2)+(Y2- YC2)*(YP - YC2)) /R2/R2;
+  IF  RCOS  > 1.0 THEN
+    IF  DEBUG = 1 THEN
+    LST_LIN("RCOS  (Adjustment to 1.0 ANG2) "+STR(RCOS ,15,12));
+    ENDIF;
+    RCOS  := 1.0;
+  ENDIF;
+  ANG2 := ARCCOS(RCOS);
+
+
+! +++
+! Exit
+! ---
+
+one_line:; ! Label: One straight line is output
+
+  IF  DEBUG = 1 THEN
+  LST_LIN("XP   (x End/Start circles) "+STR(XP   ,15,8));
+  LST_LIN("YP   (y End/Start circles) "+STR(YP   ,15,8));
+  LST_LIN("R    (Radius   circle 1)   "+STR(R    ,15,8));
+  LST_LIN("XC   (x Center circle 1)   "+STR(XC   ,15,8));
+  LST_LIN("YC   (y Center circle 1)   "+STR(YC   ,15,8));
+  LST_LIN("R2   (Radius   circle 2)   "+STR(R2 ,15,8));
+  LST_LIN("XC2  (x Center circle 2)   "+STR(XC2,15,8));
+  LST_LIN("YC2  (y Center circle 2)   "+STR(YC2,15,8));
+  LST_LIN("VXP  (x Tangent XP,YP  )   "+STR(VXP,15,8));
+  LST_LIN("VYP  (y Tangent XP,YP  )   "+STR(VYP,15,8));
+  LST_LIN("ANG1 (Angle circle 1   )   "+STR(ANG1,15,8));
+  LST_LIN("ANG2 (Angle circle 2   )   "+STR(ANG2,15,8));
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE

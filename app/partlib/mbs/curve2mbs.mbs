@@ -1,0 +1,161 @@
+!******************** curve2mbs ************************************
+!
+!  Write a curve as a MBS module and with scale as a parameter
+!
+!  1993-01-07  Gunnar Liden
+!  1993-01-20 Declaration of curve point arrays changed
+!             from (25) to (26) (max number of segments 
+!             is 25 in VARKON)                          Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE curve2mbs(
+
+STRING curname*9:= "LIMi_A1"    > "Name of curve";
+
+INT    nopoints  := 2           > " Number of points in the curve" ;
+
+VAR VECTOR psektI(26);          ! Curve definition points
+                             
+VAR VECTOR tpsektI(26);         ! Curve tangent definition points
+
+VAR FLOAT  pvalsektI(26));      ! Curve P values
+
+!                        Internal variables
+!                        ===================
+
+  INT    iseg;                  ! Loop index = segment in curve
+
+  FILE   mbs;                   ! Output MBS file
+
+  STRING typ*6;                 ! Type of curve (typ=FREE)
+
+  STRING s*1;                   ! For INPMT
+
+BEGINMODULE
+
+!              1. Initiations and check of input data
+!              =======================================
+
+  OPEN(mbs,"r",act_jobdir()     ! Check if file already exists
+  +curname+".MBS");             !
+  IF (IOSTAT(mbs) <> 0 ) THEN   !
+!     OK, file does not exist   !
+      ;                         !
+  ELSE                          !
+back:                           ! Label for a not valid answer
+   s:=INPMT(curname+            !
+     ".MBS exists."+            !
+   "Delete old file (y/n) ?",   !
+   "n",1);                      !
+   IF    s="y" OR s="Y" THEN    !
+     ;                          !
+   ELIF  s="n" OR s="N" THEN    !
+     GOTO nofil;                !
+   ELSE                         !
+     GOTO back;                 !
+   ENDIF;                       !
+  ENDIF;                        !
+
+  OPEN(mbs,"w",act_jobdir()+    ! Open output MBS file
+        curname+".MBS");        !
+  IF (IOSTAT(mbs) <> 0 ) THEN   ! Check (program error)
+    EXIT("curv2embs: Open of "  !
+      +curname+" failed");      !
+  ENDIF;                        !
+
+  IF nopoints > 26 THEN         !
+    EXIT("curv2embs: nopoints"  ! Program error
+       +" > 26 ");              !
+  ENDIF;
+
+  typ:= CHR(34)+"FREE"+CHR(34); ! Type of conic curve
+
+!                      2. Header to MBS file
+!                      ======================
+
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! File created by module curv2embs. Version 1993-01-07 ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTSTR(mbs,"GLOBAL GEOMETRY MODULE "+curname+"(");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  sc:=  1.0 >"+CHR(34)+"Scale factor"+CHR(34)+");");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTSTR(mbs,"BEGINMODULE");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+    OUTLIN(mbs);
+    OUTLIN(mbs);
+    OUTLIN(mbs);
+    OUTSTR(mbs,"!      1. Creation of a scaled curve ");
+    OUTLIN(mbs);
+    OUTSTR(mbs,"!      ============================== ");
+    OUTLIN(mbs);
+    OUTLIN(mbs);
+    OUTSTR(mbs,"CUR_CONIC(#1");
+    OUTSTR(mbs,","+typ+",");
+    OUTLIN(mbs);
+
+
+    FOR iseg:=1 TO nopoints-1 DO
+
+      OUTSTR(mbs,"vec(");
+      OUTFLT(mbs,  psektI(iseg).x,12,6); OUTSTR(mbs,"*sc,");
+      OUTFLT(mbs,  psektI(iseg).y,12,6); OUTSTR(mbs,"*sc,");
+      OUTFLT(mbs,  psektI(iseg).z,12,6); OUTSTR(mbs,"*sc), ! P "
+                    +str(iseg,-1,0));
+
+      OUTLIN(mbs);
+
+      OUTSTR(mbs,"vec(");
+      OUTFLT(mbs, tpsektI(iseg).x,12,6); OUTSTR(mbs,"*sc,");
+      OUTFLT(mbs, tpsektI(iseg).y,12,6); OUTSTR(mbs,"*sc,");
+      OUTFLT(mbs, tpsektI(iseg).z,12,6); OUTSTR(mbs,"*sc), ! T ");
+
+      OUTLIN(mbs);
+
+      OUTFLT(mbs, pvalsektI(iseg),15,8); OUTSTR(mbs,
+                   ",                                      ! P value");
+
+      OUTLIN(mbs);
+
+     ENDFOR;
+                   
+
+     OUTSTR(mbs,"vec(");
+     OUTFLT(mbs,  psektI(nopoints).x,12,6); OUTSTR(mbs,"*sc,");
+     OUTFLT(mbs,  psektI(nopoints).y,12,6); OUTSTR(mbs,"*sc,");
+     OUTFLT(mbs,  psektI(nopoints).z,12,6); OUTSTR(mbs,"*sc), ! P "
+                      +str(nopoints,-1,0));
+
+     OUTLIN(mbs);
+
+     OUTSTR(mbs,"vec(");
+     OUTFLT(mbs, tpsektI(nopoints).x,12,6); OUTSTR(mbs,"*sc,");
+     OUTFLT(mbs, tpsektI(nopoints).y,12,6); OUTSTR(mbs,"*sc,");
+     OUTFLT(mbs, tpsektI(nopoints).z,12,6); OUTSTR(mbs,"*sc));! T ");
+     OUTLIN(mbs);
+
+
+!                  2. Print end statement in the MBS module
+!                  =========================================
+   OUTLIN(mbs);
+   OUTLIN(mbs);
+   OUTSTR(mbs,"ENDMODULE");
+
+
+!                            5. Exit
+!                            ========
+
+  CLOSE(mbs);                   ! Close MBS file
+
+nofil: ;                        ! Label: No file created
+
+ENDMODULE

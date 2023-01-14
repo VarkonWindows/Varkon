@@ -1,0 +1,264 @@
+!********************* c_aplanev0 ***********************
+! +++
+! Ber{knar ett medelplan f|r en kurva.                   
+!
+! Med metod 1 approximeras kurvan med ett antal punkter.
+! Tyngdpunkten f|r dessa punkter (kurvan) ber{knas. Medel-
+! planet kommer att g} igenom tyngdpunkten. Medelplanets
+! normal best{ms som medelv{rdet av alla plan normaler
+! definierade av tyngdpunkten och punkterna p(i) och
+! p(i+1) f|r i= 1,2,3,...,n-1 d{r p(i) {r en punkt 
+! p} kurvan och n {r antal (approximations-) punkter
+! p} kurvan.
+!
+! Utdata {r en r{t linje (#1) d{r startpunkten ligger
+! i medelplanet och slutpunkten definierar medelplanets
+! normal.
+!
+! [ndringshistorik
+! ________________
+!
+! 1994-10-02  Gunnar Liden
+! 1994-10-27  Koordinatsystem endast f|r grafik 1 G Liden
+! ---
+!*******************************************************
+
+!sdescs Ber{knar ett medelplan f|r en kurva
+!sdesce Calculates an average plane for a curve                
+
+GLOBAL GEOMETRY MODULE c_aplanev0(
+
+    REF      cur_id        > "@t8 V{lj kurva";
+    INT      n_poi  := 15  > "@ Antal punkter per kurvsegment (<CR>= 15)";
+    INT      method := 1   > "Metod f|r ber{kning (endast 1 {r implementerad)";
+    INT      graphic:= 1 
+>"Grafisk representation   0: Ingen   1: Utdata linje 2: [ven B plan ");
+
+! Interna variabler:
+
+  INT        i_seg;              ! Loop index kurvsegment
+  INT        i_poi;              ! Loop index punkt i segment
+  
+  INT        ns_geo;             ! Antal geometrska segment
+  INT        ns_gra;             ! Antal grafiska   segment
+  INT        fnt;                ! Font typ,subtyp
+  FLOAT      sl;                 ! B}gl{ngd
+
+  FLOAT      delta;              ! Delta parameter v{rde
+
+  FLOAT      u_cur;              ! Aktuellt parameterv{rde
+  VECTOR     p_cur;              ! Aktuell punkt
+  INT        n_tot;              ! Totala antalet punkter
+
+  VECTOR     tp;                 ! Tyngdpunkt
+
+  VECTOR     p1;                 ! Punkt P 1
+  VECTOR     p2;                 ! Punkt P 2
+
+  FLOAT      xsum;               ! Summa  x komponenter
+  FLOAT      ysum;               ! Summa  y komponenter
+  FLOAT      zsum;               ! Summa  z komponenter
+
+  VECTOR     n_s;                ! Plan    normal
+  VECTOR     n_a;                ! Medel   normal
+
+  INT        b_flag;             ! B_PLANE BLANK v{rde
+
+  FLOAT      p_lengx;            ! Size of B_PLANE in X direction
+  FLOAT      p_lengy;            ! Size of B_PLANE in Y direction
+  FLOAT      p_lengz;            ! Size of B_PLANE in Z direction
+
+  INT        DEBUG;              ! F|r kontroll utskrifter, etc.
+                                 ! Eq. 0 ==> Ingen     DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+                                 ! Eq. 2 ==> Begr{nsad DEBUG
+
+  STRING    s*1;                 ! F|r DEBUG utskrift till sk{rm
+  INT       ix1;                 ! Tempor{rt anv{nt loop index
+
+BEGINMODULE
+
+!                  1. Initieringar och kontroll indata
+!                  ===================================
+
+   DEBUG := 0;                   ! [ndra till 0, 1 eller 2
+
+   IF method <> 1 THEN           ! Endast en metod implementerad
+     EXIT("c_aplanev0: method "  !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   IF n_poi < 2   THEN           ! Min v{rde n_poi {r 2 
+     EXIT("c_aplanev0: n_poi <"  !
+          + " 2   ");            !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Grafik variabel
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_aplanev0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   PART(#2,G_REFSEL(cur_id));    ! L{gg till # om n|dv{ndigt
+
+   GETCURH(cur_id,               ! Antal segment i kurvan
+   fnt,sl,ns_geo,ns_gra);        !
+
+!                    2. Ber{kning av tyngdpunkt
+!                    ==========================
+
+  tp  := vec(0,0,0);             ! Initiering av tyngdpunkt
+
+  n_tot:= 0;                     ! Initiering antal punkter
+
+  delta := 1.0/n_poi;            ! Delta parameter v{rde
+
+  FOR i_seg :=1 TO ns_geo DO     ! Start loop alla segment i kurvan
+    FOR i_poi :=2 TO n_poi DO    ! Start loop alla punkter per segment
+
+     u_cur:= i_seg-1   +         ! Aktuellt parameter v{rde     
+            (i_poi-1)*delta;     !
+
+     p_cur:= ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+
+     tp  := tp + p_cur;          ! L{gg till aktuell punkt  
+
+     n_tot:= n_tot + 1;          ! Ytterligare en punkt
+
+    ENDFOR;                      ! Slut  loop alla punkter i segmentet
+  ENDFOR;                        ! Slut  loop alla segment
+
+  u_cur:= i_seg;                 ! Aktuellt parameter v{rde     
+  p_cur:= ON(cur_id,u_cur);      ! Aktuell punkt p} kurvan
+  tp  := tp + p_cur;             ! L{gg till aktuell punkt  
+  n_tot:= n_tot + 1;             ! Ytterligare en punkt
+
+  IF n_tot < 2 THEN              ! Program kontroll
+     EXIT("c_aplanev0: n_tot <"  !
+          + " 2   ");            !
+  ENDIF;                         !
+
+  tp := (1.0/n_tot)*tp;          ! Tyngdpunkt
+
+  IF DEBUG = 1 OR DEBUG = 2 THEN ! F|r DEBUG=1 och DEBUG=2 :
+     POI_FREE(#5,tp:PEN=2);      ! Skapa tyngdpunkt 
+  ENDIF;                         !
+
+!Q  s:= INPMT("c_aplanev0 tp    "  !
+!Q        ,"",1);                  !
+
+  xsum  := 0;                    ! Summa  x komponenter
+  ysum  := 0;                    ! Summa  y komponenter
+  zsum  := 0;                    ! Summa  z komponenter
+ 
+  n_tot:= 0;                     ! Initiering antal punkter
+
+  delta := 1.0/n_poi;            ! Delta parameter v{rde
+
+  FOR i_seg :=1 TO ns_geo DO     ! Start loop alla segment i kurvan
+    FOR i_poi :=2 TO n_poi DO    ! Start loop alla punkter per segment
+
+     u_cur:= i_seg-1   +         ! Aktuellt parameter v{rde     
+            (i_poi-1)*delta;     !
+     p_cur:= ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+     p1   := p_cur;              ! Punkt 1
+     u_cur:= i_seg-1   +         ! Aktuellt parameter v{rde     
+             i_poi*delta;        !
+     p_cur:= ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+     p2   := p_cur;              ! Punkt 2
+
+     n_s  := VPROD(tp-p1,tp-p2); ! Vektor produkt
+                   
+     n_tot:= n_tot + 1;          ! Ytterligare ett punktpar
+
+     xsum:=xsum+n_s.x;           ! Summa komponenter 
+     ysum:=ysum+n_s.y;           !
+     zsum:=zsum+n_s.z;           !
+
+    ENDFOR;                      ! Slut  loop alla punkter i segmentet
+  ENDFOR;                        ! Slut  loop alla segment
+
+  IF n_tot < 2 THEN              ! Program kontroll
+     EXIT("c_aplanev0: n_tot <"  !
+          + " 2   ");            !
+  ENDIF;                         !
+
+!Q  s:= INPMT("c_aplanev0 n_a   "  !
+!Q        ,"",1);                  !
+
+  n_a.x:= xsum/n_tot;            ! Medel vektor  
+  n_a.y:= ysum/n_tot;            !
+  n_a.z:= zsum/n_tot;            !
+
+  n_a := VECN(n_a);              ! Normalisering
+
+! +++
+! 2. Skapa utdata linje
+! ---------------------
+! ---
+
+  p_lengx:= 0.25*VECL(p2-tp);    !
+  
+  LIN_FREE(#1,tp,tp+p_lengx*n_a  ! Skapa plan normal
+       :BLANK=b_flag,PEN=2);     !
+
+!Q  s:= INPMT("c_aplanev0 linje "  !
+!Q        ,"",1);                  !
+
+!+++
+! 3. Grafisk representation av utdata 
+! -----------------------------------
+!---
+
+   IF    graphic = 1  THEN       ! Grafik variabel
+    CSYS_3P(#8,"Plan",tp,tp+n_a, !
+             tp+VEC(1,0,0)       !
+           :BLANK=1,PEN=4);      !
+     u_cur:= 0.0;                ! Aktuellt parameter v{rde     
+     p1:=    ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+     u_cur:= ns_geo;             ! Aktuellt parameter v{rde     
+     p2:=    ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+     p_lengy:= VECL(p1-tp);      ! L{ngd av plan i Y led
+     IF VECL(p2-tp)>p_lengy THEN !
+       p_lengy:= VECL(p2-tp);    !
+     ENDIF;                      !
+     p_lengy:= 1.1*p_lengy;      !
+     p_lengz:= p_lengy;          !
+     MODE_LOCAL(#8);             ! Aktivera lokalt system
+     B_PLANE(#9,                 ! B_PLANE f|r medelplan
+     VEC(0,-p_lengy,-p_lengz),   !
+     VEC(0,-p_lengy, p_lengz),   !
+     VEC(0, p_lengy, p_lengz),   !
+     VEC(0, p_lengy,-p_lengz)    !
+              :PEN=4);           !
+     MODE_GLOBAL();              !
+   ENDIF;                        !
+
+
+!                  4. Exit och "utskrift om debug {r p}"
+!                  ====================================
+
+!Q  s:= INPMT("c_aplanev0 B plan"  !
+!Q        ,"",1);                  !
+
+  IF DEBUG = 1 OR DEBUG = 2 THEN ! F|r DEBUG=1 och DEBUG=2 :
+    s:= INPMT("c_aplanev0 n_tot "!
+        +STR(n_tot,-1,0)+ "  tp "!
+        +STR(tp.x,-12,6)+ " "    !
+        +STR(tp.y,-12,6)+ " "    !
+        +STR(tp.z,-12,6)+ " "    !
+        ,"",1);                  !
+    s:= INPMT("c_aplanev0 n_tot "!
+        +STR(n_tot,-1,0)+ " n_a "!
+        +STR(n_a.x,-12,6)+ " "   !
+        +STR(n_a.y,-12,6)+ " "   !
+        +STR(n_a.z,-12,6)+ " "   !
+        ,"",1);                  !
+  ENDIF;
+
+ENDMODULE

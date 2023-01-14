@@ -1,0 +1,51 @@
+! ***************** compl_abs  ****************************
+!
+! +++
+! Absolute value of a complex number
+!
+! Revision history
+! ________________
+!
+! 1995-10-12 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Absolute value of a complex number
+!sdescs Absolutv{rde av komplext tal
+
+BASIC  GEOMETRY MODULE compl_abs  (
+    VECTOR  Z1;       ! Input complex number  Z1
+ 
+    STRING  type*3;   ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+                      !        (theta in radians)
+
+VAR FLOAT   modulus); ! Output modulus of the complex number 
+
+! Internal variables
+
+  VECTOR   Z1_I;      ! Same as Z1 but z coordinate is zero
+
+
+BEGINMODULE
+
+  Z1_I.x:= Z1.x;
+  Z1_I.y:= Z1.y;
+  Z1_I.z:=  0.0;
+
+  IF   type = "c"  OR  type = "C"  THEN
+    modulus:= VECL(Z1_I);         
+  ELIF type = "e"  OR  type = "E"  THEN
+    modulus:= Z1.x;               
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_abs  Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+  ELSE
+    modulus:= -0.123456789;
+    EXIT("compl_abs  Complex type "+type+" not implemented");
+  ENDIF;
+
+ENDMODULE

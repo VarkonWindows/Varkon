@@ -1,0 +1,40 @@
+!******************** capsv1 ***************************************
+! +++
+! Omvandlar sm} bokst{ver i en textstr{ng till stora bokst{ver
+!                                                                      
+! 1994-05-02    Karl-Erik Eklund
+! ---                                                                     
+!***********************************************************************
+!sdesce Change a string to caps
+!sdescs [ndrar en str{ng till versaler
+
+MACRO GEOMETRY MODULE capsv1  (
+
+STRING   s*100             >"Textstr{ng som ska omvandlas till versaler";
+VAR STRING   smodut*100);             ! Modifierad str{ng
+
+! Internal variable:
+
+STRING   sdel*1;                      ! Ett tecken
+INT      asc;                         ! ASCII-nummer
+INT      i_nr;                        ! Loop-index f|r antal tecken i str{ngen
+INT      nr;                          ! Antal tecken i str{ngen
+STRING   smod*100;                    ! Modifierad str{ng
+
+BEGINMODULE
+
+    smod:= "";
+
+    nr:= LENGTH(s);
+
+    FOR i_nr:= 1 TO nr DO
+       sdel:= SUBSTR(s,i_nr,1);
+       asc:= ASCII(sdel);
+       IF asc > 96 AND asc < 123 THEN
+          asc:= asc - 32;
+          sdel:= CHR(asc);
+       ENDIF;
+       smod:= smod + sdel;
+    ENDFOR;
+    smodut:= smod;
+ENDMODULE

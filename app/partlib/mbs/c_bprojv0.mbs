@@ -1,0 +1,203 @@
+!*********************  c_bprojv0*************************************
+! +++
+! Projection of curve in a given direction onto a surface
+!
+! Revision history
+! ________________
+!
+! 1995-11-14 Gunnar Liden
+!
+! ---
+!********************************************************************
+
+!sdesce Projection of curve in a given direction onto a surface. Output arrays
+!sdescs Projicera en kurva i en given riktning p} en yta Utdata är arrays
+
+GLOBAL  GEOMETRY MODULE  c_bprojv0(
+    REF     cur_id;                ! Curve, line or arc
+    VECTOR  v_proj;                ! Projection direction
+    REF     sur_id;                ! Select surface
+    INT     s_case;                ! Projection case. Refer to ALL_INT_LIN_SUR
+    FLOAT   d_len ;                ! Delta arclength defining output segments
+VAR VECTOR  uv_all(200);           ! All UV points for curve
+VAR VECTOR  tutv_all(200);         ! All UV tangents for curve (not yet implemented)
+VAR VECTOR  r3_all(200);           ! All R*3 points for curve
+VAR VECTOR  t3_all(200);           ! All R*3 tangents for curve
+VAR VECTOR  n3_all(200);           ! All R*3 tangents for curve
+VAR INT     no_uv;                 ! Number of UV points
+    INT     graphic);              !=0: No graphic =1: Show curve =2: Show all
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  FLOAT  tot_arc;              ! Total arclength input curve
+  FLOAT  u_arc;                ! Parameter value for current arclength
+  INT    n_seg;                ! Maximum number of curve points
+  INT    i_x;                  ! Loop index curve points
+
+  INT    n_poi;                ! Output  number of curve points
+  VECTOR poi(300);             ! Curve points
+  VECTOR tan(300);             ! Curve tangents
+
+  VECTOR p_ext;                ! Current (input) curve point
+  VECTOR uv_near;              ! Parameter pt for start (near) pt
+  INT    f_start;              ! = 0: No start point
+                               ! = 1: Start point
+
+  INT    n_sol;                ! Total number of solutions in one surface
+  VECTOR n_r3;                 ! Intersect R*3 normal
+  VECTOR c_r3;                 ! Curve     R*3 tangent
+  VECTOR s_r3;                 ! Surface   R*3 normal 
+  VECTOR t_r3;                 ! Intersect R*3 tangent
+
+  VECTOR uv_sol(10);           ! Solution U,V points for current surface
+  VECTOR r3_sol(10);           ! Solution R*3 points for current surface
+  VECTOR p_int;                ! Intersect R*3 point
+  VECTOR uv_int;               ! Intersect U,V point
+
+  INT    b_val_c;              ! Blank flag curve
+  INT    b_val_a;              ! Blank flag all other entities
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! 0. Initializations
+!
+
+  DEBUG := 0;                       ! Debug =1 or 0
+
+  IF   graphic    = 0 THEN          ! Graphics
+    b_val_c:= 1;                    !
+    b_val_a:= 1;                    !
+  ELIF graphic    = 1 THEN          ! 
+    b_val_c:= 0;                    !
+    b_val_a:= 1;                    !
+  ELIF graphic    = 2 THEN          !
+    b_val_c:= 0;                    !
+    b_val_a:= 0;                    !
+  ELSE                              !
+   EXIT("c_bprojv0 graphic" +       !
+         " not OK");                !
+  ENDIF;                            !
+
+  f_start := 0;                     ! Flag= No start UV point
+  uv_near := VEC(-1,-1,-1);         ! Undefined UV start point
+  tot_arc := ARCL(cur_id);          ! Total arc length
+  IF d_len < 0.02 THEN              !
+   EXIT("c_bprojv0 d_len <" +       !
+         " 0.02  ");                !
+  ENDIF;                            !
+
+  n_seg   := ROUND(tot_arc/         ! Maximum number of segments in output curve
+                   d_len)+2;        !
+
+  n_poi   := 0;                     ! Number of points for curve (graphical repr.)
+  no_uv   := 0;                     ! Number of output UV points
+
+  FOR i_x := 1 TO n_seg+1 DO        ! Start loop curve points
+
+    u_arc := INV_ARCL(cur_id,       ! Parameter value for current arc length
+    (i_x-1)*tot_arc/(n_seg));       !
+      
+    p_ext:= ON(cur_id,u_arc);       !
+
+    IF graphic = 2 THEN             ! Show shooting line
+     LIN_FREE(#12,p_ext,            !
+     p_ext+1000*v_proj:PEN=2);      !
+    ENDIF;                          !
+
+rstrt:;                             ! Label: Restart
+
+    IF f_start = 0 THEN             ! No start point is given
+  
+     ALL_INT_LIN_SUR(sur_id,        ! Intersect line/surface
+      p_ext,v_proj,s_case,uv_near,  !
+      n_sol, uv_sol, r3_sol);       !
+
+     IF   n_sol= 0 AND n_poi= 0 THEN! No solution, Next point if n_poi=0
+       GOTO nxtpt;                  !
+     ELIF n_sol= 0              THEN! No solution, End of curve
+       GOTO eofcur;                 !
+     ENDIF;                         !
+
+     uv_near:= uv_sol(1);           ! Start point for next intersect calc.
+     f_start:= 1;                   ! Flag= Start pt is given
+
+    ELSE                            ! Start pt is given
+     ALL_INT_LIN_SUR(sur_id,        ! Intersect line/surface
+       p_ext,v_proj,s_case,uv_near, !
+       n_sol, uv_sol, r3_sol);      !
+        IF n_sol =    0 THEN        ! No solution, Restart with no start pt
+          f_start:= 0;              !
+          uv_near := VEC(-1,-1,-1); !
+          GOTO rstrt;               !
+        ENDIF;                      !
+    ENDIF;                          !
+
+    n_poi  := n_poi + 1;            ! An additional point
+    no_uv  := no_uv + 1;            ! An additional output UV point
+    IF no_uv > 200 THEN             ! Check within array size
+      EXIT("c_bprojv0 Exceeds "+    !
+           " uv_all(200)");         !
+    ENDIF;                          !
+    uv_all(no_uv):= uv_sol(1);      ! Output UV point
+    tutv_all(no_uv):= VEC(0,0,0);   ! Output UV tangent (not yet implemented)
+    uv_int := uv_sol(1);            ! Current UV intersect point
+    p_int  := r3_sol(1);            ! Current R3 intersect point
+    n_r3   := NORM(sur_id,uv_int);  ! Surface normal
+    c_r3   := TANG(cur_id,u_arc);   ! Curve R*3 tangent
+    s_r3   := VPROD(c_r3,v_proj);   ! Intersect cylinder normal
+    t_r3   := VPROD(s_r3,n_r3);     ! Intersect R*3 tangent
+    t_r3   := VECN(t_r3);           ! Normalize tangent
+    IF t_r3*c_r3 < 0 THEN           ! Reverse tangent ?
+      t_r3:= -1.0*t_r3;             !
+    ENDIF;                          !
+  
+
+    IF DEBUG = 1 THEN               ! Show intersect point for Debug On
+      LIN_FREE(#10,p_int,           !
+           p_int+d_len*t_r3:PEN=4); !
+    ENDIF;                          !
+
+    poi(n_poi):= p_int;             ! Curve point         to array
+    tan(n_poi):= p_int+t_r3;        ! Curve tangent point to array
+    r3_all(no_uv) := p_int;         ! Output R*3 point
+    t3_all(no_uv) := t_r3;          ! Output R*3 tangent
+    n3_all(no_uv) := n_r3;          ! Output R*3 surface normal
+
+nxtpt:;                             ! Label: No solution and n_poi= 0
+
+    IF graphic  = 2 THEN            !
+      DEL(GLOBAL_REF(#12));         ! Delete graphical represent. line
+    ENDIF;                          !
+
+  ENDFOR;                           ! End loop curve points
+
+! +++
+! End   loop i_x  = 1, 2,  ..... , n_seg
+! ---
+
+eofcur:;
+
+  IF n_poi < 2 THEN                 ! Check number of output points
+   EXIT("c_bprojv0 n_poi <" +       !
+         " 2 No curve!");           !
+  ENDIF;                            !
+
+  IF  graphic >= 1 THEN             !
+  CUR_SPLARR(#1,"FREE",n_poi,poi,tan! Create stiffness spline
+        :BLANK=b_val_c);            !
+  ENDIF;                            !
+
+
+ENDMODULE

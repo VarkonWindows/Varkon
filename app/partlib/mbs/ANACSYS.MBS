@@ -1,0 +1,159 @@
+!******************** anacsys   **************************************
+! +++
+! Analyzation of the active coordinate system.
+! 
+! Revision history
+! ________________
+!
+! 1995-06-20  Gunnar Liden
+! ---
+!************************************************************************
+
+!sdescs Analyzation of the active coordinate system.
+!sdesce Analys av aktiva koordinatsystemet
+
+GLOBAL  GEOMETRY MODULE anacsys    ();
+
+! Interna variabler:
+
+
+  REF       csys_id;               ! Active coordinate system   
+
+  STRING    csys_name*10;          ! Name of coordinate system
+
+  FLOAT     csys_data(4,4);        ! Transformation matrix
+
+  REF       prt_id;                ! Current part identity
+  STRING    prt_id_s*132;          ! Current part identity as string
+  STRING    prt_id_r*132;          ! Reversed prt_id_s string
+  STRING    prt_id_p*132;          ! Output string
+  INT       prt_id_l;              ! Length of string
+  INT       prt_id_f;              ! Position in string for anacsys
+
+
+  INT       i_r;                   ! Loop index row
+  INT       i_f;                   ! Loop index row
+  INT       n_f;                   ! Position in string 
+  INT       n_c;                   ! For check if highest level
+
+                                   ! For function GETPRT:
+  STRING    namn*10;               ! Name of the part
+  INT       mtyp;                  ! Module type
+                                   ! Eq. 2: DRAWING
+                                   ! Eq. 3: GEOMETRY
+  INT       mattr;                 ! Module attribute
+                                   ! Eq. 1: LOCAL
+                                   ! Eq. 2: GLOBAL
+                                   ! Eq. 3: BASIC
+  REF       kid;                   ! Global identity for the 
+                                   ! coord. system used to position
+                                   ! the part
+  INT       np;                    ! Number of parameters in the part
+  INT       mant;                  ! Number of entities in the part
+  REF       idm(10);               ! Array with global references (##)
+
+  STRING    s*1;                   ! For INPMT message
+
+
+BEGINMODULE
+
+! +++
+! Algoritm
+! ________
+! ---
+
+! +++
+! Get identity to coordinate system   
+! ---
+
+  csys_id:= ACT_CSY();              ! Reference to the active system
+
+!  s:= INPMT("csys_id "+RSTR(csys_id)," ",1);
+
+! +++
+! Get all data for the coordinate system
+! ---
+
+  IF csys_id = #0 THEN              ! No coordinate system has been activated
+    ;                               !
+  ELSE                              !
+    GETCSY(csys_id,csys_name,       !
+           csys_data);              !
+  ENDIF;                            !
+
+  prt_id   := GLOBAL_REF(#0);      ! Current part identity
+!  s:= INPMT("prt_id "+RSTR(prt_id)," ",1);
+  prt_id_s := RSTR(prt_id);        ! As string
+  prt_id_l := LENGTH(prt_id_s);    ! Length of string
+  prt_id_s := SUBSTR(prt_id_s,     ! Remove .#0
+              1, prt_id_l-4);      !
+  n_c:= FINDS(SUBSTR(prt_id_s,     ! Determine if highest level
+              3, prt_id_l-4),"#"); !
+  IF  n_c = 0 THEN                 !
+    prt_id_p := "#0.1 (it is the"+ !
+     " active module)";            !
+    namn := ACT_JOBNAM();          !
+    mattr:= ACT_MATTR();           !
+    GOTO  high;                    !
+  ENDIF;                           !
+  prt_id_l := LENGTH(prt_id_s);    ! Length of string
+  prt_id_r := "";                  ! Initial reversed string
+  FOR i_f := 0 TO prt_id_l-1 DO    ! Start loop reverse string
+    prt_id_r := prt_id_r +         ! Reversed string
+              SUBSTR(prt_id_s,     ! Add one position
+                 prt_id_l-i_f,1);  !
+  ENDFOR;                          !
+  
+  n_f := FINDS(prt_id_r,"#");      ! Find # in reversed string
+  prt_id_f := n_f;                 !
+
+  prt_id_p := SUBSTR(prt_id_s,     ! Output part identity
+              1, prt_id_l-n_f);    !
+
+
+  GETPRT(RVAL(prt_id_p),namn,mtyp, ! Get data about this part
+     mattr,kid,np,mant,idm);       !
+
+high:;                             ! Level: Highest level
+
+! +++
+! Write data to Xwindow (screen)
+! ---
+
+  LST_INI("Active coordinate system "+csys_name+" "+RSTR(csys_id) );
+  LST_LIN(" ");
+  LST_LIN(" ");
+  LST_LIN(" The part is " +namn +" with reference "+ prt_id_p);
+  IF    mattr = 1 THEN
+    LST_LIN(" The part "+ namn + " is of type LOCAL " );
+  ELIF  mattr = 2 THEN
+    LST_LIN(" The part "+ namn + " is of type GLOBAL" );
+  ELIF  mattr = 3 THEN
+    LST_LIN(" The part "+ namn + " is of type BASIC " );
+  ENDIF;
+
+  LST_LIN(" ");
+  LST_LIN(" ");
+  LST_LIN("Transformation matrix: ");
+  LST_LIN(" ");
+
+  IF csys_id = #0 THEN    
+    LST_LIN("Unit (basic) matrix ");
+    LST_LIN(" ");
+  ELSE                  
+    FOR  i_r := 1 TO 4 DO
+        LST_LIN(" c"+STR(i_r,-1,0)+"1 "+STR(csys_data(i_r,1),12,8) +
+                " c"+STR(i_r,-1,0)+"2 "+STR(csys_data(i_r,2),12,8) +
+                " c"+STR(i_r,-1,0)+"3 "+STR(csys_data(i_r,3),12,8) +
+                " c"+STR(i_r,-1,0)+"4 "+STR(csys_data(i_r,4),12,8) );
+    ENDFOR;
+  ENDIF;                
+
+!    LST_LIN(" prt_id_s " + prt_id_s +" prt_id_l "+STR(prt_id_l,3,0));
+!    LST_LIN(" prt_id_r " + prt_id_r +" prt_id_f "+STR(prt_id_f,3,0));
+!    LST_LIN(" prt_id_p " + prt_id_p +"   n_f    "+STR(  n_f   ,3,0));
+!    LST_LIN(" Start reference " + RSTR(prt_id));
+
+  LST_EXI();
+
+ENDMODULE

@@ -1,0 +1,256 @@
+!*********************  c_atangv0  ***********************************
+! +++
+! Tangents are calculated for an array of points. Input points
+! are splined with five point stiffness curves.
+!
+! Revision history
+! ________________
+!
+! 1995-02-06 Gunnar Liden
+! ---
+!********************************************************************
+
+!sdesce Calculate tangents with 5 point stiffness interpolation  
+!sdescs Ber{kna tangenter med 5 punkts "stiffness splining"
+
+GLOBAL GEOMETRY MODULE  c_atangv0  (
+    INT    nopoints;             ! Number of input points
+
+VAR VECTOR poi(400);             ! Points
+VAR VECTOR tangent(400) ) ;      ! Tangents 
+
+
+! Internal variables:
+
+  INT    i_pt;                 ! Loop index point in curve
+  INT    i_cur;                ! Curve number (to make it
+                               ! possible to reference crv)
+  INT    i_c;                  ! Loop index for erase of curves
+
+  VECTOR ctan;                 ! Curve tangent           
+
+  FLOAT  c_l;                  ! Chord length
+  INT    i_start;              ! Start (point) loop value
+
+  VECTOR p1;                   ! Point 1   
+  VECTOR p2;                   ! Point 2   
+  VECTOR p3;                   ! Point 3   
+  VECTOR p4;                   ! Point 4   
+  VECTOR p5;                   ! Point 5   
+
+  STRING c_flag*1;             ! = o (open) or = c (closed)
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! __________
+! ---
+!
+! 0. Initiations
+!
+
+  DEBUG := 1;                 ! =0 or =1
+
+  IF DEBUG = 1 THEN           !
+    FOR i_pt:= 1 TO 400 DO    !
+      tangent(i_pt):=         !
+       VEC( -0.123456789,     !
+            -0.123456789,     !
+            -0.123456789);    !
+    ENDFOR;                   !
+  ENDIF;                      !
+
+
+! +++
+! 1. Calculate tangents for points
+!
+!    Five point stiffness splines are created. The tangent
+!    from the mid point is used. For a closed curve will
+!    five point splines be created using start and end curve 
+!    points.
+! ---
+
+!    Determine if the curve is closed (2*chord length criterion)
+!    For a closed curve:
+!    Let p1, p2 be last points and p3, p4 be first points of curve
+!    For an open curve:
+!    Let p1, p2, p3, p4 be first points of curve
+
+  c_l:= VECL(     poi(1)-     ! Chord length two first points
+                  poi(2));    !
+
+  IF VECL(     poi(1)-        ! Chord length two first points
+               poi(nopoints)) !
+          < 2.0*c_l     THEN  ! Curve is closed
+    c_flag:= "c";             !
+  ELSE                        !
+    c_flag:= "o";             !
+  ENDIF;                      !
+
+  IF c_flag = "c" THEN        !
+    p1:=      poi(nopoints-1);!
+    p2:=      poi(nopoints);  !
+    p3:=      poi(1);         !
+    p4:=      poi(2);         !
+    i_start:= 3;              !
+  ELSE                        ! Curve is not closed
+    p1:=      poi(1);         !
+    p2:=      poi(2);         !
+    p3:=      poi(3);         !
+    p4:=      poi(4);         !
+    i_start:= 5;              !
+  ENDIF;                      !
+
+
+  i_cur := 0;                 ! Initiate curve number
+
+!+++
+!    Start loop all points in the isoparametric curve 
+!    i_pt= 3,4,5, ..., nopoints for a closed curve
+!    i_pt= 5,6,7, ..., nopoints for an open  curve
+!
+!        Let p5= surface point i_pt 
+!        Goto nxtpt if any chord (p1-p2, p2-p3, ..) is zero
+!---
+
+  FOR i_pt:=i_start TO        ! Start loop points
+              nopoints DO     !
+
+    p5:=      poi(i_pt);      !
+
+    IF VECL(p1-p2)<0.001 OR   !
+       VECL(p2-p3)<0.001 OR   !
+       VECL(p3-p4)<0.001 OR   !
+       VECL(p4-p5)<0.001 THEN !
+       p1 := p2;              ! 
+       p2 := p3;              ! 
+       p3 := p4;              ! 
+       p4 := p5;              ! 
+       IF i_pt=nopoints THEN  !
+         GOTO noendp;         !
+       ELSE                   !
+         GOTO nxtpt;          ! Goto nxtpt if chord length = 0
+       ENDIF;                 !
+    ENDIF;                    !
+
+!+++
+!        Create a five point stiffness spline
+!---
+
+    i_cur:= i_cur + 1;        ! An additional curve
+
+    CUR_SPLINE(#1,"FREE",     ! Spline 5 points
+     p1,,p2,,p3,,p4,,p5);     !
+
+!+++
+!        Retrieve tangent for mid point p3 
+!        (and for other pts for start of curve)
+!        Tangent to output array
+!---
+
+   IF i_pt = i_start THEN     ! First point for curve
+    IF c_flag = "o" THEN      !
+     ctan:=                   ! Tangent from curve
+     TANG(REFC(1,i_cur),0.0); !
+
+     tangent(1):= ctan;       ! To output array
+
+      IF DEBUG = 1 THEN       ! Create tangent for Debug On
+        LIN_FREE(#26,p1,      !
+          p1+100*ctan);       !
+      ENDIF;                  !
+
+     ctan:=                   ! Tangent from curve
+     TANG(REFC(1,i_cur),1.0); !
+
+     tangent(2):= ctan;       ! To output array
+
+      IF DEBUG = 1 THEN       ! Create tangent for Debug On
+        LIN_FREE(#27,p2,      !
+          p2+100*ctan);       !
+      ENDIF;                  !
+
+    ENDIF;                    !
+   ENDIF;                     !
+
+    ctan:=                    ! Tangent from curve
+     TANG(REFC(1,i_cur),2.0); !
+    
+     tangent(i_pt-2):= ctan;  ! To output array
+
+      IF DEBUG = 1 THEN       ! Create tangent for Debug On
+        LIN_FREE(#22,p3,      !
+          p3+100*ctan);       !
+      ENDIF;                  !
+
+!+++
+!        Shift points p1=p2 p3=p4 p4=p5 if i_pt < nopoints
+!---
+    IF i_pt < nopoints THEN   !
+      p1 := p2;               ! 
+      p2 := p3;               ! 
+      p3 := p4;               ! 
+      p4 := p5;               ! 
+    ENDIF;                    !
+
+!+++
+nxtpt:;                       ! Label: Chord is zero
+!---
+
+!+++
+!    End   loop all points in the isoparametric curve 
+!---
+
+  ENDFOR;                     !
+
+!+++
+!    Retrieve tangent for point p4 
+!    Tangent to output array          
+!---
+
+  
+  ctan:=                      ! Tangent from curve
+     TANG(REFC(1,i_cur),3.0); !
+
+  tangent(i_pt-1):= ctan;     ! To output array
+
+  IF DEBUG = 1 THEN           ! Create tangent for Debug On
+        LIN_FREE(#23,p4,      !
+          p4+100*ctan);       !
+  ENDIF;                      !
+
+!+++
+!    Retrieve tangent for end point p5 
+!    Tangent to output array          
+!---
+
+  ctan:=                      ! Tangent from curve
+     TANG(REFC(1,i_cur),4.0); !
+
+  tangent(i_pt):= ctan;       ! To output array
+
+  IF DEBUG = 1 THEN           ! Create tangent for Debug On
+        LIN_FREE(#24,p5,      !
+          p5+100*ctan);       !
+  ENDIF;                      !
+
+noendp:;                      ! No end point tangents
+
+!+++
+!               4. Erase curves if DEBUG= 0  
+!
+!   Loop for all created stiffnes splines i_c= 1,2,3,.., i_cur     
+!---
+
+  IF DEBUG = 0 THEN           !
+    FOR i_c:= 1 TO i_cur DO   !
+      DEL(REFC(1,i_c));       ! Erase curve #1.i_c
+    ENDFOR;                   !
+  ENDIF;                      !
+
+ENDMODULE

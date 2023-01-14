@@ -1,0 +1,41 @@
+!******************** cpil2 *************************************
+!
+! Skapar en pil vars storlek {r indata
+!
+! 1992-06-25 Gunnar Liden
+!**************************************************************
+GLOBAL GEOMETRY MODULE cpil2(
+FLOAT  ang:=10.0            >"Vinkel f|r pil";
+FLOAT  l:=100.0             >"L{ngd f|r pil";
+VECTOR p0:=vec(0.0,0.0,0.0) > "Start punkt";
+VECTOR p1:=vec(100.0,200.0,300.0) > "Slutpunkt d{r pil skapas");
+
+BEGINMODULE
+
+! Skapa lokalt koordinatsystem med linjen som x-axel
+! Origo {r p1
+  csys_3p(#3,"c0", p1, p0, p0 + vec(100, 100, 100):BLANK=1);
+
+! Skapa ytterligare ett system genom att vrida det 
+! f|rsta 90 grader kring x axeln
+  mode_local(#3);
+  csys_1p(#4,"c90", vec(0, 0, 0), 90, 0, 0:BLANK=1);
+
+! Skapa pil streck i f|rsta lokala systemet
+  lin_ang(#5,vec(0, 0, 0), -ang, l);
+  lin_ang(#6,vec(0, 0, 0),  ang, l);
+
+
+! Skapa pil streck i andra lokala systemet
+  mode_local(#4);
+  lin_ang(#7,vec(0, 0, 0), -ang, l);
+  lin_ang(#8,vec(0, 0, 0),  ang, l);
+
+! Skapa lokalt koordinatsystem f|r cirkel mellan {ndpunkter
+  csys_3p(#10,"cc", on(#5,1), on(#6,1), on(#7,1):BLANK=1);
+
+! Skapa cirklar
+  mode_local(#10);
+  arc_3pos(#11,on(#5,1),on(#7,1),on(#6,1));
+  arc_3pos(#12,on(#6,1),on(#8,1),on(#5,1));
+ENDMODULE

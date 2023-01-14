@@ -1,0 +1,34 @@
+! This is the menufile for the partlib project (application)
+! Only to make it possible (easy) to compile all source code
+
+! Load VARKON standard menus for Win32 
+
+#include "$VARKON_MDF\v319.MDF"
+
+
+! The ordinary VARKON 3D main menu defined in v319.MDF above
+! is always m3. For this application we will use our own main
+! menu but include a link to m3 so that we can access the
+! ordinary VARKON menus if we want to. User defined menus
+! start at 200. m1 to m199 are reserved for VARKON.
+!
+!
+!Main_menu = 200
+
+!m200 = "BOUNCE"
+!       "cavity"    ,p600
+!       "target"    ,p601
+!       "bounce"    ,p602
+!       "creviews"  ,r603
+!       "-------"   ,a0
+!       "varkon"    ,m3
+!       "help"      ,f153
+!       "exit"      ,f122;
+
+! Part and macro names
+
+!t600 = "cavity"
+!t601 = "target"
+!t602 = "shoot"
+!t603 = "views" 
+

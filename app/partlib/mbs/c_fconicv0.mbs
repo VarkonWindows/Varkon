@@ -1,0 +1,82 @@
+!******************** c_fconicv0      **************************
+! +++
+! Create conic from points, tangents and end curvature radius
+!
+! All input data must be in the same plane. The start and end
+! tangents cannot be parallell to the chord.
+!
+! Revision history
+! ________________
+!
+! 1995-06-15  Gunnar Liden
+! ---
+!*****************************************************************
+
+GLOBAL GEOMETRY MODULE c_fconicv0 (
+VECTOR p0  :=VEC(  0.0,0.0,0.0)   > "Start point";
+VECTOR t0  :=VEC(1.0,  0.1, 0.0)  > "Start tangent   ";
+FLOAT  r2  :=  200.0              > "End   curvature radius";
+VECTOR p2  :=VEC(100.0,0.0,0.0)   > "End   point";
+VECTOR t2  :=VEC(1.0, -0.5, 0.0)  > "End   tangent";
+FLOAT  l_pv:=    0.2              > "Lower limit P value for case= 2";
+FLOAT  u_pv:=    0.7              > "Upper limit P value for case= 2";
+INT    case:=  1                  > "=1: Normal =2: Change to limit (for opt.)");
+
+!sdesce Create conic from pts, tangents, chord length in plane and end radius
+!sdescs Skapa k{gelsnitt fr}n tangenter, korda i plan och slut kr|kningsradie
+
+! Internal variables
+
+  VECTOR  p0_r;                        ! Reversed start point
+  VECTOR  t0_r;                        ! Reversed start tangent
+  VECTOR  p2_r;                        ! Reversed end   point
+  VECTOR  t2_r;                        ! Reversed end   tangent
+
+  INT     DEBUG;                       ! =1: Check formula 
+  INT     b_flag;                      ! Blank value 
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! Initializations
+
+  DEBUG := 0;                         ! Change to 0 or 1
+
+  IF DEBUG = 0 THEN                   ! Blank value
+    b_flag:= 1;                       !
+  ELSE                                !
+    b_flag:= 0;                       !
+  ENDIF;                              !
+
+! +++
+! Reverse input data
+! ---
+
+  p0_r :=      p2;                    !
+  t0_r := -1.0*t2;                    !
+  p2_r :=      p0;                    !
+  t2_r := -1.0*t0;                    !
+
+! +++
+! Create reversed conic with c_econicv0
+! ---
+
+  PART(#2, c_econicv0 (               ! Create conic with start radius
+    p0_r, t0_r, r2, p2_r, t2_r,       !
+         l_pv, u_pv, case )           !
+                :BLANK=b_flag);       !
+
+! +++
+! Create output (reversed) conic with CUR_TRIM   
+! ---
+
+  CUR_TRIM(#1, GLOBAL_REF(#2#1),      ! Create curve
+               1.0 , 0.0);            !
+
+ENDMODULE
+

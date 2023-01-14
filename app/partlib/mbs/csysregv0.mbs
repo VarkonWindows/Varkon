@@ -1,0 +1,73 @@
+!******************** csysregv0 *****************************************
+! +++
+! Registrate and create a coordinate system
+!
+! 1996-02-04 Gunnar Liden
+!
+! ---
+!***********************************************************************
+!sdesce Registrate and create a coordinate system
+!sdescs Registrerar ett koordinatsystem
+
+GLOBAL GEOMETRY MODULE csysregv0(
+STRING project*44  := "39"      >"Project (39, SF340, SIRIUS2, ..)";
+STRING csys*28     := "85"      >"Coordinate system (n)";
+REF    id_csys_m   :=  #0       >"Related to coordinate system (m)";
+INT    grafik      :=   1       >"=0: System blanked =1: Show system";
+STRING csysfil*132 := ""        >"Full name of coordinate system file";
+STRING s_descr*132 := "Svenska" > "Description in Swedish";
+STRING e_descr*132 := "English" > "Description in English";
+STRING anm1*132    := "anm1"    > "Remark 1";
+STRING anm2*132    := "anm2"    > "Remark 2";
+FLOAT  a11         :=   1.0     >"Coordinate system matrix a11";
+FLOAT  a12         :=   0.0     >"Coordinate system matrix a12";
+FLOAT  a13         :=   0.0     >"Coordinate system matrix a13";
+FLOAT  a21         :=   0.0     >"Coordinate system matrix a21";
+FLOAT  a22         :=   1.0     >"Coordinate system matrix a22";
+FLOAT  a23         :=   0.0     >"Coordinate system matrix a23";
+FLOAT  a31         :=   0.0     >"Coordinate system matrix a31";
+FLOAT  a32         :=   0.0     >"Coordinate system matrix a32";
+FLOAT  a33         :=   1.0     >"Coordinate system matrix a33";
+FLOAT  b1          :=   0.0     >"Coordinate system matrix b1 ";
+FLOAT  b2          :=   0.0     >"Coordinate system matrix b2 ";
+FLOAT  b3          :=   0.0     >"Coordinate system matrix b3 ");
+
+! Interna variabler:
+
+  INT         bflag;           ! Flagga f|r BLANK
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ----
+
+! Initializations
+
+  IF   grafik = 0 THEN
+    bflag:= 1;
+  ELIF grafik = 1 THEN
+    bflag:= 0;
+  ELSE
+    EXIT("csysregv0 grafik not OK");
+  ENDIF;
+
+
+! Create system
+
+  IF  id_csys_m  <>  #0 THEN
+    MODE_LOCAL(id_csys_m);
+  ENDIF;
+
+  CSYS_3P(#1, csys,           
+   vec(b1, b2, b3),            
+   vec(b1+a11, b2+a21 , b3+a31),
+   vec(b1+a12, b2+a22 , b3+a32) 
+         :BLANK = bflag);
+
+  MODE_GLOBAL();
+
+ENDMODULE
+

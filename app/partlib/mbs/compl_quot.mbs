@@ -1,0 +1,78 @@
+! ***************** compl_quot ****************************
+!
+! +++
+! Quotient of two complex numbers Z3= Z1/Z2
+!
+! Note that PART(#1,compl_prod(Z1,Z2,"c",Z1) is OK
+! i.e. Z1:= Z1/Z2 is OK
+!
+! Revision history
+! ________________
+!
+! 1995-10-15 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Quotient of two complex numbers Z3= Z1/Z2
+!sdescs Kvoten av tv} komplexa tal Z3= Z1/Z2
+
+BASIC  GEOMETRY MODULE compl_quot (
+    VECTOR  Z1;       ! Input complex number  Z1
+    VECTOR  Z2;       ! Input complex number  Z2
+ 
+    STRING  type*3;   ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+                      !        (theta in radians)
+
+VAR VECTOR  Z3);      ! Output complex number Z3= Z1 / Z2
+
+! Internal variables
+
+  FLOAT denom;
+
+  INT    DEBUG;       ! Debug= 0 or =1
+  STRING s*1;         ! For INPMT
+
+BEGINMODULE
+
+  DEBUG:= 0;
+
+  IF   type = "c"  OR  type = "C"  THEN
+     denom:= Z2.x*Z2.x + Z2.y*Z2.y;
+     IF DENOM < 0.00000001 THEN
+       EXIT("compl_quot !Z2!= "+STR(SQRT(denom),3,10));
+     ENDIF;
+     Z3.x:= (Z1.x*Z2.x + Z1.y*Z2.y)/denom;
+     Z3.y:= (Z1.y*Z2.x - Z2.y*Z1.x)/denom;
+     Z3.z:= 0.0;
+  ELIF type = "e"  OR  type = "E"  THEN
+     IF  Z1.x < 0.0 THEN
+       EXIT("compl_quot Modulus "+STR(Z1.x,-15,8)+" < 0");
+     ENDIF;
+     IF  Z2.x < 0.0 THEN
+       EXIT("compl_quot Modulus "+STR(Z2.x,-15,8)+" < 0");
+     ENDIF;
+     IF DENOM < 0.00000001 THEN
+       EXIT("compl_quot r2= "+STR(Z2.x,3,10));
+     ENDIF;
+     Z3.x:= Z1.x / Z2.x;
+     Z3.y:= Z1.y - Z2.y;
+     Z3.z:= 0.0;
+  ELSE
+    Z3 := VEC(0,0,0);
+    EXIT("compl_quot Complex type "+type+" not implemented");
+  ENDIF;
+
+  IF DEBUG = 1 THEN
+    s:= INPMT("compl_quot Z1.x= "+STR(Z1.x,-12,4)+" Z1.y= "+STR(Z1.y,-12,4)
+         + " type "+type," ",1);
+    s:= INPMT("compl_quot Z2.x= "+STR(Z2.x,-12,4)+" Z2.y= "+STR(Z2.y,-12,4)
+         + " type "+type," ",1);
+    s:= INPMT("compl_quot Z3.x= "+STR(Z3.x,-12,4)+" Z3.y= "+STR(Z3.y,-12,4)
+                          ," ",1);
+  ENDIF;
+
+ENDMODULE

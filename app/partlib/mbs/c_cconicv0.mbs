@@ -1,0 +1,194 @@
+!********************* c_cconicv0 ***********************
+! +++
+! Creates a composite conic curve in BASIC from arrays 
+! of point data.
+! 
+! This module can for instance be used when scalar functions 
+! for surfaces (P value functions) shall be created. Such
+! curves shall not be transformed even if a local coordinate
+! system is active.
+!
+!
+! Remark:
+!
+! This module can only be called by another module since
+! there are VAR variables.
+!
+! Revision history
+! ________________
+!
+! 1995-01-19  Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs K{gelsnittskurva i BASIC fr}n vektorer med punktdata 
+!sdesce Conic curve in BASIC from arrays of point data         
+
+BASIC GEOMETRY MODULE c_cconicv0 (
+
+    INT    n_poi;                ! Number of input points
+
+VAR VECTOR poi(400);             ! Points
+VAR VECTOR tanpoi(400);          ! Tangent points 
+VAR VECTOR midpoi(400);          ! Mid     points 
+VAR FLOAT  pvalue(400);          ! P values
+VAR STRING p_flag(400)*1;        ! P value flags
+                                 ! Eq. P: P value
+                                 ! Eq. M: Mid point
+    INT    graphic);             ! Graphical representation
+                                 ! Eq. 0: No graphic (blanked)
+                                 ! Eq. 1: Curve 
+
+! Interna variabler:
+
+  INT        i_poi;              ! Loop index point
+
+  VECTOR     s_pt;               ! Start point
+  VECTOR     s_tpt;              ! Start tangent point
+  VECTOR     m_pt;               ! Mid   point
+  FLOAT      p_value;            ! P value
+  VECTOR     e_pt;               ! End   point
+  VECTOR     e_tpt;              ! End   tangent point
+
+  FLOAT      segdat_a(400,4,4);  ! Coefficients all segments
+
+  REF        t_id;               ! Reference current conic   
+
+  INT        segnum;             ! Requested segment number
+  FLOAT      segdat_c(4,4);      ! Current   segment
+  INT        reptyp;             ! Requested representation
+                                 ! Geometric= 0 Graphic= 1
+  FLOAT      offset;             ! Offset for segment
+  INT        typ;                ! Type of segment        
+                                 ! Cubic= 1 UV= 2
+
+  INT        b_cflag;            ! BLANK value for curves
+
+  INT        DEBUG;              ! For Debug output 
+                                 ! Eq. 0 ==> None      Debug
+                                 ! Eq. 1 ==> Full      Debug
+                                 ! Eq. 2 ==> Limited   Debug
+
+  STRING    s*1;                 ! For Debug output to screen   
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initialisations and checks
+! ---
+
+  DEBUG := 0;                   ! Change to 0 or 1
+
+  IF n_poi < 2   THEN           ! Minimum number of points
+     EXIT("c_cconicv0: n_poi <" !
+         + " 2   ");            !
+  ENDIF;                        !
+  IF n_poi > 400 THEN           ! Maximum number of points
+     EXIT("c_cconicv0: n_poi >" !
+         + " 400 ");            !
+  ENDIF;                        !
+
+  IF    graphic = 0  THEN       ! Graphic variable  
+     b_cflag:= 1;               !
+  ELIF  graphic = 1  THEN       !
+     b_cflag:= 0;               !
+  ELIF  graphic = 2  THEN       !
+     b_cflag:= 0;               !
+  ELSE                          !
+     EXIT("c_cconicv0: graphic "!
+          + "ej OK");           !
+  ENDIF;                        !
+
+! +++
+! 2. Coefficients to CUR_USRDEF input array
+! ---
+
+  FOR i_poi:= 1 TO n_poi-1 DO   ! Start loop points
+
+    s_pt  := poi(i_poi);        ! Start point
+    s_tpt := tanpoi(i_poi);     ! Start tangent point
+    IF   p_flag(i_poi)="M" OR   !
+         p_flag(i_poi)="m" THEN !
+      m_pt  := midpoi(i_poi);   ! Mid point
+    ELIF p_flag(i_poi)="P" OR   !
+         p_flag(i_poi)="p" THEN !
+      p_value := pvalue(i_poi); ! P value
+    ELSE                        !
+     EXIT("c_cconicv0: pflag   "!
+          + "ej OK");           !
+    ENDIF;                      !
+    e_pt  := poi(i_poi+1);      ! End   point
+    e_tpt := tanpoi(i_poi+1);   ! End   tangent point
+
+    IF   p_flag(i_poi)="M" OR   !
+         p_flag(i_poi)="m" THEN !
+      CUR_CONIC(#4,"FREE",      ! Mid point conic 
+      s_pt,s_tpt,m_pt,          !
+      e_pt,e_tpt                !
+      :PEN=2);                  !
+      t_id  := #4;              !
+    ELSE                        !
+      CUR_CONIC(#5,"FREE",      ! P value   conic 
+      s_pt,s_tpt, p_value,      !
+      e_pt,e_tpt                !
+      :PEN=7);                  !
+      t_id  := #5;              !
+    ENDIF;                      !
+    
+    segnum:= 1;                 ! Retrieve coefficients
+    reptyp:= 0;                 ! 
+    GETSEG(t_id,segnum,reptyp,  !
+        segdat_c , offset, typ);!
+
+    segdat_a(i_poi,1,1):=       !
+    segdat_c      (1,1);        !
+    segdat_a(i_poi,2,1):=       !
+    segdat_c      (2,1);        !
+    segdat_a(i_poi,3,1):=       !
+    segdat_c      (3,1);        !
+    segdat_a(i_poi,4,1):=       !
+    segdat_c      (4,1);        !
+    segdat_a(i_poi,1,2):=       !
+    segdat_c      (1,2);        !
+    segdat_a(i_poi,2,2):=       !
+    segdat_c      (2,2);        !
+    segdat_a(i_poi,3,2):=       !
+    segdat_c      (3,2);        !
+    segdat_a(i_poi,4,2):=       !
+    segdat_c      (4,2);        !
+    segdat_a(i_poi,1,3):=       !
+    segdat_c      (1,3);        !
+    segdat_a(i_poi,2,3):=       !
+    segdat_c      (2,3);        !
+    segdat_a(i_poi,3,3):=       !
+    segdat_c      (3,3);        !
+    segdat_a(i_poi,4,3):=       !
+    segdat_c      (4,3);        !
+    segdat_a(i_poi,1,4):=       !
+    segdat_c      (1,4);        !
+    segdat_a(i_poi,2,4):=       !
+    segdat_c      (2,4);        !
+    segdat_a(i_poi,3,4):=       !
+    segdat_c      (3,4);        !
+    segdat_a(i_poi,4,4):=       !
+    segdat_c      (4,4);        !
+
+    DEL(t_id);                  ! Erase conic segment
+
+  ENDFOR;                       ! End   loop points 
+
+! +++
+! 3. Create output curve
+! ---
+
+  CUR_USRDEF(#1,n_poi-1,         ! Create curve with coefficients 
+      segdat_a                   !
+      :BLANK=b_cflag);           !
+
+
+ENDMODULE

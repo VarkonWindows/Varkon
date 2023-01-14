@@ -1,0 +1,368 @@
+!********************* c_bspinev0 ***********************
+! +++
+! Omdefinition av en l{ngsg}ende kurva med en spine kurva
+! Den l{ngsg}ende kurvan kan till exempel vara en 
+! direktris eller en l{ngsg}ende kurva. L{ngsg}ende kurvan
+! kommer att f} nya segment som sammanfaller med indata
+! kurvan, dvs i SUR_CONIC ytan kommer samma "patch"-
+! gr{nser genereras av kurvan och av spinen.
+!
+! Den skapade kurvan kommer att vara en sammansatt 
+! k{gelsnittskurva av CUR_CONIC typ. Om indata kurvan
+! inte {r av denna typ kan kurvans form {ndras, dvs 
+! resultatet {r en approximation. F|r n{rvarande g|rs
+! ingen kontroll av felet.
+!
+! !!!! OBS !!!!
+! De olika fallen {r {nnu inte programmerade
+! !!!! OBS !!!!
+!
+! [ndringshistorik
+! ________________
+!
+! 1995-03-11  Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs Omdefinition av en l{ngsg}ende kurva med en spine kurva   
+!sdesce Redefinition of a longitudinal curve with a spine curve
+
+GLOBAL GEOMETRY MODULE c_bspinev0(
+
+    REF      spine_id      > "@t8 V{lj spine kurva";
+    REF      cur_id        > "@t8 V{lj kurva";
+    INT      e_fall := 1   > "=1: F|rl{ng ej kurva =2: F|rl{ng kurva";
+    FLOAT    e_dist :=20.0 > "Str{cka som kurva ska f|rl{ngas ";
+    INT      m_fall := 1   > "=1: Modifiera ej kurv punkter =2: Modifiera";
+    FLOAT    m_dist := 2.0 > "Str{cka som best{mmer om punkter ska modifieras";
+    INT      graphic:= 1 
+>"Grafik   0: Ingen  1: Visa kurva  2: Blanka indata kurva ");
+
+! Interna variabler:
+
+  INT        i_seg;              ! Loop index kurvsegment
+  
+  INT        ns_geo;             ! Antal geometriska segment
+  INT        ns_gra;             ! Antal grafiska    segment
+  INT        fnt;                ! Font typ,subtyp
+  FLOAT      sl;                 ! Streckl{ngd
+
+  INT        n_cur;              ! Antal segment i kurvan
+  INT        n_spine;            ! Antal segment i spinen
+
+  FLOAT      u_cur;              ! Aktuellt parameterv{rde
+  VECTOR     p_cur;              ! Aktuell punkt
+  VECTOR     t_cur;              ! Aktuell tangent
+
+  INT        n_tot;              ! Totala antalet punkter i ut spine
+  VECTOR     p(50);              ! Definitionspunkter 
+  VECTOR     tp(50);             ! Tangentdefinitionspunkter 
+  STRING     mf(50)*1;           ! Flagga f|r "P" eller "M"
+  FLOAT      pval(50);           ! P v{rden
+  VECTOR     pm(50);             ! Mellanliggande punkt
+
+  VECTOR     origin;             ! Origo   f|r koordinatsystem
+  VECTOR     xpoint;             ! X punkt f|r koordinatsystem
+  VECTOR     ypoint;             ! Y punkt f|r koordinatsystem
+
+  INT        n_int;              ! Antal sk{rningspunkter
+  VECTOR     p_int;              ! Sk{rningspunkt spineplan/kurva
+
+  REF        lins_id;            ! Identitet f|r startf|rl{ngning
+  REF        line_id;            ! Identitet f|r slut-f|rl{ngning
+
+  FLOAT      p_value;            ! P value
+  INT        graphic_p;          ! Grafik f|r c_valuev0
+
+  FLOAT      p_lengx;            ! Size of B_PLANE in X direction
+  FLOAT      p_lengy;            ! Size of B_PLANE in Y direction
+  FLOAT      p_lengz;            ! Size of B_PLANE in Z direction
+
+  INT        i_poi;              ! Loop index punkt        
+
+  FLOAT      u_clo;              ! Parameter f|r n{rmaste   punkt
+  FLOAT      u_mid;              ! Parameter f|r mitt       punkt
+  FLOAT      u_pre;              ! Parameter f|r f|reg}ende punkt
+
+  INT        b_flag;             ! Spine kurv BLANK v{rde
+
+  INT        DEBUG;              ! F|r kontroll utskrifter, etc.
+                                 ! Eq. 0 ==> Ingen     DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+BEGINMODULE
+
+! +++
+! 1. Initieringar och kontroll av indata
+! ---
+
+   DEBUG := 1;                   ! [ndra till 0 eller 1
+
+   IF e_fall=1 OR e_fall=2 THEN  ! Kontrollera f|rl{ngningsfall
+     ;                           !
+   ELSE                          !
+     EXIT("c_bspinev0: f|rl{ng. "!
+          + "fall ej OK");       !
+   ENDIF;                        !
+
+   IF m_fall=1 OR m_fall=2 THEN  ! Kontrollera modifieringsfall
+     ;                           !
+   ELSE                          !
+     EXIT("c_bspinev0: modifier."!
+          + " fall ej OK");      !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Grafik variabel
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_bspinev0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   p_lengx:= 50.0;               ! Size of B_PLANE in X direction
+   p_lengy:= 50.0;               ! Size of B_PLANE in Y direction
+   p_lengz:= 50.0;               ! Size of B_PLANE in Z direction
+
+   GETCURH(cur_id,               ! Antal segment i kurvan
+   fnt,sl,ns_geo,ns_gra);        !
+   n_cur := ns_geo;              !
+
+   GETCURH(spine_id,             ! Antal segment i spinen
+   fnt,sl,ns_geo,ns_gra);        !
+   n_spine := ns_geo;            !
+
+   FOR i_poi:=1 TO 50 DO         ! Initiera arrayer
+     p(i_poi)   := VEC(0,0,0);   ! Definitionspunkter 
+     tp(i_poi)  := VEC(0,0,0);   ! Tangentdefinitionspunkter 
+     mf(i_poi)  := "U";          ! Flagga f|r "P" eller "M"
+     pval(i_poi):= 0.0;          ! P v{rden
+     pm(i_poi)  := VEC(0,0,0);   ! Mellanliggande punkt
+   ENDFOR;                       !
+
+   LIN_FREE(#4,                  ! Start f|rl{ngning
+              ON(cur_id,0.0)-    !
+     e_dist*TANG(cur_id,0.0),    !
+              ON(cur_id,0.0));   !
+   lins_id:= GLOBAL_REF(#4);     !
+   LIN_FREE(#5,                  ! Slut  f|rl{ngning
+              ON(cur_id,n_cur),  !
+              ON(cur_id,n_cur)+  !
+     e_dist*TANG(cur_id,n_cur)); !
+   line_id:= GLOBAL_REF(#5);     !
+
+
+! +++
+! 2. Skapa modifierad spine 
+! ---
+
+  n_tot:= 0;                     ! Initiering antal punkter
+
+  u_pre:= -0.123456789;          !
+
+  FOR i_poi :=1 TO n_spine+1  DO ! Start loop alla punkter i kurvan
+
+     u_cur:= i_poi - 1.0;        ! Aktuellt parameter v{rde     
+
+     p_cur:=  ON(spine_id,u_cur);! Aktuell punkt   p} kurvan
+     t_cur:=TANG(spine_id,u_cur);! Aktuell tangent p} kurvan
+
+     origin:= p_cur;             ! Origo f|r lokalt system
+     xpoint:= p_cur+t_cur;       !
+     ypoint:= p_cur;             ! (Initiering programkontroll)
+     IF   ABS(t_cur.x)<=         ! Klumpigt ....
+          ABS(t_cur.y)   AND     !
+          ABS(t_cur.y)<=         !
+          ABS(t_cur.z)     THEN  !
+       ypoint:= p_cur+VEC(1,0,0);!
+     ELIF ABS(t_cur.y)<=         !
+          ABS(t_cur.x)   AND     !
+          ABS(t_cur.x)<=         !
+          ABS(t_cur.z)     THEN  !
+       ypoint:= p_cur+VEC(0,1,0);!
+     ELIF ABS(t_cur.z)<=         !
+          ABS(t_cur.x)   AND     !
+          ABS(t_cur.x)<=         !
+          ABS(t_cur.y)     THEN  !
+       ypoint:= p_cur+VEC(0,0,1);!
+     ELIF ABS(t_cur.x)<=         !
+          ABS(t_cur.z)   AND     !
+          ABS(t_cur.z)<=         !
+          ABS(t_cur.y)     THEN  !
+       ypoint:= p_cur+VEC(1,0,0);!
+     ELIF ABS(t_cur.z)<=         !
+          ABS(t_cur.y)   AND     !
+          ABS(t_cur.y)<=         !
+          ABS(t_cur.x)     THEN  !
+       ypoint:= p_cur+VEC(0,0,1);!
+     ELIF ABS(t_cur.y)<=         !
+          ABS(t_cur.z)   AND     !
+          ABS(t_cur.z)<=         !
+          ABS(t_cur.x)     THEN  !
+       ypoint:= p_cur+VEC(0,1,0);!
+     ELSE                        !
+       EXIT("c_bspinev0 ypoint");!
+     ENDIF;                      !
+     CSYS_3P(#2,"SPINETAN",      !
+      origin,xpoint,ypoint);     !
+
+     MODE_LOCAL(#2);             ! Aktivera lokalt system
+     B_PLANE(#3,                 ! B_PLANE f|r tangent  
+     VEC(0,-p_lengy,-p_lengz),   !
+     VEC(0,-p_lengy, p_lengz),   !
+     VEC(0, p_lengy, p_lengz),   !
+     VEC(0, p_lengy,-p_lengz)    !
+              :PEN=4);           !
+     MODE_GLOBAL();              !
+
+     n_int:= N_INTERSECT (       ! Antal sk{rningar i kurva
+       GLOBAL_REF(#3),cur_id);   !
+     IF n_int =  0 THEN          !
+       IF i_poi=1         THEN   !
+         n_int:= N_INTERSECT (   ! Antal sk{rningar i startlinje
+         GLOBAL_REF(#3),lins_id);!
+         IF n_int =  0 THEN      ! 
+           EXIT("c_bspinev0 "+   !
+           "n_int "+             !
+           STR(n_int,-1,0));     !
+         ELSE                    !
+           p_int:= INTERSECT(    ! Sk{rningspunkt startlinje
+                GLOBAL_REF(#3),  !
+                lins_id,1);      !
+           p(i_poi):= p_int;     !
+           u_clo:= INV_ON(       ! Parameterv{rde
+             lins_id,p_int,1);   !
+           tp(i_poi):= p_int +   !
+                 TANG(lins_id,   !
+                     u_clo);     !
+           u_clo:= 0.0;          ! F|r ber{kning mitt punkt
+           GOTO extend;          !
+         ENDIF;                  ! (Slut i_poi= 1      )
+       ENDIF;                    ! (Slut f|rl{ng start)
+       IF i_poi=n_spine+1 THEN   !
+         n_int:= N_INTERSECT (   ! Antal sk{rningar i slutlinje
+         GLOBAL_REF(#3),line_id);!
+         IF n_int =  0 THEN      ! 
+           EXIT("c_bspinev0 "+   !
+           "n_int "+             !
+           STR(n_int,-1,0));     !
+         ELSE                    !
+           p_int:= INTERSECT(    ! Sk{rningspunkt slutlinje
+                GLOBAL_REF(#3),  !
+                line_id,1);      !
+           p(i_poi):= p_int;     !
+           u_clo:= INV_ON(       ! Parameterv{rde
+             line_id,p_int,1);   !
+           tp(i_poi):= p_int +   !
+                 TANG(line_id,   !
+                     u_clo);     !
+           u_clo:= n_cur;        ! F|r ber{kning mitt punkt
+           GOTO extend;          !
+         ENDIF;                  ! (Slut i_poi=n_spine+1 )
+       ENDIF;                    ! (Slut f|rl{ng slut )
+       EXIT("c_bspinev0 n_int "+ !
+         STR(n_int,-1,0));       !
+     ENDIF;                      !
+
+     p_int:= INTERSECT(          ! Sk{rningspunkt
+       GLOBAL_REF(#3),cur_id,1); !
+    
+     u_clo:= INV_ON(cur_id,      ! Parameterv{rde f|r sk{rningspunkt
+             p_int,1);           !
+
+     p(i_poi) := p_int;          !
+     tp(i_poi):= p_int    +      !
+                 TANG(cur_id,    !
+                     u_clo);     !
+
+extend:                          ! Label: Kurvan {r f|rl{ngd
+
+     IF i_poi = 1 THEN           !
+       u_pre:= u_clo;            !
+     ENDIF;                      !
+
+     u_mid:= u_pre+              ! Parameterv{rde f|r mittpunkt     
+        0.5*(u_clo-u_pre);       !
+
+     IF i_poi > 1 THEN           !
+       u_pre:= u_clo;            !
+       mf(i_poi-1)  := "P";      !
+
+       graphic_p:= 0;            !
+       PART(#6 , c_pvaluev0 (    ! Calculate P value
+        p(i_poi-1),              !
+       tp(i_poi-1)-p(i_poi-1),   !
+        p(i_poi),                !
+       tp(i_poi)-p(i_poi),       !
+       ON(cur_id,u_mid),         !
+       graphic_p,                !
+       p_value ));               !
+       DEL(GLOBAL_REF(#6));      !
+
+       IF p_value > 0.05 AND     !
+          p_value < 0.84    THEN ! 
+         pval(i_poi-1):=p_value; !
+       ELSE                      !
+         pval(i_poi-1):= 0.5;    ! 
+       ENDIF;                    !
+       pm(i_poi-1):=             ! Mellanliggande punkt f|r DEBUG
+          ON(cur_id,u_mid);      !
+
+     ENDIF;                      !
+     
+     n_tot:= n_tot + 1;          ! Ytterligare en punkt
+
+     IF DEBUG = 1 THEN           ! F|r DEBUG=1 :
+     POI_FREE(#8,p_cur   :PEN=3);! Skapa kurvpunkt 
+     POI_FREE(#9,p(i_poi):PEN=4);! Skapa spinepunkt 
+     POI_FREE(#10,ON(cur_id,     ! Skapa mittpunkt
+                     u_mid));    ! 
+     ENDIF;                      !
+
+     DEL(GLOBAL_REF(#2));        ! Radera koordinatsystem
+     DEL(GLOBAL_REF(#3));        ! Radera B_PLANE
+
+  ENDFOR;                        ! Slut  loop alla punkter
+
+  IF n_tot < 2 THEN              ! Program kontroll
+     EXIT("c_bspinev0: n_tot <"  !
+          + " 2   ");            !
+  ENDIF;                         !
+
+! +++
+! 2. Skapa modifierad spine
+! ---
+
+  CUR_CONARR(#1,"FREE",n_tot,   ! Skapa sammansatt k{gelsnitt
+     p,tp,mf,pval,pm            !
+     :BLANK=b_flag);            !
+
+!+++
+! 3. Grafisk representation av utdata 
+!---
+
+! +++
+! 4. Exit och "utskrift om debug {r p}"
+! ---
+
+  DEL(lins_id);                 ! Radera start linje    
+  DEL(line_id);                 ! Radera slut  linje    
+
+  IF DEBUG = 1 THEN 
+    LST_INI("c_bspinev0 Omdefinition av spine med l{ngsg}ende kurva"); 
+    FOR i_poi:= 1 TO n_tot DO      
+      LST_LIN(STR(i_poi,3,0)+" "+STR(p(i_poi).x,12,4)+ " "+STR(p(i_poi).y,12,4)+   
+                " "+STR(p(i_poi).z,12,4)+" Punkt");  
+      LST_LIN(STR(i_poi,3,0)+" "+STR(tp(i_poi).x,12,4)+ " "+STR(tp(i_poi).y,12,4)+   
+                " "+STR(tp(i_poi).z,12,4)+" Tangent punkt");  
+      LST_LIN(STR(i_poi,3,0)+" "+STR(pm(i_poi).x,12,4)+ " "+STR(pm(i_poi).y,12,4)+   
+                " "+STR(pm(i_poi).z,12,4)+" Mitt punkt P v{rde "
+                    +STR(pval(i_poi),-5,4));  
+    ENDFOR;        
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE

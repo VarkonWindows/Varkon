@@ -1,0 +1,295 @@
+!********************  csysnewv0 **************************************
+!
+! +++
+! Read a new coordinate system to the active module from VARKON csys-
+! database and create the axes. The BASIC coordinate system is equal 
+! to the basic system for the project. The axes for the BASIC coordinate 
+! system will be created, if they have not been created before.
+!
+! Revision history
+! ________________
+!
+! 1997-01-22  Karl-Erik Eklund   
+!
+! ---
+!*************************************************************************
+
+!sdesce Read a new coordinate system from csysfile and create axes.
+!sdescs Läser ett nytt koordinatsystem från csysfile och skapar axlar.
+
+BASIC  GEOMETRY MODULE  csysnewv0 (
+  STRING projekt*25:= "39" >  "Projekt";
+  STRING csyname*10:= "417">  "Koordinatsystem att läsa in";
+  INT    grafik    := 1    >"Visar: 0 => inget,  1 => ksys,  2 => ksys + ev. BASIC");
+     
+! Internal variables:
+
+  STRING projectname*25;       ! Projektnamn för koordinatsystemet
+  STRING csy_basic*25;         ! Basic-systemet for projektet  
+  STRING f_name*132;           ! Komplett filnamn   
+  REF    id;                   ! Identiteten på koordinatsystem i GM
+  STRING namn*25;              ! Namn på koordinatsystem hämtat från GM
+  FLOAT  kdata(4,4);           ! 4x4 transformationsmatris från GM
+
+  FLOAT  c_data(4,4);          ! Koordinatsystemsdata för det nya systemet
+  VECTOR origin;               ! Origo för koordinatsystemet
+  STRING benämning*132;        ! Benämning på koordinatsystemet
+  
+  INT    bflag1;               ! Flagga för BLANK
+  INT    bflag2;               ! Flagga för BLANK
+    
+                               ! För funktion GETPRT:
+  STRING      prtnamn*10;      ! Namn på part
+  INT         mtyp;            ! Modultyp 
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Modul attribut
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identitet för det
+                               ! koordinatsystem som använts 
+                               ! för att placera parten
+  INT         np;              ! Antal parametrar i parten
+  INT         mant;            ! Antal storheter  i parten
+  REF         idm(500);        ! Array med globala identiteter
+                               ! till storheterna i parten
+                               ! (antalet mant om det får plats)
+
+  STRING csy_basic_reg*25;     ! Basic-systemet for projektet  
+
+  STRING s*1;                  ! For INPMT
+  INT    DEBUG;                ! Eq. 0: No Debug  
+                               ! Eq. 1: Full Debug
+ 
+BEGINMODULE
+
+! 0. Initieringar
+
+  DEBUG := 0;                      ! Change to 0 or 1
+
+  IF grafik = 0 THEN
+    bflag1:= 1;
+    bflag2:= 1;
+  ELIF grafik = 1 THEN
+    bflag1:= 0;
+    bflag2:= 1;
+  ELSE  
+    bflag1:= 0;
+    bflag2:= 0;
+  ENDIF;
+    
+! +++
+!  Algorithm
+!  _________
+!
+!  Fullständigt filnamn på csys-filen för koordinatsystemet
+!---
+
+  PART(#10, csysfilev1(
+     csyname, projectname, csy_basic, f_name)
+     :SAVE=0);
+     
+  IF DEBUG = 1 THEN
+    LST_INI(" Debug csysnewv0");
+    LST_LIN(" csyname=     " + csyname);
+    LST_LIN(" projectname= " + projectname);
+    LST_LIN(" csy_basic=   " + csy_basic);
+    LST_LIN(" f_name=      " + f_name);
+    LST_EXI();
+  ENDIF;           
+
+!+++
+!  Kontrollerar om koordinatsystemet har det önskade projektet
+!---
+
+  IF projectname <> projekt THEN
+    LST_INI(" ERROR ERROR ERROR!!");
+    LST_LIN(" Koordinatsystem: " + csyname + " hör ihop med projekt: "
+             + projectname + ".");
+    LST_LIN(" ");
+    LST_LIN(" Inmatat projekt: " + projekt + ".");
+    LST_EXI();
+    EXIT("csysnewv0: ERROR! Felaktigt projekt");
+  ENDIF;
+
+!+++
+!  Kontrollerar om koordinatsystemet som ska läsas in redan finns i modulen (GM)
+!---
+
+  SET_ROOT_GM(#0);
+  
+nxtcsys1:;
+  
+  id:= GET_NEXT_GM(0, 8192);
+  
+  IF id = #0 THEN
+    GOTO cre_csys1;
+  ENDIF;    
+              
+  GETCSY(id, namn, kdata);
+    
+  IF DEBUG = 2 THEN
+    LST_INI(" Debug csysnewv0");
+    LST_LIN(" Koordinatsystem " + namn + " från GM");
+    LST_EXI();
+  ENDIF;           
+
+  IF namn = csyname THEN  
+    EXIT("csysnewv0: Koordinatsystemet " + csyname +
+         " finns redan inläst!");
+  ENDIF;    
+ 
+  GOTO nxtcsys1;
+  
+cre_csys1:;
+                     
+!+++
+!  Kontrollerar om REG_CSYS_B har använts och i så fall om BASIC-systemet
+!  är csy_basic
+!---
+
+  SET_ROOT_GM(#0);
+  
+nxtpart:;
+  
+  id:= GET_NEXT_GM(0, 16384);
+  
+  IF id = #0 THEN
+    GOTO cre_csys2 ;
+  ENDIF;    
+              
+  GETPRT(id, prtnamn, mtyp, mattr, kid, np, mant, idm);
+    
+  IF DEBUG = 3 THEN
+    LST_INI(" Debug csysnewv0");
+    LST_LIN(" Partnamn " + prtnamn + " från GM");
+    LST_EXI();
+  ENDIF;           
+
+  IF prtnamn = "REG_CSYS_B" OR
+    prtnamn = "reg_csys_b" THEN  
+ 
+    csy_basic_reg:= GETSTR(id, 2);
+    
+    IF DEBUG = 2 THEN
+      LST_INI(" Debug csysnewv0");
+      LST_LIN(" Partnamn " + prtnamn + " från GM");
+      LST_LIN(" Basic-system enligt reg_csys_b = " + csy_basic_reg);
+      LST_EXI();
+    ENDIF; 
+              
+    IF csy_basic <> csy_basic_reg THEN
+      LST_INI(" ERROR ERROR ERROR!!");
+      LST_LIN(" reg_csys_b har tidigare använts!");
+      LST_LIN(" Där har "+ csy_basic_reg + " registrerats som BASIC-system");
+      LST_LIN(" csysnewv0 kräver att " + csy_basic + " ska vara BASIC-system");
+      LST_EXI();
+      EXIT("csysnewv0: ERROR! Olika BASIC-system");
+    ENDIF;    
+  
+  ENDIF;    
+ 
+  GOTO nxtpart;
+  
+cre_csys2:;
+                     
+!+++
+!  Kontrollerar om Basic-systemet finns i modulen (GM)
+!---
+
+  SET_ROOT_GM(#0);
+  
+nxtcsys2:;
+  
+  id:= GET_NEXT_GM(0, 8192);
+  
+  IF id = #0 THEN
+    GOTO cre_basic;
+  ENDIF;    
+              
+  GETCSY(id, namn, kdata);
+    
+  IF DEBUG = 2 THEN
+    LST_INI(" Debug csysnewv0");
+    LST_LIN(" Koordinatsystem " + namn + " från GM");
+    LST_EXI();
+  ENDIF;           
+
+  IF namn = "BASIC" THEN  
+    GOTO cre_csys3;
+  ENDIF;    
+ 
+  GOTO nxtcsys2;
+  
+cre_basic:;
+
+!+++
+!  Skapar ett Basic-system, eftersom det inte finns
+!---
+
+  CSYS_1P(#2, "BASIC",
+       vec(0, 0, 0), 0, 0, 0
+       :BLANK = bflag2, PEN = 2);
+
+       
+cre_csys3:;
+                     
+!+++
+!  Läser in koordinatsystemet från "VARKON csys-databas"
+!---
+
+  PART(#11, csysreadv1(
+     f_name, c_data, origin, benämning)
+     :SAVE=0);
+     
+  IF DEBUG = 1 THEN
+  
+    LST_INI(" Debug csysnewv0");
+    
+    LST_LIN(" f_name= " + f_name);
+    
+    LST_LIN(" c_data(1,1)" + STR(c_data(1,1),15,8) +
+            "   c_data(1,2)" + STR(c_data(1,2),15,8));
+            
+    LST_LIN(" c_data(1,3)" + STR(c_data(1,3),15,8) +
+            "   c_data(1,4)" + STR(c_data(1,4),15,8));
+            
+    LST_LIN(" c_data(2,1)" + STR(c_data(2,1),15,8) +
+            "   c_data(2,2)" + STR(c_data(2,2),15,8));
+            
+    LST_LIN(" c_data(2,3)" + STR(c_data(2,3),15,8) +
+            "   c_data(2,4)" + STR(c_data(2,4),15,8));
+            
+    LST_LIN(" c_data(3,1)" + STR(c_data(3,1),15,8) +
+            "   c_data(3,2)" + STR(c_data(3,2),15,8));
+            
+    LST_LIN(" c_data(3,3)" + STR(c_data(3,3),15,8) +
+            "   c_data(3,4)" + STR(c_data(3,4),15,8));
+            
+    LST_LIN(" c_data(4,1)" + STR(c_data(4,1),15,8) +
+            "   c_data(4,2)" + STR(c_data(4,2),15,8));
+            
+    LST_LIN(" c_data(4,3)" + STR(c_data(4,3),15,8) +
+            "   c_data(4,4)" + STR(c_data(4,4),15,8));
+            
+    LST_LIN(" origin= " + STR(origin.x,15,8) + 
+                          STR(origin.y,15,8) + STR(origin.z,15,8));
+                          
+    LST_LIN(" Benämning= " + benämning);
+    
+    LST_EXI();
+    
+  ENDIF;           
+
+!+++
+!  Skapar det önskade koordinatsystemet
+!---
+
+  CSYS_3P(#1, csyname, origin, 
+   vec(origin.x + c_data(1,1), origin.y + c_data(1,2), origin.z + c_data(1,3)), 
+   vec(origin.x + c_data(2,1), origin.y + c_data(2,2), origin.z + c_data(2,3))
+     :BLANK = bflag1);
+  
+
+ENDMODULE

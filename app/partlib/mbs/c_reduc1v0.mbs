@@ -1,0 +1,489 @@
+!********************* c_reduc1v0 ***********************
+! +++
+! Approximerar en kurva med kägelsnitt (CUR_CONIC).
+! 
+! Inga nya segment skarvpunkter skapas.
+!
+! ---
+! Ändringshistorik
+! ________________
+!
+! 1994-10-14  Gunnar Liden
+! 1995-01-18  Bug felvänt segment Gunnar Liden
+! 1996-10-22  Bug: l_criter not used      Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Approximerar en kurva med kägelsnitt (CUR_CONIC).
+!sdesce Approximates a curve with CUR_CONIC.                   
+
+GLOBAL GEOMETRY MODULE c_reduc1v0(
+
+    REF      cur_id        > "@t8  Välj kurva";
+    FLOAT    c_tol  := 0.5 > "Koordinat tolerans   (mm)";
+    FLOAT    a_tol  := 1.0 > "Tangent   tolerans (grader)";
+    INT      n_poi  := 5   > "@ Antal kontroll punkter per kurvsegment (<CR>= 5)";
+    INT      method := 1   > "Metod för beräkning (endast 1 är implementerad)";
+    INT      graphic:= 1 
+>"Grafisk representation   0: Ingen   1: Utdata kurva 2: Skarvpunkter ");
+
+! Interna variabler:
+
+  INT        i_seg;              ! Loop index kurvsegment
+  INT        i_poi;              ! Loop index punkt i segment
+  INT        i_u;                ! Loop index U värde ny kurva
+  
+  INT        n_iter;             ! Antal iterationer
+  
+  INT        ns_geo;             ! Antal geometriska segment
+  INT        ns_gra;             ! Antal grafiska   segment
+  INT        fnt;                ! Font typ,subtyp
+  FLOAT      sl;                 ! Båglängd
+
+  FLOAT      delta;              ! Delta parameter värde
+
+  INT        n_end;              ! Slut punkt för aktuellt segment 
+
+  FLOAT      u_cur;              ! Aktuellt parametervärde
+  VECTOR     p_cur;              ! Aktuell punkt
+  VECTOR     t_cur;              ! Aktuell tangent
+  FLOAT      u_che;              ! Aktuellt parametervärde check pkt
+  VECTOR     p_che;              ! Aktuell check punkt
+  VECTOR     t_che;              ! Aktuell check tangent
+  FLOAT      dist;               ! Koordinat avvikelse
+  FLOAT      angle;              ! Vinkel avvikelse
+
+  INT        n_tot;              ! Totala antalet punkter
+
+  FLOAT      s_u;                ! Start punkt parametervärde
+  VECTOR     s_pt;               ! Start punkt
+  VECTOR     s_tpt;              ! Start tangent punkt
+  FLOAT      m_u;                ! Mitt  punkt parametervärde
+  VECTOR     m_pt;               ! Mitt  punkt
+  FLOAT      e_u;                ! Slut  punkt parametervärde
+  VECTOR     e_pt;               ! Slut  punkt
+  VECTOR     e_tpt;              ! Slut  tangent punkt
+  REF        t_id;               ! Referens till test segment
+  FLOAT      t_angle;            ! Vinkel mellan tangenter
+  FLOAT      t_criter;           ! Kriterium för vinkel mellan tangenter
+  FLOAT      l_criter;           ! Kriterium för korda längd
+  FLOAT      chord;              ! Korda längd                
+
+  FLOAT      s_u_p;              ! Föreg. start punkt parametervärde
+  FLOAT      e_u_p;              ! Föreg. slut  punkt parametervärde
+
+
+  
+  FLOAT      p_value;            ! P value
+
+  INT        segnum;             ! Önskat segment nummer
+  FLOAT      segdat_c(4,4);      ! Aktuellt   segment
+  FLOAT      segdat_p(4,4);      ! Föregående segment
+  INT        reptyp;             ! Önskad representation 
+                                 ! Geometrisk=0 Grafisk=1
+  FLOAT      offset;             ! Offset för segment
+  INT        typ;                ! Typ av segment        
+                                 ! Kubiskt=1 UV=2
+
+  INT        graphic_p;          ! Grafik för c_valuev0
+  
+  FLOAT      segdat_a(300,4,4);  ! Alla segment       
+
+  INT        b_cflag;            ! BLANK värde kurva
+  INT        b_pflag;            ! BLANK värde punkt 
+
+  INT        DEBUG;              ! För kontroll utskrifter, etc.
+                                 ! Eq. 0 ==> Ingen     DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+                                 ! Eq. 2 ==> Begränsad DEBUG
+
+  STRING    s*1;                 ! För DEBUG utskrift till skärm
+  INT       ix1;                 ! Temporärt använt loop index
+
+BEGINMODULE
+
+!                  1. Initieringar och kontroll indata
+!                  ===================================
+
+   DEBUG := 0;                   ! Ändra till 0, 1 eller 2 eller 3
+
+   t_criter := 5.0;              ! Kriterium för vinkel mellan tangenter
+
+   IF method <> 1 THEN           ! Endast en metod implementerad
+     EXIT("c_reduc1v0: method "  !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   IF n_poi < 2   THEN           ! Min värde n_poi är 2 
+     EXIT("c_reduc1v0: n_poi <"  !
+          + " 2   ");            !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Grafik variabel
+     b_cflag:= 1;                 !
+     b_pflag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_cflag:= 0;                 !
+     b_pflag:= 1;                 !
+   ELIF  graphic = 2  THEN       !
+     b_cflag:= 0;                 !
+     b_pflag:= 0;                 !
+   ELSE                          !
+     EXIT("c_reduc1v0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+
+   GETCURH(cur_id,               ! Antal segment i kurvan
+   fnt,sl,ns_geo,ns_gra);        !
+
+  IF DEBUG = 2 THEN              ! För DEBUG=2:
+    s:=INPMT("c_reduc1v0 ns_geo "!
+        +STR(ns_geo,-1,0)+ "  "  !
+        ,"",1);                  !
+  ENDIF;
+
+!                    2. Beräkna parametervärden 
+!                    ==========================
+
+  n_tot:= 1;                     ! Initiering antal punkter
+
+  delta := 1.0/(n_poi+1);        ! Delta parameter värde
+
+  n_end := 1;                    ! Slut punkt för segment (start värde)
+
+  n_iter:= 0;                    ! Antal iterationer
+
+newseg:;                         ! Label: Nytt segment
+
+  IF DEBUG = 2 THEN              ! För DEBUG=2:
+    s:= INPMT("c_reduc1v0 n_end "!
+        +STR(n_end,-1,0)+ "  "   !
+        ,"",1);                  !
+    IF n_end > ns_geo THEN       !
+      EXIT("c_reduc1v0 "+        !
+           "n_end > ns_geo");    !
+    ENDIF;                       !
+  ENDIF;
+
+  n_iter:= n_iter + 1;           ! Antal iterationer
+  IF n_iter > 200 THEN           !
+    EXIT("c_reduc1v0: n_iter");  !
+!   GOTO  endseg;                ! !! Tillfälligt
+  ENDIF;                         !
+  FOR i_seg:= n_end TO ns_geo DO ! Start loop segment i kurvan
+
+    
+    IF i_seg > n_end THEN        ! Föregående segments koefficienter
+    segdat_p(1,1):=segdat_c(1,1);!
+    segdat_p(2,1):=segdat_c(2,1);!
+    segdat_p(3,1):=segdat_c(3,1);!
+    segdat_p(4,1):=segdat_c(4,1);!
+    segdat_p(1,2):=segdat_c(1,2);!
+    segdat_p(2,2):=segdat_c(2,2);!
+    segdat_p(3,2):=segdat_c(3,2);!
+    segdat_p(4,2):=segdat_c(4,2);!
+    segdat_p(1,3):=segdat_c(1,3);!
+    segdat_p(2,3):=segdat_c(2,3);!
+    segdat_p(3,3):=segdat_c(3,3);!
+    segdat_p(4,3):=segdat_c(4,3);!
+    segdat_p(1,4):=segdat_c(1,4);!
+    segdat_p(2,4):=segdat_c(2,4);!
+    segdat_p(3,4):=segdat_c(3,4);!
+    segdat_p(4,4):=segdat_c(4,4);!
+    s_u_p := s_u;                ! Föreg. start punkt parametervärde
+    e_u_p := e_u;                ! Föreg. slut  punkt parametervärde
+    ENDIF;                       !
+
+    s_u  :=n_end - 1.0;          ! Parameter värde s_pt
+    s_pt :=  ON(cur_id,s_u);     ! Start punkt aktuellt segment
+    s_tpt:=s_pt+TANG(cur_id,s_u);! Start tangent punkt 
+    e_u  :=i_seg;                ! Parameter värde e_pt
+    e_pt :=  ON(cur_id,e_u);     ! Slut  punkt aktuellt segment
+    e_tpt:=e_pt+TANG(cur_id,e_u);! Slut  tangent punkt 
+    m_u  :=s_u + 0.5*(e_u-s_u);  ! Parameter värde m_pt
+    m_pt :=  ON(cur_id,m_u);     ! Slut  punkt aktuellt segment
+
+    IF DEBUG = 3 AND i_seg>30 THEN          ! För DEBUG=2:
+        s:= INPMT("c_reduc1v0 " +!    
+        " s_u   "  !
+        +STR(s_u  ,-10,4)+ "  "+ !
+        " n_end "                !
+        +STR(n_end  ,-1,0)+ "  "+ !
+        " e_u   "                !
+        +STR(e_u  ,-10,4)+ "  "+ !
+        " i_seg "                !
+        +STR(i_seg  ,-1,0)+ "  " !
+        ,"",1);                  !
+    ENDIF;                     !
+    t_angle := ARCCOS(           ! Vinkel mellan tangenter
+         TANG(cur_id,s_u)*       !
+         TANG(cur_id,e_u))   ;   !
+
+    graphic_p:= 0;               !
+    PART(#20, c_pvaluev0 (       ! Calculate P value
+    s_pt,TANG(cur_id,s_u),       !
+    e_pt,TANG(cur_id,e_u),       !
+    m_pt, graphic_p, p_value )); !
+
+    l_criter := 0.01;            ! Minimum chord length
+    IF VECL(s_pt-e_pt)<l_criter THEN
+      EXIT("c_reduc1v0 cl "+STR(VECL(s_pt-e_pt),12,8));
+    ENDIF;
+    IF VECL(s_pt-s_tpt)<l_criter THEN
+      EXIT("c_reduc1v0 strt "+STR(VECL(s_pt-s_tpt),12,8));
+    ENDIF;
+    IF VECL(e_pt-e_tpt)<l_criter THEN
+      EXIT("c_reduc1v0 end "+STR(VECL(e_pt-e_tpt),12,8));
+    ENDIF;
+
+    IF  DEBUG = 8 THEN
+    LST_INI("Debug from c_reduc1v0");
+    LST_LIN("s_pt  "+STR(s_pt.x ,15,8)+" "+STR(s_pt.y ,15,8)+" "+STR(s_pt.z ,15,8));
+    LST_LIN("s_tpt "+STR(s_tpt.x,15,8)+" "+STR(s_tpt.y,15,8)+" "+STR(s_tpt.z,15,8));
+    LST_LIN("e_pt  "+STR(e_pt.x ,15,8)+" "+STR(e_pt.y ,15,8)+" "+STR(e_pt.z, 15,8));
+    LST_LIN("e_tpt "+STR(e_tpt.x,15,8)+" "+STR(e_tpt.y,15,8)+" "+STR(e_tpt.z,15,8));
+    LST_LIN("m_pt  "+STR(m_pt.x ,15,8)+" "+STR(m_pt.y ,15,8)+" "+STR(m_pt.z ,15,8));
+    LST_LIN("p_value "+STR(p_value,15,8));
+    LST_EXI();
+    ENDIF;
+    
+    IF p_value > 0.1 AND p_value < 0.8 THEN   ! Mitt punkt eller P värde
+      CUR_CONIC(#4,"FREE",       ! Aktuellt segment
+      s_pt,s_tpt,p_value,           !
+      e_pt,e_tpt                 !
+      :PEN=2);                   !
+      t_id  := #4;               !
+    ELSE                         !
+      CUR_CONIC(#5,"FREE",       ! Aktuellt segment
+      s_pt,s_tpt, 0.5,           !
+      e_pt,e_tpt                 !
+      :PEN=7);                   !
+      t_id  := #5;               !
+    ENDIF;                       !
+
+    segnum:= 1;                  ! Hämta koefficienter
+    reptyp:= 0;                  ! 
+    IF i_seg = n_end THEN        !
+      GETSEG(t_id,segnum,reptyp, ! (för start segment)
+        segdat_p , offset, typ); !
+      s_u_p := s_u;              ! Föreg. start punkt parametervärde
+      e_u_p := e_u;              ! Föreg. slut  punkt parametervärde
+      GETSEG(t_id,segnum,reptyp, ! Även aktuellt segment ska ha dessa
+        segdat_c , offset, typ); ! koefficienter (om 1'a ej kan approx.)
+    ELSE                         !
+      GETSEG(t_id,segnum,reptyp, !
+        segdat_c , offset, typ); !
+    ENDIF;                       !
+
+
+    FOR i_poi :=1 TO n_poi DO    ! Start loop alla punkter per segment
+
+     u_cur:= i_poi*delta;        ! Aktuellt parameter värde     
+
+     p_cur:=   ON(t_id,u_cur);   ! Aktuell punkt   på kurvan
+     t_cur:= TANG(t_id,u_cur);   ! Aktuell tangent på kurvan
+
+     u_che:= INV_ON(cur_id,      ! Parameter check punkt
+      p_cur , 1);                !
+
+     p_che:=   ON(cur_id,u_che); ! Check punkt              
+     t_che:= TANG(cur_id,u_che); ! Check tangent            
+    
+     dist:= VECL(p_cur-p_che);   ! Koordinat avvikelse
+
+     angle := ARCCOS(            ! Vinkel avvikelse        
+         t_cur*t_che );          !
+
+     IF dist  > c_tol  OR        !
+        angle > a_tol     THEN   !
+      IF DEBUG = 3 THEN          ! För DEBUG=2:
+        s:= INPMT("c_reduc1v0 " +!    
+       "Utanför tolerans i_seg= "!
+        +STR(i_seg,-1,0)+ "  "   !
+        ,"",1);                  !
+      ENDIF;                     !
+
+      IF DEBUG = 2 THEN          ! För DEBUG=2:
+        s:= INPMT("c_reduc1v0 " +!    
+        " Utanför c_tol s_u_p "  !
+        +STR(s_u_p,-10,4)+       !
+        " e_u_p "                !
+        +STR(e_u_p,-10,4)+       !
+        " i_seg "                !
+        +STR(i_seg,-1,0)+ "  "  !
+        ,"",1);                  !
+      ENDIF;                     !
+
+       segdat_a(n_tot,1,1):=     !
+       segdat_p      (1,1);      !
+       segdat_a(n_tot,2,1):=     !
+       segdat_p      (2,1);      !
+       segdat_a(n_tot,3,1):=     !
+       segdat_p      (3,1);      !
+       segdat_a(n_tot,4,1):=     !
+       segdat_p      (4,1);      !
+       segdat_a(n_tot,1,2):=     !
+       segdat_p      (1,2);      !
+       segdat_a(n_tot,2,2):=     !
+       segdat_p      (2,2);      !
+       segdat_a(n_tot,3,2):=     !
+       segdat_p      (3,2);      !
+       segdat_a(n_tot,4,2):=     !
+       segdat_p      (4,2);      !
+       segdat_a(n_tot,1,3):=     !
+       segdat_p      (1,3);      !
+       segdat_a(n_tot,2,3):=     !
+       segdat_p      (2,3);      !
+       segdat_a(n_tot,3,3):=     !
+       segdat_p      (3,3);      !
+       segdat_a(n_tot,4,3):=     !
+       segdat_p      (4,3);      !
+       segdat_a(n_tot,1,4):=     !
+       segdat_p      (1,4);      !
+       segdat_a(n_tot,2,4):=     !
+       segdat_p      (2,4);      !
+       segdat_a(n_tot,3,4):=     !
+       segdat_p      (3,4);      !
+       segdat_a(n_tot,4,4):=     !
+       segdat_p      (4,4);      !
+
+       n_tot:= n_tot+1;          ! Ytterligare en punkt
+
+       DEL(t_id );               ! Radera test segment
+       IF i_seg = n_end     THEN !
+         n_end:= i_seg + 1;      ! Ny start punkt för test segment
+       ELSE                      !
+         n_end:= i_seg;          !
+       ENDIF;                    !
+       IF n_end > ns_geo THEN    ! 1995-01-18
+         n_tot:= n_tot-1;        ! Förstår ej ....     
+         GOTO endseg;            !
+       ENDIF;                    !
+
+       IF i_seg <= ns_geo   THEN  ! Hoppa till nytt segment
+         GOTO newseg;            !
+       ELSE                      ! eller
+         GOTO endseg;            ! hoppa till slut segment
+       ENDIF;                    !
+     ENDIF;                      !
+
+
+     IF DEBUG = 3 THEN           ! För DEBUG=3:
+       POI_FREE(#10,p_cur);      !
+       POI_FREE(#11,p_che:PEN=5);!
+     ENDIF;                      !
+
+    ENDFOR;                      ! Slut  loop alla punkter i segmentet
+
+    DEL(t_id );                  ! Radera aktuellt segment
+
+  ENDFOR;                        ! Slut  loop segment
+
+endseg:;                         ! Label: Slut segment
+
+       segdat_a(n_tot,1,1):=     !
+       segdat_c      (1,1);      !
+       segdat_a(n_tot,2,1):=     !
+       segdat_c      (2,1);      !
+       segdat_a(n_tot,3,1):=     !
+       segdat_c      (3,1);      !
+       segdat_a(n_tot,4,1):=     !
+       segdat_c      (4,1);      !
+       segdat_a(n_tot,1,2):=     !
+       segdat_c      (1,2);      !
+       segdat_a(n_tot,2,2):=     !
+       segdat_c      (2,2);      !
+       segdat_a(n_tot,3,2):=     !
+       segdat_c      (3,2);      !
+       segdat_a(n_tot,4,2):=     !
+       segdat_c      (4,2);      !
+       segdat_a(n_tot,1,3):=     !
+       segdat_c      (1,3);      !
+       segdat_a(n_tot,2,3):=     !
+       segdat_c      (2,3);      !
+       segdat_a(n_tot,3,3):=     !
+       segdat_c      (3,3);      !
+       segdat_a(n_tot,4,3):=     !
+       segdat_c      (4,3);      !
+       segdat_a(n_tot,1,4):=     !
+       segdat_c      (1,4);      !
+       segdat_a(n_tot,2,4):=     !
+       segdat_c      (2,4);      !
+       segdat_a(n_tot,3,4):=     !
+       segdat_c      (3,4);      !
+       segdat_a(n_tot,4,4):=     !
+       segdat_c      (4,4);      !
+      IF DEBUG = 2 THEN          ! För DEBUG=2:
+        s:= INPMT("c_reduc1v0 " +!    
+        " Sista segment s_u   "  !
+        +STR(s_u  ,-10,4)+ "  "+ !
+        " e_u   "                !
+        +STR(e_u  ,-10,4)+ "  "  !
+        ,"",1);                  !
+      ENDIF;                     !
+
+
+! +++
+! 2. Skapa utdata kurva
+! ---------------------
+! ---
+
+  CUR_USRDEF(#1,n_tot,           ! Skapa kurva med koefficienter
+      segdat_a :PEN=1,           !
+       BLANK=b_cflag);           !
+
+
+  IF DEBUG = 2              THEN ! För DEBUG=1:
+
+    FOR i_seg:= 1 TO n_tot-1 DO  !
+      dist:= VECL(ON(#1,i_seg)-  !
+        ON(#1,i_seg-0.0000001)); !
+      IF dist > 0.0001 THEN      !
+       POI_FREE(#100,            !
+               ON(#1,i_seg)      !
+         :PEN=4);
+       POI_FREE(#101,            !
+        ON(#1,i_seg-0.0000001)   !
+         :PEN=4);
+       s:= INPMT("c_reduc1v0 " + !
+        "Steg för segment "      !
+        +STR(i_seg ,-1,0)+ "  "+ !
+        "totalt "                !
+        +STR(n_tot ,-1,0)+ "  "  !
+          +"  avstånd "          !
+        +STR(dist,-15,8)+ "  "   !
+        ,"",1);                  !
+       EXIT("c_reduc1v0 "+       !
+           "avstånd segment");   !
+      ENDIF;                     !
+    ENDFOR;                      !
+
+  ENDIF;                         !
+!+++
+! 3. Grafisk representation av utdata 
+! -----------------------------------
+!---
+
+   IF    graphic = 2  THEN       ! Grafik variabel
+     FOR i_u:= 1 TO n_tot+1 DO   !
+       POI_FREE(#9,              !
+       ON(#1,i_u-1.0):           !
+       BLANK=b_pflag);           !
+     ENDFOR;                     !
+   ENDIF;                        !
+
+
+!                  4. Exit och "utskrift om debug är på"
+!                  ====================================
+
+  IF DEBUG = 1              THEN ! För DEBUG=1:
+    s:= INPMT("c_reduc1v0 "  +   !
+     "Antal segment in "         !
+        +STR(ns_geo,-1,0)+ "  "  !
+       +"  ut "                  !
+        +STR(n_tot-1,-1,0)+ "  " !
+        ,"",1);                  !
+  ENDIF;                         !
+
+ENDMODULE

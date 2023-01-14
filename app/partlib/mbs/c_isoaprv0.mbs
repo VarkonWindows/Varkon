@@ -1,0 +1,241 @@
+!********************* c_isoaprv0 ***********************
+! +++
+! Create an approximate iso-curve. Lines for undefined parts
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1997-03-20  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Skapa approximativ iso kurva. Linjer för odefinierade delar
+!sdesce Create an approximate iso-curve. Lines for undefined parts
+
+GLOBAL GEOMETRY MODULE c_isoaprv0(
+REF    sur_id           >"Select surface";
+STRING iso_t*1 := "V"   >"U or V isoparameter ";
+FLOAT  iso_val :=  1.0  >"Constant isoparameter value";
+INT    n_poi   :=  4    >"Number of points for badly defined patches";
+INT    graphic :=  2    >"Graphic 0: None 1: Curve 2: All");
+
+! Internal variables:
+
+  INT        npatu;              ! Number of U patches 
+  INT        npatv;              ! Number of V patches 
+
+  INT        c_list;             ! =1: List data on screen
+
+  FLOAT      iso_s;              ! Start param. value
+  FLOAT      iso_e;              ! End   param. value
+  FLOAT      iso_tot;            ! End   param. value
+
+  INT        iu;                 ! Patch address in U direction
+  INT        iv;                 ! Patch address in U direction
+  INT        p_typ;              ! Patch type
+  FLOAT      u1;                 ! Start U value patch
+  FLOAT      u2;                 ! End   U value patch
+  FLOAT      v1;                 ! Start V value patch
+  FLOAT      v2;                 ! End   V value patch
+
+  INT        no_branch;          ! Number of branches 
+
+
+
+
+  REF        cur_id;             ! Isoparameter branch id
+  REF        poi_id;             ! Point id
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in segment
+  
+  INT        n_seg ;             ! Number of geometric segments
+  INT        ns_gra;             ! Number of graphical segments
+  INT        fnt;                ! Font 
+  FLOAT      sl;                 ! Dash length
+
+  FLOAT      delta;              ! Delta parameter value
+
+  VECTOR     uv_sur;             ! Surface U,V point
+ 
+  INT        n_tot;              ! Total number of points
+
+  FLOAT      e_u;                ! Current parameter value 
+  VECTOR     s_pt;               ! Previous UV point
+  VECTOR     e_pt;               ! Current  UV point
+  VECTOR     e_tan;              ! Current  UV tangent 
+  VECTOR     e_uvmin;            ! Direction minimum curvature
+  VECTOR     e_uvmax;            ! Direction maximum curvature
+  VECTOR     e_r3pt;             ! R*3 point
+  VECTOR     e_r3min;            ! Direction minimum curvature
+  VECTOR     e_r3max;            ! Direction maximum curvature
+
+  INT        b_val_a;            ! BLANK value all other entities
+  INT        b_val_c;            ! BLANK value curves and points
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+  c_list := 0;
+
+! List window
+  IF    c_list = 1  THEN
+  LST_INI("Debug from c_isoaprv0 ");
+  ENDIF;
+
+! Check number of added points
+  IF n_poi < 0   THEN
+    EXIT("c_isoaprv0: n_poi <  0");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    b_val_c := 1;
+    b_val_a := 1;
+  ELIF  graphic = 1  THEN 
+    b_val_c := 0;
+    b_val_a := 1;
+  ELIF  graphic = 2  THEN
+    b_val_c := 0;
+    b_val_a := 0;
+  ELSE 
+    EXIT("c_isoaprv0: graphic not OK");
+  ENDIF;
+
+
+! Retrieve number of patches
+  GETSURH(sur_id, "NPATU", npatu);
+  GETSURH(sur_id, "NPATV", npatv);
+
+! Number of segments in iso-curve, ..
+  IF    iso_t = "U"   OR iso_t = "u"   THEN
+    iso_t := "U";
+    n_seg := npatv;
+    iso_s :=   0.0;
+    iso_e := npatv;
+  ELIF  iso_t = "V"   OR iso_t = "v"   THEN
+    iso_t := "V";
+    n_seg := npatu;
+    iso_s :=   0.0;
+    iso_e := npatu;
+  ELSE
+    EXIT("c_isoaprv0: Isoparameter type not U or V");
+  ENDIF;
+
+
+! +++
+! 2. Create isoparameter curve
+! ---
+
+! Total number of created points
+  n_tot:= 0;
+
+! Delta U 
+  delta := 1.0/(n_poi+1);
+
+  IF    c_list = 1  THEN
+  LST_LIN("npatu= "+STR(npatu, 5,0)+ " npatv= "+STR(npatv,5,0));
+  LST_LIN("n_seg= "+STR(n_seg, 5,0));
+  LST_LIN("n_poi= "+STR(n_poi, 5,0));
+  LST_LIN("delta= "+STR(delta,15,8));
+  LST_LIN("iso_s  = "+STR(iso_s  ,15,8) + " Start value ");
+  ENDIF; 
+
+! Initialize number of branches
+  no_branch := 0;
+
+! Initialize total iso "length" for one branch
+  iso_tot := 0.0;  
+
+! Start loops segments 
+  FOR  i_seg:= 1 TO n_seg  DO
+
+    IF    iso_t = "U"   THEN
+      iu := TRUNC(iso_val);
+      iv := i_seg;
+    ELIF  iso_t = "V"   THEN
+      iu := i_seg;
+      iv := TRUNC(iso_val);
+    ENDIF;
+
+!   Get topological patch
+    GETTOPP(sur_id,iu,iv,p_typ, u1,u2,v1,v2);
+
+!   Goto next patch if patch is OK
+    IF  p_typ > 0 THEN
+      iso_tot := iso_tot + 1.0;  
+      GOTO patch_ok;
+    ENDIF;
+
+!   Create part iso-parameter for NULL tile
+    IF  c_list  = 1 THEN
+    LST_LIN("NULL tile "+STR(p_typ, 5,0)+" i_seg= "+STR(i_seg,5,0));
+    ENDIF;
+
+!   Current end parameter value
+    IF  c_list  = 1 THEN
+    LST_LIN("NULL iso_tot= "+STR(iso_tot,15,8));
+    ENDIF;
+    IF  iso_tot < 0.001 THEN
+      GOTO  no_iso;
+    ENDIF;
+    
+    no_branch := no_branch + 1;
+    iso_e := iso_s + iso_tot - 0.0000001;
+    IF  c_list  = 1 THEN
+    LST_LIN("NULL iso_e= "+STR(iso_e,15,8) + " for CUR_ISO");
+    ENDIF;
+    CUR_ISO(#1, sur_id, iso_t, iso_val, iso_s, iso_e:BLANK=b_val_c);
+    cur_id := GLOBAL_REF(REFC(1,no_branch));
+
+!   Current start parameter value
+    iso_s  := iso_e + 1.0;
+
+    IF  c_list  = 1 THEN
+    LST_LIN("NULL iso_s= "+STR(iso_s,15,8) + " New value");
+    ENDIF;
+
+no_iso:;   ! Label: No iso parameter branch
+
+    FOR  i_poi := 1 TO n_poi DO
+      IF    iso_t = "U"   THEN
+        uv_sur := VEC(iso_val, i_seg - 1.0 + (i_poi-1)*delta, 0);
+      ELIF  iso_t = "V"   THEN
+        uv_sur := VEC(i_seg - 1.0 + (i_poi-1)*delta, iso_val, 0);
+      ENDIF;
+      n_tot := n_tot + 1;
+      POI_FREE(#2, ON(sur_id, uv_sur):BLANK=b_val_c);
+      poi_id := GLOBAL_REF(REFC(1,n_tot));
+      IF  c_list  = 1 THEN
+      LST_LIN("NULL uv_sur= "+STR(uv_sur.x,9,4)+" "+STR(uv_sur.y,9,4));
+      ENDIF;
+
+    ENDFOR;
+
+patch_ok:; ! Label: The patch is OK
+
+  ENDFOR;
+
+  IF    c_list = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+
+ENDMODULE

@@ -1,0 +1,187 @@
+!******************** ANA_NAME  **********************
+!
+! Determine the full name (the path) for an entity
+!
+! 1992-11-25 Gunnar Liden
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE ANA_NAME  (
+
+    REF         input_id;       ! Reference to an entity
+VAR STRING      name_out*132);  ! Name of (path for) the variable
+
+! Interna variabler:
+
+  STRING      input_ids*132;   ! Input part_id as a string
+
+  REF         id_lev(11);      ! Reference name on the different levels
+
+  STRING      name_lev(11)*12; ! Name of the part on the different levels
+
+  INT         nlev;            ! Number of levels
+
+  INT         i_s;             ! Position in string for sign #
+
+  INT         i_r;             ! Loop index for references
+
+  STRING      tstr*132;        ! Dummy string
+
+  STRING      ids*132;         ! Reference id as a string
+
+                               ! For function GETHDR:
+  REF         id;              ! Reference to entity
+  INT         typ;             ! Type of entity
+  INT         nref;            ! Number of references to part
+                               ! (not used any more !!!! )
+  INT         blank;           ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT         niv};            ! The layer for the entity
+  INT         penna;           ! Pen number (colour)
+  REF         grupp_id(3);     ! Global identities for the
+                               ! groups, which the entity is part of ..
+
+                               ! For function GETPRT:
+  STRING      namn*10;         ! Name of the part
+  INT         mtyp;            ! Module type
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Module attribute
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identity for the 
+                               ! coord. system used to position
+                               ! the part
+  INT         np;              ! Number of parameters in the part
+  INT         mant;            ! Number of entities in the part
+  REF         idm(300);        ! Array with global references (##)
+
+  STRING      s*1;             ! String for DEBUG (INPMT)
+
+  INT         DEBUG;           ! For debug printout
+
+BEGINMODULE
+
+!                       1. Initiations
+!                       ===============
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2
+
+!     Make the "global" input reference to a "local" reference
+
+   input_ids:=RSTR(input_id);  ! Convert reference to string
+   IF SUBSTR(input_ids,2,1)    !
+          = "#"  THEN          !
+    input_ids:=                !
+       SUBSTR(input_ids,2);    ! Remove # (=tstr)
+    input_id:=RVAL(input_ids); ! Convert string to reference
+   ENDIF;
+!                     2. Pack up the string
+!                     ======================
+   
+
+   nlev:=1;                    ! Initiate number of levels
+   tstr := input_ids;          !
+
+
+loop:                          ! Label: Next level
+
+   i_s:=FINDS(SUBSTR(tstr,2)   ! Find # in the remaining string
+          ,"#");
+
+   IF i_s > 0 THEN
+     name_lev(nlev):=SUBSTR(tstr,1,i_s);
+     tstr:=SUBSTR(tstr,i_s+1);
+     nlev:=nlev+1;
+     GOTO loop;
+   ELSE
+     name_lev(nlev):=tstr;
+   ENDIF;
+
+    IF DEBUG = 1 THEN          ! Debug
+    s:=INPMT("ANA_NAME : " +   !
+    " input_ids " +            !
+      input_ids +              !
+    " nlev "+STR(nlev,-1,0)    !
+     ,"", 1);                  !
+    ENDIF;                     !
+
+!                  3. Retrieve variable data
+!                  ==========================
+
+  ids     := "";               ! Start reference string empty
+  name_out:= "Path:  ";        ! Output name initiation
+
+  FOR i_r := 1 TO nlev   DO    ! Start loop all references
+
+    ids := ids+name_lev(i_r);  ! Reference id as a string
+    id  := RVAL(ids);          ! Convert to # id
+
+    IF id = #0  THEN           ! Programming check of reference id
+      EXIT("ANP_NAME: " +      !
+      "id = #0 in i_r loop");  !
+    ENDIF;                     !
+
+    GETHDR(id,typ,nref,        ! Read header for the entity
+    blank,niv},penna,grupp_id);! 
+
+    IF DEBUG = 1 THEN          ! Debug
+    s:=INPMT("ANA_NAME : " +   !
+    " ids " + ids +            !
+    " typ "+STR(typ,-1,0)  +   !
+    " i_r "+STR(i_r,-1,0)      !
+     ,"", 1);                  !
+    ENDIF;                     !
+
+    IF typ <> 16384 AND        !
+        i_r = nlev     THEN    !
+        GOTO enam;             ! Goto enam
+    ELIF typ = 16384   THEN    !
+      ;                        !
+    ELSE                       !
+        EXIT("ANA_NAME: " +    ! Programming check
+        "typ error");          !
+    ENDIF;                     !
+
+    GETPRT(id,namn,mtyp,       ! Read data about the part
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN          ! Debug
+    s:=INPMT("ANA_NAME : "     !
+     + "  namn " + namn        !
+     ,"", 1);                  !
+    ENDIF;                     !
+
+enam:                          ! Label: Add end to name
+
+    IF i_r = 1 AND nlev=1 THEN ! Output path (name)
+      name_out := name_out+    !
+           namn;               !
+    ELIF   i_r = 1 THEN        ! 
+      name_out:=name_out+namn; !
+    ELIF i_r = nlev  AND       ! 
+     typ <> 16384     THEN     ! 
+      name_out:=name_out;      !
+    ELIF i_r = nlev  THEN      !
+      name_out := name_out+    ! 
+       " --> " + namn;         !
+    ELSE                       !
+      name_out := name_out+    ! 
+        " --> " + namn;        !
+    ENDIF;                     !
+
+
+  ENDFOR;                      ! End loop all references 
+
+!                     4. Output path
+!                     ==============
+
+!                      Created above !
+
+    IF DEBUG=1 OR DEBUG=2 THEN ! Debug
+    s:=INPMT("ANA_NAME : "     !
+      +name_out                !
+     ,"", 1);                  !
+    ENDIF;                     !
+
+ENDMODULE

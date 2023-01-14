@@ -1,0 +1,292 @@
+!******************** c_econicv0      **************************
+! +++
+! Create conic from points, tangents and start curvature radius
+!
+! All input data must be in the same plane. The start and end
+! tangents cannot be parallell to the chord.
+!
+! Revision history
+! ________________
+!
+! 1995-06-15  Gunnar Liden
+! ---
+!*****************************************************************
+
+GLOBAL GEOMETRY MODULE c_econicv0 (
+VECTOR p0  :=VEC(  0.0,0.0,0.0)   > "Start point";
+VECTOR t0  :=VEC(1.0,  0.1, 0.0)  > "Start tangent   ";
+FLOAT  r0  :=  200.0              > "Start curvature radius";
+VECTOR p2  :=VEC(100.0,0.0,0.0)   > "End   point";
+VECTOR t2  :=VEC(1.0, -0.5, 0.0)  > "End   tangent";
+FLOAT  l_pv:=    0.2              > "Lower limit P value for case= 2";
+FLOAT  u_pv:=    0.7              > "Upper limit P value for case= 2";
+INT    case:=  1                  > "=1: Normal =2: Change to limit (for opt.)");
+
+!sdesce Create conic from pts, tangents, chord length and start radius
+!sdescs Skapa k{gelsnitt fr}n tangenter, korda och start kr|kningsradie
+
+! Internal variables
+
+  VECTOR  p0_l;                        ! p0 in local coordinates
+  VECTOR  t0_l;                        ! t0 in local coordinates
+  VECTOR  p2_l;                        ! p2 in local coordinates
+  VECTOR  t2_l;                        ! t2 in local coordinates
+
+  VECTOR  t0_c;                        ! t0 in same direction as chord
+  VECTOR  t2_c;                        ! t2 in same direction as chord
+
+  FLOAT   k0;                          ! Curvature for u= 0.0
+  FLOAT   phi_deg ;                    ! Start angle in degrees
+  FLOAT   beta_deg ;                   ! End   angle in degrees 
+  FLOAT   cl ;                         ! Chord length 
+
+  FLOAT   x0 , y0 ;                    ! Conic start point   in local system
+  FLOAT   x1 , y1 ;                    ! Conic tangent point in local system
+  FLOAT   x2 , y2 ;                    ! Conic end point     in local system
+  FLOAT   pval;                        ! P-value          
+
+  FLOAT   pval1 ;                      ! P-value               (root 1)
+  FLOAT   pval2 ;                      ! P-value               (root 2)
+
+
+  FLOAT   a_l;                         ! Length from P0 to P1
+
+  FLOAT   area ;                       ! Area of the triangle P0, P1, P2
+
+  FLOAT   ddum1,ddum2 ;                ! Dummy float variables 
+
+
+  INT     DEBUG;                       ! =1: Check formula 
+  INT     b_flag;                      ! Blank value 
+  STRING  s*1;                         ! For INPMT
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! Initializations and checks
+
+  DEBUG := 0;                         ! Change to 0 or 1
+
+  IF DEBUG = 0 THEN                   ! Blank value
+    b_flag:= 1;                       !
+  ELSE                                !
+    b_flag:= 0;                       !
+  ENDIF;                              !
+
+  IF case = 1 OR case = 2 THEN        ! Check case
+    ;                                 !
+  ELSE                                !
+    EXIT("c_econicv0 Case not "+      !
+         "equal to 1 or 2");          !
+  ENDIF;                              !
+
+! +++
+! Let curvature k0= 1/r0 (r0 is the input curvature radius)
+! ---
+
+  IF r0 < 0.0001  THEN                !
+    EXIT("c_econicv0 Input radius "+  !
+         "less or equal to zero");    !
+  ELSE                                !
+    k0 := 1.0/r0;                     ! Curvature
+  ENDIF;                              !
+
+! +++
+! 
+! Create tangents which have the same direction as the chord
+! ---
+
+  IF t0*(p2-p0) < 0.0 THEN             ! Tangents in same direction as chord
+     t0_c := -1.0*t0;                  !
+  ELSE                                 !
+     t0_c :=      t0;                  !
+  ENDIF;                               !
+  IF t2*(p2-p0) < 0.0 THEN             ! 
+     t2_c := -1.0*t2;                  !
+  ELSE                                 !
+     t2_c :=      t2;                  !
+  ENDIF;                               !
+
+! +++
+! Create input points and tangent points in global system
+! ---
+
+  POI_FREE(#2,p0      :BLANK=b_flag);  ! Start point
+  POI_FREE(#3,p0+t0_c :BLANK=b_flag);  ! Start tangent point
+  POI_FREE(#4,p2      :BLANK=b_flag);  ! End   point
+  POI_FREE(#5,p2+t2_c :BLANK=b_flag);  ! End   tangent point
+
+  IF DEBUG = 1 THEN                    ! Debug
+    LIN_FREE(#30,p0,p2 :PEN=4);        !
+    LIN_FREE(#31,p0,p0+50*t0_c:PEN=3); !
+    LIN_FREE(#32,p2,p2+50*t2_c:PEN=2); !
+  ENDIF;                               !
+
+! +++
+! Create local system with p0 as origin, p2-p0 as X axis and 
+! Y axis close to vector t0.  Check first that start tangent 
+! not is parallell to chord.
+! ---
+
+  IF ABS(VECN(t0_c)*VECN(p2-p0)-1.0) < ! Check if parallell
+              0.00001 THEN             !
+    EXIT("c_econicv0 Start tangent "+  !
+    "is parallell to chord");          !
+  ENDIF;                               !
+  IF ABS(VECN(t2_c)*VECN(p2-p0)-1.0) < ! Check if parallell
+              0.00001 THEN             !
+    EXIT("c_econicv0 End   tangent "+  !
+    "is parallell to chord");          !
+  ENDIF;                               !
+
+  CSYS_3P(#6,"Conic", p0, p2, p0+t0_c  ! Coordinate system 
+                 :BLANK=b_flag);       !
+
+! +++
+! Activate local system and get local coordinates for the input points.
+! Check that the input data is in the same plane.
+! ---
+
+  MODE_LOCAL(GLOBAL_REF(#6));          ! Activate local system
+
+  p0_l := ON(GLOBAL_REF(#2));          ! p0 in local coordinates
+  t0_l := ON(GLOBAL_REF(#3))  -        ! t0 in local coordinates
+          ON(GLOBAL_REF(#2));          ! 
+  p2_l := ON(GLOBAL_REF(#4));          ! p2 in local coordinates
+  t2_l := ON(GLOBAL_REF(#5)) -         ! t2 in local coordinates
+          ON(GLOBAL_REF(#4));          ! 
+
+  x0   := p0_l.x;                      ! Start point
+  y0   := p0_l.y;                      !
+  x2   := p2_l.x;                      ! End   point
+  y2   := p2_l.y;                      !
+
+  IF  ABS(t2_l.z) > 0.00001 THEN       ! Check t2_l Z component
+    EXIT("c_econicv0 Point and "+      !
+    "vectors not in the same plane");  !
+  ENDIF;                               !
+
+
+! +++
+! Calculate start and end angles. Check angles
+! ---
+
+  phi_deg  := ANGLE(t0_l.x,t0_l.y);    ! Start angle in degrees
+  beta_deg := ANGLE(t2_l.x,t2_l.y);    ! End   angle in degrees 
+
+  IF phi_deg < 0.001 THEN              ! Check start angle
+    EXIT("c_econicv0 Program "+        !
+         "error Start angle < 0");     !
+  ENDIF;                               !
+
+  IF beta_deg > 0.001 THEN             ! Check end   angle
+    LST_INI("c_econicv0 Error ");      !
+    LST_LIN(" phi_deg "+STR( phi_deg,15,8));
+    LST_LIN("beta_deg "+STR(beta_deg,15,8));
+    LST_EXI();                         !
+!????    LIN_FREE(#30,p0,p2        :PEN=4,  ! Hur fungerar BLANK ?
+!????                     BLANK=0);         !
+!????    LIN_FREE(#31,p0,p0+50*t0_c:PEN=3,  !
+!????                     BLANK=0);         !
+!????    LIN_FREE(#32,p2,p2+50*t2_c:PEN=2,  !
+!????                     BLANK=0);         !
+    EXIT("c_econicv0 Vectors "+        !
+       "define curve with inflexion"); !
+  ENDIF;                               !
+  beta_deg := -beta_deg;               ! Formula based on positive angle
+
+! +++
+! Intersection point between the tangent lines         
+! ---
+
+  ddum1:= SIN(beta_deg)*COS(phi_deg) + !
+          COS(beta_deg)*SIN(phi_deg);  !
+
+  IF  ddum1*ddum1 < 0.00000000001 THEN !
+    EXIT("c_econicv0 Parallell " +     !
+         "tangent lines");             !
+  ENDIF;                               !
+
+  cl := x2;                            ! Chord length
+
+  ddum2:= cl*SIN(phi_deg)/ddum1 ;
+
+  x1:= cl - ddum2*cos(beta_deg) ;
+  y1:=      ddum2*sin(beta_deg) ;
+
+  IF DEBUG = 1 THEN                    !
+    POI_FREE(#7,VEC(x1,y1,0));         ! Graphic check for Debug
+  ENDIF;                               !
+
+! +++
+! P-value for the conic
+! ---
+
+  a_l:= SQRT((x1-x0)*(x1-x0)+          ! Length p0 to p1
+             (y1-y0)*(y1-y0)) ;        !
+
+  area := 0.5*cl*a_l*sin(phi_deg) ;    ! Area in triangle
+
+  IF   area < 0.001   THEN             ! Program check
+    EXIT("c_econicv0 Program "+        !
+         "error area for P value");    !
+  ENDIF;                               !
+
+
+
+  ddum1 := k0*a_l*a_l*a_l/area - 1.0 ; !
+
+  IF   ddum1*ddum1 < 0.0000000001 THEN ! Program check
+    EXIT("c_econicv0 Program "+        !
+         "error ddum1 P value");       !
+  ENDIF;                               !
+
+  ddum1 := 1.0/ddum1 ;
+
+  ddum2 := ddum1*ddum1 + ddum1 ;
+
+
+  IF   ddum2*ddum2 < 0.0000000001 THEN ! Program check
+    EXIT("c_econicv0 Program "+        !
+         "error ddum2 P value");       !
+  ENDIF;                               !
+
+
+  pval1 := -1.0*ddum1 + SQRT(ddum2) ;  ! Root 1
+
+  pval2 := -1.0*ddum1 - SQRT(ddum2) ;  ! Root 2
+
+  IF   pval1> 0.0 AND pval1< 1.0 THEN  ! Select root
+    pval := pval1 ;                    !
+  ELIF pval2> 0.0 AND pval2< 1.0 THEN  !
+    pval := pval2 ;                    !
+  ELSE                                 !
+    EXIT("c_econicv0 Program "+        !
+         "error ddum2 P value");       !
+  ENDIF;                               !
+
+  IF case = 2 THEN                     ! Case for optimization ...
+    IF pval < l_pv       THEN          ! 
+      pval := l_pv;                    !
+    ENDIF;                             !
+    IF pval > u_pv       THEN          ! 
+      pval := u_pv;                    !
+    ENDIF;                             !
+  ENDIF;                               !
+
+! +++
+! Create conic in the local system
+! ---
+
+  CUR_CONIC(#1,"PROJ",                 ! Create conic
+        p0_l, p0_l+t0_l, pval,         !
+        p2_l, p2_l+t2_l);              !
+
+  MODE_GLOBAL();                       ! Activate global system
+
+ENDMODULE

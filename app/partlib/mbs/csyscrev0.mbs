@@ -1,0 +1,88 @@
+!******************** csyscrev0 *****************************************
+! +++
+! Creation of a registered coordinate system
+!
+! 1996-02-08 Gunnar Liden
+!
+! ---
+!***********************************************************************
+
+!sdesce Creation of a registered coordinate system
+!sdescs Skapande av ett registrerat koordinatsystem
+
+GLOBAL GEOMETRY MODULE csyscrev0 (
+STRING project*44  := "39"      >"Project (39, SF340, SIRIUS2, .. or None)";
+STRING csys*28     := "417"     >"Coordinate system (n)";
+INT    grafik      :=   1       >"=0: System blanked =1: Show system";
+REF    id_csys_m);              ! Related to coordinate system (m)
+
+! Internal variables 
+
+  STRING csys_m*28;       ! Coordinate system (m)
+  INT    bflag;           ! Flag for BLANK
+  FLOAT  a11;             ! Coordinate system matrix a11
+  FLOAT  a12;             ! Coordinate system matrix a12
+  FLOAT  a13;             ! Coordinate system matrix a13
+  FLOAT  a21;             ! Coordinate system matrix a21
+  FLOAT  a22;             ! Coordinate system matrix a22
+  FLOAT  a23;             ! Coordinate system matrix a23
+  FLOAT  a31;             ! Coordinate system matrix a31
+  FLOAT  a32;             ! Coordinate system matrix a32
+  FLOAT  a33;             ! Coordinate system matrix a33
+  FLOAT  b1;              ! Coordinate system matrix b1
+  FLOAT  b2;              ! Coordinate system matrix b2
+  FLOAT  b3;              ! Coordinate system matrix b3
+  STRING csysfil*132;     ! Full name of coordinate system file
+  STRING s_descr*132;     ! Description in Swedish
+  STRING e_descr*132;     ! Description in English
+  STRING anm1*132;        ! Remark 1
+  STRING anm2*132;        ! Remark 2
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ----
+
+! Initializations
+
+  IF grafik = 0 OR grafik = 1 THEN
+    ;
+  ELSE
+    EXIT("csyscrev0");
+  ENDIF;
+
+  s_descr := " ";     
+  e_descr := " ";    
+  anm1    := " ";   
+  anm2    := " ";  
+
+! Global system for the active module ?
+
+  IF  id_csys_m = #0 THEN   
+    a11     := 1.0;
+    a12     := 0.0;
+    a13     := 0.0;
+    a21     := 0.0;
+    a22     := 1.0;
+    a23     := 0.0;
+    a31     := 0.0;
+    a32     := 0.0;
+    a33     := 1.0;
+    b1      := 0.0;
+    b2      := 0.0;
+    b3      := 0.0;
+    csysfil := " ";
+    GOTO crecsy;
+  ENDIF;
+
+crecsy:;
+
+  PART(#1, csysregv0 ( project, csys, id_csys_m, grafik, csysfil, 
+        s_descr, e_descr, anm1, anm2,
+        a11, a12, a13, a21, a22, a23, a31, a32, a33, b1, b2, b3));
+
+ENDMODULE
+

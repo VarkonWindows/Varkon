@@ -1,0 +1,160 @@
+!******************** c_a2cirv0       **************************
+! +++
+! Create two circles for given point, tangent, radii and arclength
+!
+! Input point and tangent shall be given in the input coordinate 
+! system. The sign of the curvature radii will determine the 
+! position for the centers for the circles.
+!
+! Ouput is composite curve #1 consisting of two or more segments.
+! ---
+! Revision history
+! ________________
+!
+! 1996-09-15  Gunnar Liden
+! 
+!*****************************************************************
+
+GLOBAL GEOMETRY MODULE c_a2cirv0  (
+VECTOR p1     :=VEC(0,0,0) >"Start point";
+VECTOR t1     :=VEC(1,1,0) >"Start tangent   ";
+FLOAT  r1     :=  200.0    >"Radius for first  circle";
+FLOAT  r2     :=   50.0    >"Radius for second circle";
+FLOAT  arc_t  :=   50.0    >"Total arclength";
+REF    csys_id             >"Coordinate system (X/Y plane) for circles";
+INT    graphic:=  1        >"=0: All blanked =1: Show circles =2: All");
+
+!sdesce Two circles for given start point, tangent, radii and arclength
+!sdescs Tv} cirklar f|r given start punkt, tangent, radier och b}gl{ngd
+
+! Internal variables
+
+  VECTOR  center1;                     ! Center for the first  circle
+  VECTOR  center2;                     ! Center for the second circle
+  VECTOR  ypoint1;                     ! Y point for circle 1 system 
+  VECTOR  ypoint2;                     ! Y point for circle 2 system 
+  VECTOR  p2;                          ! Start point   second circle
+  VECTOR  t2;                          ! Start tangent second circle
+  FLOAT   v1;                          ! Angle for first  circle 
+  FLOAT   v2;                          ! Angle for second circle 
+
+  INT     DEBUG;                       ! For Debug
+  INT     bval_c;                      ! Blank value circles
+  INT     bval_a;                      ! Blank value all other entities
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! Initializations and checks
+
+  DEBUG := 0;                         ! Change to 0 or 1
+
+  IF    graphic = 0 THEN 
+    bval_c:= 1;  
+    bval_a:= 1;  
+  ELIF  graphic = 1 THEN 
+    bval_c:= 0;  
+    bval_a:= 1;  
+  ELIF  graphic = 2 THEN 
+    bval_c:= 0;  
+    bval_a:= 0;  
+  ELSE          
+    EXIT("c_a2cirv0 graphic not OK");
+  ENDIF; 
+
+  IF   ABS(t1.z) > 0.00001 THEN
+    EXIT("c_a2cirv0 Z component of tangent not zero");
+  ENDIF;
+  IF   VECL(t1) < 0.001 THEN
+    EXIT("c_a2cirv0 Input tangent is a zero vector");
+  ENDIF;
+  IF    ABS(r1) < 0.001 THEN
+    EXIT("c_a2cirv0 Input radius 1 is zero");
+  ENDIF;
+  IF    ABS(r2) < 0.001 THEN
+    EXIT("c_a2cirv0 Input radius 2 is zero");
+  ENDIF;
+
+! +++
+! Calculate angles v1 and v2 corresponding to the given arclength
+! ---
+
+  v1 := arc_t/2.0/PI*180.0/ABS(r1);
+  v2 := arc_t/2.0/PI*180.0/ABS(r2);
+
+! +++
+! Create circle 1
+! ---
+
+  MODE_LOCAL(csys_id);                      ! Activate input local system
+
+  LIN_PROJ(#3, p1, p1+t1                    ! Lines for position of centre
+           :BLANK=bval_a);                  !
+  LIN_OFFS(#4, GLOBAL_REF(#3), r1           !
+           :BLANK=bval_a);                  !
+  
+  center1 := ON(GLOBAL_REF(#4),0.0);        ! Center for first  circle
+  ypoint1 := ON(GLOBAL_REF(#4),1.0);        ! Y point system 1
+
+  CSYS_3P(#5,"Circle1",center1,p1, ypoint1  ! System for circle 1
+              :BLANK=bval_a);               !
+
+  MODE_LOCAL(GLOBAL_REF(#5));               ! Activate circle 1 local system
+
+  ARC_1POS(#9,VEC(0,0,0), ABS(r1), 0.0, v1  ! Create first circle
+              :BLANK=bval_c);               !
+
+  MODE_LOCAL(csys_id);                      ! Activate input local system
+
+! +++
+! Create circle 2
+! ---
+
+  p2   :=   ON(GLOBAL_REF(#9), 1.0);        ! End parameter is one for a circle 
+  t2   := TANG(GLOBAL_REF(#9), 1.0);        ! 
+
+  LIN_PROJ(#6, p2, p2+t2                    ! Lines for position of centre
+           :BLANK=bval_a,PEN=2);            !
+  LIN_OFFS(#7, GLOBAL_REF(#6), r2           !
+           :BLANK=bval_a,PEN=2);            !
+  
+  center2 := ON(GLOBAL_REF(#7),0.0);        ! Center for second circle
+  ypoint2 := ON(GLOBAL_REF(#7),1.0);        ! Y point system 2
+
+  CSYS_3P(#8,"Circle2",center2,p2, ypoint2  ! System for circle 2
+              :BLANK=bval_a);               !
+
+  MODE_LOCAL(GLOBAL_REF(#8));               ! Activate circle 2 local system
+
+  ARC_1POS(#2,VEC(0,0,0), ABS(r2), 0.0, v2  ! Create second circle
+              :BLANK=bval_c);               !
+
+  MODE_GLOBAL();                            ! Activate global system
+
+! +++
+! Create the output composite curve
+! ---
+
+  CUR_COMP(#1, GLOBAL_REF(#9), GLOBAL_REF(#2):BLANK=bval_c);
+
+! +++
+! Delete temporarely used geometry elements for graphic= 0 and 1
+! ---
+
+  IF   graphic = 0 OR  graphic = 1 THEN
+    DEL(GLOBAL_REF(#2));
+    DEL(GLOBAL_REF(#3));
+    DEL(GLOBAL_REF(#4));
+    DEL(GLOBAL_REF(#5));
+    DEL(GLOBAL_REF(#6));
+    DEL(GLOBAL_REF(#7));
+    DEL(GLOBAL_REF(#8));
+    DEL(GLOBAL_REF(#9));
+  ENDIF;
+
+ENDMODULE

@@ -1,0 +1,136 @@
+! ***************** c_bplanev0 ****************************
+!
+! +++
+! Creates a B_PLANE with a normal equal to the curve tangent
+!
+! Revision history
+! ________________
+!
+! 1995-11-10 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Creates a B_PLANE with a normal equal to the curve tangent
+!sdescs Skapar ett B_PLANE med en normal lika med kurvtangenten
+
+
+GLOBAL GEOMETRY MODULE c_bplanev0 (
+
+REF    c_id                      > "@t8  Select curve";
+FLOAT  u_val                     > "Parameter value for B_PLANE";
+INT    graphic:= 1               
+> "@ Show =0: Nothing =1: B_PLANE =2: Coord. system =3: All");
+
+
+! Internal variables
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! Number of geometrical segments
+  INT    ns_gra;                 ! Number of graphical   segments
+  INT    fnt;                    ! Font type, sub type
+  FLOAT  sl;                     ! Dash length 
+
+  VECTOR origin;                 ! Origin for local system
+  VECTOR xaxis;                  ! X axis for local system
+  VECTOR yaxis;                  ! Y axis for local system
+
+  FLOAT  tot_arc;                ! Total arclength for the curve
+  FLOAT  size;                   ! Size of B_PLANE
+
+  INT    bflag_i;                ! Blank flag for B_PLANE      
+  INT    bflag_c;                ! Blank flag for coord. system
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+!
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN          ! 
+    bflag_i := 1;                ! Blank B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 1 THEN          ! 
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 1;                ! Blank coordinate system 
+  ELIF graphic = 2 THEN          ! 
+    bflag_i := 1;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELIF graphic = 3 THEN          ! 
+    bflag_i := 0;                ! Show  B_PLANE
+    bflag_c := 0;                ! Show  coordinate system 
+  ELSE                           !
+    EXIT("c_bplanev0graphic");   ! 
+  ENDIF;                         !
+
+
+! +++
+! 2. Retrieve curve data   
+! ---
+
+
+  GETCURH(  c_id,                ! Number of segments in the curve
+   fnt,sl,ns_geo,ns_gra);        !
+
+  IF DEBUG = 2 THEN              ! Debug to screen
+   s:= INPMT("c_bplanev0 "   +   !
+    " ns_geo "+STR(ns_geo,-1,0), !
+    "",1);                       !
+  ENDIF;                         !
+
+! +++
+! 3. Create local coordinate system
+!
+! ---
+
+  origin:= ON(c_id,u_val);       ! Origin            
+
+  xaxis :=  TANG(c_id,u_val);    ! X axis
+
+  IF   ABS(xaxis.x) <= ABS(xaxis.y) AND ABS(xaxis.x) <= ABS(xaxis.z)  THEN
+    yaxis := VEC( 1.0, 0.0, 0.0 );
+  ELIF ABS(xaxis.y) <= ABS(xaxis.x) AND ABS(xaxis.y) <= ABS(xaxis.z)  THEN
+    yaxis := VEC( 0.0, 1.0, 0.0 );
+  ELIF ABS(xaxis.z) <= ABS(xaxis.y) AND ABS(xaxis.z) <= ABS(xaxis.x)  THEN
+    yaxis := VEC( 0.0, 0.0, 1.0 );
+  ELSE
+    EXIT("c_bplanev0 Y axis error");
+  ENDIF;
+
+
+
+  CSYS_3P(#3,"Tangent",          ! Create coordinate system
+   origin, origin+xaxis,         !
+   origin+yaxis                  !
+   :BLANK=bflag_c,PEN=3);        !
+
+
+! +++
+! 4. Create B_PLANE
+!
+! ---
+
+  tot_arc:= ARCL(c_id);          ! Total arclength of curve
+  size   := tot_arc*0.2;         ! Size 20% of total arclength
+
+
+  MODE_LOCAL(GLOBAL_REF(#3));    ! Activate local system
+
+  B_PLANE(#1,                    ! Create tangent plane
+    VEC ( 0   , size ,-size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,  0   , size),    !
+    VEC ( 0   ,-size ,-size)     !
+     :BLANK=bflag_i,PEN=3);      !
+
+  MODE_GLOBAL();                 ! Activate global system
+
+ENDMODULE

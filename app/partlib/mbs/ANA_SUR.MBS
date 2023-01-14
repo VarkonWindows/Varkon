@@ -1,0 +1,225 @@
+!******************** ANA_SUR  **********************
+!
+! Outprint of the tree structure for a surface, i.e
+! shows how the surface is defined.
+!
+! This is an analysis function which should be called
+! with code F in the menue file (FANGA.MDF).
+!
+! 1992-12-17 Gunnar Liden
+! 1993-01-19 Printout  Ronny Gyllensten
+! 1993-01-26 UNIX print command            Gunnar Liden
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE ANA_SUR  (
+
+REF           part_id            >"@t16384 Select surface (part)";
+STRING        filename*132:= " " >"@ Output file name <CR>=screen");
+
+! Interna variabler:
+
+  STRING      part_name*10;    ! Name of the input part
+
+
+                               ! For routine GET_IDCRVS
+  INT     no_strips;           ! Number of strips in the surface
+  REF     spine_id;            ! Identity of spine in surface (part)
+  STRING  lim_type(25)*20;     ! Limit   curves types
+  REF     lim_id(25,4);        ! Limit   curves (# id's)
+  STRING  tan_type(25)*20;     ! Tangent curves types
+  REF     tan_id(25,4);        ! Tangent curves (# id's)
+  STRING  pfn_type(25)*20;     ! Pvalue  curve  types
+  REF     pfn_id(25,4);        ! Pvalue  curves (# id's)
+  STRING  mid_type(25)*20;     ! Mid     curve  types
+  REF     mid_id(25,4);        ! Mid     curves (# id's)
+
+                               ! For function GETHDR:
+  INT         typ;             ! Type of entity
+  INT         nref;            ! Number of references to part
+                               ! (not used any more !!!! )
+  INT         blank;           ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT         niv};            ! The layer for the entity
+  INT         penna;           ! Pen number (colour)
+  REF         grupp_id(3);     ! Global identities for the
+                               ! groups, which the entity is part of ..
+
+                               ! For function GETPRT:
+  STRING      namn*10;         ! Name of the part
+  INT         mtyp;            ! Module type
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Module attribute
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identity for the 
+                               ! coord. system used to position
+                               ! the part
+  INT         np;              ! Number of parameters in the part
+  INT         mant;            ! Number of entities in the part
+  REF         idm_lev1(100);   ! Array with global references (##)
+                               ! to all entities in the input part
+
+  INT         i_s;             ! Loop index for strips in the surface
+
+  STRING      name_out*132 ;   ! Name of (path for) the variable
+
+  STRING      s*1;             ! String for DEBUG (INPMT)
+
+  FILE        mbs;             ! Output .DAT file
+
+  INT         DEBUG;           ! For debug printout
+
+BEGINMODULE
+
+!                       1. Initiations
+!                       ===============
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2
+
+   IF filename <> " " THEN     ! Open file
+     OPEN(mbs,"w",act_jobdir()+! Open output MBS file
+       filename+".DAT");       !
+     IF (IOSTAT(mbs)<>0 ) THEN ! Check (program error)
+      EXIT("Open of "          !
+      +filename+".DAT failed");!
+     ENDIF;                    !
+   ENDIF;                      !
+
+
+!            2. Read data from GM for the whole part
+!            ========================================
+
+  GETHDR(part_id,typ,nref,     ! Read header for the part
+   blank,niv},penna,grupp_id); !
+
+  GETPRT(part_id,namn,mtyp,    ! Read data about the part
+   mattr,kid,np,mant,idm_lev1);!
+  part_name := namn;           ! Input part name
+
+  IF DEBUG = 1 THEN            ! Debug
+  s:=INPMT("ANA_SUR:"+         !
+   " Input part "+part_name    !
+   ,"", 1);                    !
+  ENDIF;                       !
+
+
+!              3. Data from the referenced surface (part)
+!              ------------------------------------------
+
+  part(#2,GET_IDCRVS(part_id,   ! Retrieve number of strips and
+            no_strips,spine_id, ! references (# id's) from the 
+            lim_type,lim_id,    ! surface (the input part)
+            tan_type,tan_id,    !
+            pfn_type,pfn_id,    !
+            mid_type,mid_id)    !
+            :SAVE=0);           ! Part (call) not saved in GM
+
+  IF no_strips > 24 THEN        ! Program error: no_strips > 24
+    EXIT("ANA_SUR: no_strips"   !
+       +" > 24 ");              !
+  ENDIF;
+
+
+!                  4. Printout of data to screen
+!                  =============================
+
+  LST_INI("Tree structure for"  ! Open  alpha-numeric screen
+    +" surface: "+part_name);   !
+                   
+!                    Header to filename.DAT
+
+  IF filename <> " " THEN      
+  OUTLIN(mbs);
+  OUTSTR(mbs,"Tree structure for surface:   "+part_name);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"__________________________________________________________ ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  ENDIF;
+
+
+  FOR i_s := 1 TO no_strips+1 DO! Start loop all strips
+
+   PART(#20,ANA_NAME (          ! Get path for the limit   curve
+   lim_id(i_s,1),name_out));    ! 
+   LST_LIN("Limit   crv: " +    ! Printout on screen
+    lim_type(i_s)+" "+name_out);!
+   PART(#21,ANA_NAME (          ! Get path for the tangent curve
+   tan_id(i_s,1),name_out));    !
+   LST_LIN("Tangent crv: " +    ! Printout on screen
+    tan_type(i_s)+" "+name_out);!
+
+   IF filename <> " " THEN      ! Printout to file filename.DAT
+   OUTLIN(mbs);                 !
+   OUTSTR(mbs,"Limit   crv: " + ! 
+    lim_type(i_s)+" "+name_out);!
+   OUTLIN(mbs);                 !
+   OUTSTR(mbs,"Tangent crv: " + ! 
+    tan_type(i_s)+" "+name_out);!
+   OUTLIN(mbs);                 !
+   ENDIF;                       !
+
+
+   IF i_s <= no_strips THEN     ! P values:
+                                !
+   IF pfn_type(i_s) <>          ! P value (scalar) function ?
+    "UNDEFINED"           THEN  ! 
+   PART(#22,ANA_NAME (          ! Get path for the P value curve
+   pfn_id(i_s,1),name_out));    !
+   LST_LIN("P-value crv: " +    ! Printout on screen
+    pfn_type(i_s)+" "+name_out);!
+   IF filename <> " " THEN      ! Printout to file filename.DAT
+   OUTLIN(mbs);                 !
+   OUTSTR(mbs,"P-value crv: " + ! 
+    pfn_type(i_s)+" "+name_out);!
+   OUTLIN(mbs);                 !
+   ENDIF;                       !
+   ENDIF;                       !
+                                !
+   IF mid_type(i_s) <>          ! P value mid curve ?
+    "UNDEFINED"           THEN  ! 
+   PART(#23,ANA_NAME (          ! Get path for the mid (P) curve
+   mid_id(i_s,1),name_out));    !
+   LST_LIN("Mid (P) crv: " +    ! Printout on screen
+    mid_type(i_s)+" "+name_out);!
+   IF filename <> " " THEN      ! Printout to file filename.DAT
+   OUTLIN(mbs);                 !
+   OUTSTR(mbs,"Mid (P) crv: " + ! 
+    mid_type(i_s)+" "+name_out);!
+   OUTLIN(mbs);                 !
+   ENDIF;                       !
+   ENDIF;                       !
+                                !
+   ENDIF;                       !
+
+  ENDFOR;                       ! End  loop all strips
+
+   PART(#24,ANA_NAME (          ! Get path for the spine curve
+   spine_id,name_out));         !
+   LST_LIN("Spine   crv: " +    ! Printout on screen
+    "SPINE" + " "+name_out);    !
+
+   IF filename <> " " THEN      ! Printout to file filename.DAT
+   OUTLIN(mbs);                 !
+   OUTSTR(mbs,"Spine   crv: " + ! Printout on screen
+    "SPINE" + " "+name_out);    !
+   OUTLIN(mbs);                 !
+   ENDIF;                       !
+
+  IF filename <> " " THEN       ! Close .DAT file
+    CLOSE(mbs);                 !
+
+!VAX    OS("PRTLNO/HPL "+act_jobdir()! Printout on HPL
+!VAX       + filename+".DAT");       !
+    OS("print      "+act_jobdir()! Printout 
+       + filename+".DAT");       !
+    
+  ENDIF;                        !
+
+  LST_EXI();                    ! Close alpha-numeric screen
+
+
+ENDMODULE

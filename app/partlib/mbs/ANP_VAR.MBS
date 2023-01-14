@@ -1,0 +1,505 @@
+!******************** ANP_VAR  **********************
+!
+! Scans the part for variables defined by PLIN, TPLAN,
+! PVALUE, PCUR and PCURLT.
+!
+! Outputs the variable values.
+!
+! This is an analysis function which should be called
+! with code F in the menue file (FANGA.MDF).
+!
+! 1992-12-21 Gunnar Liden
+! 1993-01-19 Printout Ronny Gyllensten
+! 1993-05-17 PCUR and PCURLT added             Gunnar Liden
+! 1993-06-14 FANGAOPT file (opt) added         Gunnar Liden
+! 1994-03-17 RTS f|r litet i PC 50->19  100->99       Gunnar Liden
+!
+!****************************************************
+
+BASIC GEOMETRY MODULE ANP_VAR  (
+
+REF           part_id            >"@t16384 Select surface (part)";
+STRING        filename*132:= " " >"@ Output file name <CR>=screen";
+STRING        fileopt*132 := " " >"@ File for FANGAOPT");
+
+! Interna variabler:
+
+  STRING      part_name*10;    ! Name of the input part
+
+  STRING      name_all(19)*10; ! Name of the (variable definition) part
+  REF         crv_all(19);     ! Curve references 
+  INT         point_all(19);   ! Point numbers in curves
+  FLOAT       var_all(19);     ! Variable values
+  INT         ivar_all(19);    ! Variable numbers
+  VECTOR      uv_all(19);      ! Vectors u1 and v1
+  FLOAT       max_all(19);     ! Upper limits
+  FLOAT       min_all(19);     ! Lower limits
+  INT         gra_all(19);     ! Graphical representation
+  STRING      path_all(19)*132;! Paths for parts ...
+
+  STRING      name_out*132 ;   ! Name of (path for) the variable
+
+  INT         n_poster;        ! Number of calls to PLIN, TPLAN
+                               ! and PVALUE
+
+  INT         i_r;             ! Loop index for references  in part
+  INT         ii_r;            ! Loop index for references  in part
+  INT         tot_r;           ! Total number of references in part
+  REF         id;              ! Reference
+
+  INT         i_level;         ! Current level in parts tree structure
+  INT         lev1_r;          ! Total no of references on level 1
+  INT         lev2_r;          ! Total no of references on level 2
+  INT         lev3_r;          ! Total no of references on level 3
+  INT         lev4_r;          ! Total no of references on level 4
+  INT         lev5_r;          ! Total no of references on level 5
+  INT         lev6_r;          ! Total no of references on level 6
+  INT         lev7_r;          ! Total no of references on level 7
+  INT         lev8_r;          ! Total no of references on level 8
+  INT         lev9_r;          ! Total no of references on level 9
+
+  INT         i_p;             ! Loop index for ...
+
+  STRING      part_ids*132;    ! Input part_id as a string
+
+                               ! For function GETHDR:
+  INT         typ;             ! Type of entity
+  INT         nref;            ! Number of references to part
+                               ! (not used any more !!!! )
+  INT         blank;           ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT         niv};            ! The layer for the entity
+  INT         penna;           ! Pen number (colour)
+  REF         grupp_id(3);     ! Global identities for the
+                               ! groups, which the entity is part of ..
+
+                               ! For function GETPRT:
+  STRING      namn*10;         ! Name of the part
+  INT         mtyp;            ! Module type
+                               ! Eq. 2: DRAWING
+                               ! Eq. 3: GEOMETRY
+  INT         mattr;           ! Module attribute
+                               ! Eq. 1: LOCAL
+                               ! Eq. 2: GLOBAL
+                               ! Eq. 3: BASIC
+  REF         kid;             ! Global identity for the 
+                               ! coord. system used to position
+                               ! the part
+  INT         np;              ! Number of parameters in the part
+  INT         mant;            ! Number of entities in the part
+  REF         idm_lev1( 99);   ! Array with global references (##)
+                               ! to all entities in the input part
+  REF         idm_lev2( 99);   ! Array with global references (##)
+                               ! to all entities on level 2
+  REF         idm_lev3( 99);   ! Array with global references (##)
+                               ! to all entities on level 3
+  REF         idm_lev4( 99);   ! Array with global references (##)
+                               ! to all entities on level 4
+  REF         idm_lev5( 99);   ! Array with global references (##)
+                               ! to all entities on level 5
+  REF         idm_lev6( 99);   ! Array with global references (##)
+                               ! to all entities on level 6
+  REF         idm_lev7( 99);   ! Array with global references (##)
+                               ! to all entities on level 7
+  REF         idm_lev8( 99);   ! Array with global references (##)
+                               ! to all entities on level 8
+  REF         idm_lev9( 99);   ! Array with global references (##)
+                               ! to all entities on level 9
+  REF         idm(25);         ! Array with global references (##)
+                               ! (within loop)
+
+                               ! For function GETID:
+  STRING      code*1;          ! Eq. F: First entity in GM
+                               ! Eq. N: Next  entity
+                               ! Eq. n: Next  entity on same level
+                               ! Eq. P: Next  part
+
+  FILE   mbs;                  ! Output .DAT file
+
+  FILE   opt;                  ! Output optimization .DAT file
+                               ! (for FANGAOPT)
+
+
+  STRING      s*1;             ! String for DEBUG (INPMT)
+
+  INT         DEBUG;           ! For debug printout
+
+BEGINMODULE
+
+!                       1. Initiations
+!                       ===============
+
+  DEBUG := 0;                  ! Change to 0, 1 or 2
+
+!     Make the "local" input reference to a "global" reference
+
+   part_ids:=RSTR(part_id);    ! Convert reference to string
+   part_ids:="#"+ part_ids;    ! Add #
+   part_id :=RVAL(part_ids);   ! Convert string to reference
+
+   n_poster := 0;              ! Initiation number of calls to 
+                               ! variable definition parts like
+                               ! PLIN, TPLAN and PVALUE
+
+   IF filename <> " " THEN     ! Open file
+     OPEN(mbs,"w",act_jobdir()+! Open output MBS file
+       filename+".DAT");       !
+     IF (IOSTAT(mbs)<>0 ) THEN ! Check (program error)
+      EXIT("Open of "          !
+      +filename+".DAT failed");!
+     ENDIF;                    !
+   ENDIF;                      !
+
+   IF fileopt <> " " THEN      ! Open file for FANGAOPT
+     OPEN(opt,"w",             ! Always to FANGAOPT
+     "DISK$NMG:<VARKON."+      ! job directory !
+     "PRJLIB.FANGAOPT.JOB>"+   ! 
+       fileopt+".DAT");        !
+     IF (IOSTAT(opt)<>0 ) THEN ! Check (program error)
+      EXIT("Open of "          !
+      +fileopt+".DAT failed"); !
+     ENDIF;                    !
+   ENDIF;                      !
+
+!            2. Read data from GM for the whole part
+!            ========================================
+
+  GETHDR(part_id,typ,nref,     ! Read header for the part
+   blank,niv},penna,grupp_id); !
+
+  GETPRT(part_id,namn,mtyp,    ! Read data about the part
+   mattr,kid,np,mant,idm_lev1);!
+  part_name := namn;           ! Input part name
+  lev1_r     := mant;          ! Total number of references
+
+  IF lev1_r > 99 THEN          ! Check no references
+   EXIT("ANP_VAR: lev1_r>99"); !
+  ENDIF;                       !
+
+  IF DEBUG = 1 THEN            ! Debug
+  s:=INPMT("ANP_VAR:"+         !
+    " tot_r= mant "            !
+   + str(mant,-1,0) +          !
+   " Input part "+part_name    !
+   ,"", 1);                    !
+  ENDIF;                       !
+
+
+!                  3. Retrieve variable data
+!                  ==========================
+
+!                  Initiations of loop variables 
+
+  lev2_r:=0;                   ! Total no of references on level 2
+  lev3_r:=0;                   ! Total no of references on level 3
+  lev4_r:=0;                   ! Total no of references on level 4
+  lev5_r:=0;                   ! Total no of references on level 5
+  lev6_r:=0;                   ! Total no of references on level 6
+  lev7_r:=0;                   ! Total no of references on level 7
+  lev8_r:=0;                   ! Total no of references on level 8
+  lev9_r:=0;                   ! Total no of references on level 9
+
+  i_level := 1;                ! Current level in tree
+  tot_r   := lev1_r;           ! Total number of references on
+                               ! current level (=1)
+
+nlev:                          ! Label: Next level in the tree
+
+  IF DEBUG = 2 THEN            ! Debug
+  s:=INPMT("ANP_VAR:"+         !
+    " Level in tree "          !
+   + str(i_level,-1,0) +       !
+    " no references tot_r "    !
+   + str(tot_r,-1,0)           !
+   ,"", 1);                    !
+  ENDIF;                       !
+
+  FOR i_r := 1 TO tot_r DO     ! Start loop all references in a part
+
+    IF   i_level=1 THEN        ! Reference to an entity in the part
+      id := idm_lev1(i_r);     ! from current i_levell array
+    ELIF i_level=2 THEN        !
+      id := idm_lev2(i_r);     !
+    ELIF i_level=3 THEN        !
+      id := idm_lev3(i_r);     !
+    ELIF i_level=4 THEN        !
+      id := idm_lev4(i_r);     !
+    ELIF i_level=5 THEN        !
+      id := idm_lev5(i_r);     !
+    ELIF i_level=6 THEN        !
+      id := idm_lev6(i_r);     !
+    ELIF i_level=7 THEN        !
+      id := idm_lev7(i_r);     !
+    ELIF i_level=8 THEN        !
+      id := idm_lev8(i_r);     !
+    ELIF i_level=9 THEN        !
+      id := idm_lev9(i_r);     !
+    ELSE                       !
+      EXIT("ANP_VAR: " +       ! Programming check
+      "i_level error");        !
+    ENDIF;                     !
+
+    IF id = #0  THEN           ! Programming check of reference id
+      EXIT("ANP_VAR: " +       !
+      "id = #0 in i_r loop");  !
+    ENDIF;                     !
+
+    GETHDR(id,typ,nref,        ! Read header for the entity
+    blank,niv},penna,grupp_id);! 
+
+    IF DEBUG = 1 AND           ! Debug
+         typ <> 16384 THEN     ! 
+    s:=INPMT("ANP_VAR : typ "  !
+     + str(typ ,-1,0)          !
+     ,"", 1);                  !
+    ENDIF;                     !
+    
+    IF typ <> 16384 THEN       ! Next entity if not a part 
+      GOTO next;               ! (goto label next)
+    ENDIF;                     !
+    GETPRT(id,namn,mtyp,       ! Read data about the part
+     mattr,kid,np,mant,idm);   !
+
+    IF DEBUG = 1 THEN          ! Debug
+    s:=INPMT("ANP_VAR : typ "  !
+     + str(typ ,-1,0) +        !
+     "  namn " + namn +        !
+     " mant "+STR(mant,-1,0)   !
+     ,"", 1);                  !
+    ENDIF;                     !
+
+    FOR ii_r:= 1 TO mant  DO   ! Add references from part to 
+      IF   i_level=1 THEN      !
+        lev2_r:=lev2_r+1;      !
+        IF lev2_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev2_r>99");        !
+        ENDIF;                 !
+        idm_lev2(lev2_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=2 THEN      !
+        lev3_r:=lev3_r+1;      !
+        IF lev3_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev3_r>99");        !
+        ENDIF;                 !
+        idm_lev3(lev3_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=3 THEN      !
+        lev4_r:=lev4_r+1;      !
+        IF lev4_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev4_r>99");        !
+        ENDIF;                 !
+        idm_lev4(lev4_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=4 THEN      !
+        lev5_r:=lev5_r+1;      !
+        IF lev5_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev5_r>99");        !
+        ENDIF;                 !
+        idm_lev5(lev5_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=5 THEN      !
+        lev6_r:=lev6_r+1;      !
+        IF lev6_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev6_r>99");        !
+        ENDIF;                 !
+        idm_lev6(lev6_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=6 THEN      !
+        lev7_r:=lev7_r+1;      !
+        IF lev7_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev7_r>99");        !
+        ENDIF;                 !
+        idm_lev7(lev7_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=7 THEN      !
+        lev8_r:=lev8_r+1;      !
+        IF lev8_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev8_r>99");        !
+        ENDIF;                 !
+        idm_lev8(lev8_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=8 THEN      !
+        lev9_r:=lev9_r+1;      !
+        IF lev9_r > 99 THEN    ! Check no references
+         EXIT("ANP_VAR:"+      !
+         " lev9_r>99");        !
+        ENDIF;                 !
+        idm_lev9(lev9_r):=     !
+            idm(ii_r);         !
+      ELIF i_level=9 THEN      !
+          ;                    !
+      ELSE                     !
+        EXIT("ANP_VAR: " +     ! Programming check
+        "ii_r error");         !
+      ENDIF;                   !
+    ENDFOR;                    ! End loop references in "loop" part
+
+    IF   namn =  "PLIN"  THEN  ! Next entity if part name not
+      ;                        ! is PLIN, TPLAN, PVALUE, PCUR or 
+    ELIF namn =  "TPLAN" THEN  ! PCURLT
+      ;                        !
+    ELIF namn = "PVALUE" THEN  !
+      ;                        !
+    ELIF namn = "PCUR" THEN    !
+      ;                        !
+    ELIF namn = "PCURLT" THEN  !
+      ;                        !
+    ELSE                       !
+      GOTO next;               ! 
+    ENDIF;                     !
+
+    n_poster := n_poster + 1;  ! Add one to number of defined variables
+    IF n_poster > 19 THEN      ! Max number (program check)
+      EXIT("ANP_VAR: " +       !
+      "n_poster > 19");        !
+    ENDIF;                     !
+
+    name_all(n_poster) := namn;             ! Name of part
+
+    PART(#20,ANA_NAME (id,name_out));       ! Path for part
+    path_all(n_poster) := name_out;         !
+
+    crv_all(n_poster)  := GETREF(id,1);     ! Curve references
+    point_all(n_poster):= GETINT(id,2);     ! Point numbers in curves
+    var_all(n_poster)  := GETFLT(id,3);     ! Variable values
+    ivar_all(n_poster) := GETINT(id,4);     ! Variable numbers
+    IF   namn = "PVALUE" THEN
+    uv_all(n_poster)   := VEC(0,0,0);       ! Vectors u1 and v1
+    max_all(n_poster)  := GETFLT(id,5);     ! Upper limits
+    min_all(n_poster)  := GETFLT(id,6);     ! Lower limits
+    gra_all(n_poster)  := GETINT(id,7);     ! Graphical representation
+    ELIF namn =   "PLIN" THEN
+    uv_all(n_poster)   := GETVEC(id,5);     ! Vectors u1 and v1
+    max_all(n_poster)  := GETFLT(id,6);     ! Upper limits
+    min_all(n_poster)  := GETFLT(id,7);     ! Lower limits
+    gra_all(n_poster)  := GETINT(id,8);     ! Graphical representation
+    ELIF namn =  "TPLAN" THEN
+    uv_all(n_poster)   := GETVEC(id,5);     ! Vectors u1 and v1
+    max_all(n_poster)  := GETFLT(id,6);     ! Upper limits
+    min_all(n_poster)  := GETFLT(id,7);     ! Lower limits
+    gra_all(n_poster)  := GETINT(id,8);     ! Graphical representation
+    ELIF namn =  "PCUR" THEN
+    max_all(n_poster)  := GETFLT(id,6);     ! Upper limits
+    min_all(n_poster)  := GETFLT(id,7);     ! Lower limits
+    gra_all(n_poster)  := GETINT(id,8);     ! Graphical representation
+    ELIF namn =  "PCURLT" THEN
+    max_all(n_poster)  := GETFLT(id,8);     ! Upper limits
+    min_all(n_poster)  := GETFLT(id,9);     ! Lower limits
+    gra_all(n_poster)  := GETINT(id,10);    ! Graphical representation
+    ENDIF;
+
+next:                          ! Label: Next entity
+;
+
+  ENDFOR;                      ! End loop all references in the part
+                                 
+  IF    i_level = 1 THEN       ! Number of references on next level
+    tot_r   := lev2_r;         ! 
+  ELIF  i_level = 2 THEN       ! 
+    tot_r   := lev3_r;         ! 
+  ELIF  i_level = 3 THEN       !
+    tot_r   := lev4_r;         !
+  ELIF  i_level = 4 THEN       !
+    tot_r   := lev5_r;         !
+  ELIF  i_level = 5 THEN       !
+    tot_r   := lev6_r;         !
+  ELIF  i_level = 6 THEN       !
+    tot_r   := lev7_r;         !
+  ELIF  i_level = 7 THEN       !
+    tot_r   := lev8_r;         !
+  ELIF  i_level = 8 THEN       !
+    tot_r   := lev9_r;         !
+  ELIF  i_level = 9 THEN       !
+    EXIT("ANP_VAR: " +         ! Error: Only 9 levels programmed
+      "Only 9 levels progr."); !
+  ELSE                         !
+    EXIT("ANP_VAR: " +         ! Programming check
+      "tot_r error");          !
+  ENDIF;                       !
+
+  IF tot_r > 0 THEN            ! Continue scanning on next level ?
+    i_level:=i_level+1;        !
+    GOTO nlev;                 !
+  ENDIF;                       !
+
+!                  4. Printout of data to screen and HPL
+!                  =====================================
+
+  LST_INI("Defined variables in surface: "+part_name+"   "+part_ids);
+                   ! Open  alpha-numeric screen
+
+!                    Header to filename.DAT
+
+  IF filename <> " " THEN      
+  OUTLIN(mbs);
+  OUTSTR(mbs,"Defined variables in surface:   "+part_name+"   "+part_ids);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"__________________________________________________________ ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  Variable     Value             Max            "+
+                 "  Min        Point ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  ENDIF;
+
+  LST_LIN("  Variable     Value             Max            "+
+           "  Min        Point ");
+
+  FOR i_p := 1 TO n_poster DO  ! Start loop all variables
+
+   LST_LIN(
+           "     v"+STR(ivar_all(i_p), -1,0)+
+           "     "+STR( var_all(i_p),-12,6)+
+           "     "+STR( max_all(i_p),-12,6)+
+           "     "+STR( min_all(i_p),-12,6)+
+           "     "+STR( point_all(i_p),-1,0)
+               );
+   LST_LIN("             "+path_all(i_p) );
+ 
+   IF filename <> " " THEN
+   OUTLIN(mbs);
+   OUTSTR(mbs,
+           "     v"+STR(ivar_all(i_p), -1,0)+
+           "     "+STR( var_all(i_p),-12,6)+
+           "     "+STR( max_all(i_p),-12,6)+
+           "     "+STR( min_all(i_p),-12,6)+
+           "     "+STR( point_all(i_p),-1,0)
+               );
+   OUTLIN(mbs);
+   OUTSTR(mbs,"             "+path_all(i_p) );
+   OUTLIN(mbs);
+   ENDIF;
+
+   IF fileopt <> " " THEN      ! Write to file for FANGAOPT
+   OUTSTR(opt,
+           "     v"+STR(ivar_all(i_p), -1,0) +
+           "     "+STR( var_all(i_p),-25,10)
+               );
+   OUTLIN(opt);
+   ENDIF;                      ! End FANGAOPT
+
+  ENDFOR;                      ! End  loop all variables
+
+
+  IF filename <> " " THEN      ! Close .DAT file
+    CLOSE(mbs);                !
+
+    OS("PRTLNO/HPL "+act_jobdir()! Printout on HPL
+       + filename+".DAT");      !
+  ENDIF;                       !
+
+  IF fileopt <> " " THEN       ! Close FANGAOPT .DAT file
+    CLOSE(opt);                !
+  ENDIF;                       !
+
+  LST_EXI();                   ! Close alpha-numeric screen
+
+
+ENDMODULE

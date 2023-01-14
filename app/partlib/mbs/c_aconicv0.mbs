@@ -1,0 +1,161 @@
+! ***************** c_aconicv0 ****************************
+!
+! +++
+! Create a conic segment from two surface points
+!
+! 1995-01-18 Gunnar Liden
+! ---
+!************************************************************
+
+!sdesce Create a conic segment from two surface points
+!sdescs Skapa k{gelsnittssegment fr}n tv} ytpunkter
+
+GLOBAL GEOMETRY MODULE c_aconicv0 (
+
+REF    s1_id                    >"@t16 Select surface 1";
+VECTOR uv1    := VEC(1.1,2.1,0) >"U,V v{rde f|r punkt 1";
+STRING dir1*1 := "V"            >"Tangent riktning f|r pkt 1 (U eller V)";
+VECTOR midpt  := VEC(1000,0,0 ) >"Mittpunkt f|r k{gelsnitt";
+REF    s2_id                    >"@t16 Select surface 2";
+VECTOR uv2    := VEC(1.1,2.1,0) >"U,V v{rde f|r punkt 2";
+STRING dir2*1 := "V"            >"Tangent riktning f|r pkt 2 (U eller V)";
+INT    graphic:= 1              > "@ Grafik");
+
+
+! Internal variables
+
+  INT    npatu_1;                ! No patches in U direction surface 1
+  INT    npatv_1;                ! No patches in V direction surface 1
+  INT    npatu_2;                ! No patches in U direction surface 2
+  INT    npatv_2;                ! No patches in V direction surface 2
+
+  VECTOR poi1;                   ! Start point
+  VECTOR tan1;                   ! Start tangent
+  VECTOR poi2;                   ! End   point
+  VECTOR tan2;                   ! End   tangent
+  
+  INT    bflag_i;                ! Blank flag for curve
+
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 1;                       ! Debug printout
+
+  IF graphic = 1 THEN               ! 
+    bflag_i := 0;                   ! Blank flag curve
+  ELSE                              !
+    bflag_i := 1;                   ! Blank flag curve
+  ENDIF;                            !
+
+  PART(#2,G_REFSEL(s1_id):SAVE=0);  ! Add # to reference if necessary
+  PART(#3,G_REFSEL(s1_id):SAVE=0);  ! Add # to reference if necessary
+
+! +++
+!  Retrieve number of patches. Calls of GETSURH.
+! ---
+
+
+  GETSURH(s1_id,"NPATU",npatu_1);   ! Retrieve number of U patches
+  GETSURH(s1_id,"NPATV",npatv_1);   ! Retrieve number of V patches
+  GETSURH(s2_id,"NPATU",npatu_2);   ! Retrieve number of U patches
+  GETSURH(s2_id,"NPATV",npatv_2);   ! Retrieve number of V patches
+
+  IF DEBUG = 1 THEN                 ! Debug to screen
+   s:= INPMT("c_aconicv0 "   +      !
+    " npatu_1 "+STR(npatu_1,-1,0)+  !
+    " npatu_1 "+STR(npatv_1,-1,0),  !
+    "",1);                          !
+  ENDIF;                            !
+
+  IF uv1.x >= 0.0 AND               ! Check uv1
+     uv1.x <= npatu_1 THEN          !
+    ;                               !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+        "uv1 U v{rde ej OK");       !
+  ENDIF;                            !
+  IF uv1.y >= 0.0 AND               !
+     uv1.y <= npatv_1 THEN          !
+    ;                               !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+        "uv1 V v{rde ej OK");       !
+  ENDIF;                            !
+  IF uv2.x >= 0.0 AND               ! Check uv2
+     uv2.x <= npatu_1 THEN          !
+    ;                               !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+        "uv2 U v{rde ej OK");       !
+  ENDIF;                            !
+  IF uv2.y >= 0.0 AND               !
+     uv2.y <= npatv_1 THEN          !
+    ;                               !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+        "uv2 V v{rde ej OK");       !
+  ENDIF;                            !
+
+
+! +++
+! 2. Create points and tangent points
+! ---
+
+  poi1 := ON(s1_id,uv1);            ! Start point 
+  poi2 := ON(s2_id,uv2);            ! End   point 
+
+  IF   dir1= "U" OR dir1= "u" THEN  ! Tangent for point 1
+    tan1:= EVAL(s1_id,"DRDV",uv1);  !
+  ELIF dir1= "V" OR dir1= "v" THEN  !
+    tan1:= EVAL(s1_id,"DRDU",uv1);  !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+     "riktning pkt 1 ej U eller V");!
+  ENDIF;                            !
+  IF   dir2= "U" OR dir2= "u" THEN  ! Tangent for point 2
+    tan2:= EVAL(s2_id,"DRDV",uv2);  !
+  ELIF dir2= "V" OR dir2= "v" THEN  !
+    tan2:= EVAL(s2_id,"DRDU",uv2);  !
+  ELSE                              !
+      EXIT("c_aconicv0 "+           !
+     "riktning pkt 2 ej U eller V");!
+  ENDIF;                            !
+
+  IF DEBUG = 1 THEN                 ! Create points for Debug
+    POI_FREE(#11,poi1);             !
+    POI_FREE(#12,poi1+tan1);        !
+    POI_FREE(#13,midpt);            !
+    POI_FREE(#14,poi2);             !
+    POI_FREE(#15,poi2+tan2);        !
+    LIN_FREE(#16,poi1,poi2:PEN=4);  !
+    LIN_FREE(#17,poi1,midpt:PEN=4); !
+    LIN_FREE(#18,poi2,midpt:PEN=4); !
+    LIN_FREE(#19,poi1,              !
+                 poi1+tan1:PEN=2);  !
+    LIN_FREE(#20,poi2,              !
+                 poi2+tan2:PEN=2);  !
+  ENDIF;                            !
+
+! +++
+! 3. Create output conic segment
+! ---
+
+  CUR_CONIC(#1,"FREE",              ! Create conic
+   poi1, poi1 + tan1 ,              !
+   midpt,                           !
+   poi2, poi2 + tan2                !
+   :BLANK=bflag_i );                !
+
+ENDMODULE

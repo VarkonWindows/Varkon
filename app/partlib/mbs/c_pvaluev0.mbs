@@ -1,0 +1,270 @@
+!********************* c_pvaluev0 ***********************
+! +++
+! Calculates the P value for a conic
+! 
+! Revision history
+! ________________
+!
+! ---
+! 1994-10-12  Gunnar Liden
+! 1996-10-22 Bug l_criter and SQRT(negative)  Gunnar Liden
+! 1998-01-14 Graphics added Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Beräknar P värde
+!sdesce Calculates the P value for a conic
+
+GLOBAL GEOMETRY MODULE c_pvaluev0(
+
+    VECTOR   s_pt;                  ! Start point";
+    VECTOR   s_t ;                  ! Start tangent";
+    VECTOR   e_pt;                  ! End   point";
+    VECTOR   e_t ;                  ! End   tangent";
+    VECTOR   m_pt;                  ! Mid   point";
+    INT      graphic;        
+VAR FLOAT    p_value);              ! Output P value
+
+! Internal variables:
+
+  FLOAT      dist;               ! Coordinate deviation
+  FLOAT      angle;              ! Angle      deviation
+
+  FLOAT      t_angle;            ! Angle between tangents 
+  FLOAT      t_criter;           ! Triangle angle  criterion 
+  FLOAT      l_criter;           ! Triangle length criterion 
+  FLOAT      chord;              ! Chord length               
+
+  VECTOR     u_n;                ! Normalised s_t
+  VECTOR     v_n;                ! Normalised e_t
+  VECTOR     p1_p0;              ! Vector e_pt-s_pt
+
+  VECTOR     i_pt;               ! Intersect mid point
+  VECTOR     p_pt;               ! Projected input mid point
+
+  FLOAT      s_lin1;             ! Parameter for start tangent line
+  FLOAT      s_lin2;             ! Parameter for end   tangent line
+  FLOAT      denom;              ! Denominator
+
+  FLOAT      area1;              ! Triangle area
+  FLOAT      area2;              ! Triangle area
+  FLOAT      area3;              ! Triangle area
+  VECTOR     v_c;                ! Vector for sign of area
+  VECTOR     v1;                 ! Vector area1
+  VECTOR     v2;                 ! Vector area2
+  VECTOR     v3;                 ! Vector area3
+  
+  INT        b_flag;             ! BLANK flag
+
+  INT        DEBUG;              ! Debug flag 
+
+  STRING    s*1;                 ! For DEBUG printout to screen 
+
+BEGINMODULE
+
+!                  1. Initialisations and checks      
+!                  =============================
+
+   DEBUG := 0;                   ! Change to 1, 2 or 3
+
+   t_criter := 0.5;              ! Angle  criterion for triangle
+   l_criter := 0.02;             ! Length criterion for triangle
+
+   p_value := -0.123456789;
+   area1   := -0.123456789;
+   area2   := -0.123456789;
+   area3   := -0.123456789;
+   denom   := -0.123456789;   
+      
+   IF    graphic = 0  THEN       ! Graphic variable
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_pvaluev0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   t_angle := ARCCOS(            ! Angle between tangents 
+         VECN (s_t) *            !
+         VECN (e_t)   )      ;   !
+
+   IF t_angle < t_criter THEN    ! No triangle ?            
+      p_value:= -1.23456789;     !
+      GOTO  nomore;              ! 
+   ENDIF;                        !
+
+   IF DEBUG = 2 THEN             ! For DEBUG=2:
+    s:=INPMT("c_pvaluev0 angle  "!
+       +STR(t_angle ,-15,8)+"  " !
+        ,"",1);                  !
+   ENDIF;
+
+   IF  VECL(s_pt-e_pt) < l_criter THEN
+      p_value:= -1.23456789;     
+      GOTO  nomore;              
+   ENDIF;
+   IF  VECL(s_pt-m_pt) < l_criter THEN
+      p_value:= -1.23456789;     
+      GOTO  nomore;              
+   ENDIF;   
+   IF  VECL(m_pt-e_pt) < l_criter THEN
+      p_value:= -1.23456789;     
+      GOTO  nomore;              
+   ENDIF;   
+!                2. Intersect mid point
+!                ======================
+
+   
+    u_n:= VECN(s_t);             ! Normalised s_t
+    v_n:= VECN(e_t);             ! Normalised e_t
+    p1_p0:= e_pt-s_pt;           ! 
+
+   s_lin1:=(u_n*v_n)*(v_n*p1_p0) ! Parameter for start tangent line
+             - u_n*p1_p0;        !
+   denom:=(v_n*u_n)*(v_n*u_n)    !
+          -1.0;                  !
+   IF ABS(denom) > 0.000001 THEN !
+    s_lin1:= s_lin1/denom;       !
+   ELSE                          !
+      p_value:= -1.23456789;     !
+      GOTO  nomore;              ! 
+   ENDIF;                        !
+
+   s_lin2:= s_lin1*(v_n*u_n)     ! Parameter for end tangent line
+            - v_n*p1_p0;         !
+
+   i_pt:= (s_pt+s_lin1*u_n) +    ! Intersect mid point
+     0.5*((e_pt+s_lin2*v_n) -    !
+          (s_pt+s_lin1*u_n) );   !
+
+
+   IF    graphic >= 1  THEN       ! Graphic variable
+
+     LIN_FREE(#1,s_pt,e_pt);     !
+     LIN_FREE(#2,s_pt,s_pt +     !
+       s_lin1*u_n:PEN=3 );             !
+     LIN_FREE(#3,e_pt,e_pt +     !
+       s_lin2*v_n:PEN=4);              !
+     POI_FREE(#5,i_pt:PEN=2);   
+     POI_FREE(#16,m_pt:PEN=4);   
+
+   ENDIF;                        !
+
+!                  3. Projected point in mid plane
+!                  ===============================
+
+   IF VECL(s_pt-i_pt) <  l_criter THEN
+      p_value:= -1.23456789;     !
+      GOTO  nomore;              !  
+   ENDIF;
+   IF VECL(e_pt-i_pt) <  l_criter THEN
+      p_value:= -1.23456789;     !
+      GOTO  nomore;              !  
+   ENDIF;
+      
+   CSYS_3P(#6, "Mid_plane",      !
+    s_pt, e_pt, i_pt:BLANK=1);   !
+
+   POI_FREE(#4,m_pt:BLANK=1);    !
+
+   MODE_LOCAL(#6);               ! Activate local system
+
+   POI_PROJ(#7,ON(#4):BLANK=1,   ! Projected point
+               PEN=2);           !
+
+   MODE_GLOBAL();                ! Activate global system
+
+   p_pt:= ON(#7);                ! Projected point
+
+  DEL(#6);                       !
+  DEL(#4);                       !
+  DEL(#7);                       !
+
+!                  4. Calculate P value
+!                  ====================
+
+   denom   := -0.123456789; 
+   
+   v_c:= VPROD(s_pt-e_pt,s_t);    ! Sign vector
+
+   v1:=VPROD(s_pt-p_pt,i_pt-p_pt);!
+   area1:= 0.5*VECL(v1);          !
+   IF ABS(area1) < 0.0001 THEN    ! Do not understand but necessary ....
+     p_value:= -1.23456789;       !
+     GOTO  nomore;                !
+   ENDIF;                         !
+
+   IF  v_c * v1 < 0  THEN         !
+     area1 := -area1;             !
+   ENDIF;                         !
+   v2:=VPROD(i_pt-p_pt,e_pt-p_pt);!
+   area2:= 0.5*VECL(v2);          !
+   IF  v_c * v2 < 0  THEN         !
+     area2 := -area2;             !
+   ENDIF;                         !
+   v3:=VPROD(e_pt-p_pt,s_pt-p_pt);!
+   area3:= 0.5*VECL(v3);          !
+   IF  v_c * v3 < 0  THEN         !
+     area3 := -area3;             !
+   ENDIF;                         !
+
+   IF ABS(area3) > 0.0001 AND  area1*area2 > 0.0 THEN    !
+     denom:= 1.0+2.0*SQRT(area1*area2)/area3;
+   ELSE                           !
+     p_value:= -1.23456789;       !
+     GOTO  nomore;                !
+   ENDIF;                         !
+
+   IF ABS(denom) > 0.00001 THEN   !
+     p_value:= 1.0/denom;         !            
+   ELSE                           !
+     p_value:= -1.23456789;       !
+     GOTO  nomore;                !
+   ENDIF;                         !
+
+
+!                  4. Exit och "utskrift om debug {r p}"
+!                  ====================================
+
+nomore:;                         ! Label: No P value
+
+IF  DEBUG = 8 THEN
+LST_INI("c_pvaluev0 Debug printout ");
+LST_LIN("s_pt "+STR(s_pt.x,15,8)+" "+STR(s_pt.y,15,8)+" "+STR(s_pt.z,15,8));
+LST_LIN("e_pt "+STR(e_pt.x,15,8)+" "+STR(e_pt.y,15,8)+" "+STR(e_pt.z,15,8));
+LST_LIN("m_pt "+STR(m_pt.x,15,8)+" "+STR(m_pt.y,15,8)+" "+STR(m_pt.z,15,8));
+LST_LIN("s_t  "+STR(s_t.x,15,8)+" "+STR(s_t.y,15,8)+" "+STR(s_t.z,15,8));
+LST_LIN("e_t  "+STR(e_t.x,15,8)+" "+STR(e_t.y,15,8)+" "+STR(e_t.z,15,8));
+LST_LIN("area1 "+STR(area1,15,8)+" area2 "+STR(area2,15,8)+" area3 "+STR(area3,15,8));
+LST_LIN("denom "+STR(denom,15,8));
+LST_LIN("p_value "+STR(p_value,15,8));
+LST_EXI();
+ENDIF;
+  
+
+
+
+  IF DEBUG = 1              THEN ! F|r DEBUG=1:
+    s:= INPMT("c_pvaluev0 "  +   !
+     "area1 "                    !
+        +STR(area1,-15,8)+ "  "  !
+       +" area2 "                !
+        +STR(area2,-15,8)+ "  "  !
+       +" area3 "                !
+        +STR(area3,-15,8)+ "  "  !
+        ,"",1);                  !
+  ENDIF;                         !
+
+  IF DEBUG = 1              THEN ! F|r DEBUG=1:
+    s:= INPMT("c_pvaluev0 "  +   !
+     "P value "                  !
+        +STR(p_value,-15,8)+"  " !
+        ,"",1);                  !
+  ENDIF;                         !
+
+ENDMODULE
+
+

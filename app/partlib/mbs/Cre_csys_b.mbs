@@ -1,0 +1,54 @@
+!******************** CRE_CSYS_B *****************************************
+! +++
+! "Registrerar" och skapar ett Basic-koordinatsystem (Kontrollerar att
+!  koordinatsystemet finns i NMG).
+!
+! Denna rutin borde f|rst leta efter koordinatsystemet (med en
+! s{rskild modul) och sedan (bara) registrera koordinatsystemet.
+! Se {ven kommentarer i REG_CSYS och REG_CSYS_B
+!
+! 1994-06-21 Karl-Erik Eklund
+! 1994-12-15 Debug och kommentarer tillagt    Gunnar Liden
+! ---
+!***********************************************************************
+!sdesce "Registrate" and create a Basic coordinate system
+!sdescs "Registrerar och skapar ett Basic koordinatsystem 
+
+GLOBAL GEOMETRY MODULE cre_csys_b
+(
+STRING NMGproj*44 := "39"      >"NMG projekt";
+STRING csys*28    := "423"     >"Koordinatsystem";
+INT    grafik     := 2         >"= 1 => osynligt   = 2 => synligt");
+
+
+! Interna variabler:
+
+STRING     NMGfile(6)*80,
+           NMGcsys(6)*28;
+
+STRING     s*1;                ! F|r INPMT
+INT        DEBUG;              !
+
+BEGINMODULE
+
+   DEBUG:= 0;                  ! [ndra till 0 eller 1
+
+!  H{mtar koordinatsystemet fr}n "VARKON csys-databas" eller fr}n NMG.
+!  Kontroll av att koordinatsystemet finns definierat i NMG.
+
+   NMGcsys(1) := csys;
+   NMGfile(1) := "";
+
+   PART(#1,getnmgcsv1(NMGproj, 1, NMGcsys, csys, NMGfile));
+
+   IF DEBUG = 1 THEN 
+      s:= INPMT("CRE_CSYS_B NMGfile(1)= "+NMGfile(1),"",1);
+   ENDIF;
+
+!  "Registrerar" och skapar ett Basic-koordinatsystem.
+
+   PART(#2,reg_csys_b(NMGproj, csys, grafik, "Ben{mning",
+         "Engelsk ben{mning", "Anm{rkning 1", "Anm{rkning 2"));
+
+ENDMODULE
+

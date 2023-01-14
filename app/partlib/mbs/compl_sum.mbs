@@ -1,0 +1,66 @@
+! ***************** compl_sum  ****************************
+!
+! +++
+! Sum of two complex numbers
+!
+! Note that PART(#1,compl_sum (Z1,Z2,"c",Z1) is OK
+! i.e. Z1:= Z1+Z2 is OK
+!
+! Revision history
+! ________________
+!
+! 1995-10-15 Gunnar Liden
+!
+! ---
+!************************************************************
+
+!sdesce Sum of two complex numbers
+!sdescs Summan av tv} komplexa tal
+
+BASIC  GEOMETRY MODULE compl_sum  (
+    VECTOR  Z1;       ! Input complex number  Z1
+    VECTOR  Z2;       ! Input complex number  Z2
+ 
+    STRING  type*3;   ! Eq. c: Cartesian   form Z= x + yi
+                      !
+                      !                               theta*i
+                      ! Eq. e: Exponential form Z= r*e
+
+VAR VECTOR  Z3);      ! Output complex number Z3= Z1 + Z2
+
+! Internal variables
+
+  VECTOR Z1_I;        ! Copy of Z1 but z component is zero
+  VECTOR Z2_I;        ! Copy of Z2 but z component is zero
+  VECTOR Z1_C;        ! Vet ej hur jag direkt ska g|ra med exponential !!!
+  VECTOR Z2_C;        ! Vet ej hur jag direkt ska g|ra med exponential !!!
+  VECTOR Z3_C;        ! Vet ej hur jag direkt ska g|ra med exponential !!!
+
+BEGINMODULE
+
+  Z1_I   := Z1;
+  Z1_I.z := 0.0;
+  Z2_I   := Z2;
+  Z2_I.z := 0.0;
+
+  IF   type = "c"  OR  type = "C"  THEN
+     Z3:= Z1_I + Z2_I;
+  ELIF type = "e"  OR  type = "E"  THEN
+    IF  Z1.x < 0.0 THEN
+      EXIT("compl_sum  Modulus "+STR(Z1.x,-15,8)+" < 0");
+    ENDIF;
+    IF  Z2.x < 0.0 THEN
+      EXIT("compl_sum  Modulus "+STR(Z2.x,-15,8)+" < 0");
+    ENDIF;
+    PART( #1, compl_conv ( Z1, "e", "c", Z1_C ):SAVE=0);
+    PART( #2, compl_conv ( Z2, "e", "c", Z2_C ):SAVE=0);
+    Z3_C.x:=   Z1_C.x + Z2_C.x;
+    Z3_C.y:=   Z1_C.y + Z2_C.y;
+    Z3_C.z:=   0.0;
+    PART( #3, compl_conv ( Z3_C, "c", "e", Z3  ):SAVE=0);
+  ELSE
+    Z3 := VEC(0,0,0);
+    EXIT("compl_sum Complex type "+type+" not implemented");
+  ENDIF;
+
+ENDMODULE

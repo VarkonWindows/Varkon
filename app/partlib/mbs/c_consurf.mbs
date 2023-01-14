@@ -1,0 +1,669 @@
+!********************* c_consurf *******************************************
+!
+!  Purpose
+!  -------
+!
+!  The module converts a Consurf surface (from NMG) to VARKON
+!  longitudinal curves, which will be used for the creation of
+!  a Conic Lofting Surface. 
+!  
+!  Output is a surface MBS module and curve MBS modules. All MBS
+!  modules are compiled.
+!
+!  Temporary geometry (curves) can, as a check, optionally be 
+!  defined in the module.
+!  
+!
+!  Revision history:
+!
+!  1992-07-14  Originally written  Gunnar Liden
+!  1993-01-20  Curve array sizes from (25) to (26)  Gunnar Liden
+!  1993-01-27  No compilation in UNIX   Gunnar Liden
+!
+!
+!***********************************************************************
+
+GLOBAL GEOMETRY MODULE c_consurf (
+STRING srffil*80 := "/u/surflib/" >"Text (F07) file for surface data";
+STRING version*3 := "_A1"         >"Surface and curve versions";
+INT    case      := 2             >"@ =1 ==> creation/check of curves");
+! Fungerar inte n{r modulen anropas med F (SAVE=0)
+! creusect skapar kurva som sedan trimmas. Men startkurvan finns d} ej !
+
+!                           Internal variables
+!                           ==================
+
+STRING surname*9;                 ! Output surface definition MBS module
+STRING curtype*5;                 ! Type of curve: LIM, TAN, ....
+STRING curname*9;                 ! Name of curve MBS module
+
+VECTOR vlineI(26);                 ! Points         to limit curve
+VECTOR tvlineI(26);                ! Tangent points to limit curve
+FLOAT  pvlineI(26);                ! P values       to limit curve
+
+VECTOR tlineI(26);                 ! Points         to tangent curve
+VECTOR ttlineI(26);                ! Tangent points to tangent curve
+FLOAT  ptlineI(26);                ! P values       to tangent curve
+
+VECTOR plineI(26);                 ! Points         to P value curve
+VECTOR tplineI(26);                ! Tangent points to P value curve
+FLOAT  pplineI(26);                ! P values       to P value curve
+
+VECTOR spine(26);                  ! Points         to spine curve
+VECTOR tspine(26);                 ! Tangent points to spine curve
+FLOAT  pspine(26);                 ! P values       to spine curve
+
+INT    sektnr;                     ! Curve section number in surface
+
+INT    kurvnr;                     ! Number for output (MBS code) curve
+
+FLOAT  pp,pt,pc,dpds;              ! P values for a Consurf segment
+FLOAT  x,y,z,tx,ty,tz;             ! Point and coordinate
+
+INT    npoints;                    ! Number of pts in a Consurf Section
+INT    i_v;                        ! Loop index = V line (pointnumber)
+INT    n_ulines;                   ! Number of U lines in surface
+INT    n_vlines;                   ! Number of V lines in surface
+INT    i_sekt;                     ! Loop index = U section
+INT    i_strip;                    ! Loop index = V strip
+INT    i;                          ! Loop index = point number
+
+FILE   f;                          ! File with surface data (F07 file)
+
+FILE   mbs;                        ! File for the created MBS program
+
+STRING curdescr*132;               ! Description of curve in surface
+
+STRING curcode*20;                 ! Type of curve (Name for GROUP)
+
+STRING rad*132;                    ! Scratch string
+
+
+BEGINMODULE
+
+!                        1. Initializations
+!                        ===================
+
+  LST_INI("Convert CONSURF to "  + ! Initialization of debug printout
+          "Conic Lofting Surface"+ ! to the alpha-numeric screen.
+          " (MBS curve modules)"); !
+
+
+  OPEN(f,"r",srffil);              ! Open file with surface data
+  IF ( IOSTAT(f) <> 0 ) THEN       ! Exit with error message if
+    EXIT("No surface data file");  ! there is no file srffil
+  ENDIF;
+
+  LST_LIN("Surface data is on "+   ! Message to alpha-numeric screen
+          "file:   "+srffil);      ! (file exists)
+
+
+!          2. Determine number of V lines and number of sections
+!          ======================================================
+
+
+  sektnr := 0;                     ! Initialize number of U sections
+                                   !
+  n_vlines :=0;                    ! Initialize number of limit curves
+                                   
+
+nysekt:                            ! Label: New section in the surface
+                                   
+!                       Read data in a section
+!                       ----------------------
+
+  rad:=INLIN(f);                   ! Read whole line LINE  S1/Usektnr
+                                   !
+  IF IOSTAT(f) = 0 THEN            ! Continue reading in file
+     sektnr := sektnr + 1;         ! One additional section curve
+  ELSE                             ! Error from INLIN. Assume that
+                                   ! there is no more to read.
+     CLOSE(f);                     ! Close file with surface data
+     GOTO skapa;                   ! Goto skapa (write MBS modules)
+  ENDIF;                           !
+                                   !
+  rad    :=INSTR(f,10);            ! Skip SECTION (read to scratch variable)
+  npoints:=ININT(f);               ! Number of points in section
+  rad    :=INLIN(f);               ! Read end of line to scratch variable
+                                   !
+                                   !
+  IF (n_vlines = 0) THEN           ! Number of points in the section is
+    n_vlines := npoints;           ! the number of V curves in the surface
+    LST_LIN("Number of V lines in"+! Debug printout to screen (only
+            " the surface is  "   +! for when first section is read)
+             STR(n_vlines,-1,0));  ! Convert integer to a string
+  ELSE                             !
+    IF ( n_vlines = npoints ) THEN ! Check that the number of points
+      ;                            ! is the same for all sections
+    ELSE                           ! (for section 2, 3, 4, .... )
+      LST_LIN("Not same number " + ! Error message to screen
+            "points in sections"); !
+      GOTO error;                  ! Goto error (close of file)
+    ENDIF;
+  ENDIF;
+
+!                   Coreline (spine) point and vector
+
+                                   ! Read line NORMAL x y z   tx ty tz
+  rad:=INSTR(f,10);                ! Skip NORMAL (10 positions)
+  x  :=INFLT(f);                   ! Coreline (spine) point    x, y, z
+  y  :=INFLT(f);                   !
+  z  :=INFLT(f);                   !
+  tx :=INFLT(f);                   ! Coreline (spine) tangent tx,ty,tz
+  ty :=INFLT(f);                   !
+  tz :=INFLT(f);                   !
+  rad:=INLIN(f);                   ! Read end of line
+
+   spine(sektnr):=                 ! Spine point   (sektnr) to VEC array
+     vec(x      ,y      ,z      ); !
+  tspine(sektnr):=                 ! Spine tangent (sektnr) to VEC array
+     vec(x+10*tx,y+10*ty,z+10*tz); !
+  pspine(sektnr):= 0.5;            ! Spine P value to FLOAT array 
+
+!                  Loop for all points in the section
+!                  (Read to scratch variable)
+
+  FOR i_v:=1 TO npoints DO         ! There are 3*npoints lines:
+    rad:=INLIN(f);                 ! Point on surface   (i_v.1)
+    rad:=INLIN(f);                 ! Tangent point      (i_v.2)
+    rad:=INLIN(f);                 ! PVALUES  pp  pt  pc  dpds
+  ENDFOR;
+
+  GOTO nysekt;                     ! Goto read of next section
+
+
+
+skapa:                             ! Label used when number of sections 
+                                   ! V curves is determined (end of file)
+
+  n_ulines:= sektnr;               ! The variable sektnr was increased
+                                   ! by one for each section in the 
+                                   ! loop above.
+
+  LST_LIN("Number of points in "+  ! Message to alpha-numeric screen
+          "each V line is   "   +  !
+           STR(n_ulines,-1,0));    ! (convert integer to string)
+
+
+
+!            3. Create arrays defining the longitudinal curves 
+!                      and the P value functions
+!            ==================================================
+
+  OPEN(f,"r",srffil);              ! Open file with surface data again
+
+!                    Loop for all "V strips" in surface
+
+  FOR i_strip:=1 TO n_vlines DO    ! Start outer loop (1)
+
+    PSH_PMT("Curves V "            ! Current strip number to (error)
+     +str(i_strip,-1,0));          ! message area of screen
+
+
+!                    Loop for all U sections in surface
+
+    FOR i_sekt:=1 TO n_ulines DO   ! Start inner loop (2)
+
+      rad:=INLIN(f);               ! Skip line LINE  S1/Usektnr
+      rad:=INLIN(f);               ! Skip line SECTION npoints POINTS
+      rad:=INLIN(f);               ! Skip line NORMAL  x y z  tx ty tz
+
+!                    Loop for all points in a U section curve
+!                    (Read only point with number i= i_strip)
+
+        FOR i:=1 TO npoints DO     ! Start inner, inner loop (3)
+
+          IF ( i = i_strip ) THEN  ! Curves i= i_strip. Read data
+
+            rad:=INSTR(f,10);      ! Skip first 10 positions (i.1)
+            x  :=INFLT(f);         ! Point   for limit curve
+            y  :=INFLT(f);         !
+            z  :=INFLT(f);         !
+            tx :=INFLT(f);         ! Tangent for limit curve
+            ty :=INFLT(f);         !
+            tz :=INFLT(f);         !
+            rad:=INLIN(f);         ! Read end of line
+
+!           LST_LIN(               ! Debug printout to screen
+!           " X("+str(i_sekt,-1,0) !
+!            +") = "+str(x,-1,9)+  !
+!         "   Y("+str(i_sekt,-1,0) !
+!            +") = "+str(y,-1,9)+  !
+!         "   Z("+str(i_sekt,-1,0) !
+!            +") = "+str(z,-1,9)); !
+
+            vlineI(i_sekt):=       ! Point         to limit curve 
+                 vec(x,y,z);       ! (VECTOR) array
+            tvlineI(i_sekt):=      ! Tangent point to limit curve 
+            vec(x+10*tx,y+10*ty,   ! (VECTOR) array
+                z+10*tz);          !
+
+            rad:=INSTR(f,10);      ! Skip first 10 positions (i.2)
+            x  :=INFLT(f);         ! Point   for tangent curve
+            y  :=INFLT(f);         !
+            z  :=INFLT(f);         !
+            tx :=INFLT(f);         ! Tangent for tangent curve
+            ty :=INFLT(f);         !
+            tz :=INFLT(f);         !
+            rad:=INLIN(f);         ! Read end of line
+
+            tlineI(i_sekt):=       ! Point to tangent curve
+               vec(x,y,z);         ! (VECTOR) array
+            ttlineI(i_sekt):=      ! Tangent point to tangent
+            vec(x+10*tx,y+10*ty,   ! (VECTOR) array
+                z+10*tz);
+
+!                 
+            IF i < npoints THEN
+              rad :=INSTR(f,17);   ! Line PVALUES  pp  pt  pc  dpds
+              pp  :=INFLT(f);      ! (not for the last "point")
+              pt  :=INFLT(f);      !
+              pc  :=INFLT(f);      ! Section segment P value
+              dpds:=INFLT(f);      ! P value derivative
+              rad :=INLIN(f);      !
+            ELSE                   ! Line PVALUES pp  pt (No pc dpds !)
+              rad :=INSTR(f,17);   ! Skip 17 positions
+              pp  :=INFLT(f);      ! P value for limit   curve
+              pt  :=INFLT(f);      ! P value for tangent curve
+              rad :=INLIN(f);      ! Read end of line
+            ENDIF;
+
+            pvlineI(i_sekt):= pp;  ! P for limit   crv to (FLOAT) array
+            ptlineI(i_sekt):= pt;  ! P for tangent crv to (FLOAT) array
+
+            x  := spine(i_sekt).x; ! Calculate point for P value curve
+            y  := 10.0*pc;         ! Scale P value with 10
+            z  := 0.0;             ! Planar (2D) curve. Let z=0.
+            tx := 1.0;             ! Tangent for the P value curve
+            ty := 10.0*dpds;       ! (Probably not OK !!!)
+            tz := 0.0;             !
+
+            plineI(i_sekt) :=      ! P value point to P value
+             vec(x,y,z);           ! (VECTOR) array
+            tplineI(i_sekt):=      ! P value tangent point to P value
+            vec(x+10*tx,y+10*ty,   ! (VECTOR) array
+            z+10*tz);              !
+            pplineI(i_sekt):= 0.2; ! Let P value for Pvalue curve be 0.2
+
+          ELSE                     ! i is not equal i_strip. Skip data
+            rad:=INLIN(f);         ! Skip point for limit   curve
+            rad:=INLIN(f);         ! Skip point for tangent curve
+            rad:=INLIN(f);         ! Skip P values
+          ENDIF;
+
+        ENDFOR;                    !  End loop i=1,npoints
+
+      ENDFOR;                      ! End loop each U section in surface
+                                   ! (i_sekt=1,2,..,n_ulines)
+
+
+!            Create longitudinal curves and P value functions
+!            as MBS (source code) and MBO (compiled) modules.
+
+                                   ! 
+      curtype:= "LIM";             ! The limit (V) curve
+      kurvnr := i_strip;           ! Curve number 1, 2, ....
+      curname:=curtype+            ! Name of the curve with
+             str(kurvnr,-1,0)+     ! version: LIMi_A1
+             version;              !
+      part(#11,curvembs(           ! Write MBS curve file
+         curname,n_ulines,         !
+         vlineI,tvlineI,pvlineI)); !
+
+      curtype:= "TAN";             ! The tangent curve
+      kurvnr := i_strip;           ! Curve number 1, 2, ..
+      curname:=curtype+            ! Name of the curve with
+             str(kurvnr,-1,0)+     ! version: TANi_A1
+             version;              !
+      part(#12,curvembs            ! Write MBS curve file
+         (curname,n_ulines,        !
+         tlineI,ttlineI,ptlineI)); !
+
+      curtype:= "PCUR";            ! Pvalue curve
+      kurvnr := i_strip;           ! Curve nunber 1, 2, ..
+      curname:=curtype+            ! Name of the curve with
+             str(kurvnr,-1,0)+     ! version: PCURi_A1
+             version;              !
+      IF (i_strip < n_vlines) THEN ! Not for the last curve
+        part(#13,curvembs          ! Write MBS curve file
+            (curname,n_ulines,     !
+         plineI,tplineI,pplineI)); !
+      ENDIF;
+
+
+!            Create longitudinal curves and P value functions
+!            as temporary curves (this module is called with F 
+!            in the menue file) as a surface data and program 
+!            check. Only if case=1.
+
+      IF case = 1  THEN
+        part(#1,creusect(n_ulines,   ! Limit curve
+        vlineI,tvlineI,pvlineI)
+        :LEVEL=1);
+
+        part(#2,creusect(n_ulines,   ! Tangent curve
+        tlineI,ttlineI,ptlineI)
+        :LEVEL=2);
+
+        part(#3,creusect(n_ulines,   ! P value curve
+        plineI,tplineI,pplineI)
+        :LEVEL=3);
+      ENDIF;
+
+
+      IF (i_strip < n_vlines) THEN ! Printout to screen as debug
+        LST_LIN(" Curves LIM"+     ! For all curves except the last
+         STR(kurvnr,-1,0)+version+
+         ", TAN"
+         +STR(kurvnr,-1,0)+version+
+                   " and PCUR"
+         +STR(kurvnr,-1,0)+version);
+       ELSE
+        LST_LIN(" Curves LIM"+     ! For the last curves
+         STR(kurvnr,-1,0)+version+
+         ", TAN"
+         +STR(kurvnr,-1,0)+version);
+       ENDIF;
+
+!                      Close file with surface data
+
+      CLOSE(f);                    ! Actually rewind (set pointer 
+      OPEN(f,"r",srffil);          ! to the first line)
+
+!     
+      POP_PMT();                   ! Delete message in stack
+
+
+  ENDFOR;                          ! End loop each "V curve" in
+                                   ! surface (i_strip=1,.,n_vlines)
+
+!                       5. Create spine curve
+!                       ======================
+
+  curtype:= "SPINE";               ! Spine curve as MBS
+  kurvnr := 1;                     ! Curve number is 1
+      curname:=curtype+            ! Name of the curve with
+                                   ! version: SPINE_A1
+             version;              !
+  part(#14,curvembs(               ! Write MBS curve file and compile
+           curname,n_ulines,       !
+           spine,tspine,pspine));  !
+  IF case = 1 THEN
+    part(#4,creusect(n_ulines,     ! Create temporary curve as check
+    spine,tspine,pspine):LEVEL=4); !
+  ENDIF;
+  LST_LIN("    Spine module"+      ! Debug printout to screen
+   " SPINE"+version+" created ");  !
+
+!                         6. Create surface
+!                         ==================
+
+  kurvnr := 0 ;                    ! Initialize curve (part) number
+
+
+!  Name of Module
+   surname := "SURF"+version;      ! Name of module
+
+  OPEN(mbs,"r",act_jobdir()        ! Check if file already exists
+        +surname+".MBS");          !
+  IF (IOSTAT(mbs) <> 0 ) THEN      !
+!     OK, file does not exist      !
+      ;                            !
+  ELSE                             !
+      EXIT("c_consurf: MBS file "  !
+        +surname+" exists");       !
+  ENDIF;                           !
+
+  OPEN(mbs,"w",act_jobdir()+       ! Open output MBS file
+        surname+".MBS");           !
+  IF (IOSTAT(mbs) <> 0 ) THEN      ! 
+      EXIT("c_consurf: Open of "   !
+        +surname+" failed");       !
+  ENDIF;                           !
+
+!                           Header to MBS file
+
+
+  OUTSTR(mbs,"!********************************************** ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! File is created with module c_consurf.MBS ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! (Version dated 1992-07-14) ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"!********************************************** ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTSTR(mbs,"GLOBAL GEOMETRY MODULE "+surname+"(");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"STRING surcode*20   :="+CHR(34)+"Conic_Loft"+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"STRING comp_case*132:="+CHR(34)+"Not implemented"+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"INT    graphic:= 1 >"+
+             CHR(34)+"@ Grafisk representation av yta"+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v1:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v2:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v3:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v4:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v5:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v6:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v7:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v8:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v9:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v10:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v11:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v12:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v13:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v14:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v15:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v16:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v17:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v18:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v19:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"FLOAT  v20:= 0.0 >"+CHR(34)+"@ Variabel "+CHR(34)+";");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"STRING surdescr*132 :="+
+             CHR(34)+ "\verf|rd yta fr}n NMG"+CHR(34)+
+                " >" +CHR(34)+"Beskrivning av yta"+CHR(34)+" );");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! Internal variables: ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  INT no_strips;    ! Number of strips ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  INT blank_flag;   ! Input to BLANK= ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTSTR(mbs,"BEGINMODULE");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! 1. Initializations ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! ================== ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  no_strips:= "+str(n_vlines-1,-1,0)+";");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  IF graphic = 2 THEN ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"    blank_flag:= 0;");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  ELSE ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"    blank_flag:= 1;");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  ENDIF; ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! 2. Definition of surface curves ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! =============================== ");
+  OUTLIN(mbs);
+
+
+  FOR i_strip:=1 TO n_vlines DO
+
+!     Limit curve
+      kurvnr := kurvnr + 1;
+      IF i_strip < 10 THEN
+          curcode  := CHR(34)+"LIM0"+str(i_strip,-1,0)+CHR(34);
+      ELSE
+          curcode  := CHR(34)+"LIM" +str(i_strip,-1,0)+CHR(34);
+      ENDIF;
+      curdescr := CHR(34)+"Limit curve in strip "+str(i_strip,-1,0)+
+                      " in surface SUR"+version+" "+CHR(34);
+      OUTLIN(mbs);
+      OUTLIN(mbs);
+      OUTSTR(mbs,"! "+curdescr);
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  part(#"+str(kurvnr,-1,0)+",LIM"+
+                    str(i_strip,-1,0)+version+"( ");
+      OUTSTR(mbs," "+curcode+" , comp_case, graphic, ");
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  v1,v2,v3,v4,v5,  ");
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  v6,v7,v8,v9,v10 ));  ");
+      OUTLIN(mbs);
+!Q      OUTSTR(mbs,"  v11,v12,v13,v14,v15,  ");
+!Q      OUTLIN(mbs);
+!Q      OUTSTR(mbs,"  v16,v17,v18,v19,v20 ));  ");
+!Q      OUTLIN(mbs);
+
+!     Tangent definition curve
+      kurvnr := kurvnr + 1;
+      curdescr := CHR(34)+"Tangent def. curve in strip "+str(i_strip,-1,0)+
+                      " in surface SUR"+version+" "+CHR(34);
+      IF i_strip < 10 THEN
+          curcode  := CHR(34)+"TAN0"+str(i_strip,-1,0)+CHR(34);
+      ELSE
+          curcode  := CHR(34)+"TAN" +str(i_strip,-1,0)+CHR(34);
+      ENDIF;
+      OUTLIN(mbs);
+      OUTLIN(mbs);
+      OUTSTR(mbs,"! "+curdescr);
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  part(#"+str(kurvnr,-1,0)+",TAN"+
+                    str(i_strip,-1,0)+version+"( ");
+      OUTSTR(mbs," "+curcode+" , comp_case, graphic, ");
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  v1,v2,v3,v4,v5,  ");
+      OUTLIN(mbs);
+      OUTSTR(mbs,"  v6,v7,v8,v9,v10 ));  ");
+      OUTLIN(mbs);
+!Q      OUTSTR(mbs,"  v11,v12,v13,v14,v15,  ");
+!Q      OUTLIN(mbs);
+!Q      OUTSTR(mbs,"  v16,v17,v18,v19,v20 ));  ");
+!Q      OUTLIN(mbs);
+
+!     P-value curve
+      IF i_strip < n_vlines THEN
+        kurvnr := kurvnr + 1;
+        curdescr := CHR(34)+"Pvalue curve in strip "+str(i_strip,-1,0)+
+                        " in surface SUR"+version+" "+CHR(34);
+        IF i_strip < 10 THEN
+            curcode  := CHR(34)+"PFN0"+str(i_strip,-1,0)+CHR(34);
+        ELSE
+            curcode  := CHR(34)+"PFN" +str(i_strip,-1,0)+CHR(34);
+        ENDIF;
+        OUTLIN(mbs);
+        OUTLIN(mbs);
+        OUTSTR(mbs,"! "+curdescr);
+        OUTLIN(mbs);
+        OUTSTR(mbs,"  part(#"+str(kurvnr,-1,0)+",PCUR"+
+                      str(i_strip,-1,0)+version+"( ");
+        OUTSTR(mbs," "+curcode+" , comp_case, graphic, ");
+        OUTLIN(mbs);
+        OUTSTR(mbs,"  v1,v2,v3,v4,v5,  ");
+        OUTLIN(mbs);
+        OUTSTR(mbs,"  v6,v7,v8,v9,v10));  ");
+        OUTLIN(mbs);
+!Q        OUTSTR(mbs,"  v11,v12,v13,v14,v15,  ");
+!Q        OUTLIN(mbs);
+!Q        OUTSTR(mbs,"  v16,v17,v18,v19,v20 ));  ");
+!Q        OUTLIN(mbs);
+      ENDIF;
+
+  ENDFOR;
+
+  curdescr := CHR(34)+"Spine curve in surface SUR"+version+" "+CHR(34);
+
+  kurvnr := kurvnr + 1;
+  curcode  := CHR(34)+"SPINE"+CHR(34);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"! "+curdescr);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  part(#"+str(kurvnr,-1,0)+",SPINE"+version+"( ");
+  OUTSTR(mbs," "+curcode+" , comp_case, graphic, ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  v1,v2,v3,v4,v5,  ");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"  v6,v7,v8,v9,v10 ));  ");
+  OUTLIN(mbs);
+!Q  OUTSTR(mbs,"  v11,v12,v13,v14,v15,  ");
+!Q  OUTLIN(mbs);
+!Q  OUTSTR(mbs,"  v16,v17,v18,v19,v20 ));  ");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"ENDMODULE");
+
+
+  CLOSE(mbs);                      ! Close MBS file
+
+  LST_LIN("    Surface module"+    ! Debug printout to screen
+   " SURF"+version+" created ");   !
+  LST_LIN("All MBS modules"+       ! 
+   " (curves and surface) must"+   !
+    " now be compiled to MBO ");   !
+!VAX   " (curves and surface) will"+   !
+!VAX    " now be compiled to MBO ");   !
+
+
+!VAX  OS("VARCOMP "+ act_jobdir()+     ! Compile all MBS modules
+!VAX  "*"+version+"*.MBS");            ! (create MBO files)
+
+error:                             ! Label: No such file
+
+
+  CLOSE(f);                        ! Close file with surface data
+
+
+  LST_EXI();                       ! Close printout to the screen
+
+
+ENDMODULE

@@ -1,0 +1,341 @@
+!********************* c_ccir     ***********************
+! +++
+!  Approximation of a curve with continuous circles
+! 
+! ---
+! Revision history
+! ________________
+!
+! 1998-02-22  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Approximering av kurva med kontinuerliga cirklar
+!sdesce Approximation of a curve with continuous circles
+
+GLOBAL GEOMETRY MODULE c_ccir    (
+
+REF   cur_id         >"@t8  Select curve";
+FLOAT c_tol  := 0.05 >"Tolerance for the circles";
+INT   graphic:= 1    >"Graphic 0: None 1: Circles (curve) 2: All");
+
+! +++
+! Parameters (criteria) for the calculation 
+! -----------------------------------------
+
+! Criterion for a straight line
+  CONSTANT FLOAT LIN_RADIUS = 9000.0;
+
+! ---
+
+
+! Internal variables:
+
+  INT        i_seg;              ! Loop index curve segment
+  INT        i_poi;              ! Loop index point in curve segment
+
+  VECTOR     pla_normal;         ! Curve plane normal
+
+  INT        n_comp;             ! Number of CUR_COMP
+  INT        i_all_cur;          ! Loop index curve
+  INT        n_all_cur;          ! Number of curves in all_cur_id
+  REF        all_cur_id(100);    ! References to all curves
+
+  FLOAT      u_cir_s(100);       ! Start of circles defined by steps
+                                 ! in the curvature
+  INT        n_u_cir_s;          ! Number of values in u_cir_s
+  INT        i_u_cir_s;          ! Loop index element in u_cir_s
+
+  INT        n_poi;              ! Number of check points per segment
+  FLOAT      delta;              ! Delta parameter value
+
+  FLOAT      u_start;            ! Circle start parameter value
+  FLOAT      u_end;              ! Circle end   parameter value
+  FLOAT      u_mid;              ! Curve  mid   parameter value
+
+  FLOAT      comptol;            ! Computer accuracy 
+
+  INT        n_tot;              ! Number of created circle segments
+
+  REF        cur1_id;            ! For CUR_COMP
+  REF        cur2_id;            ! For CUR_COMP
+
+
+  FLOAT      c_dev;              ! Deviation
+  INT        no_cir;             ! Number of circles (1 or 2)
+                                 ! and 0 circles for failure ??
+  REF        cirlin_id;          ! Reference to c_c2cir curve
+  INT        graphic_1cir;       ! 0: None 1: Circles 2: All
+  INT        graphic_2cir;       ! 0: None 1: Circles 2: All
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_cflag;            ! BLANK value curve
+
+  INT        c_list;             ! Eq. 0: No printout  Eq. 1: Print 
+
+  INT        n_iter;             ! For programming check
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! Discretization (check) points
+  n_poi := 5;
+
+! Computer accuracy (for address to right curve segment)
+  comptol := 0.0000001;
+
+! Printout flag
+  c_list := 0;
+
+! List window
+  IF    c_list = 1  THEN
+  LST_INI("Debug output from c_ccir");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    graphic_1cir := 0;
+    graphic_2cir := 0;
+    b_aflag:= 1;
+    b_cflag:= 1;
+  ELIF  graphic = 1  THEN 
+    graphic_1cir := 0;
+    graphic_2cir := 0;
+    b_aflag:= 1;
+    b_cflag:= 0;
+  ELIF  graphic = 2  THEN
+    graphic_1cir := 0;
+    graphic_2cir := 2;
+    b_aflag:= 0;
+    b_cflag:= 0; 
+  ELSE 
+    EXIT("c_ccir  graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialize local variables
+  u_start      := -0.123456789;
+  u_end        := -0.123456789;
+  u_mid        := -0.123456789;
+  delta        := -0.123456789;
+  n_u_cir_s    := -12345;
+  n_tot        := -12345;
+  n_comp       := -12345;
+  n_all_cur    := -12345;
+  i_all_cur    := -12345;
+  FOR  i_u_cir_s := 1 TO 100 DO
+    u_cir_s(i_u_cir_s) := -0.123456789;
+  ENDFOR;
+  i_u_cir_s    := -12345;
+
+  pla_normal   := VEC(-0.12345,-0.12345,-0.12345);
+
+  c_dev        := -0.12345;;
+  no_cir       := -12345;
+  n_iter       := -12345;
+  cur1_id      := #0;
+  cur2_id      := #0;
+
+
+
+  FOR  i_seg := 1 TO 100 DO
+    all_cur_id(i_seg) := #0;
+  ENDFOR;
+
+! +++
+! Check that the curve is planar
+! ---
+
+! +++
+! Get the curve plane normal
+! Calculate average plane as a temporary solution
+! Implement in EVAL (sur216 Flagga + normal) ....
+! ---
+
+  PART(#7, c_aplanev0 ( cur_id, 25, 1, 0 ));
+  pla_normal := ON(GLOBAL_REF(#7#1),1.0)- 
+                ON(GLOBAL_REF(#7#1),0.0); 
+! Programming check
+  IF  VECL(pla_normal) < 0.0001 THEN
+    EXIT("c_ccir pla_normal = 0,0,0");
+  ENDIF;
+
+! Delete tempory procedure (which creates geometry
+! and cannot be called with SAVE=0)
+  DEL(GLOBAL_REF(#7));
+
+! +++
+! 2. Circle start points because of steps in curvature  
+! ---
+
+  PART (#11, c_c1cir (cur_id, LIN_RADIUS, pla_normal,
+             n_poi, u_cir_s, n_u_cir_s, graphic_1cir));
+
+  IF    c_list = 1  THEN
+    FOR  i_u_cir_s := 1 TO n_u_cir_s  DO
+      LST_LIN("i_u_cir_s= "+STR(i_u_cir_s,3,0)
+        +" u_cir_s "+STR(u_cir_s(i_u_cir_s),10,5));
+    ENDFOR;
+  ENDIF; 
+
+! +++
+! 3. Create circles
+! ---
+
+! For programming check
+  n_iter := 0;
+
+! Number of created circle segments
+  n_tot:= 0;
+
+! Number of created CUR_COMP curves
+  n_comp := 0;
+
+! Number of curves
+  n_all_cur := 0;
+  
+! Start loop .......
+  FOR  i_u_cir_s := 1 TO n_u_cir_s - 1 DO
+
+!   Current parameter value for start point
+    u_start :=   u_cir_s(i_u_cir_s);
+
+!   Current parameter value for end point
+    u_end   :=   u_cir_s(i_u_cir_s + 1) - comptol;
+
+split:;
+
+!   For programming check
+    n_iter := n_iter + 1;
+    IF  n_iter > 10000 THEN 
+      IF    c_list = 1  THEN
+        LST_EXI();
+      ENDIF;
+      EXIT("c_ccir n_iter > 10000");
+    ENDIF;
+
+    IF    c_list = 1  THEN
+      LST_LIN("i_u_cir_s= "+STR(i_u_cir_s,3,0)
+                   +" u_start "+STR(u_start,5,3)
+                   +" u_end "+STR(u_end  ,5,3)+
+        " n_iter "+STR(n_iter,5,0));
+    ENDIF; 
+
+!   Create two circles, circle+line or one line and
+!   calculate the maximum deviation to the input
+!   curve.
+    PART(#10, c_c2cir ( cur_id, u_start, u_end, LIN_RADIUS,
+         pla_normal, n_poi, c_dev,
+         no_cir , cirlin_id, graphic_2cir));
+
+    IF    c_list = 1  THEN
+      LST_LIN(STR(i_u_cir_s,3,0)
+             +" n_tot= "+STR(n_tot,3,0)
+                   +" U strt "+STR(u_start ,12,8 ) 
+                   +" end  "+STR(u_end ,12,8 ) 
+                   +" c_dev "+STR(c_dev,15,10));
+!      LST_LIN("no_cir= "+STR(no_cir,3,0)
+!                   +" c_dev "+STR(c_dev,15,10));
+    ENDIF; 
+
+    IF  no_cir <= 0 THEN
+      IF  c_list = 1 THEN
+        LST_EXI();
+      ENDIF;
+      EXIT("c_ccir c_c2cir failed");
+    ENDIF;
+
+!   Delete temporary circles, line+circle or line
+!TODO Copy cirlin_id    DEL(GLOBAL_REF(#10));
+
+!   Within tolerance ?
+    IF   c_dev >  c_tol THEN
+      u_mid   := u_start + 0.5*(u_end - u_start);
+      u_end   := u_mid;
+      IF  ABS(u_start-u_mid) < 0.001 THEN
+        IF  c_list = 1 THEN
+          LST_EXI();
+        ENDIF;
+        EXIT("c_ccir Delta param = 0");
+      ENDIF;
+      GOTO  split;
+    ENDIF;
+
+!   Circle is within tolerance
+!   Save data in arrays for CUR_C..ARR ??
+    n_tot := n_tot + no_cir;
+    IF    c_list = 4  THEN
+      LST_LIN("n_tot= "+STR(n_tot,3,0)
+                   +" u_start "+STR(u_start,15,10) 
+                   +" u_end "+STR(u_end  ,15,10) 
+                   +" c_dev "+STR(c_dev,15,10));
+    ENDIF; 
+
+!  Number of curves
+   n_all_cur := n_all_cur + 1;
+   all_cur_id(n_all_cur) := cirlin_id;
+
+    u_start := u_end;
+    u_end   :=   u_cir_s(i_u_cir_s + 1) - comptol;
+    IF  ABS(u_start-u_end) > 0.001 THEN
+      GOTO split;
+    ENDIF;
+
+!   Start with the next segment
+
+
+
+  ENDFOR;
+
+
+
+  IF  n_all_cur < 2 THEN
+    EXIT("c_ccir Not yet programmed for n_all_cur < 2");
+  ENDIF;
+
+  n_comp := 0;
+  FOR  i_all_cur := 1 TO n_all_cur-1 DO
+
+    IF  i_all_cur = 1 THEN
+      cur1_id := all_cur_id(i_all_cur);
+      cur2_id := all_cur_id(i_all_cur+1);
+    ELSE
+      cur1_id := GLOBAL_REF(REFC(20,n_comp));
+      cur2_id := all_cur_id(i_all_cur+1);
+    ENDIF;
+
+    CUR_COMP(#20, cur1_id,cur2_id :BLANK= b_aflag);
+    n_comp := n_comp + 1;
+!   s:= INPMT("c_ccir n_comp "+STR(n_comp,-1,0) + 
+!             " cur1_id "+RSTR(cur1_id)+
+!             " cur2_id "+RSTR(cur2_id)," ",1);
+ 
+  ENDFOR;
+
+  cur1_id := GLOBAL_REF(REFC(20,n_comp));
+  CUR_COMP(#1, cur1_id :BLANK= b_cflag);
+
+!   s:= INPMT("c_ccir n_comp "+STR(n_comp,-1,0) + 
+!             " cur1_id "+RSTR(cur1_id)," ",1);
+ 
+  IF    c_list = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+
+ENDMODULE

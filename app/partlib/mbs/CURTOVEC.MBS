@@ -1,0 +1,153 @@
+!******************** CURTOVEC *****************************************
+!
+!  Purpose: Converts a conic curve to point and pvalue arrays
+!
+!  1992-08-24  Gunnar Liden
+!  1992-12-02 Parameter value for last pt -0.0000001 Gunnar Liden
+!  1993-01-20 Declaration of arrays chaged from (25) to (26)
+!             (max number of segments is 25 in VARKON)      Gunnar Liden
+!************************************************************************
+BASIC GEOMETRY MODULE CURTOVEC  (
+
+    REF  idc;                   ! Reference to curve (# id)
+
+VAR INT    no_points;           ! Number of points in the curve
+
+VAR VECTOR psektI(26);          ! Segment start/end points
+
+VAR VECTOR tpsektI(26);         ! Tangent points to psektI
+
+VAR FLOAT  pvalsektI(26);       ! P values to curve
+
+VAR VECTOR midpsektI(26));      ! Mid (P value) points
+
+! Internal variables:
+
+  INT    ns;                    ! Number of segments in the curve
+  INT    fnt;                   ! Font for the curve (solid, dashed, )
+  INT    plank;                 ! Flag for planar curve (plank=1)
+  FLOAT  sl;                    ! Length for dashed curve
+  FLOAT  kdat(4,4);             ! Curve plane (matrix) for plank=1
+  FLOAT  offset(25);            ! Offset for each segment in the curve
+  FLOAT  sdat(25,4,4);          ! Coefficients for the curve
+
+  VECTOR p_s;                   ! Start point   i segment
+  VECTOR t_s;                   ! End   tangent i segment
+  VECTOR p_e;                   ! Point  in curve
+  VECTOR t_e;                   ! End tangent in curve
+  FLOAT  param;                 ! Parameter value on curve
+  FLOAT  w1;                    ! Weight (denominator) for start pt
+  FLOAT  w4;                    ! Weight (denominator) for end   pt
+  FLOAT  pval;                  ! P value for segment
+  INT    i_seg;                 ! Loop index
+
+  INT    ix;                    ! Temporarely used loop index
+
+  STRING s*1;                    ! For debug printout to screen
+
+
+BEGINMODULE
+
+!                  1. Initializations and checks
+!                  =============================
+
+  FOR ix := 1 TO 26 DO          ! Initialize output arrays
+    psektI(ix) :=   vec(0,0,0); ! Point
+    tpsektI(ix):=   vec(0,0,0); ! Tangent point
+    pvalsektI(ix):= 0.0;        ! P value
+    midpsektI(ix):= vec(0,0,0); ! Mid (P value) point
+  ENDFOR;                       ! 
+                    
+
+ ! Detta borde vara indata .... Fungerar bara f|r att level s{tts
+ ! till max m|jliga d} man i FANGA manipulerar med en enskild kurva
+ ! Borde finnas en rutin som ACT_TREELEVEL eller dylikt !!!!
+  idc := GLOBAL_REF(idc,3);     ! Three level reference
+                                ! Fr}n modulen ovanifr}n !!!
+
+!  s:=INPMT("CURTOVEC: idc= "    ! Debug printout to screen
+!  +rstr(idc),"",1);             !
+
+
+  GETCUR(idc,fnt,sl,ns,sdat,    ! Get curve data from GM
+  offset,plank,kdat);           ! (number of segments)
+
+!                2. Number of points in the curve
+!                ================================
+
+  no_points := ns + 1;          ! Number of segments + 1
+
+
+!                    3. Points to output arrays
+!                    ==========================
+
+
+  FOR i_seg := 1 TO ns DO       ! Start loop all segments
+
+    param := i_seg-1.0;         ! Start point and tangent
+    p_s :=   ON(idc,param);     ! in the segment
+    t_s := TANG(idc,param);     !
+    psektI(i_seg)  := p_s;      ! Point         to output array
+    tpsektI(i_seg) := p_s +     ! Tangent point to output array
+                      t_s*10.0; !
+
+    w1:= sdat(i_seg,1,4);       ! Weigth for start point of segment
+    w4:= sdat(i_seg,1,4) +      ! Weigth for end   point of segment
+         sdat(i_seg,2,4) +      !
+         sdat(i_seg,3,4) +      !
+         sdat(i_seg,4,4);       !
+
+    IF ABS(w1-w4) <0.000001 THEN! P value
+      IF ABS(w1+1)>0.000001 THEN!
+        pval := 1.0/(w1+1.0);   !
+      ELSE                      !
+        EXIT("CURTOVEC: P value"! Program error w1+1=0.0
+        +" error ");            !
+      ENDIF;                    !
+    ELSE                        !
+      EXIT("CURTOVEC: Not a "+  ! Not a (generalized) conic.
+      " (gen.) conic");         ! P value does not exist
+    ENDIF;                      !
+    pvalsektI(i_seg)  := pval;  ! P value       to output array
+
+    param := i_seg-1.0+0.5;     ! Mid (P value) point
+    p_s :=   ON(idc,param);     ! in the segment
+    midpsektI(i_seg)  := p_s;   ! Point         to output array
+
+!   s:=INPMT("CURTOVEC:   Punkt "    ! Debug printout to screen
+!  +str(psektI(i_seg).x,-12,6)+" "
+!  +str(psektI(i_seg).y,-12,6)+" "!
+!  +str(psektI(i_seg).z,-12,6)+" "!
+!    ,   "",1);       !
+!   s:=INPMT("CURTOVEC: T-punkt "    ! Debug printout to screen
+!  +str(tpsektI(i_seg).x,-12,6)+" "
+!  +str(tpsektI(i_seg).y,-12,6)+" "!
+!  +str(tpsektI(i_seg).z,-12,6)+" "!
+!    ,   "",1);       !
+
+    IF i_seg = ns THEN          ! End   point and tangent
+      param := i_seg-0.0000001; ! in the curve
+      p_e :=   ON(idc,param);   !
+      t_e := TANG(idc,param);   !
+      psektI(i_seg+1)  := p_e;  ! Point         to output array
+!      IF VECL(t_e)<0.0001 THEN  ! Program check
+!       EXIT("curtovec: t_e=0"); !
+!      ENDIF;                    !
+      tpsektI(i_seg+1) := p_e+  ! Tangent point to output array
+                     t_e*10.0;  !
+!   s:=INPMT("CURTOVEC:   Punkt "    ! Debug printout to screen
+!  +str(psektI(i_seg+1).x,-12,6)+" "
+!  +str(psektI(i_seg+1).y,-12,6)+" "!
+!  +str(psektI(i_seg+1).z,-12,6)+" "!
+!    ,   "",1);       !
+!   s:=INPMT("CURTOVEC: T-punkt "    ! Debug printout to screen
+!  +str(tpsektI(i_seg+1).x,-12,6)+" "
+!  +str(tpsektI(i_seg+1).y,-12,6)+" "!
+!  +str(tpsektI(i_seg+1).z,-12,6)+" "!
+!    ,   "",1);       !
+    ENDIF;                      !
+
+  ENDFOR;                       ! End loop all segments in curve
+
+
+ENDMODULE

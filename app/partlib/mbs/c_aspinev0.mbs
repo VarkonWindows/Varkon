@@ -1,0 +1,186 @@
+!********************* c_aspinev0 ***********************
+! +++
+! Omdefinition av en spine kurva med l{ngsg}ende kurva  
+! Den l{ngsg}ende kurvan kan till exempel vara en 
+! direktris eller en l{ngsg}ende kurva. Spine kurvan
+! kommer att f} nya segment som sammanfaller med indata
+! kurvan, dvs i SUR_CONIC ytan kommer samma "patch"-
+! gr{nser genereras av kurvan och av spinen.
+!
+! Den skapade kurvan kommer att vara en sammansatt 
+! k{gelsnittskurva av CUR_CONIC typ. Om indata spinen
+! inte {r av denna typ kan kurvans form {ndras, dvs 
+! resultatet {r en approximation. F|r n{rvarande g|rs
+! ingen kontroll av felet.
+!
+! !!!! OBS !!!!
+! De olika fallen {r {nnu inte programmerade
+! !!!! OBS !!!!
+!
+! [ndringshistorik
+! ________________
+!
+! 1995-03-11  Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs Omdefinition av en spine kurva med l{ngsg}ende kurva   
+!sdesce Calculates an average plane for a curve                
+
+GLOBAL GEOMETRY MODULE c_aspinev0(
+
+    REF      spine_id      > "@t10 V{lj spine kurva";
+    REF      cur_id        > "@t8 V{lj kurva";
+    INT      e_fall := 1   > "=1: Korta ej av spine =2: Korta spine";
+    INT      m_fall := 1   > "=1: Modifiera ej spine punkter =2: Modifiera";
+    FLOAT    m_dist := 2.0 > "Str{cka som best{mmer om punkter ska modifieras";
+    INT      graphic:= 1 
+>"Grafik   0: Ingen  1: Visa spine  2: Blanka indata spine ");
+
+! Interna variabler:
+
+  INT        i_seg;              ! Loop index kurvsegment
+  
+  INT        ns_geo;             ! Antal geometriska segment
+  INT        ns_gra;             ! Antal grafiska    segment
+  INT        fnt;                ! Font typ,subtyp
+  FLOAT      sl;                 ! Streckl{ngd
+
+  INT        n_cur;              ! Antal segment i kurvan
+!  INT        n_spine;            ! Antal segment i spinen
+
+  FLOAT      u_cur;              ! Aktuellt parameterv{rde
+  VECTOR     p_cur;              ! Aktuell punkt
+
+  INT        n_tot;              ! Totala antalet punkter i ut spine
+  VECTOR     p(50);              ! Definitionspunkter 
+  VECTOR     tp(50);             ! Tangentdefinitionspunkter 
+  STRING     mf(50)*1;           ! Flagga f|r "P" eller "M"
+  FLOAT      pval(50);           ! P v{rden
+  VECTOR     pm(50);             ! Mellanliggande punkt
+
+  INT        i_poi;              ! Loop index punkt        
+
+  FLOAT      u_clo;              ! Parameter f|r n{rmaste punkt
+
+  INT        b_flag;             ! Spine kurv BLANK v{rde
+
+  INT        DEBUG;              ! F|r kontroll utskrifter, etc.
+                                 ! Eq. 0 ==> Ingen     DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+
+BEGINMODULE
+
+! +++
+! 1. Initieringar och kontroll av indata
+! ---
+
+   DEBUG := 0;                   ! [ndra till 0 eller 1
+
+   IF e_fall=1 OR e_fall=2 THEN  ! Kontrollera f|rl{ngningsfall
+     ;                           !
+   ELSE                          !
+     EXIT("c_aspinev0: f|rl{ng. "!
+          + "fall ej OK");       !
+   ENDIF;                        !
+
+   IF m_fall=1 OR m_fall=2 THEN  ! Kontrollera modifieringsfall
+     ;                           !
+   ELSE                          !
+     EXIT("c_aspinev0: modifier."!
+          + " fall ej OK");      !
+   ENDIF;                        !
+
+   IF    graphic = 0  THEN       ! Grafik variabel
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELIF  graphic = 2  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("c_aspinev0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   GETCURH(cur_id,               ! Antal segment i kurvan
+   fnt,sl,ns_geo,ns_gra);        !
+   n_cur := ns_geo;              !
+
+!  GETCURH(spine_id,             ! Antal segment i spinen
+!  fnt,sl,ns_geo,ns_gra);        !
+!  n_spine := ns_geo;            !
+
+   FOR i_poi:=1 TO 50 DO         ! Initiera arrayer
+     p(i_poi)   := VEC(0,0,0);   ! Definitionspunkter 
+     tp(i_poi)  := VEC(0,0,0);   ! Tangentdefinitionspunkter 
+     mf(i_poi)  := "U";          ! Flagga f|r "P" eller "M"
+     pval(i_poi):= 0.0;          ! P v{rden
+     pm(i_poi)  := VEC(0,0,0);   ! Mellanliggande punkt
+   ENDFOR;                       !
+
+! +++
+! 2. Skapa modifierad spine 
+! ---
+
+  n_tot:= 0;                     ! Initiering antal punkter
+
+  FOR i_poi :=1 TO n_cur+1  DO   ! Start loop alla punkter i kurvan
+
+     u_cur:= i_poi - 1.0;        ! Aktuellt parameter v{rde     
+
+     p_cur:= ON(cur_id,u_cur);   ! Aktuell punkt p} kurvan
+
+     u_clo:= INV_ON(spine_id,    ! N{rmsta punkt p} spine
+             p_cur,1);           !
+
+     p(i_poi) :=   ON(spine_id,  !
+                     u_clo);     !
+     tp(i_poi):= p(i_poi) +      !
+                 TANG(spine_id,  !
+                     u_clo);     !
+     IF i_poi > 1 THEN           !
+       pval(i_poi-1):= 0.5;      ! !! Ej f{rdigt !!!
+       mf(i_poi-1)  := "P";      ! Flagga f|r "P" eller "M"
+     ENDIF;                      !
+     
+     n_tot:= n_tot + 1;          ! Ytterligare en punkt
+
+     IF DEBUG = 1 THEN           ! F|r DEBUG=1 :
+     POI_FREE(#5,p_cur   :PEN=3);! Skapa kurvpunkt 
+     POI_FREE(#6,p(i_poi):PEN=4);! Skapa spinepunkt 
+     ENDIF;                      !
+  ENDFOR;                        ! Slut  loop alla punkter
+
+  IF n_tot < 2 THEN              ! Program kontroll
+     EXIT("c_aspinev0: n_tot <"  !
+          + " 2   ");            !
+  ENDIF;                         !
+
+! +++
+! 2. Skapa modifierad spine
+! ---
+
+  CUR_CONARR(#1,"FREE",n_tot,   ! Skapa sammansatt k{gelsnitt
+     p,tp,mf,pval,pm            !
+     :BLANK=b_flag);            !
+
+!+++
+! 3. Grafisk representation av utdata 
+!---
+
+! +++
+! 4. Exit och "utskrift om debug {r p}"
+! ---
+
+  IF DEBUG = 1 THEN 
+    LST_INI("c_aspinev0 Omdefinition av spine med l{ngsg}ende kurva"); 
+    FOR i_poi:= 1 TO n_tot DO      
+      LST_LIN(STR(i_poi,3,0)+" "+STR(p(i_poi).x,12,4)+ " "+STR(p(i_poi).y,12,4)+   
+                " "+STR(p(i_poi).z,12,4)+" Punkt");  
+      LST_LIN(STR(i_poi,3,0)+" "+STR(tp(i_poi).x,12,4)+ " "+STR(tp(i_poi).y,12,4)+   
+                " "+STR(tp(i_poi).z,12,4)+" Tangent punkt");  
+    ENDFOR;                      !
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE

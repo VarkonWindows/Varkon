@@ -1,0 +1,270 @@
+!*********************  c_aboundv0 ***********************************
+! +++
+! Creation of a boundary curve with two points, surfaces and offset
+! ---
+! Revision history
+! ________________
+!
+! 1995-12-01 Gunnar Liden
+! 1996-05-26 Debug Gunnar Liden
+!
+!********************************************************************
+
+!sdesce Creation of a boundary curve with two points, surfaces and offset
+!sdescs Skapa en kurva med tv} punkter, ytor, offset och skjutriktning 
+
+GLOBAL  GEOMETRY MODULE  c_aboundv0 (
+VECTOR  p1       := VEC(0,0,0)  >"Start point for (planar intersection) curve";
+VECTOR  p2       := VEC(10,0,0) >"End   point for (planar intersection) curve";
+VECTOR  v_proj   := VEC(0,0,1)  >"Shooting direction";
+FLOAT   offset   :=  -2.1       >"Surface offset for boundary curve";
+INT     c_case   :=   1         >"Case Eq. 1: Intersect all non-blanked surfaces in GM";
+REF     sur1_id  :=   #0        >"@ @t16 Surface 1 for computation case 0 (<CR>=>#0)";
+REF     sur2_id  :=   #0        >"@ @t16 Optional surface 2 (<Cr> => #0: No surface)";
+INT     s_case   :=   1         >"Point selection case. Refer to ALL_INT_LIN_SUR";
+INT     graphic  :=   1         >"=0: No graphic =1: Show curve =2: Show all");
+
+
+! +++
+! Internal variables:
+! ___________________
+!
+
+  REF   sur_id;                ! Current surface
+
+                               ! For getid_gm:
+  INT    r_type;               ! Requested type
+  INT    no_ent;               ! Number of entities
+  REF    ent_id(3000);         ! References (# id's)
+
+                               ! For s_linsurv0:
+  INT    i_case;               ! Intersect calculation case
+  VECTOR r3_int_1;             ! Intersect point in R*3
+  VECTOR uv_int_1;             ! Intersect point in U,V
+  REF    id_int_1;             ! Identity for intersect point surface  
+  VECTOR r3_int_2;             ! Intersect point in R*3
+  VECTOR uv_int_2;             ! Intersect point in U,V
+  REF    id_int_2;             ! Identity for intersect point surface  
+  INT    status;               ! Error code = -1: No intersection
+  INT    graphic_int;          ! =0: No graphic =1: Show point =2: Show all
+
+  INT    no_sur;               ! Number of intersect surfaces for boundary crv
+  REF    all_sur(10);          ! References (# id's) for surfaces
+  INT    i_sur;                ! Loop index surface
+
+  REF    cur1_id;              ! Id for curve 1
+  REF    cur2_id;              ! Id for curve 2
+
+  FLOAT  dist_x;               ! Distance for trim plane 2
+
+  INT    graphic_trim;         ! =0: No graphic =1: Show curve
+
+  INT    b_val_c;              ! Blank flag curve
+  INT    b_val_a;              ! Blank flag all other entities
+
+  INT    DEBUG;                ! Debug
+  STRING s*1;                  ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________ 
+!
+! ---
+!
+! Initializations
+!
+
+  DEBUG := 0;                       ! Debug =1 or 0
+
+  IF  DEBUG = 1 THEN                !
+    LST_INI("c_aboundv0");          !
+  ENDIF;                            !
+
+  IF   graphic    = 0 THEN          ! Graphics
+    b_val_c:= 1;                    !
+    b_val_a:= 1;                    !
+    graphic_int := 0;               !
+    graphic_trim:= 0;               !
+  ELIF graphic    = 1 THEN          ! 
+    b_val_c:= 0;                    !
+    b_val_a:= 1;                    !
+    graphic_int := 0;               !
+    graphic_trim:= 1;               !
+  ELIF graphic    = 2 THEN          !
+    b_val_c:= 0;                    !
+    b_val_a:= 0;                    !
+    graphic_int := 2;               !
+    graphic_trim:= 2;               !
+  ELSE                              !
+   EXIT("c_aboundv0 Graphic" +      !
+         " not OK");                !
+  ENDIF;                            !
+
+  PSH_PMT("Boundary curve defined by two points on an offset surface");
+
+! +++
+! Retrieve identities for all surfaces in GM for c_case= 1
+! ---
+
+  IF c_case = 1 THEN                ! All surfaces in GM
+    r_type := 16;                   ! Requested type
+    PART (#22, getid_type (         !
+        r_type, no_ent, ent_id)     !
+        :SAVE=0);                   !
+  ELSE                              ! One or two surfaces 
+    no_ent := 0;                    ! 
+    IF  sur1_id <> #0 THEN          !
+      no_ent:= no_ent + 1;          !
+      ent_id(no_ent):= sur1_id;     !
+    ELSE                            !
+      POP_PMT();                    ! 
+      EXIT("c_aboundv0 No surface " !
+         +" is defined");           !
+    ENDIF;                          !
+    IF  sur2_id <> #0 THEN          !
+      no_ent:= no_ent + 1;          !
+      ent_id(no_ent):= sur2_id;     !
+    ENDIF;                          !
+  ENDIF;                            !
+
+
+! +++
+! Calculate intersects p1-v_proj and p2-v_proj
+! ---
+
+    i_case := 1;                    ! No start point given
+    PART ( #3, s_linsurv0 (         ! Intersect line/surface point 1
+    p1 , v_proj,                    ! 
+    no_ent, ent_id,                 !
+    i_case,                         !
+    r3_int_1, uv_int_1, id_int_1,   !
+    status    , graphic_int));      !
+    IF status < 0 THEN              !
+      POP_PMT();                    ! 
+      EXIT("c_aboundv0 No intersect"!
+         +" for point 1");          !
+    ENDIF;                          !
+    PART (#4 , s_linsurv0 (         ! Intersect line/surface point 2
+    p2 , v_proj,                    ! 
+    no_ent, ent_id,                 !
+    i_case,                         !
+    r3_int_2, uv_int_2, id_int_2,   !
+    status    , graphic_int));      !
+    IF status < 0 THEN              !
+      POP_PMT();                    ! 
+      EXIT("c_aboundv0 No intersect"!
+         +" for point 2");          !
+    ENDIF;                          !
+
+! +++
+! Number of intersect surfaces, i.e surfaces for the boundary curve
+! (For the moment maximum two surfaces defined by p1 and p2)
+! ---
+
+  no_sur := 1;                      !
+  all_sur(no_sur):= id_int_1;       !
+  IF  id_int_1 <> id_int_2 THEN     !
+    no_sur:= no_sur + 1;            !
+    all_sur(no_sur):= id_int_2;     !
+  ENDIF;                            !
+
+  IF  DEBUG = 1 THEN                !
+   FOR i_sur:= 1 TO no_sur DO       
+    LST_LIN("Surface number "+STR(i_sur,2,0)+" Id. "+RSTR(all_sur(i_sur)));
+   ENDFOR;
+  ENDIF;                            !
+
+! +++
+! Create intersect coordinate system (p1, p2 and v_proj) for the boundary curve
+! ---
+
+  CSYS_3P(#5, "Int_c_abound", p1, p2, p1+v_proj:BLANK=b_val_a);
+
+! +++
+! Create trim planes for the boundary curve at point p1 and p2
+! ---
+  dist_x := VECL(p2-p1);            ! Distance in X plane 2
+  MODE_LOCAL(GLOBAL_REF(#5));       ! Activate intersect coord. system
+  B_PLANE(#7,VEC(0,0,0),            ! Trim plane at point p1
+   VEC(0,100,0), VEC(0,100,0),      !
+   VEC(0,0,100)                     !
+   :BLANK=b_val_a);                 !
+  B_PLANE(#8,VEC(dist_x , 0,0),     ! Trim plane at point p2
+             VEC(dist_x ,100,0),    !
+             VEC(dist_x ,100,0),    !
+             VEC(dist_x ,0,100)     !
+   :BLANK=b_val_a);                 !
+  MODE_GLOBAL();                    ! Activate global system
+
+! +++
+! Create intersect curves, trim and create a composite curve  
+! (Only programmed for maximum two surfaces at the moment .... )
+! ---
+
+  sur_id := all_sur(1);             ! Current surface
+  SUR_OFFS(#14,sur_id,offset        ! Offset current surface
+           :BLANK= 1     );         ! (must be blanked ... )
+  sur_id := GLOBAL_REF(#14);        !
+
+  IF  DEBUG = 1 THEN                !
+    LST_LIN("Offset surface number 1 with reference "+RSTR(sur_id));
+  ENDIF;                            !
+
+  CUR_INT( #10, sur_id,             !
+   GLOBAL_REF(#5),1:BLANK=b_val_a); !
+  cur1_id:= GLOBAL_REF(#10);        !
+  PART(#20,c_atrimv0( cur1_id,      ! Trim curve 1 at p1
+    GLOBAL_REF(#7), "P",1,          !
+    graphic_trim));                 !
+
+  IF no_sur > 1 THEN                !
+    sur_id := all_sur(2);           !
+    SUR_OFFS(#15,sur_id,offset      ! 
+           :BLANK= 1     );         !
+    sur_id := GLOBAL_REF(#15);      !
+    IF  DEBUG = 1 THEN              !
+      LST_LIN("Offset surface "+    !
+      "number 2 with reference "+   !
+       RSTR(sur_id));               !
+    ENDIF;                          !
+    CUR_INT( #11, sur_id,           !
+    GLOBAL_REF(#5),1:BLANK=b_val_a);!
+     cur2_id:= GLOBAL_REF(#11);     !
+  ELSE                              !
+     cur2_id:= GLOBAL_REF(#20#1);   !
+  ENDIF;                            !
+
+  PART(#21,c_atrimv0( cur2_id,      ! Trim curve 2 at p2
+    GLOBAL_REF(#8), "N",1,          !
+    graphic_trim));                 !
+
+  IF graphic  <= 1 THEN             !
+    BLANK(GLOBAL_REF(#20#1));       !
+    IF no_sur > 1 THEN              !
+      BLANK(GLOBAL_REF(#21#1));     !
+    ENDIF;                          !
+  ENDIF;                            !
+
+! +++
+! Create a composite curve
+! (Only programmed for two surfaces at the moment .... )
+! ---
+
+  IF  no_sur > 1 THEN               !
+   CUR_COMP(#1, GLOBAL_REF(#20#1),  !
+               GLOBAL_REF(#21#1)    !
+    :BLANK=b_val_c);                !
+  ELSE                              !
+   CUR_COMP(#2, GLOBAL_REF(#21#1)   !
+    :BLANK=b_val_c);                !
+  ENDIF;                            !
+
+  IF  DEBUG = 1 THEN                !
+    LST_EXI();                      !
+  ENDIF;                            !
+
+  POP_PMT();                        ! Erase message
+
+ENDMODULE

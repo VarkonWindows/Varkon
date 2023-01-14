@@ -1,0 +1,772 @@
+!********************* c_c2cir    ***********************
+! +++
+!  Create two arcs as an approximation of a curve segment
+! 
+!  This function must be called by another module (c_acir),
+!  since it has output VAR variables.
+! ---
+! Revision history
+! ________________
+!
+! 1998-02-22  Gunnar Liden
+! 
+!*******************************************************
+
+!sdescs Approximera kurvsegment med tva (2) cirklar
+!sdesce Approximate curve segment with two (2) arcs
+
+GLOBAL GEOMETRY MODULE c_c2cir(
+
+    REF     cur_id;             ! Curve
+    FLOAT   u_start;            ! Start parameter value for segment
+    FLOAT   u_end;              ! End   parameter value for segment
+    FLOAT   line_crit;          ! Criterion (radius) for line
+    VECTOR  pla_normal;         ! Curve plane normal
+    INT     n_poi;              ! Number of check points per segment
+VAR FLOAT   c_dev;              ! Deviation
+VAR INT     no_cir;             ! Number of circles (1 or 2)
+                                ! and 0 circles for failure ??
+VAR REF     cirlin_id;          ! Circle or circle+line or line
+INT         graphic);           ! 0: None 1: Circles 2: All
+
+! Internal variables:
+
+    VECTOR  p_1;                ! Start point circle 1
+    VECTOR  tp_1;               ! Start tangent point circle 1
+    FLOAT   pval_1;             ! P-value for circle 1
+    VECTOR  p_2;                ! End   point circle 1
+    VECTOR  tp_2;               ! Start tangent point circle 2
+    FLOAT   pval_2;             ! P-value for circle 2
+    VECTOR  p_3;                ! End   point circle 2
+    VECTOR  tp_3;               ! End   tangent point circle 2
+  VECTOR     p_1_l;              ! Point p_1 in local system
+  VECTOR     t_1_l;              ! Tangent for p_1_l
+  VECTOR     tp_1_l;             ! Tangent point for p_1_l
+  VECTOR     p_3_l;              ! Point p_3 in local system
+  VECTOR     t_3_l;              ! Tangent for p_3_l
+  VECTOR     tp_3_l;             ! Tangent point for p_3_l
+
+  FLOAT      X,Y;                ! Start point
+  FLOAT      X2,Y2;              ! End   point
+  FLOAT      VX_I,VY_I;          ! Start tangent
+  FLOAT      VX2_I,VY2_I;        ! End   tangent
+  FLOAT      XC,YC;              ! Centre for circle 1
+  FLOAT      XC2,YC2;            ! Centre for circle 2
+  FLOAT      R;                  ! Radius for circle 1
+  FLOAT      R2;                 ! Radius for circle 2
+  FLOAT      XP,YP;              ! End pt circle1, start pt circle 1
+  FLOAT      VXP,VYP;            ! Tangent for XP,YP
+  FLOAT      ANG1, ANG2;         ! Angle for circle 1 and circle 2
+
+  VECTOR     t_1;                ! Tangent for p_1
+  FLOAT      kappa_1;            ! Curvature for p_1
+  VECTOR     centre_1;           ! Circle centre for p_1
+  VECTOR     t_2;                ! Tangent for p_2
+  VECTOR     t_3;                ! Tangent for p_3
+  FLOAT      kappa_3;            ! Curvature for p_3
+  VECTOR     centre_3;           ! Circle centre for p_3
+
+  VECTOR     chord;              ! Vector p_3-p_1     
+  VECTOR     chord_p;            ! Vector perpendicular chord
+  VECTOR     l_p;                ! Line point (direct.: chord_p)
+  FLOAT      u_max;              ! U param. for max. distance point
+  FLOAT      d_max;              ! Maximum distance
+  INT        con_flag;           ! Convex (=1), concave(=-1) or (0)   
+  INT        n_int;              ! Number of intersect points
+  VECTOR     centre_cir1;        ! Circle 1 centre
+  VECTOR     centre_cir2;        ! Circle 2 centre
+  FLOAT      radius_cir1;        ! Circle 1 radius
+  FLOAT      radius_cir2;        ! Circle 2 radius
+  VECTOR     vcross;             ! Cross product vector
+  FLOAT      dot_cir1;           ! Scalar product circle 1
+  FLOAT      dot_cir2;           ! Scalar product circle 2
+  FLOAT      ang_cir1;           ! Angle          circle 1
+  FLOAT      ang_cir2;           ! Angle          circle 2
+
+  INT        i_poi;              ! Loop index check point
+  FLOAT      delta;              ! Delta parameter value
+  FLOAT      s_u;                ! Current parameter value
+  VECTOR     p_che;              ! Curve  check point 
+  VECTOR     p_invon;            ! Circle check point 
+  FLOAT      u_invon;            ! Circle check parameter value
+  FLOAT      dist;               ! Distance for check 
+
+  VECTOR     v_kappa;            ! Vector for kappa value
+
+  INT        graphic_pval;       ! Graphics for a_pvaluev0
+
+  FLOAT      comptol;            ! Computer accuracy
+
+  INT        b_aflag;            ! BLANK value all other entities
+  INT        b_cflag;            ! BLANK value circles
+
+  INT        DEBUG;              ! For Debug
+  STRING     s*1;                ! For INPMT
+
+  VECTOR  c_1_s, c_1_e, c_2_s, c_2_e;
+  FLOAT   dot_start, dot_mid1, dot_mid2, dot_end;
+  FLOAT   rad_start, rad_mid1, rad_mid2, rad_end;
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Initialization of output variables
+
+  c_dev  := -0.12345;;
+  p_1    := VEC(-0.12345,-0.12345,-0.12345);   
+  tp_1   := VEC(-0.12345,-0.12345,-0.12345);
+  pval_1 := -0.12345;;
+  p_2    := VEC(-0.12345,-0.12345,-0.12345);   
+  tp_2   := VEC(-0.12345,-0.12345,-0.12345);
+  pval_2 := -0.12345;;
+  p_3    := VEC(-0.12345,-0.12345,-0.12345);   
+  tp_3   := VEC(-0.12345,-0.12345,-0.12345); 
+  no_cir := -12345;
+
+! Computer accuracy
+  comptol := 0.00000001;
+
+! Change to 0 or 1
+  DEBUG := 0;
+
+! Number of check points
+  IF  n_poi < 3 THEN
+    EXIT("c_c2cir Minimum number of check points is 3");
+  ENDIF;
+
+! Line criterion
+  IF  line_crit < 1000.0 THEN
+    EXIT("c_c2cir Minimum line criterion (radius) is 1000");
+  ENDIF;
+
+! Length of plane normal
+  IF  VECL(pla_normal) < 0.1 THEN
+    EXIT("c_c2cir Minimum plane normal length is 0.1");
+  ENDIF;
+
+! Start U value
+  IF  u_start < 0.0 THEN
+    EXIT("c_c2cir Minimum start U value is 0.0");
+  ENDIF;
+! End   U value
+  IF  u_end  < u_start + 0.001  THEN
+    EXIT("c_c2cir Minimum end U value is start U + 0.001");
+  ENDIF;
+
+! Check graphic
+  IF    graphic = 0  THEN
+    b_aflag:= 1;
+    b_cflag:= 1;
+    graphic_pval := 0;
+  ELIF  graphic = 1  THEN 
+    b_aflag:= 1;
+    b_cflag:= 0;
+    graphic_pval := 0;
+  ELIF  graphic = 2  THEN
+    b_aflag:= 0;
+    b_cflag:= 0; 
+    graphic_pval := 0;
+  ELSE 
+    EXIT("c_c2cir graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialization of local variables
+
+
+  p_1_l        := VEC(-0.12345,-0.12345,-0.12345);
+  p_3_l        := VEC(-0.12345,-0.12345,-0.12345);
+  t_1_l        := VEC(-0.12345,-0.12345,-0.12345);
+  t_3_l        := VEC(-0.12345,-0.12345,-0.12345);
+  tp_1_l       := VEC(-0.12345,-0.12345,-0.12345);
+  tp_3_l       := VEC(-0.12345,-0.12345,-0.12345);
+
+  radius_cir1  := -0.123456789;
+  radius_cir2  := -0.123456789;
+  kappa_1      := -0.123456789;
+  kappa_3      := -0.123456789;
+  dot_cir1     := -0.123456789;
+  dot_cir2     := -0.123456789;
+  ang_cir1     := -0.123456789;
+  ang_cir2     := -0.123456789;
+  u_max        := -0.123456789;
+  d_max        := -0.123456789;
+  delta        := -0.123456789;
+  s_u          := -0.123456789;
+  u_invon      := -0.123456789;
+  dist         := -0.123456789;
+  chord        := VEC(-0.12345,-0.12345,-0.12345);
+  chord_p      := VEC(-0.12345,-0.12345,-0.12345);
+  centre_cir1  := VEC(-0.12345,-0.12345,-0.12345);
+  centre_cir2  := VEC(-0.12345,-0.12345,-0.12345);
+  centre_1     := VEC(-0.12345,-0.12345,-0.12345);
+  centre_3     := VEC(-0.12345,-0.12345,-0.12345);
+  vcross       := VEC(-0.12345,-0.12345,-0.12345);
+  t_1          := VEC(-0.12345,-0.12345,-0.12345);
+  t_2          := VEC(-0.12345,-0.12345,-0.12345);
+  t_3          := VEC(-0.12345,-0.12345,-0.12345);
+  l_p          := VEC(-0.12345,-0.12345,-0.12345);
+  p_che        := VEC(-0.12345,-0.12345,-0.12345);
+  p_invon      := VEC(-0.12345,-0.12345,-0.12345);
+  v_kappa      := VEC(-0.12345,-0.12345,-0.12345);
+  con_flag     := -12345;
+  n_int        := -12345;
+  i_poi        := -12345;
+
+! +++
+! 2. Calculate output points p_1 and p_3 
+! ---
+
+  p_1  :=    ON(cur_id, u_start);
+  t_1  :=  TANG(cur_id, u_start);
+  tp_1 :=   p_1 + t_1;
+  p_3  :=    ON(cur_id, u_end );
+  t_3  :=  TANG(cur_id, u_end );
+  tp_3 :=   p_3 + t_3;
+
+! +++
+! Chord between end points
+! ---
+
+  chord  := p_3 - p_1; 
+
+  IF  VECL(chord) < 0.01 THEN
+    EXIT("c_c2cir Distance between start and end point = 0");
+  ENDIF;
+
+! Vector perpendicular chord. Normalized
+  chord_p := VPROD(chord,pla_normal);
+! Programming check
+  IF  VECL(chord_p) < 100.0*comptol THEN
+    EXIT("c_c2cir chord_p = 0,0,0");
+  ENDIF;
+  chord_p := VECN(chord_p);
+
+! Check that there is a 
+  v_kappa     :=  EVAL(cur_id,"kappa", VEC(u_start,0,0));
+  kappa_1     :=  v_kappa.x;
+  IF   kappa_1 > 1.0/line_crit THEN
+    centre_1    :=  CENTRE(cur_id, u_start);
+  ELSE
+    kappa_1  := 0.0; ! Will be used as a flag
+    vcross   := VPROD(chord, pla_normal);
+    centre_1 := p_1 + VECL(chord)*VECN(vcross);
+  ENDIF;
+  
+  v_kappa     :=  EVAL(cur_id,"kappa", VEC(u_end  ,0,0));
+  kappa_3     :=  v_kappa.x;
+  IF   kappa_3 > 1.0/line_crit THEN
+    centre_3    :=  CENTRE(cur_id, u_end)  ;
+  ELSE
+    kappa_3  := 0.0; ! Will be used as a flag
+    vcross   := VPROD(chord, pla_normal);
+    centre_3 := p_3 + VECL(chord)*VECN(vcross);
+  ENDIF;
+  
+! Case: One (1) straight line 
+  IF  kappa_1 > 0.0 AND  kappa_3 > 0.0 THEN
+    ; ! No straight lines
+  ELIF  kappa_1 <= comptol        AND  
+        kappa_3 <= comptol            THEN
+    pval_1 := 0.5;
+    pval_2 := 0.5; ! Shall not be used by the calling fctn
+    p_2    := p_3; ! Shall not be used by the calling fctn
+    tp_2   := p_3; ! Shall not be used by the calling fctn
+    tp_1   := p_3;
+    tp_3   := p_1;
+    GOTO one_line;
+  ELSE
+    ; ! Case: One line and one circle
+  ENDIF;
+
+! +++
+! 3. Calculate output points p_2 and tp_2
+! ---
+
+! Create local coordinate system for curve segment
+  CSYS_3P(#2, "Chord", p_1, p_3, p_1 + chord_p
+                :BLANK=b_aflag);
+
+! Transformate input data to the local system
+  MODE_LOCAL(GLOBAL_REF(#2));
+  p_1_l  :=    ON(cur_id, u_start);
+  t_1_l  :=  TANG(cur_id, u_start);
+  p_3_l  :=    ON(cur_id, u_end );
+  t_3_l  :=  TANG(cur_id, u_end );
+  MODE_GLOBAL();
+
+! To local variables for c_c3cir
+  X       := p_1_l.x;
+  Y       := p_1_l.y;
+  X2      := p_3_l.x;
+  Y2      := p_3_l.y;
+  VX_I    := t_1_l.x;
+  VY_I    := t_1_l.y;
+  VX2_I   := t_3_l.x;
+  VY2_I   := t_3_l.y;
+
+! Calculate circle segments in local system
+  PART(#21, c_c3cir ( X, Y, X2, Y2, 
+                      VX_I, VY_I, VX2_I, VY2_I,
+                      XC, YC, XC2, YC2, R, R2,
+                      XP, YP, VXP, VYP, ANG1, ANG2)
+                      :SAVE=0);
+
+! Transformate c_c3cir output data to the global system
+  MODE_LOCAL(GLOBAL_REF(#2));
+  POI_FREE(#22, VEC(XC ,YC ,0):BLANK=b_aflag);
+  POI_FREE(#23, VEC(XC2,YC2,0):BLANK=b_aflag);
+  POI_FREE(#24, VEC(XP ,YP ,0):BLANK=b_aflag);
+  POI_FREE(#25, VEC(XP+VXP ,YP+VYP ,0):BLANK=b_aflag);
+  MODE_GLOBAL();
+  centre_cir1  := ON(GLOBAL_REF(#22));
+  centre_cir2  := ON(GLOBAL_REF(#23));
+  p_2          := ON(GLOBAL_REF(#24));
+  tp_2         := ON(GLOBAL_REF(#25));
+
+  IF  graphic = 2  THEN
+    LIN_FREE(#50, p_1, p_3);
+    LIN_FREE(#51, centre_cir1, p_1:PEN=3);
+    LIN_FREE(#52, centre_cir1, p_2:PEN=3);
+    POI_FREE(#53, centre_cir1:PEN=3);
+    POI_FREE(#54, p_1:PEN=3);
+    POI_FREE(#55, p_2:PEN=3);
+    LIN_FREE(#41, centre_cir2, p_3:PEN=2);
+    LIN_FREE(#42, centre_cir2, p_2:PEN=2);
+    POI_FREE(#43, centre_cir2:PEN=2);
+    POI_FREE(#44, p_3:PEN=2);
+    POI_FREE(#45, p_3:PEN=2);
+
+  ENDIF;
+
+
+! +++
+! n. Calculate P-values for the circles
+! ---
+
+  IF  kappa_1 >  comptol  OR  R > 50000.0 - 0.00001 THEN
+!   Calculate P-value
+    ang_cir1 := ANG1;
+    PART(#28, a_pvaluev0 ( ang_cir1, graphic_pval, pval_1));
+  ELSE
+    pval_1 := 0.5;
+  ENDIF;
+
+  IF  kappa_3 >  comptol OR  R2 > 50000.0 - 0.00001  THEN
+!   Calculate P-value
+    ang_cir2 := ANG2;
+    PART(#29, a_pvaluev0 ( ang_cir2, graphic_pval, pval_2));
+  ELSE
+    pval_2 := 0.5;
+  ENDIF;
+
+  GOTO  one_line; ! Tillfallig label
+
+  EXIT("Tillfalligt");
+
+! Find curve point at the maximum distance from chord
+! Delta U 
+  delta := (u_end-u_start)/(2*n_poi+1);
+  u_max    := -0.12345;
+  con_flag :=   -12345;
+  d_max    := -50000.0;
+! Activate the chord system
+  MODE_LOCAL(GLOBAL_REF(#2));
+  FOR  i_poi := 1 TO 2*n_poi DO
+!   Current parameter U
+    s_u  := u_start + i_poi*delta;
+!   Point (local coordinates) on curve
+    l_p := ON(cur_id, s_u);
+!   New maximum distance point?
+    IF  ABS(l_p.y) > d_max THEN
+      d_max := ABS(l_p.y);
+      u_max := s_u;
+    ENDIF;
+    IF   con_flag = -1 AND l_p.y >  0.0 THEN
+      con_flag := 0;
+    ELIF con_flag =  1 AND l_p.y <  0.0 THEN
+      con_flag := 0;
+    ELIF con_flag < 0  AND l_p.y >  0.0 THEN
+      con_flag :=  1;
+    ELIF con_flag < 0  AND l_p.y <  0.0 THEN
+      con_flag := -1;
+    ENDIF;
+
+  ENDFOR; 
+! Activate the global system again
+  MODE_GLOBAL();
+
+! Flag shall be reversed (TODO above
+  IF    con_flag = -1 THEN
+    con_flag :=  1;
+  ELIF  con_flag =  1 THEN
+    con_flag := -1;
+  ELIF  con_flag < 0  THEN
+    EXIT("c_c2cir con_flag <  0");
+  ELIF  con_flag = 0  THEN
+    EXIT("c_c2cir con_flag =  0");
+  ENDIF;
+
+! Programming check
+  IF  u_max < 0.0 THEN
+    EXIT("c_c2cir u_max < 0");
+  ENDIF;
+
+! Maximum distance point in global coordinates
+  l_p := ON(cur_id, u_max );
+
+! Create intersecting mid line, perpendicular to the chord
+  LIN_FREE(#3, l_p, l_p + con_flag*VECL(chord)*chord_p
+               :BLANK=b_aflag);
+  
+! Create intersecting start point line, perpend. tangent
+  LIN_FREE(#4, p_1, centre_1:BLANK=b_aflag);
+  
+! Create intersecting end   point line, perpend. tangent
+  LIN_FREE(#5, p_3, centre_3:BLANK=b_aflag);
+  
+! Activate the chord system for the intersect calculation
+  MODE_LOCAL(GLOBAL_REF(#2));
+
+! Try not to make intersect if start circle is a line
+  IF  kappa_1 >  comptol  THEN
+!   Intersection point between mid and start line
+    n_int := N_INTERSECT(GLOBAL_REF(#3),GLOBAL_REF(#4),-1);
+!   Programming check
+    IF  n_int = 0   THEN
+      EXIT("c_c2cir n_int = 0 for intersect mid/start line");
+    ENDIF;
+!   Intersect point in local coordinates
+    centre_cir1 := INTERSECT(GLOBAL_REF(#3),GLOBAL_REF(#4),-1);
+!   Point for transformation to the global system
+    POI_FREE(#6, centre_cir1:BLANK=b_aflag);
+! Try not to make intersect if start circle is a line
+  ENDIF;
+
+! Try not to make intersect if end   circle is a line
+  IF  kappa_3 >  comptol  THEN
+!   Intersection point between mid and end   line
+    n_int := N_INTERSECT(GLOBAL_REF(#3),GLOBAL_REF(#5),-1);
+!   Programming check
+    IF  n_int = 0   THEN
+      EXIT("c_c2cir n_int = 0 for intersect mid/end line");
+    ENDIF;
+!   Intersect point in local coordinates
+    centre_cir2 := INTERSECT(GLOBAL_REF(#3),GLOBAL_REF(#5),-1);
+!   Point for transformation to the global system
+    POI_FREE(#7, centre_cir2:BLANK=b_aflag);
+! Try not to make intersect if end   circle is a line
+  ENDIF;
+
+! Activate the global system again
+  MODE_GLOBAL();
+  
+! Radius and centre if start circle not is a line
+  IF  kappa_1 >  comptol  THEN
+!   Transformed points
+    centre_cir1 := ON(GLOBAL_REF(#6));
+!   Delete temporary geometry elements
+    DEL(GLOBAL_REF(#6));
+
+!   Radius for the circle
+    radius_cir1 := VECL(p_1-centre_cir1);
+
+!   con_flag not needed !!!!  TODO
+    IF   chord_p*VECN(l_p-centre_cir1) <  0.0 THEN
+      chord_p := -chord_p;
+    ENDIF;
+
+!   Ouput point p_2
+    p_2 := centre_cir1 + radius_cir1*chord_p;
+
+!   Tangent for p_2
+    vcross := VPROD(p_3-centre_cir1,p_1-centre_cir1);
+    t_2    := VPROD(chord_p,vcross);
+    t_2    := VECN(t_2);
+
+!   Tangent point for p_2
+    tp_2 := p_2 + t_2;
+
+  ENDIF; ! Start output curve segment is a circle
+
+! Radius and centre if end   circle not is a line
+  IF  kappa_3 >  comptol  THEN
+!   Transformed points
+    centre_cir2 := ON(GLOBAL_REF(#7));
+
+!   Delete temporary geometry elements
+    DEL(GLOBAL_REF(#7));
+
+!   Radius for the circle
+    radius_cir2 := VECL(p_3-centre_cir2);
+
+!   Calculate p_2 if not calculated above, i.e the
+!   start circle is a line
+    IF  kappa_1 <  comptol  THEN
+!     con_flag not needed !!!!  TODO
+      IF   chord_p*VECN(l_p-centre_cir2) <  0.0 THEN
+        chord_p := -chord_p;
+      ENDIF;
+
+!     Ouput point p_2
+      p_2 := centre_cir2 + radius_cir2*chord_p;
+
+
+!     Tangent for p_2
+      vcross := VPROD(p_3-centre_cir2,p_1-centre_cir2);
+      t_2    := VPROD(chord_p,vcross);
+      t_2    := VECN(t_2);
+
+!     Tangent point for p_2
+      tp_2 := p_2 + t_2;
+
+    ENDIF; ! Start circle is a line
+
+  ENDIF; ! End output curve segment is a circle
+
+  IF  graphic = 2 THEN
+    POI_FREE(#107, p_2        :PEN=4);
+    LIN_FREE(#108, p_2 , p_2 + 0.5*VECL(chord)*t_2 :PEN=4);
+    POI_FREE(#106, centre_cir1:PEN=2);
+    POI_FREE(#109, centre_cir2:PEN=2);
+    LIN_FREE(#104, l_p, l_p + con_flag*VECL(chord)*chord_p);
+    LIN_FREE(#105, p_1, p_3);
+    LIN_FREE(#100, p_1, centre_1:PEN=2);
+    LIN_FREE(#101, p_3, centre_3:PEN=4);
+  ENDIF;
+
+! Delete temporary geometry elements
+! DEL(GLOBAL_REF(#2));
+! DEL(GLOBAL_REF(#3));
+! DEL(GLOBAL_REF(#4));
+! DEL(GLOBAL_REF(#5));
+
+! +++
+! 4. Adjustment of tangent point for the circle+line case
+! ---
+
+  IF  kappa_1 <  comptol  THEN
+    tp_1 := p_2;
+  ENDIF;
+  IF  kappa_3 <  comptol  THEN
+    tp_2 := p_3;
+  ENDIF;
+
+
+! +++
+! 5. Calculate P-values for the circles
+! ---
+
+  IF  kappa_1 >  comptol  THEN
+!   Angle for circle 1
+    dot_cir1 := chord_p*VECN(p_1-centre_cir1);
+    IF  dot_cir1 > 1.0 THEN
+      ang_cir1 := 0.0;
+    ELIF  dot_cir1 < 0.0 THEN
+      EXIT("c_c2cir Not programmed for ang_cir1 > 90");
+    ELSE
+      ang_cir1 := ARCCOS(dot_cir1);
+    ENDIF;
+!   Calculate P-value
+    PART(#8, a_pvaluev0 ( ang_cir1, graphic_pval, pval_1));
+  ELSE
+    pval_1 := 0.5;
+  ENDIF;
+
+  IF  kappa_3 >  comptol  THEN
+!   Angle for circle 2
+    dot_cir2 := chord_p*VECN(p_3-centre_cir2);
+    IF  dot_cir2 > 1.0 THEN
+      ang_cir2 := 0.0;
+    ELIF  dot_cir2 < 0.0 THEN
+      EXIT("c_c2cir Not programmed for ang_cir2 > 90");
+    ELSE
+      ang_cir2 := ARCCOS(dot_cir2);
+    ENDIF;
+!   Calculate P-values
+    PART(#9, a_pvaluev0 ( ang_cir2, graphic_pval, pval_2));
+  ELSE
+    pval_2 := 0.5;
+  ENDIF;
+
+
+! +++
+! 6. Calculate maximum deviation to input curve
+! ---
+
+! +++
+one_line:; ! Label:  Output is one line
+! ---
+
+
+! +++
+! Number of output circles or circle+line
+! ---
+
+! Create temporary conic (composite circle or ....) curve
+
+  IF  kappa_1 <  comptol AND kappa_3 < comptol  THEN
+    no_cir := 1;
+    CUR_CONIC(#10, "FREE", p_1, tp_1, pval_1, 
+                          p_3, tp_3
+                          :BLANK=b_cflag, PEN=4);
+    cirlin_id := GLOBAL_REF(#10);
+  ELSE
+    no_cir := 2;
+    CUR_CONIC(#1, "FREE", p_1, tp_1, pval_1, 
+                          p_2, tp_2, pval_2,
+                          p_3, tp_3
+                          :BLANK=b_cflag, PEN=4);
+    cirlin_id := GLOBAL_REF(#1);
+  ENDIF;
+
+! Delta U 
+  delta := (u_end-u_start)/(n_poi+1);
+
+! Initialize maximum deviation
+  c_dev  := -50000.0;
+
+! Start loop check points
+  FOR  i_poi := 1 TO n_poi DO
+
+!   Current check parameter value
+    s_u  := u_start + i_poi*delta;
+
+!   Check point
+    p_che := ON(cur_id,s_u);
+
+!   Graphical Debug
+    IF graphic = 2 THEN
+      POI_FREE(#110, p_che:PEN=2);
+    ENDIF;
+
+!   Calculate closest point
+    u_invon := INV_ON ( cirlin_id, p_che, 1);
+    p_invon := ON(cirlin_id, u_invon);
+
+!   Distance
+    dist := VECL(p_che - p_invon);
+    
+!   New maximum deviation      
+    IF   dist >  c_dev THEN
+      c_dev := dist;
+    ENDIF;
+
+  ENDFOR;
+
+  IF    DEBUG  = 1  THEN
+  LST_EXI();
+  ENDIF; 
+
+
+! +++
+! 7. Testing (create circle with two points)
+! ---
+
+! IF  kappa_1 > comptol AND kappa_3 > comptol THEN
+!   POI_FREE(#33, p_1);
+!   POI_FREE(#34, p_2);
+!   POI_FREE(#35, p_3);
+!   POI_FREE(#36, centre_cir1);
+!   POI_FREE(#37, centre_cir2);
+!   MODE_LOCAL (#2);
+!   ARC_2POS(#31, ON(#34), ON(#33), radius_cir1:PEN=2);
+!   ARC_2POS(#32, ON(#35), ON(#34), radius_cir2:PEN=4);
+!   MODE_GLOBAL();
+!   c_1_s := -1.0*TANG(#31,1.0);
+!   c_1_e := -1.0*TANG(#31,0.0);
+!   c_2_s := -1.0*TANG(#32,1.0);
+!   c_2_e := -1.0*TANG(#32,0.0);
+!   dot_start := t_1*(centre_cir1-p_1);
+!   dot_mid1  := t_2*(centre_cir1-p_2);
+!   dot_mid2  := t_2*(centre_cir2-p_2);
+!   dot_end   := t_3*(centre_cir2-p_3);
+!   rad_start := VECL(centre_cir1-p_1)-radius_cir1;
+!   rad_mid1  := VECL(centre_cir1-p_2)-radius_cir1;
+!   rad_mid2  := VECL(centre_cir2-p_2)-radius_cir2;
+!   rad_end   := VECL(centre_cir2-p_3)-radius_cir2;
+!   LST_INI("c_c2cir Compare with other circle");
+!   LST_LIN("t_1   "+ STR(t_1.x,15,10)+" " 
+!                   + STR(t_1.y,15,10)+" " 
+!                   + STR(t_1.z,15,10));
+!   LST_LIN("c_1_s "+ STR(c_1_s.x,15,10)+" " 
+!                   + STR(c_1_s.y,15,10)+" " 
+!                   + STR(c_1_s.z,15,10));
+!   LST_LIN("c_1_e "+ STR(c_1_e.x,15,10)+" " 
+!                   + STR(c_1_e.y,15,10)+" " 
+!                   + STR(c_1_e.z,15,10));
+!   LST_LIN("t_2   "+ STR(t_2.x,15,10)+" " 
+!                   + STR(t_2.y,15,10)+" " 
+!                   + STR(t_2.z,15,10));
+!   LST_LIN("c_2_s "+ STR(c_2_s.x,15,10)+" " 
+!                   + STR(c_2_s.y,15,10)+" " 
+!                   + STR(c_2_s.z,15,10));
+!   LST_LIN("t_3   "+ STR(t_3.x,15,10)+" " 
+!                   + STR(t_3.y,15,10)+" " 
+!                   + STR(t_3.z,15,10));
+!   LST_LIN("c_2_e "+ STR(c_2_e.x,15,10)+" " 
+!                   + STR(c_2_e.y,15,10)+" " 
+!                   + STR(c_2_e.z,15,10));
+!   LST_LIN("dot_start "+ STR(dot_start,20,15));
+!   LST_LIN("dot_mid1  "+ STR(dot_mid1 ,20,15));
+!   LST_LIN("dot_mid2  "+ STR(dot_mid2 ,20,15));
+!   LST_LIN("dot_end   "+ STR(dot_end  ,20,15));
+!   LST_LIN("rad_start "+ STR(rad_start,20,15));
+!   LST_LIN("rad_mid1  "+ STR(rad_mid1 ,20,15));
+!   LST_LIN("rad_mid2  "+ STR(rad_mid2 ,20,15));
+!   LST_LIN("rad_end   "+ STR(rad_end  ,20,15));
+!   LST_EXI();
+! ENDIF;
+
+
+  
+
+! s:= INPMT("c_c2cir no_cir= "+STR(no_cir,-1,0)+
+!          " Print output data (y/n) ?","n",1);
+! IF  s <> "n" THEN
+!  LST_INI("Printout from c_c2cir");
+!  LST_LIN("no_cir "+ STR(no_cir, 5,0));
+!  LST_LIN("p_1    "+ STR(p_1.x,15,10)+" " 
+!                   + STR(p_1.y,15,10)+" " 
+!                   + STR(p_1.z,15,10));
+!  LST_LIN("tp_1   "+ STR(tp_1.x,15,10)+" " 
+!                   + STR(tp_1.y,15,10)+" " 
+!                   + STR(tp_1.z,15,10));
+!  LST_LIN("pval_1 "+ STR(pval_1,15,10));
+!  LST_LIN("p_2    "+ STR(p_2.x,15,10)+" " 
+!                   + STR(p_2.y,15,10)+" " 
+!                   + STR(p_2.z,15,10));
+!  LST_LIN("tp_2   "+ STR(tp_2.x,15,10)+" " 
+!                   + STR(tp_2.y,15,10)+" " 
+!                   + STR(tp_2.z,15,10));
+!  LST_LIN("p_3    "+ STR(p_3.x,15,10)+" " 
+!                   + STR(p_3.y,15,10)+" " 
+!                   + STR(p_3.z,15,10));
+!  LST_LIN("pval_2 "+ STR(pval_2,15,10));
+!  LST_EXI();
+! ENDIF;
+
+
+
+
+  IF  graphic = 2 THEN
+! Temporary for testing
+  PART(#78, c_anaradv0 ( cirlin_id, 20, 0.1, 9000.0, 0, 1));
+  s:= INPMT("c_c2cir no_cir= "+STR(no_cir,-1,0)+
+           " Continue (y/n) ?","y",1);
+  IF  s <> "y" THEN
+    EXIT("c_c2cir User interruption");
+  ENDIF;
+  ENDIF;
+
+
+
+
+ENDMODULE

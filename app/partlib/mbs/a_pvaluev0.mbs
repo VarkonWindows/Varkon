@@ -1,0 +1,131 @@
+!********************* a_pvaluev0 ***********************
+! +++
+! Caclulates the P value for a circle
+! 
+! Revision history
+! ________________
+!
+! 1996-08-31  Gunnar Liden
+! ---
+!*******************************************************
+
+!sdescs Beräknar P värde för en cirkel
+!sdesce Caclulates the P value for a circle
+
+GLOBAL GEOMETRY MODULE a_pvaluev0(
+
+    FLOAT    d_angle;            ! Delta angle
+    INT      graphic;            !
+VAR FLOAT    p_value);           ! Output P value
+
+! Internal variables:
+
+  VECTOR     p_int;              ! Intersect R=radius/mid line
+  VECTOR     p_che;              ! Intersect R=radius/mid line  
+  VECTOR     p_chord;            ! Intersect chord/mid line
+  VECTOR     p_mid;              ! Mid point on circle
+  FLOAT      radius;             ! Radius of circle
+  FLOAT      d_chord;            ! Distance to p_chord
+  FLOAT      d_int;              ! Distance to p_int
+  FLOAT      d_mid;              ! Distance to mid point on circle
+  FLOAT      p_direct;           ! P-value without intermediate calc.
+      
+  INT        b_flag;             ! BLANK flag
+
+  INT        DEBUG;              ! Debug flag 
+
+  STRING    s*1;                 ! For DEBUG printout to screen 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! Initialisations and checks      
+! ---
+
+
+   DEBUG := 0;                   ! Change to 1, 2 
+
+   IF    graphic = 0  THEN       ! Graphic variable
+     b_flag:= 1;                 !
+   ELIF  graphic = 1  THEN       !
+     b_flag:= 0;                 !
+   ELSE                          !
+     EXIT("a_pvaluev0: graphic " !
+          + "ej OK");            !
+   ENDIF;                        !
+
+   IF DEBUG = 2 THEN             ! For DEBUG=2:
+    s:=INPMT("a_pvaluev0 angle  "!
+       +STR(d_angle ,-15,8)+"  " !
+        ,"",1);                  !
+   ENDIF;
+
+  radius := 1.0;                 ! Only for graphics
+
+  IF     graphic = 1  THEN       !
+    ARC_1POS(#2, VEC(0,0,0),     !
+           radius, 0, d_angle);  !
+  ENDIF;                         !
+  
+! +++
+! Intersect between mid line in sector of circle and X= 1
+! ---
+
+  
+  p_int := VEC( radius, radius*TAN(d_angle/2.0), 0.0);
+
+  d_int := radius*SQRT(1.0 + TAN(d_angle/2.0)**2);
+  p_che := VEC(d_int*COS(d_angle/2.0),d_int*SIN(d_angle/2.0),0.0);
+ 
+  IF     graphic = 1  THEN      
+    LIN_FREE(#3, VEC(0,0,0),  p_int :PEN=3);
+    POI_FREE(#4, p_che :PEN=2);
+  ENDIF;                         
+
+! +++
+! Intersect between mid line in sector of circle and chord
+! ---
+
+  d_chord := radius*COS(d_angle/2.0);
+  p_chord := VEC(d_chord*COS(d_angle/2.0),d_chord*SIN(d_angle/2.0),0.0);
+  
+  IF     graphic = 1  THEN      
+    POI_FREE(#5, p_chord :PEN=2);
+  ENDIF;                         
+
+! +++
+! Mid point on circle
+! ---
+
+  d_mid := radius;
+  p_mid := VEC(d_mid*COS(d_angle/2.0),d_mid*SIN(d_angle/2.0),0.0);
+
+  IF     graphic = 1  THEN      
+    POI_FREE(#6, p_mid :PEN=4);
+  ENDIF;                         
+   
+! +++
+! P-value
+! ---
+
+  p_value := (d_mid-d_chord)/(d_int-d_chord);
+  p_direct := (1.0 - COS(d_angle/2.0)) / 
+              (SQRT(1.0 + TAN(d_angle/2.0)**2) - COS(d_angle/2.0));
+              
+  IF  DEBUG = 1 THEN
+  LST_INI("a_pvaluev0 Results");
+  LST_LIN("d_int    "+ STR(d_int,15,8));
+  LST_LIN("d_mid    "+ STR(d_mid,15,8));
+  LST_LIN("d_chord  "+ STR(d_chord,15,8));    
+  LST_LIN("p_value  "+ STR(p_value,15,8)); 
+  LST_LIN("p_direct "+ STR(p_direct,15,8));   
+  LST_EXI();
+  ENDIF;  
+      
+    
+ENDMODULE

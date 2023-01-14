@@ -1,0 +1,455 @@
+!******************** creusectp ************************************
+!
+!  Funktionen skapar en plan (projicerad) k{gelsnittskurva
+!
+!  1992-07-14  Gunnar Liden
+!  1993-01-20 Declaration of curve point arrays changed
+!             from (25) to (26) (max number of segments 
+!             is 25 in VARKON)                          Gunnar Liden
+!
+!********************************************************************
+
+GLOBAL GEOMETRY MODULE creusectp (
+
+REF    csys_id;                  ! Projection coordinate system
+
+INT    nopoints;
+
+VAR VECTOR psektI(26);
+
+VAR VECTOR tpsektI(26);
+
+VAR FLOAT  pvalsektI(26));
+
+
+
+!Internal variables
+
+INT   i_c;                     ! Loop index
+
+
+beginmodule
+
+! Skapa sektionskurva 
+! ===================
+
+    if nopoints = 2  then
+        cur_conic(#2,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2):BLANK=1);
+                   
+    elif nopoints = 3  then
+        cur_conic(#3,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3):BLANK=1);
+                   
+    elif nopoints = 4  then
+        cur_conic(#4,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4):BLANK=1);
+                   
+    elif nopoints = 5  then
+        cur_conic(#5,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5):BLANK=1);
+                   
+    elif nopoints = 6  then
+        cur_conic(#6,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5),pvalsektI(5),
+                            psektI(6),tpsektI(6):BLANK=1);
+                   
+
+    elif nopoints = 7  then
+        cur_conic(#7,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5),pvalsektI(5),
+                            psektI(6),tpsektI(6),pvalsektI(6),
+                            psektI(7),tpsektI(7):BLANK=1);
+                   
+    elif nopoints = 8  then
+        cur_conic(#8,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5),pvalsektI(5),
+                            psektI(6),tpsektI(6),pvalsektI(6),
+                            psektI(7),tpsektI(7),pvalsektI(7),
+                            psektI(8),tpsektI(8):BLANK=1);
+                   
+    elif nopoints = 9  then
+        cur_conic(#9,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5),pvalsektI(5),
+                            psektI(6),tpsektI(6),pvalsektI(6),
+                            psektI(7),tpsektI(7),pvalsektI(7),
+                            psektI(8),tpsektI(8),pvalsektI(8),
+                            psektI(9),tpsektI(9):BLANK=1);
+                   
+    elif nopoints = 10 then
+        cur_conic(#10,"FREE",psektI(1),tpsektI(1),pvalsektI(1),
+                            psektI(2),tpsektI(2),pvalsektI(2),
+                            psektI(3),tpsektI(3),pvalsektI(3),
+                            psektI(4),tpsektI(4),pvalsektI(4),
+                            psektI(5),tpsektI(5),pvalsektI(5),
+                            psektI(6),tpsektI(6),pvalsektI(6),
+                            psektI(7),tpsektI(7),pvalsektI(7),
+                            psektI(8),tpsektI(8),pvalsektI(8),
+                            psektI(9),tpsektI(9),pvalsektI(9),
+                            psektI(10),tpsektI(10):BLANK=1);
+                   
+    elif nopoints = 11 then
+        cur_conic(#11,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11):BLANK=1);
+                   
+    elif nopoints = 12 then
+        cur_conic(#12,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12):BLANK=1);
+                   
+    elif nopoints = 13 then
+        cur_conic(#13,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13):BLANK=1);
+                   
+    elif nopoints = 14 then
+        cur_conic(#14,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14):BLANK=1);
+                   
+    elif nopoints = 15 then
+        cur_conic(#15,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15):BLANK=1);
+                   
+    elif nopoints = 16 then
+        cur_conic(#16,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16):BLANK=1);
+                   
+    elif nopoints = 17 then
+        cur_conic(#17,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17):BLANK=1);
+
+    elif nopoints = 18 then
+        cur_conic(#18,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18):BLANK=1);
+
+    elif nopoints = 19 then
+        cur_conic(#19,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19):BLANK=1);
+
+
+    elif nopoints = 20 then
+        cur_conic(#20,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20):BLANK=1);
+
+    elif nopoints = 21 then
+        cur_conic(#21,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21):BLANK=1);
+
+    elif nopoints = 22 then
+        cur_conic(#22,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21),pvalsektI(21),
+                             psektI(22),tpsektI(22):BLANK=1);
+
+
+    elif nopoints = 23 then
+        cur_conic(#23,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21),pvalsektI(21),
+                             psektI(22),tpsektI(22),pvalsektI(22),
+                             psektI(23),tpsektI(23):BLANK=1);
+
+
+    elif nopoints = 24 then
+        cur_conic(#24,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21),pvalsektI(21),
+                             psektI(22),tpsektI(22),pvalsektI(22),
+                             psektI(23),tpsektI(23),pvalsektI(23),
+                             psektI(24),tpsektI(24):BLANK=1);
+
+
+    elif nopoints = 25 then
+        cur_conic(#25,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21),pvalsektI(21),
+                             psektI(22),tpsektI(22),pvalsektI(22),
+                             psektI(23),tpsektI(23),pvalsektI(23),
+                             psektI(24),tpsektI(24),pvalsektI(24),
+                             psektI(25),tpsektI(25):BLANK=1);
+    elif nopoints = 26 then
+        cur_conic(#26,"FREE",psektI(1), tpsektI(1), pvalsektI(1),
+                             psektI(2), tpsektI(2), pvalsektI(2),
+                             psektI(3), tpsektI(3), pvalsektI(3),
+                             psektI(4), tpsektI(4), pvalsektI(4),
+                             psektI(5), tpsektI(5), pvalsektI(5),
+                             psektI(6), tpsektI(6), pvalsektI(6),
+                             psektI(7), tpsektI(7), pvalsektI(7),
+                             psektI(8), tpsektI(8), pvalsektI(8),
+                             psektI(9), tpsektI(9), pvalsektI(9),
+                             psektI(10),tpsektI(10),pvalsektI(10),
+                             psektI(11),tpsektI(11),pvalsektI(11),
+                             psektI(12),tpsektI(12),pvalsektI(12),
+                             psektI(13),tpsektI(13),pvalsektI(13),
+                             psektI(14),tpsektI(14),pvalsektI(14),
+                             psektI(15),tpsektI(15),pvalsektI(15),
+                             psektI(16),tpsektI(16),pvalsektI(16),
+                             psektI(17),tpsektI(17),pvalsektI(17),
+                             psektI(18),tpsektI(18),pvalsektI(18),
+                             psektI(19),tpsektI(19),pvalsektI(19),
+                             psektI(20),tpsektI(20),pvalsektI(20),
+                             psektI(21),tpsektI(21),pvalsektI(21),
+                             psektI(22),tpsektI(22),pvalsektI(22),
+                             psektI(23),tpsektI(23),pvalsektI(23),
+                             psektI(24),tpsektI(24),pvalsektI(24),
+                             psektI(25),tpsektI(25),pvalsektI(25),
+                             psektI(26),tpsektI(26):BLANK=1);
+    endif;
+
+!   Create a planar curve which always will have the reference #1.1
+    csys_id := global_ref(csys_id,1);
+    mode_local(csys_id);
+
+    FOR  i_c := 2 TO 26 DO
+        IF i_c = nopoints THEN
+            cur_offs(#1,refc(nopoints),0.0);
+        ENDIF;
+    ENDFOR;
+
+    mode_global();
+
+    DEL(refc(nopoints));    ! Delete first created curve
+
+endmodule

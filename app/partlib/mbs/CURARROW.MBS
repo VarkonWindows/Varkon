@@ -1,0 +1,57 @@
+!********************* CURARROW ******************************************
+!
+! Purpose:
+! Creates an arrow on a curve. To be used for instance as a
+! symbol for a surface
+!
+! Output: Lines and circles defining an arrow
+!         Graphical symbol for the curve
+!
+! 1992-07-16  Gunnar Liden
+!************************************************************************
+
+GLOBAL GEOMETRY MODULE CURARROW (
+REF   cur_id                     > "Curve reference (# id)";
+FLOAT rel_s:= 0.5                > "Position, relative arclength ");
+
+! Internal variables
+
+  FLOAT  c_param;                ! Parameter value on curve
+
+  FLOAT  tot_arcl;               ! Curve total arclength
+
+  VECTOR p_cur;                  ! Point on curve
+  VECTOR p_tan;                  ! Point on tangent
+  VECTOR u_n;                    ! Normalized tangent vector
+
+BEGINMODULE
+
+! 1. Initializations and check of input data
+
+                                 ! Check ....
+
+   cur_id:=global_ref(cur_id,1); !  One level reference
+
+  
+! 2. Create graphical symbol
+! ---------------------------
+
+    tot_arcl := ARCL(cur_id);       ! Total arclength of curve
+
+    c_param := INV_ARCL(cur_id,    ! Parameter for given relative
+    rel_s*tot_arcl);               ! arclength
+
+    p_cur := ON(cur_id,c_param);   ! Corresponding point on curve
+
+    u_n   := TANG(cur_id,c_param); ! Tangent for point
+
+    p_tan := p_cur +               ! Tangent point for given point
+            0.1*tot_arcl*u_n;      !
+
+
+    lin_free(#1,p_cur,p_tan);      ! Create line
+ 
+    PART(#2,cpil2(10,0.03*tot_arcl ! Create arrow
+            ,p_cur,p_tan));        !
+
+ENDMODULE

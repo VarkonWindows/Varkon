@@ -1,0 +1,182 @@
+!********************* c_anaintv0 ***********************
+! +++
+! Analyse curve-plane intersect
+!
+! Revision history
+! ________________
+!
+! 1996-01-27  Gunnar Liden
+! 1997-03-12  array size 10--> 500
+! ---
+!*******************************************************
+
+!sdescs Analysera kurv-plan skärning
+!sdesce Analyse curve-plane intersect
+
+GLOBAL GEOMETRY MODULE c_anaintv0 (
+
+REF cur_id         >"@t14    Select curve";
+REF bpl_id         >"@t32768 Select intersect B_PLANE"; 
+FLOAT ctol := 0.01 >"Tolerance for intersect";
+INT graphic := 2   >"Graphics 0: None  1: Show points 2: Show all");
+
+! Internal variables:
+
+  REF        pbpl_id;            ! Reference to + ctol plane
+  REF        nbpl_id;            ! Reference to - ctol plane
+  INT        n_int;              ! No. of ntersects in  bpl_id
+  INT        n_intp;             ! No. of ntersects in pbpl_id
+  INT        n_intn;             ! No. of ntersects in nbpl_id
+  
+  VECTOR     p_int(500);         ! Intersect points in  bpl_id
+  VECTOR     p_intp(500);        ! Intersect points in pbpl_id
+  VECTOR     p_intn(500);        ! Intersect points in nbpl_id
+
+  REF        curt1_id;           ! Trimmed curve 1
+  REF        curt2_id;           ! Trimmed curve 2
+
+  INT        i_int;              ! Loop index intersect point
+
+  STRING     c_prt*1;            ! Trimming case
+  INT        graphic_tri;        ! Trimming graphic
+
+  INT        DEBUG;              ! For Debug
+                                 ! Eq. 0 ==> No        DEBUG
+                                 ! Eq. 1 ==> Full      DEBUG
+  INT        b_flag;             ! Blank flag
+  INT        graphic_bpl;        ! Graphic for parbplanv0
+
+  VECTOR     p1;                 ! Intersect point 1 
+
+  STRING     s*1;                ! For DEBUG 
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Initializations and checks of input data
+! --- 
+
+   DEBUG := 1;                       ! Change to 0 or 1
+
+   p1 := VEC(0,0,0);
+
+   IF    graphic = 0  THEN           ! Blank variable 
+     graphic_bpl := 0;
+     b_flag:= 1;                     !
+   ELIF  graphic = 1  THEN           !
+     graphic_bpl := 0;
+     b_flag:= 0;                     !
+   ELIF  graphic = 2  THEN           !
+     graphic_bpl := 1;
+     b_flag:= 0;                     !
+   ELSE                              !
+     EXIT("c_anaintv0: graphic "     !
+          + "not OK");               !
+   ENDIF;                            !
+
+! +++
+! Convert arcs and lines to curve
+! ---
+
+  CUR_COMP(#1, cur_id:BLANK=b_flag);
+  cur_id := GLOBAL_REF(#1); ! Not nice to change cur_id ...
+
+! +++
+! Create ctol offset planes                       
+! --- 
+
+  PART(#2, parbplanv0 ( bpl_id,  ctol, graphic_bpl));
+  pbpl_id := GLOBAL_REF(#2#1);
+  PART(#3, parbplanv0 ( bpl_id, -ctol, graphic_bpl));
+  nbpl_id := GLOBAL_REF(#3#1);
+
+! +++
+! Determine the number of intersect points
+! --- 
+
+  n_int  := N_INTERSECT (  bpl_id, cur_id );
+  n_intp := N_INTERSECT ( pbpl_id, cur_id );
+  n_intn := N_INTERSECT ( nbpl_id, cur_id );
+
+! +++
+! Calculate the intersect points             
+! --- 
+
+  FOR  i_int:= 1 TO n_int  DO
+    p_int (i_int) := INTERSECT (  bpl_id, cur_id, i_int );
+  ENDFOR;
+  FOR  i_int:= 1 TO n_intp DO
+    p_intp(i_int) := INTERSECT ( pbpl_id, cur_id, i_int );
+  ENDFOR;
+  FOR  i_int:= 1 TO n_intn DO
+    p_intn(i_int) := INTERSECT ( nbpl_id, cur_id, i_int );
+  ENDFOR;
+
+! +++
+! Trim the curve                             
+! --- 
+
+  graphic_tri := 1;
+
+  c_prt := "N";
+  IF  n_intp > 0 THEN
+    PART(#8, c_atrimv0  ( cur_id, pbpl_id,c_prt , 1, graphic_tri));
+    curt1_id := GLOBAL_REF(#8#1);
+  ELSE
+    curt1_id := cur_id;
+  ENDIF;
+  c_prt := "P";
+  IF  n_intn > 0 THEN
+    PART(#9, c_atrimv0  ( curt1_id, nbpl_id,c_prt , 1, graphic_tri):PEN=2);
+    curt2_id := GLOBAL_REF(#9#1);
+  ELSE
+    curt2_id := curt1_id;
+  ENDIF;
+
+
+! +++
+! Show intersect points for graphic >= 1
+! ---
+
+  IF  graphic  >= 1 THEN
+    FOR  i_int:= 1 TO n_int  DO
+      POI_FREE(#4,p_int (i_int):PEN=3);
+      POI_FREE(#5,p_intp(i_int):PEN=2);
+      POI_FREE(#6,p_intn(i_int):PEN=4);
+    ENDFOR;
+
+  ENDIF;
+
+! +++
+! Printout of data for DEBUG= 1
+! ---
+
+  IF  DEBUG = 1  THEN
+  LST_INI("c_anaintv0 Analyze plane / curve intersect ");
+  LST_LIN("n_int  "+STR(n_int ,3,0)+
+         " n_intp "+STR(n_intp,3,0)+
+         " n_intn "+STR(n_intn,3,0));
+  FOR  i_int:= 1 TO n_int  DO
+  LST_LIN("p_int  "+STR(p_int(i_int).x,15,8)+" "
+                   +STR(p_int(i_int).y,15,8)+" "
+                   +STR(p_int(i_int).z,15,8));
+  ENDFOR;
+  FOR  i_int:= 1 TO n_intp DO
+  LST_LIN("p_intp "+STR(p_intp(i_int).x,15,8)+" "
+                   +STR(p_intp(i_int).y,15,8)+" "
+                   +STR(p_intp(i_int).z,15,8));
+  ENDFOR;
+  FOR  i_int:= 1 TO n_intn DO
+  LST_LIN("p_intn "+STR(p_intn(i_int).x,15,8)+" "
+                   +STR(p_intn(i_int).y,15,8)+" "
+                   +STR(p_intn(i_int).z,15,8));
+  ENDFOR;
+  LST_EXI();
+  ENDIF;
+
+ENDMODULE
