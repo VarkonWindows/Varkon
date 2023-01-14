@@ -1,0 +1,32 @@
+GLOBAL DRAWING MODULE star(
+VECTOR poi := VEC(0,0) > "Position for the star";
+FLOAT radius:=15.0 > "Size of the star");
+
+
+BEGINMODULE
+
+  CSYS_1P(#20,"StarCsys",poi:BLANK=1);
+  MODE_LOCAL(#20);
+  set(PEN=9);
+  arc_1pos(#1,vec(0, 0), radius, 0.0, 360.0:BLANK=1);
+  poi_free(#2,on(#1, 0.0):BLANK=1);
+  poi_free(#3,on(#1, 1.0/6.0):BLANK=1);
+  poi_free(#4,on(#1, 2.0/6.0):BLANK=1);
+  poi_free(#5,on(#1, 3.0/6.0):BLANK=1);
+  poi_free(#6,on(#1, 4.0/6.0):BLANK=1);
+  poi_free(#7,on(#1, 5.0/6.0):BLANK=1);
+  lin_free(#8,on(#2), on(#4));
+  lin_free(#9,on(#4), on(#6));
+  lin_free(#10,on(#6), on(#2));
+  lin_free(#11,on(#5), on(#7));
+  lin_free(#12,on(#7), on(#3));
+  lin_free(#13,on(#3), on(#5));
+  MODE_GLOBAL();
+  set(PEN=9);
+  xhatch(#14,radius/10, 45, #8, #9, #10);
+  xhatch(#15,radius/10, -45, #11, #12, #13);
+  xhatch(#16,radius/10, -45, #8, #9, #10);
+  xhatch(#17,radius/10, 45, #11, #12, #13);
+
+ENDMODULE
+

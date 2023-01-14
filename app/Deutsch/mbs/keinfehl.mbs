@@ -1,0 +1,73 @@
+! ***************** keinfehl   **************************** 
+! 
+! +++ 
+! Belohnungszeichung
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-11-06 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Belohnungszeichung
+  
+GLOBAL DRAWING MODULE keinfehl ( 
+
+      INT    n_all;            ! Anzahl Identitäten
+VAR   REF    all_id(100);      ! Sämtliche Identitäten
+      INT    z_fall);          ! Zeichnungsfall
+
+! Interne variablen
+  INT    i_all;            ! Rechner
+  REF    prt_id;           ! Identität
+  STRING deutsch*132;      ! Deutsches Wort
+
+  FLOAT radius;            ! Grösse der Sterne
+FLOAT length;
+FLOAT height;
+ 
+
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+ 
+! +++
+! Alle Wörter schreiben
+! ---
+!  TEXT(#10,vec(0,   0), 0.0, "Keine Fehler":TFONT=1,PEN=2);
+
+  FOR  i_all := 1 TO  n_all DO
+
+!   deutsch
+    prt_id     := all_id(i_all);
+    deutsch    := GETSTR(prt_id,1);    
+    TEXT(#11,vec(i_all*10, -10*i_all), 0.0, deutsch:TFONT=0,PEN=4);
+
+
+  ENDFOR;
+
+! +++
+! R mit Sternen
+! ---
+
+  radius := 15.0;
+  length := n_all*20.0;
+  height := n_all*30.0;
+
+  PART(#20, stars ( radius, length, height));
+
+ENDMODULE 
+
+
+
+
+
+
+
+
+

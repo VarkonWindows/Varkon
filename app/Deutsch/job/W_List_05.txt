@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_05.txt
+
+
+  1  die    Verbindlichkeit     1. bindande kraft 2. hövlighet, älskvärdhet, fö
+  2  der    Binnensee           insjö
+  3  der    Luchs               lodjur
+  4  der    Abruf               1. sich auf ~ bereithalten = vara beredd, stå t
+  5  die    Vogelbeere          rönnbär
+  6  der    Henker              bödel, skarprättare
+  7  der    Wirbel              1. virvel  2. kota  3. stämskruv på fiol
+  8  die    Wohngemeinshaft     kollektiv
+  9  der    Abgeordnete         parlamentsledamot
+ 10  das    Formular            formulär
+ 11  der    Leitfaden           1. (grundläggande) lärobok, handledning, manual
+ 12  der    Kanadier            kanadensare (även kanot)
+ 13  der    Kahlschlag          kalhygge
+ 14  die    Rücksicht           hänsyn
+ 15  das    Dasein              tillvaro, existens, närvaro
+ 16  der    Träger              1. bärare  2. balk (i byggnad)
+ 17  die    Tanne               gran
+ 18  das    Bein                ben
+ 19  die    Inzenierung         iscensättning, uppsättning, regi
+ 20  die    Tat                 1. handling, gärning, dåd 2. in der Tat = verkl
+ 21  der    Videorecorder       videobandspelare
+ 22  das    Bewusstsein         medvetande
+ 23  die    Motte               mal (zool.)
+ 24  das    Freiwild            lovligt byte
+ 25  der    Spruch              1. domslut, utslag 2. tänkespråk, sentens, vers
+ 26  der    Bummelzug           ett tåg som stannar vid varje station
+ 27  der    Pfad                stig
+ 28  der    Zopf                1. (hår) fläta 2. (bröd) fläta
+ 29  die    Kritik              1. kritik 2. recension
+ 30  das    Binnenland          inland
+ 31  die    Lauer               Lurpassa
+ 32  der    Aberglaube          vidskeplighet, skrock
+ 33  der    Wasserhahn          vattenkran
+ 34  das    Fest                fest, högtidlighet
+ 35  der    Vorwurf             1. förebråelse 2. ämne, motiv
+ 36  die    Sache               1. sak 2. ärende, affär, historia
+ 37  die    Spur                1. spår 2. körfält, fil 3. en gnutta
+ 38  der    Tannenbaum          1. gran 2. julgran
+ 39  die    Annehmlichkeit      fördelar, bekvämligheter
+ 40  das    Bedauern            beklagande
+ 41  der    Höder               agn, lockbete
+ 42  die    Wirbelsäule         ryggrad, kotpelare
+ 43  die    Tischordnung        bordsplacering
+ 44  die    Langeweile          långtråkighet
+ 45  die    Ballungszone        storstadsregion med många industrier, tätbefolk
+ 46  das    Zeugnis             1. betyg, intyg, attest, vitsord 2. vittnesbörd
+ 47  das    Eselsohr            hundöra (i bok)
+ 48  der    Auftritt            1. scen  2. uppträdande, entre  3. uppträde, sc
+ 49  der    Auftrag             1. uppdrag, uppgift 2. påstrykning (av färg)
+ 50  die    Kassette            kassett, kassettband

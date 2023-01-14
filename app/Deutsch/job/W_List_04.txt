@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_04.txt
+
+
+  1  der    Bagger              grävmaskin, grävskopa, mudderverk
+  2  der    Strom               1. ström, flod 2. ström elektriskt
+  3  die    Befindlichkeit      ????
+  4  der    Binnenmarkt         hemmamarknad
+  5  das    Gedächtnis          minne
+  6  die    Maßnahme            åtgärd
+  7  der    Tannenbaum          1. gran 2. julgran
+  8  die    Mausefalle          musfälla
+  9  das    Bein                ben
+ 10  die    Zerknirschung       ånger (?)
+ 11  die    Augenbraue          ögonbryn
+ 12  die    Tischordnung        bordsplacering
+ 13  der    Ballungsraum        storstadsregion med många industrier, tätbefolk
+ 14  die    Ferse               häl
+ 15  die    Schwalbe            svala
+ 16  der    Pfahl               påle, pinne (i krocket), (lykt) stolpe, stång, 
+ 17  der    Leumund             rykte, anseende
+ 18  die    Wiese               äng
+ 19  der    Kamm                kam (för hår, tuppkam, bergskam)
+ 20  die    Kritik              1. kritik 2. recension
+ 21  der    Wasserhahn          vattenkran
+ 22  der    Träger              1. bärare  2. balk (i byggnad)
+ 23  der    Trampelpfad         ( upptrampad ) stig
+ 24  die    Pfote               tass, labb, hand (vardagligt)
+ 25  der    Verrat              förräderi, svek
+ 26  das    Bewusstsein         medvetande
+ 27  der    Kahlschlag          kalhygge
+ 28  das    Ergebnis            resultat
+ 29  der    Zopf                1. (hår) fläta 2. (bröd) fläta
+ 30  der    Anzug               kostym
+ 31  das    Gehalt              lön
+ 32  das    Dasein              tillvaro, existens, närvaro
+ 33  die    Tat                 1. handling, gärning, dåd 2. in der Tat = verkl
+ 34  das    Erröten             rodnad (?)
+ 35  der    Scharfmacher        upprorsmakare
+ 36  die    Fülle               1. mängd, överflöd, rikhaltighet 2. fullhet, ri
+ 37  die    Genehmigung         tillstånd
+ 38  der    Kahn                1. flatbottnad båt, eka 2. pråm
+ 39  das    Mikrofon            mikrofon
+ 40  das    Videoband           videoband
+ 41  die    Kehle               strupe
+ 42  der    Vormund             förmyndare
+ 43  die    Leistung            prestation
+ 44  die    Dolmetscherin       tolk (kvinnlig)
+ 45  die    Tätowierung         tatuering
+ 46  der    Entwurf             utkast, skiss
+ 47  der    Reporter            reporter
+ 48  die    Wohngemeinshaft     kollektiv
+ 49  der    Pfad                stig
+ 50  die    Ballungszone        storstadsregion med många industrier, tätbefolk

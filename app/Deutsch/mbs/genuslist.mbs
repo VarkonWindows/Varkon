@@ -1,0 +1,157 @@
+! ***************** genuslist   **************************** 
+! 
+! +++ 
+! Genus Übung auf Papier
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2004-08-22 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Genus Übung auf Papier
+  
+GLOBAL DRAWING MODULE genuslist ( 
+INT    n_all         := 50 >"Wieviele Wörter?";
+STRING f_name*20 := "W_List_01.txt" >"Dateiname");
+
+
+  REF    all_id(100);      ! Sämtliche Identitäten
+  REF    prt_id;           ! Identitat
+  STRING substantiv*132;   ! Substantiv
+  STRING schwedisch*132;   ! Auf Schwedish
+  STRING genus*132;        ! Genus
+  STRING mehrzahl*132;     ! Mehrzahl
+
+  STRING genus_list(100)*74;  ! Liste mit Wörter
+  INT    i_all;               ! Rechner
+
+  INT    max_char;            ! Maximal Anzahl Buchstaben
+  INT    n_char;              ! Anzahl Buchstaben
+  INT    i_c;                 ! Rechner Buchstabe
+
+
+  FILE   dat;
+  STRING f_name_tot*132;
+  INT    status;
+
+  CONSTANT  STRING prt_name = "substantiv";
+
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  f_name_tot := ACT_JOBDIR() + f_name;
+  status := TEST_FILE(f_name_tot,"X");
+  IF status = 1 THEN
+    EXIT("genuslist "+f_name+" existiert");
+  ENDIF;
+
+! +++
+! Array mit Identitäten definiert mit Zufallszahlen
+! ---
+
+  PART(#2, getworter ( prt_name, n_all, all_id):SAVE=0);
+ 
+! Anzahl Buchstaben
+
+  max_char := -12345;
+  FOR  i_all := 1 TO  n_all DO
+
+!   Substantiv
+    prt_id := all_id(i_all);
+    substantiv := GETSTR(prt_id,1);    
+
+    IF LENGTH(substantiv) > max_char THEN
+      max_char := LENGTH(substantiv);
+    ENDIF;
+
+  ENDFOR;
+  IF max_char <= 0 THEN
+    EXIT("genuslist Programm Fehler");
+  ENDIF;
+
+
+  FOR  i_all := 1 TO  n_all DO
+
+!   Substantiv und Genus
+    prt_id := all_id(i_all);
+    substantiv := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    genus      := GETSTR(prt_id,3);    
+    mehrzahl   := GETSTR(prt_id,4);    
+
+    n_char := LENGTH(substantiv);
+    FOR i_c := n_char TO max_char DO
+      substantiv := substantiv + " ";
+    ENDFOR;
+
+    genus_list(i_all) := genus+"    "+substantiv+ "    "+schwedisch;
+ 
+  ENDFOR;
+
+
+  OPEN(dat,"W",f_name_tot);
+  IF  IOSTAT(dat) <> 0 THEN
+     EXIT("genuslist Open failed "+f_name);
+  ENDIF;
+  
+  OUTLIN(dat);
+  OUTSTR(dat,"Genus Übung. Datei "+f_name_tot);
+  OUTLIN(dat);
+  OUTLIN(dat);
+  OUTLIN(dat);
+
+  LST_INI("Genus Übung. Datei "+f_name_tot);
+  FOR  i_all := 1 TO  n_all DO
+    OUTSTR(dat,STR(i_all,3,0)+ "  "+genus_list(i_all));
+    OUTLIN(dat);
+    LST_LIN   (STR(i_all,3,0)+ "  "+genus_list(i_all));
+  ENDFOR;
+  LST_EXI();
+
+  CLOSE(dat);
+
+
+  OPEN(dat,"W",ACT_JOBDIR()+"ListAntwort.txt");
+  IF  IOSTAT(dat) <> 0 THEN
+     EXIT("genuslist Open failed (ListAntwort)");
+  ENDIF;
+  
+  OUTLIN(dat);
+  OUTSTR(dat,"Genus Übung. Datei "+f_name_tot);
+  OUTLIN(dat);
+  OUTLIN(dat);
+  OUTLIN(dat);
+
+  FOR  i_all := 1 TO  n_all DO
+    OUTSTR(dat,STR(i_all,3,0)+ "__________  !   "  +
+               STR(i_all,3,0)+ "__________  !   "  +
+               STR(i_all,3,0)+ "__________  !   ");
+    OUTLIN(dat);
+  ENDFOR;
+
+
+  CLOSE(dat);
+
+
+
+
+ENDMODULE 
+
+
+
+
+
+
+
+
+
+
+
+
+

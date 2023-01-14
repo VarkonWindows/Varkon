@@ -1,0 +1,35 @@
+! ***************** pronomen   **************************** 
+! 
+! +++ 
+! Das Modul registriert ein Pronomen
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-04 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert ein Pronomen
+  
+GLOBAL GEOMETRY MODULE pronomen ( 
+STRING pronomen*132    := "pronomen" >"Bitte, das Pronomen eingeben";
+STRING schwedisch*132  := "svenska"  >"Pronomen in Schwedisch eingeben";
+STRING unused_1*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused" >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  pronomen = "" OR pronomen = " " OR pronomen = "  " THEN
+    EXIT("pronomen Kein Pronomen ist eingegeben");
+  ENDIF;
+
+
+ENDMODULE 

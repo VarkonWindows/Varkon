@@ -1,0 +1,1154 @@
+BASIC DRAWING MODULE worterbuch();
+
+
+BEGINMODULE
+
+  part(#1,verb("meißeln", "mejsla", "meißelte", "gemeißelt", "haben", "nein"
+    , "Unused", " ä å ö ü ß ", "Unused"));
+  part(#2,verb("empfehlen", "rekommendera, tillråda", "empfahl", "empfohlen"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#3,verb("zusagen", "1. lova 2. tilltala, behaga", "zusagte", 
+    "zugesagt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#4,verb("hinterlegen", "deponera", "hinterlegte", "hinterlegt (?)", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#5,verb("aufplatzen", "spricka upp, spricka sönder, brista", 
+    "aufplatzte", "aufgeplatzt", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#6,verb("verzichten", "avstå ifrån", "verzichtete", "verzichtet", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#7,verb("anhalten", "stanna, hejda, stoppa", "hielte an", 
+    "anhielt (?)", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#8,verb("klammern", "1. klämma 2. klamra sig fast", "klammerte", 
+    "geklammert", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#9,verb("schuften", "slita, knoga", "schuftete", "geschuftet", "haben"
+    , "nein", "Unused", "Unused", "Unused"));
+  part(#13,substantiv("Gehalt", "lön", "das", "Gehälter", "Unused", "Unused"
+    , "Unused"));
+  part(#14,substantiv("Unternehmer", "företagare", "der", "Unternehmer", 
+    "Unused", "Unused", "Unused"));
+  part(#15,verb("spüren", "1. känna, märka, förnimma 2. spåra", "spürte", 
+    "gespürt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#16,adjektiv("müßig", 
+    "1. lättjefull, sysslolös, overksam 2. menigslös, onödig, överflödig", 
+    "Unused", "Unused", "Unused"));
+  part(#17,adverb("müßig", "lättjefullt, sysslolöst", "Unused", "Unused", 
+    "Unused"));
+  part(#18,adjektiv("vorübergehend", "tillfälligt, övergående", "Unused", 
+    "Unused", "Unused"));
+  part(#19,adverb("vorübergehend", "tillfälligt", "Unused", "Unused", 
+    "Unused"));
+  part(#20,adjektiv("schummerig", "halvmörk, skum", "Unused", "Unused", 
+    "Unused"));
+  part(#21,substantiv("Fleischwolf", "köttkvarn", "der", "Fleischwölfe", 
+    "Unused", "Unused", "Unused"));
+  part(#22,substantiv("Aufgang", "uppgång", "der", "Aufgänge", "Unused", 
+    "Unused", "Unused"));
+  part(#23,substantiv("Knüppel", 
+    "1. påk, knölpåk, käpp 2. (runt) vedträ 3. växelspak, styrspak", "der", 
+    "Knüppel", "Unused", "Unused", "Unused"));
+  part(#24,verb("knüppeln", "1. slå, prygla  2. ruffa i sport", " ", " ", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#25,substantiv("Penner", "uteliggare", "der", "Penner", "Unused", 
+    "Unused", "Unused"));
+  part(#26,substantiv("Kruste", "skorpa, brodkant", "die", "Krusten", 
+    "Unused", "Unused", "Unused"));
+  part(#27,substantiv("Begegnung", "möte, sammanträffande", "die", 
+    "Begegnungen", "Unused", "Unused", "Unused"));
+  part(#28,substantiv("Bewusstsein", "medvetande", "das", "Bewusstsein", 
+    "Unused", "Unused", "Unused"));
+  part(#29,substantiv("Freiwild", "lovligt byte", "das", "Freiwilde", 
+    "Unused", "Unused", "Unused"));
+  part(#30,verb("zustecken", "sticka till (någon något)", " ", " ", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#31,adverb("nachdem", 
+    "1. (je) beroende på, det beror på 2. efter det att 3. eftersom , då (när) nu"
+    , "Unused", "Unused", "Unused"));
+  part(#32,substantiv("Schmiede", "smedja", "die", "Schmieden", "Unused", 
+    "Unused", "Unused"));
+  part(#33,adverb("dennoch", "ändå, likväl, dock", "Unused", "Unused", 
+    "Unused"));
+  part(#34,verb("driften", "driva", "driftete", "gedriftet", "sein", "nein", 
+    "etwas driftete irgendwo", "Unused", "Unused"));
+  part(#35,substantiv("Geiß", "get (eine weibliche Ziege)", "die", "Geißen", 
+    "eine weibliche Ziege", "Unused", "Unused"));
+  part(#36,substantiv("Geißblatt", "blomma ?", "das", "Geißblätter", "Unused"
+    , "Unused", "Unused"));
+  part(#37,adjektiv("schräg", "sned, diagonal, lutande, sluttande", 
+    "weder senkrecht noch parallel", "Unused", "Unused"));
+  part(#38,adjektiv("angebracht", "lämplig, passande, på sin plats", "Unused"
+    , "Unused", "Unused"));
+  part(#39,verb("anbringen", "1. sätta upp, placera, anbringa 2. bli av med "
+     + "3. komma hem(dragande) med, släpa med sig (hem) 4. framföra ", 
+    "anbrachte", "angebracht", "haben", "nein", 
+    "genau passend für eine bestimmte Situation", "Unused", "Unused"));
+  part(#40,substantiv("Mehrheit", "majoritet", "die", "Mehrheiten", "Unused"
+    , "Unused", "Unused"));
+  part(#41,substantiv("Schlummer", "slummer, sömn", "der", "Schlummers", 
+    "Unused", "Unused", "Unused"));
+  part(#42,verb("schlummern", "slumra, sova", "schlummerte", "geschlummert", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#43,verb("trügen", 
+    "1. bedra, svika 2. (itr) bedra, vara bedräglig, svika", "trog", 
+    "getrogen", "haben", "nein", 
+    "etwas trügt=etwas lässt einen falschen Eindruck entstehen", "Unused", 
+    "Unused"));
+  part(#44,adjektiv("befintlich", "befintlig", "Unused", "Unused", "Unused"))
+    ;
+  part(#45,substantiv("Befindlichkeit", "????", "die", " ", "Unused", 
+    "Unused", "Unused"));
+  part(#46,verb("ergründen", "utforska, utröna", "ergründete", 
+    "hat ergründet", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#47,substantiv("Aufwand", "kostnader, utgifter", "der", "Aufwande", 
+    "Unused", "Unused", "Unused"));
+  part(#48,verb("vertrösten", "inge hopp", "vertröstete", "vertrötest", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#49,verb("überfordern", "ställa för höga krav", "überforderte", 
+    "überfordert", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#50,adjektiv("aufwendig", "påkostad, flott", "Unused", "Unused", 
+    "Unused"));
+  part(#51,verb("würgen", "1. ta struptag på någon, strypa någon  ", "würgte"
+    , "gewürgt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#52,verb("erwürgern", "strypa", "erwürgte", "erwürgt", "haben", "nein"
+    , "Unused", "Unused", "Unused"));
+  part(#53,verb("auseinandersetzen", "tala ut, göra upp", 
+    "auseinendersetzte (?)", "auseinendergesetzt (?)", "haben7sein", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#54,adjektiv("unsterblich", "odödlig", "Unused", "Unused", "Unused"));
+  part(#55,adverb("unsterblich", "otroligt", "sich unsterblich blamieren", 
+    "Unused", "Unused"));
+  part(#56,verb("erröten", "rodna", "erröttete", "errötet", "sein", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#57,substantiv("Erröten", "rodnad (?)", "das", " ", "Unused", "Unused"
+    , "Unused"));
+  part(#58,verb("gleichen", "likna någon", "glich", "geglichen", "haben", 
+    "nein", "Der französiche Präsident gleicht einen Monarchen", "Unused", 
+    "Unused"));
+  part(#59,adjektiv("ähnlich", "liknande, (snar)lik, dylik", "ähnlich sein", 
+    "Unused", "Unused"));
+  part(#60,verb("salben", "smörja", "salbete", "gesalbt", "haben", "nein", 
+    ".. vom Volk gesalbt = vara smörjd av folket", "Unused", "Unused"));
+  part(#61,verb("vorwerfen", "förebrå", "vorwarf (?)", "vorgeworfen (?)", 
+    "haben", "nein", 
+    "Ich habe mich nichts vorzuwerfen = Jag har inget att förebrå mig", 
+    "Unused", "Unused"));
+  part(#62,substantiv("Genehmigung", "tillstånd", "die", "Genehmigungen", 
+    "Unused", "Unused", "Unused"));
+  part(#63,verb("genehmigen", 
+    "1. godkänna, bevilja, bifalla  2. sich etwas ~ unna sig något", 
+    " genehmigte", " genehmigt", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#64,pronomen("jener", "den denne, den där", 
+    "zu jener zeit = på den tiden", "Unused", "Unused"));
+  part(#65,substantiv("Strecke", "sträcka, väg, linje", "die", "Strecken", 
+    "auf der Strecke bleiben = bli kvar, inte komma längre, bli utslagen", 
+    "Unused", "Unused"));
+  part(#66,substantiv("Keuschheit", "kyskhet", "die", " .. keine .. (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#67,substantiv("Not", "nöd, trångmål", "die", "Note", 
+    "Not tun = vara nödvändig, behövas", 
+    "Not kennt kein Gebot = nöden har ingen lag", "Unused"));
+  part(#68,substantiv("Flur", "1. odlingsbar mark  2. korridor", "die", 
+    "Fluren", "stand sie allein auf weiter Flur = ?", "Unused", "Unused"));
+  part(#69,verb("wetten", "slå vad", "wettete", "gewettet", "haben", "nein", 
+    "auf ein Pferd wetten = satsa på en häst", "Unused", "Unused"));
+  part(#70,verb("ablenken", "störa, distrahera", " ", " ", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#71,substantiv("Unternehmen", "firma, företag", "das", "Unternehmens"
+    , "Unused", "Unused", "Unused"));
+  part(#72,adjektiv("anrüchig", "beryktad, ökänd,, tvivelaktig", 
+    "anrüchige Witze = (grova) fräckisar", "Unused", "Unused"));
+  part(#73,verb("erschöpfen", 
+    "1. göra slut på, förbruka  2. trötta ut, tömma ut ett ämne", 
+    "erschöpfte", "erschöpft", "haben", "nein", 
+    "ein Thema erschöpfen = uttömma ett ämne", "Unused", "Unused"));
+  part(#74,verb("tagen", "1. sammanträda  2. dagas, gry", " tagte", " getagt"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#75,substantiv("Bund", "förening, förbund", "das", "Weltärztbund", 
+    "Unused", "Unused", "Unused"));
+  part(#76,adverb("nur", "bara, endast", 
+    "nur noch = bara (noch översätts ej)", "Unused", "Unused"));
+  part(#77,adverb("sonst", "annars, i annat fall, för övrigt, förr", 
+    "die er sonnst erhalten könnte = ", "Unused", "Unused"));
+  part(#78,verb("vorlegen", "1. sätta, lägga för 2. lägga fram, presentera", 
+    " ", " ", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#79,verb("vorliegen", "föreligga, finnas", "", " ", "haben", "nein", 
+    "gegen ihn liegt nich vor = han är inte misstänkt för något", "Unused", 
+    "Unused"));
+  part(#80,verb("vorangehen", "1. gå först  2. gå framåt, göra framsteg  ", 
+    " ", " ", "haben", "nein", "wie geht nun das Projekt voran?", "Unused", 
+    "Unused"));
+  part(#81,adjektiv("wohltätig", "1. välgörande, hälsosam  2. hälsosam", 
+    "Unused", "Unused", "Unused"));
+  part(#82,substantiv("Wohltäter", "välgörare", "der", "Wohltäters", "Unused"
+    , "Unused", "Unused"));
+  part(#83,adjektiv("entsprechend", "motsvarande, skälig", "Unused", "Unused"
+    , "Unused"));
+  part(#84,adverb("entsprechend", "i enlighet med, därefter", "Unused", 
+    "Unused", "Unused"));
+  part(#85,substantiv("Anleger", "investerare, placerare", "der", "Anleger", 
+    "Unused", "Unused", "Unused"));
+  part(#86,verb("lauern", "lurpassa (på någon)", " ", " ", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#87,substantiv("Lauer", "Lurpassa", "die", "Lauer", 
+    "Auf der Lauer liegen = ligga på lur", "Unused", "Unused"));
+  part(#88,substantiv("Schare", "skara, flock, skock", "die", "Scharen", 
+    "Unused", "Unused", "Unused"));
+  part(#89,verb("einreihen", "inrangera (?)", " ", " ", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#90,substantiv("Hiobsbotschaft", "jobspost (olycksbud, sorgebud)", 
+    "die", "Hiobsbotschaften", "Unused", "Unused", "Unused"));
+  part(#91,substantiv("Langeweile", "långtråkighet", "die", 
+    "die Langeweile haben = ha langtrakigt", "Unused", "Unused", "Unused"));
+  part(#92,verb("langweilen", "ha långtråkigt (sich langweilen)", " ", " ", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#93,adjektiv("langweilig", "långtråkig", "Unused", "Unused", "Unused")
+    );
+  part(#94,adjektiv("stur", "envis, tjurig", "Unused", "Unused", "Unused"));
+  part(#95,adjektiv("längst", "1. längst 2. sedan lang tid tillbaka", 
+    "Unused", "Unused", "Unused"));
+  part(#96,verb("keimen", "gro, spira", "keimte", "gekeimt", "haben", "nein"
+    , "Unused", "Unused", "Unused"));
+  part(#97,pronomen("derlei", 
+    "1. detta slags, dylik  2. något sådant (dylikt, liknande)", "Unused", 
+    "Unused", "Unused"));
+  part(#98,adverb("jeher", "sedan gammalt, i alla tider, alltid (von jeher)"
+    , "Unused", "Unused", "Unused"));
+  part(#99,adverb("ungefähr", "1. ungefär  2. av en slump (von ungefähr)  ", 
+    "Unused", "Unused", "Unused"));
+  part(#100,verb("besheren", "ge i julklapp", "bescherte", "beschert", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#101,substantiv("Bescherung", "julklappsutdelning", "die", 
+    "Bescherungen", "Unused", "Unused", "Unused"));
+  part(#102,verb("schillern", "åka kana, kana, sladda", " ", " ", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#103,verb("schrumpfen", "skrumpna", "schrumpfte", "geschrumpft", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#104,verb("kappen", "kapa av", "kappte", "gekappt", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#105,substantiv("Ertrag", "avkastning, vinst", "der", "Ertrage", 
+    "Unused", "Unused", "Unused"));
+  part(#106,adjektiv("stolz", 
+    "1. stolt   2. ståtlig  3. ansenlig, rundlig, rejäl", "Unused", "Unused"
+    , "Unused"));
+  part(#107,praposit("angesichts", 
+    "1. inför, i åsynen av  2. med hänsyn till, i betraktande av", "Genitiv"
+    , "Unused", "Unused", "Unused"));
+  part(#108,substantiv("GAU", 
+    "reaktorhaveri, kärnkraftsolycka, [stor olycka]", "der", "GAUs", 
+    "Grosster anzunehmender Unfall", "Unused", "Unused"));
+  part(#119,substantiv("Archipel", "arkipelag, övärld", "der", "Archipel (?)"
+    , "Unused", "Unused", "Unused"));
+  part(#120,substantiv("Gebot", "påbud, befallning, bestämmelse", "das", 
+    "Gebote", "die Zehn Gebote", "Unused", "Unused"));
+  part(#121,substantiv("Zuzug", "inflyttning, tillströmning", "der", 
+    "Zuzuge (?)", "Unused", "Unused", "Unused"));
+  part(#122,substantiv("Haltung", "attityd", "die", "Haltungen", "Unused", 
+    "Unused", "Unused"));
+  part(#123,substantiv("Attitüde", "attitud", "die", "Attitude (?)", "Unused"
+    , "Unused", "Unused"));
+  part(#124,substantiv("Gewohnheit", "vana", "die", "Gewohnheiten (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#125,substantiv("Dolmetscher", "tolk", "der", "Dolmetscher (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#126,substantiv("Dolmetscherin", "tolk (kvinnlig)", "die", 
+    "Dolmetscherin (?)", "Unused", "Unused", "Unused"));
+  part(#127,substantiv("Wirbelsäule", "ryggrad, kotpelare", "die", 
+    "Wirbelsäulen", "Unused", "Unused", "Unused"));
+  part(#128,substantiv("Wirbel", "1. virvel  2. kota  3. stämskruv på fiol", 
+    "der", "Wirbel (?)", "Unused", "Unused", "Unused"));
+  part(#129,substantiv("Auftritt", 
+    "1. scen  2. uppträdande, entre  3. uppträde, scen", "der", "Auftritte", 
+    "Unused", "Unused", "Unused"));
+  part(#130,substantiv("Träger", "1. bärare  2. balk (i byggnad)", "der", 
+    "Träger  (?)", "Unused", "Unused", "Unused"));
+  part(#131,substantiv("Durchsage", "meddelande", "die", "Durchsage  (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#132,substantiv("Stöckelschuh", "högklackad sko", "der", 
+    "Stöckelschuhen", "Unused", "Unused", "Unused"));
+  part(#133,substantiv("Nachahmung", "härmning, imitering, kopia, imitation"
+    , "die", "Nachahmungen", "Unused", "Unused", "Unused"));
+  part(#134,substantiv("Windel", "blöja", "die", "Windel (?)", "Unused", 
+    "Unused", "Unused"));
+  part(#135,substantiv("Leib", "kropp, mage, liv", "der", "Leib (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#136,substantiv("Kostüm", "dräkt, kjol och kavaj", "das", 
+    "Kostüme (?)", "Unused", "Unused", "Unused"));
+  part(#137,substantiv("Anzug", "kostym", "der", "Anzüge", "Unused", "Unused"
+    , "Unused"));
+  part(#138,substantiv("Mähne", "man (på häst/djur)", "die", "Mähnen", 
+    "Unused", "Unused", "Unused"));
+  part(#139,substantiv("Augenbraue", "ögonbryn", "die", "Augenbrauen (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#140,substantiv("Sippe", "klan, släkt, stor familj", "die", 
+    "Sippen (?)", "Unused", "Unused", "Unused"));
+  part(#141,substantiv("Erpel", "ankhanne", "der", "Erpel (?)", "Unused", 
+    "Unused", "Unused"));
+  part(#142,substantiv("Annehmlichkeit", "fördelar, bekvämligheter", "die", 
+    "Annehmlichkeit (?)", "Unused", "Unused", "Unused"));
+  part(#143,substantiv("Vogelbeere", "rönnbär", "die", "Vogelebeere  (?)", 
+    "Unused", "Unused", "Unused"));
+  part(#144,substantiv("Luchs", "lodjur", "der", "Luchs  (?)", "Unused", 
+    "Unused", "Unused"));
+  part(#145,substantiv("Entwurf", "utkast, skiss", "der", "Entwürfe", 
+    "Unused", "Unused", "Unused"));
+  part(#146,substantiv("Makel", "skamfläck, fläck, skavank, fel", "der", 
+    "Makels", "Unused", "Unused", "Unused"));
+  part(#147,substantiv("Schöpfer", "1. skapare  2. skopa, öskar", "der", 
+    "Schöpfer  (?)", "Unused", "Unused", "Unused"));
+  part(#148,substantiv("Gedächtnis", "minne", "das", "Gedächtnisse", "Unused"
+    , "Unused", "Unused"));
+  part(#149,substantiv("Ritze", "springa, spricka", "die", "Ritzen", "Unused"
+    , "Unused", "Unused"));
+  part(#206,substantiv("Blatt", "blad", "das", "Blätter", "Unused", "Unused"
+    , "Unused"));
+  part(#207,substantiv("Vergewaltigung", "våldtäkt", "die", 
+    "Vergewaltigungen", "Unused", "Unused", "Unused"));
+  part(#208,verb("vergewaltigen", "våldtaga", "vergewaltigte", "vergewaltigt"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#209,verb("bummeln", "flanera, gå, ströva", "bummelte", "gebummelt", 
+    "haben/sein", "nein", "Unused", "Unused", "Unused"));
+  part(#210,substantiv("Bummelzug", "ett tåg som stannar vid varje station", 
+    "der", "Bummelzüge", "Unused", "Unused", "Unused"));
+  part(#211,adjektiv("bescheuert", "knasig, knäpp", "Unused", "Unused", 
+    "Unused"));
+  part(#237,substantiv("Abgeordnete", "parlamentsledamot", "der", 
+    "Abgeordneten", "auch die Abgeordnete", "Unused", "Unused"));
+  part(#238,substantiv("Formular", "formulär", "das", "Formulare", "Unused", 
+    "Unused", "Unused"));
+  part(#239,substantiv("Auftrag", 
+    "1. uppdrag, uppgift 2. påstrykning (av färg)", "der", "Aufträge", 
+    "im Auftrag von jemandem = på uppdrag av någon", "Unused", "Unused"));
+  part(#240,substantiv("Kopiergerät", "kopieringsapparat", "das", 
+    "Kopiergeräte", "Unused", "Unused", "Unused"));
+  part(#241,substantiv("Kopierapparat", "kopiator, kopieringsmaskin", "der", 
+    "Koiperapparate", "Unused", "Unused", "Unused"));
+  part(#242,substantiv("Ueberzeugung", 
+    "1. övertygande, övertalning 2. övertygelse, förvissning", "die", 
+    "Ueberzeugungen", "Unused", "Unused", "Unused"));
+  part(#243,substantiv("Kunst", "konst", "die", "Kunste", "Unused", "Unused"
+    , "Unused"));
+  part(#244,substantiv("Unfug", "1. hyss, rackartyg, ofog 2. nonsens, strunt"
+    , "der", "Unfuge", "Unused", "Unused", "Unused"));
+  part(#245,adjektiv("überheblich", "överlägsen, arrogant", "Unused", 
+    "Unused", "Unused"));
+  part(#246,substantiv("Programm", "program", "das", "Programme", "Unused", 
+    "Unused", "Unused"));
+  part(#247,substantiv("Mikrofon", "mikrofon", "das", "Mikrofone", "Unused", 
+    "Unused", "Unused"));
+  part(#248,substantiv("Chaos", "kaos", "das", "-", "Unused", "Unused", 
+    "Unused"));
+  part(#249,substantiv("Reisebüro", "resebyrå", "das", "Reisebüros", "Unused"
+    , "Unused", "Unused"));
+  part(#250,substantiv("Reporter", "reporter", "der", "Reporters", "Unused", 
+    "Unused", "Unused"));
+  part(#251,substantiv("Angestellte", 
+    "anställd, tjänsteman  (både der och die)", "der", "Angestellen", 
+    "Unused", "Unused", "Unused"));
+  part(#252,substantiv("Aberglaube", "vidskeplighet, skrock", "der", 
+    "Aberglauben", "Unused", "Unused", "Unused"));
+  part(#253,adjektiv("abergläubisch", "vidskeplig, skrockfull", "Unused", 
+    "Unused", "Unused"));
+  part(#254,verb("sickern", "sippra, droppa, läcka ut (även bildligt)", 
+    "sickerte", "gesickert (?)", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#255,verb("versagen", 
+    "misslyckas, göra fiasko, slå slint 2. strejka, svika, klicka", 
+    "versagte", "versagt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#256,substantiv("Verbindlichkeit", 
+    "1. bindande kraft 2. hövlighet, älskvärdhet, förbindlighet 3. skyldighet"
+    , "die", "Verbindlichkeiten", "Unused", "Unused", "Unused"));
+  part(#257,verb("verleugnen", 
+    "förneka, inte (vilja) kännas vid, inte erkänna", "verleugnete", 
+    "verleugnet (?)", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#258,verb("scheitern", 
+    "misslyckas, stranda (om förhandlingar), spricka (om äktenskap)", 
+    "scheiterte", "gescheitert", "sein", "nein", 
+    "daran ist er gescheitert = det var det han föll på", "Unused", "Unused")
+    );
+  part(#259,verb("bröseln", "falla i bitar genom uttorkning (?)", "bröselte"
+    , "gebröselt", "haben", "nein", 
+    "etwas bröselt = etwas is so trocken, das Krummel abfallen (ein Kuchen)"
+    , "Unused", "Unused"));
+  part(#260,verb("zerbröckeln", "smulas (fala) sönder, bryta i småbitar", 
+    "zerbröckelte", "zerbröckelt (?)", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#261,substantiv("Leistung", "prestation", "die", "Leistungen", 
+    "Unused", "Unused", "Unused"));
+  part(#262,adjektiv("irdisch", "jordisk, världslig", "Unused", "Unused", 
+    "Unused"));
+  part(#263,adjektiv("heikel", 
+    "1. känslig, ömtålig, kinkig, vansklig, prekär 2. kräsen, kinkig, nogräknad"
+    , "ein heikles Thema = ett laddat (känsligt) ämne", "Unused", "Unused"));
+  part(#264,verb("erwischen", 
+    "ertappa, komma på, ta fast, få tagi, komma över", "erwischte", 
+    "erwischt (?)", "haben", "nein", 
+    "sich erwischen lassen = åka fast, bli upptäckt", "Unused", "Unused"));
+  part(#265,adjektiv("makellos", "perfekt, felfri, oklanderlig, fläckfri", 
+    "Unused", "Unused", "Unused"));
+  part(#266,verb("schlüpfen", "smyga sig, slinka, glida", "schlüpfte", 
+    "geschlüpft", "sein", "nein", "aus dem Eier schlüpfen = kläckas", 
+    "Unused", "Unused"));
+  part(#267,verb("brüten", "ligga på ägg, ruva", "brütete", "gebrütet", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#268,verb("hüllen", "svepa (in), hölja, slå in", "hüllte", "gehüllt", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#269,adjektiv("frivol", "frivol, lättsinnig", "Unused", "Unused", 
+    "Unused"));
+  part(#270,substantiv("Ruch", "dåligt rykte (?)", "der", " ", "Unused", 
+    "Unused", "Unused"));
+  part(#271,verb("mögen", 
+    "I 1. kunna 2. få, må 3. vilja II 1. tycka om, gilla III 1. vilja", 
+    "mochte", "gemocht", "haben", "nein", 
+    "ich mag keinen Fisch essen = jag tycker inte om fisk", "Unused", 
+    "Unused"));
+  part(#272,substantiv("Strähne", "(hår) slinga", "die", "Strähnen (?)", 
+    "eine glückliche Strähne haben = ha tur hela tiden", "Unused", "Unused"))
+    ;
+  part(#273,verb("unterwerfen", "underkuva, lägga under sig", "unterwarf", 
+    "unterworfen", "haben", "nein", "er unterwirft sich ...", 
+    "sich etwas unterwerfen = underkasta sig något", "Unused"));
+  part(#274,adjektiv("schlaff", 
+    "1. slapp, slak, kraftlös, hängig 2. trög, tråkig", "Unused", "Unused", 
+    "Unused"));
+  part(#275,adjektiv("mitleidig", "medlidsam, deltagande", "Unused", "Unused"
+    , "Unused"));
+  part(#276,verb("tarnen", "kamouflera,  maskera, dölja (bildligt)", "tarnte"
+    , "getarnt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#277,substantiv("Unrecht", "orätt  (zu Unrecht = med orätt)", "das", 
+    "Nur singular?", "nicht zu Unrecht = inte utan anledning", "Unused", 
+    "Unused"));
+  part(#278,verb("jaulen", "gnälla, yla (om hund)", "jaulte", "gejault", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#279,adjektiv("höfisch", "hövisk, hovmannamässig", "Unused", "Unused"
+    , "Unused"));
+  part(#280,adjektiv("possierlich", 
+    "lustig, skojig (i synnerhet om små djur)", "Unused", "Unused", "Unused")
+    );
+  part(#281,verb("verkneifen", "undertrycka", "verkniff", "verkniffen", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#282,verb("veralbern", "förlöjliga någon, driva med någon", 
+    "veralberte", "veralbert", "haben", "nein", "Unused", "Unused", "Unused")
+    );
+  part(#283,verb("bewerben", 
+    "sich um etwas - anstränga sig för, bemöda sig om", "bewarb", "beworben"
+    , "haben", "ja", "sich um eine Stelle bewerben = ansöka om jobb", 
+    "Unused", "Unused"));
+  part(#284,verb("gefallen", "behaga, tilltala", "gefiel", "gefallen", 
+    "haben", "nein", "Es gefällt mir", "Unused", "Unused"));
+  part(#285,adjektiv("unumwunden", 
+    "rent ut, etwas unumwunden zugeben = medge något öppet", "Unused", 
+    "Unused", "Unused"));
+  part(#286,substantiv("Annehmlichkeit", "fördelar, bekvämligheter", "die", 
+    " ", "Unused", "Unused", "Unused"));
+  part(#287,adjektiv("bedingt", "betingat, villkorlig (juridiskt)", "Unused"
+    , "Unused", "Unused"));
+  part(#288,adverb("bedingt", "bedingt arbeitsfähig = partiell arbetsför", 
+    "Unused", "Unused", "Unused"));
+  part(#289,verb("bedingen", 
+    "I orsaka, ha till följd, medföra II förutsätta, kräva", "bedingte", 
+    "bedingt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#290,verb("ausschöpfen", 
+    "ösa ur, uttömma, Ein Thema ausshöpfen = uttömma ett tema", " ", " ", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#291,substantiv("Fülle", 
+    "1. mängd, överflöd, rikhaltighet 2. fullhet, rikedom 3. körperliche Fülle 0 korpulens"
+    , "die", "----", "Unused", "Unused", "Unused"));
+  part(#292,adjektiv("glatt", 
+    "1. jämn, slät 2. hal, blank, glatt 3. lätt, enkel, smidig, 4. hal, inställsam  "
+    , "Unused", "Unused", "Unused"));
+  part(#293,adverb("glatt", 
+    "1. slätt, jämnt  2. smidigt, utan problem 3. rakt, rentav, helt", 
+    "Unused", "Unused", "Unused"));
+  part(#294,adjektiv("trüb(e)", 
+    "1. grumlig, oklar, glanslös (om ögon), mulen (om väder) 2. dyster, sorglig, trist"
+    , "im Trüben fischen = fiska i grumliga vatten", "Unused", "Unused"));
+  part(#295,adjektiv("schlicht", "enkel, okonstlad", 
+    "die schlichte Wahrheit = den nakna sanningen", "Unused", "Unused"));
+  part(#296,verb("trachten", "trakta, sträva", "trachtete", "getrachtet", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#297,verb("behüten", "bevara, beskydda", "behütete", "behütet", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#298,adjektiv("vorläufig", "tillfällig, provisorisk", "Unused", 
+    "Unused", "Unused"));
+  part(#299,adverb("vorläufig", 
+    "tills vidare, för tillfället, för närvarande", "Unused", "Unused", 
+    "Unused"));
+  part(#300,adjektiv("mancherlei", "allehanda, diverse, flera (olika)", 
+    "mancherlei Käse = flera sorters ost", "Unused", "Unused"));
+  part(#301,verb("niederlassen", "sich -  slå sig ner", " ", " ", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#302,substantiv("Niederlassung", "bosättning", "die", 
+    "Niederlassungen", "Unused", "Unused", "Unused"));
+  part(#303,adjektiv("segensreich", "välsignelserik, framgångsrik", "Unused"
+    , "Unused", "Unused"));
+  part(#304,adjektiv("faul", "1. rutten, skämd 2. skum, dålig 3. lat", 
+    "Unused", "Unused", "Unused"));
+  part(#305,substantiv("Mehrheit", "majoritet", "die", "Mehrheiten", "Unused"
+    , "Unused", "Unused"));
+  part(#306,adverb("etwa", 
+    "1. omkring, ungefär 2. kanske, möjligen 3. till exempel", 
+    "in etwa stimmt das = det stämmer i stort sett", 
+    "ist er etwa krank? = han är väl inte sjuk", 
+    "Städte, wie etwa München = städer som till exempel München"));
+  part(#307,verb("nagen", "gnaga", "nagte", "genagt", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#308,verb("gönnen", "unna", "gönnte", "gegönnt", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#309,substantiv("Scharfmacher", "upprorsmakare", "der", " ", "Unused"
+    , "Unused", "Unused"));
+  part(#310,verb("zerfetzen", "riva, slita sönder", "zerfetzte", "zerfetzt", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#311,substantiv("Schurke", "skurk, bov", "der", "Schurken", "Unused", 
+    "Unused", "Unused"));
+  part(#312,substantiv("Kahlschlag", "kalhygge", "der", "------", "Unused", 
+    "Unused", "Unused"));
+  part(#313,substantiv("Elan", "hänförelse, iver", "der", "-------", "Unused"
+    , "Unused", "Unused"));
+  part(#316,verb("platzen", 
+    "1. spricka, brista, explodera 2. spricka, gå i stöpet 3. plötsligt dyka upp"
+    , "platzte", "geplatzt", "sein", "nein", "Unused", "Unused", "Unused"));
+  part(#317,substantiv("Leitfaden", 
+    "1. (grundläggande) lärobok, handledning, manual 2. ledmotiv, tema", 
+    "der", "?", "Unused", "Unused", "Unused"));
+  part(#318,adjektiv("zerknirscht", "ångerfull, förkrossad", 
+    "zerknirscht sein = vara ledsen", "Unused", "Unused"));
+  part(#319,verb("zerplatzen", "spricka, springa sönder, explodera", 
+    "zerplatzte", "zerplatzt", "sein", "nein", "Unused", "Unused", "Unused"))
+    ;
+  part(#320,substantiv("Zerknirschung", "ånger (?)", "die", "-----", "Unused"
+    , "Unused", "Unused"));
+  part(#321,adjektiv("anständig", "1. anständig, passande, lämplig" + 
+    " 2. hygglig, renhårig 3. hyfsad, rätt bra, anständig 4. rejäl, ordentlig"
+    , "bleib anständig = (skämtsamt) sköt dig", 
+    "das war anständig von dir = det var schysst av dig", "Unused"));
+  part(#322,substantiv("Magistrat", "kommunalförvalning", "der", "Magistrate"
+    , "Unused", "Unused", "Unused"));
+  part(#323,adjektiv("eitel", "1. (nedsättande) fåfäng 2. idel, blott", 
+    "eitel sein = vara alltför mån om sitt yttre", "Unused", "Unused"));
+  part(#324,substantiv("Eitelkeit", "fåfänglighet (nedsättande)", "die", 
+    "Eitelkeiten", "Unused", "Unused", "Unused"));
+  part(#325,substantiv("Anstand", 
+    "1. anständighet, fint sätt, god ton, etikett" + 
+    " 2. keinen ~ nehmen = inte tveka att göra något", "der", "---", 
+    "den Anstand wahren = iaktta god ton", "Unused", "Unused"));
+  part(#326,adjektiv("töricht", "enfaldig, dum, oförnuftig, dåraktig", 
+    "Unused", "Unused", "Unused"));
+  part(#327,adjektiv("bescheiden", 
+    "1. anspråkslös, blygsam, försynt 2. es ist bescheiden det är för jävligt"
+    , "Unused", "Unused", "Unused"));
+  part(#328,adjektiv("penetrant", 
+    "genomträngande, skarp, stickande (om lukt)", "Unused", "Unused", 
+    "Unused"));
+  part(#329,substantiv("Bedürfnis", "behov", "das", "Bedürfnisse", "Unused", 
+    "Unused", "Unused"));
+  part(#330,substantiv("Inzenierung", "iscensättning, uppsättning, regi", 
+    "die", "Inzenierungen", "Unused", "Unused", "Unused"));
+  part(#331,verb("inszenieren", "iscensätta, sätta upp, regissera", 
+    "inszenierte", "inszeniert", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#332,substantiv("Tanne", "gran", "die", "Tannen", "Unused", "Unused", 
+    "Unused"));
+  part(#333,substantiv("Tannenbaum", "1. gran 2. julgran", "der", 
+    "Tannenbäume", "Unused", "Unused", "Unused"));
+  part(#334,adjektiv("schwank", 
+    "tunn (smal) och böjlig, ranglig, ostadig (om person)", "Unused", 
+    "Unused", "Unused"));
+  part(#335,verb("schwanken", 
+    "1. vackla, tveka, vaja, svänga fram och tillbaka, gunga, " + 
+    "ge efter, ge vika, fluktuera 2. stappla, ragla, vingla", "schwankte", 
+    "geschwankt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#336,substantiv("Klüngel", 
+    "gäng, kumpaner, er und sein Klüngel = han och hans gäng", "der", 
+    "Klüngels", "Unused", "Unused", "Unused"));
+  part(#337,substantiv("Gestaltung", "formgivning, utformning, gestaltning", 
+    "die", "Gestaltungen", "Unused", "Unused", "Unused"));
+  part(#338,verb("abschotten", 
+    "göra så att man inte längre har kontakt med något, utestänga (?)", 
+    "schottete ab", "abgeschottet", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#339,adjektiv("nobel", 
+    "1. nobel 2. (ofta nedsättande) flott, elegant, lyxig", "Unused", 
+    "Unused", "Unused"));
+  part(#340,substantiv("Spur", "1. spår 2. körfält, fil 3. en gnutta", "die"
+    , "Spuren", "auf die Spur kommen = komma någon på spåren", 
+    "die Spur wechseln = byta fil", 
+    "eine Spur Paprika = en gnutta (anig) paprika"));
+  part(#341,substantiv("Draht", "1. metalltråd 2. (telefon) linje", "der", 
+    "Drähte", 
+    "der heisse Draht = eine direkte Telefoneverbindung zwischen den Regierungen zweier Staaten"
+    , "Unused", "Unused"));
+  part(#342,substantiv("Anlass", "anledning, skäl, grund, orsak", "der", 
+    "Anlässe", "aus gegebenem Anlass = kanslityska", "Unused", "Unused"));
+  part(#343,praposit("anlässlich", "med anledning av", "genitiv", "Unused", 
+    "Unused", "Unused"));
+  part(#344,adjektiv("weltläufig", "världsvant (?)", "Unused", "Unused", 
+    "Unused"));
+  part(#345,adjektiv("gewandt", "skicklig, smidig, van, rutinerad, belevad", 
+    "in etwas gewandt sein = vara skicklig på något", "Unused", "Unused"));
+  part(#346,substantiv("Vergeltung", 
+    "1. vedergällning 2. belöning, återgäldande", "die", "Vergeltungen", 
+    "Unused", "Unused", "Unused"));
+  part(#347,substantiv("Vergeltungsmassnahme", 
+    "vedergällning(saktion), hämnd(aktion)", "die", "Vergelungsmassnahmen", 
+    "Unused", "Unused", "Unused"));
+  part(#348,verb("erteilen", "ge, tilldela", "erteilte", "erteilt", "haben", 
+    "nein", "jemandem Unterricht erteilen = undervisa någon", "Unused", 
+    "Unused"));
+  part(#349,adjektiv("wüst", "1. kaotisk, rörig 2. vild, våldsam " + 
+    "3. oanständig, grov, vulgär 4. fruktansvärd, förfärlig, ful 5. öde, tom, obebodd"
+    , "wüstes Geschrei = gallskrik, illtjut", "Unused", "Unused"));
+  part(#350,adjektiv("heil", 
+    "1. oskadd, helskinnad 2. wieder heil sein = läka 3. hel, oskadd", 
+    "eine heile Welt = en idealvärld, en oförstörd värld", "Unused", "Unused"
+    ));
+  part(#351,substantiv("Zeitspanne", "tirymd, tid, period", "die", 
+    "Zeitspannen", "Unused", "Unused", "Unused"));
+  part(#352,verb("beleidigen", "förolämpa, kränka, såra", "beleidigte", 
+    "beleidigt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#353,substantiv("Beleidigung", 
+    "förolämpning, ärekränkning (juridiskt)", "die", "Beleidigungen", 
+    "Unused", "Unused", "Unused"));
+  part(#354,adjektiv("zivilisatorisch", 
+    "typisk för civilisationen, av civilisationen orsakad (skador, sjukdomar, ..)"
+    , "Unused", "Unused", "Unused"));
+  part(#355,verb("enttäuschen", 
+    "göra besviken, jemanden angenehm enttäuschen = göra någon angenämt överraskad "
+    , "enttäuschte", "enttäuscht", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#356,substantiv("Enttäuschung", "besvikelse", "die", "Enttäuschungen"
+    , "Unused", "Unused", "Unused"));
+  part(#357,substantiv("Vorwurf", "1. förebråelse 2. ämne, motiv", "der", 
+    "Vorwürfe", "Unused", "Unused", "Unused"));
+  part(#358,substantiv("Wurf", "1. kast, tärningskast 2. kull", "der", 
+    "Würfe", "Unused", "Unused", "Unused"));
+  part(#359,substantiv("Würfel", "tärning, kub", "der", "Würfel", 
+    "die Würfel sind gefallen = tärningen är kastad", 
+    "in Würfel schneiden = skära i tärningar, tärna", "Unused"));
+  part(#360,verb("entwurzeln", 
+    "rycka upp med rötterna, göra rotlös (bildligt)", "entwurzelte (?)", 
+    "entwurzelt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#361,adjektiv("entwurzelt", 
+    "ramlat omkull och med rötterna i luften 2. göra en person rotlös så att hon inga vänner, etc. har"
+    , "Unused", "Unused", "Unused"));
+  part(#362,substantiv("Ballungsgebiet", 
+    "storstadsregion med många industrier, tätbefolkad region", "das", 
+    "Ballungsgebiete", "Unused", "Unused", "Unused"));
+  part(#363,substantiv("Ballungsraum", 
+    "storstadsregion med många industrier, tätbefolkad region", "der", 
+    "Ballungsräume", "Unused", "Unused", "Unused"));
+  part(#364,substantiv("Ballungszone", 
+    "storstadsregion med många industrier, tätbefolkad region", "die", 
+    "Ballungszonen", "Unused", "Unused", "Unused"));
+  part(#365,verb("wuchern", 
+    "1. växa okontrollerat, sprida sig  2. bedriva ocker", "wucherte", 
+    "gewuchert", "haben/sein", "nein", "Unused", "Unused", "Unused"));
+  part(#366,substantiv("Forstwirtschaft", "skogsbruk", "die", "-------", 
+    "Unused", "Unused", "Unused"));
+  part(#367,substantiv("Vormund", "förmyndare", "der", "Vormünder", "Unused"
+    , "Unused", "Unused"));
+  part(#368,substantiv("Anzeige", 
+    "1. (polis) anmälan 2. annons, tillkännagivande", "die", "Anzeigen", 
+    "Unused", "Unused", "Unused"));
+  part(#369,substantiv("Schwalbe", "svala", "die", "Schwalben", 
+    "eine Schwalbe macht kein Sommer", "Unused", "Unused"));
+  part(#370,adjektiv("albern", "I fånig, larvig, flamsig  II fåna sig", 
+    "Unused", "Unused", "Unused"));
+  part(#371,adverb("durcheinander", "upp och ner, huller om buller", "Unused"
+    , "Unused", "Unused"));
+  part(#372,adjektiv("durcheinender", 
+    "jag känner mig alldeles uppochnervänd = Ich bin ganz ~ ", "Unused", 
+    "Unused", "Unused"));
+  part(#373,substantiv("Durcheinander", "oreda, röra, virrvarr, villervalla"
+    , "das", "-----", "Unused", "Unused", "Unused"));
+  part(#374,substantiv("Spruch", 
+    "1. domslut, utslag 2. tänkespråk, sentens, vers, bibelspråk 3. fras, vers 4. paroll, slagord"
+    , "der", "Sprüche", "das sind nur Sprüche = det är ju bara tomma fraser"
+    , "Unused", "Unused"));
+  part(#375,verb("veräußern", "avyttra, sälja", "veräußerte", "veräußert", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#376,substantiv("Spinne", "spindel (zoologisk)", "die", "Spinnen", 
+    "Unused", "Unused", "Unused"));
+  part(#377,verb("spinnen", 
+    "1. spinna 2. prata strunt, hitta på, ljuga 3. vara knäpp ", "spann", 
+    "gesponnen", "haben", "nein", 
+    "jetzt spinnt er wieder = nu hittar han på igen", 
+    "du spinnst wohl! = du är inte klok", "Unused"));
+  part(#378,substantiv("Spinner", 
+    "1. spinnare (zoologiskt) 2. en som hittar på, inte är klok" + 
+    " 3. spinnare = fiskedrag", "der", "Spinner", "er ist ein Spinner", 
+    "Unused", "Unused"));
+  part(#379,verb("verzeihen", "förlåta, ursäkta", "verzieh", "verziehen", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#380,adjektiv("verzeihlich", "förlåtlig, ursäktlig", "Unused", 
+    "Unused", "Unused"));
+  part(#381,verb("bedauern", "I beklaga II bedaure! tyvärr!", "bedauerte", 
+    "bedauert", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#382,substantiv("Bedauern", "beklagande", "das", "---", 
+    "Zu meinem Bedauern fiel das Konzert aus", "Unused", "Unused"));
+  part(#383,adjektiv("bedauerlicherweise", "tyvärr", "Unused", "Unused", 
+    "Unused"));
+  part(#384,substantiv("Maßnahme", "åtgärd", "die", "Maßnamen", 
+    "Maßnamen ergreifen = vidta åtgärder", "Unused", "Unused"));
+  part(#385,substantiv("Strich", 
+    "1. streck, linje 2. strykning 3. gatuprostitution, horgata, horkvarter 4. streck på kompass"
+    , "der", "Striche", 
+    "unter dem Strich = när allt kommer omkring, på det hela taget", 
+    "auf den Striche gehen", "Unused"));
+  part(#386,substantiv("Tat", 
+    "1. handling, gärning, dåd 2. in der Tat = verkligen, faktiskt", "die", 
+    "Taten", "auf frischer Tat ertappen = ta någon på bar gärning", "Unused"
+    , "Unused"));
+  part(#387,adjektiv("tätig", "verksam, aktiv", 
+    "als Lehrer tätig sein = arbeta som lärare ", "Unused", "Unused"));
+  part(#388,substantiv("Tatort", "brottsplats", "der", "Orte", "Unused", 
+    "Unused", "Unused"));
+  part(#389,verb("tätowieren", "tatuera", "tätowierte", "tätowiert", "haben"
+    , "nein", "Unused", "Unused", "Unused"));
+  part(#390,substantiv("Tätowierung", "tatuering", "die", "Tätowierungen", 
+    "Unused", "Unused", "Unused"));
+  part(#391,adjektiv("taubstumm", "dövstumm", "Unused", "Unused", "Unused"));
+  part(#401,verb("bedrohen", "hota", "bedrohte", "bedroht", "haben", "nein", 
+    "bedrohte Arten = utrotningshotade arter", "Unused", "Unused"));
+  part(#402,adjektiv("bedrohlich", "hotande, hotfull", "Unused", "Unused", 
+    "Unused"));
+  part(#403,substantiv("Bedrohung", "hot, hotelse, hotbild", "die", 
+    "Bedrohungen", "Unused", "Unused", "Unused"));
+  part(#404,adjektiv("bedrückt", "nedstämd, deprimerad", "Unused", "Unused", 
+    "Unused"));
+  part(#405,adjektiv("bedürfnislos", "utan behov, anspråkslös", "Unused", 
+    "Unused", "Unused"));
+  part(#406,substantiv("Bedürfnisanstalt", 
+    "bekvämlighetsinrättning, offentlig toilette", "die", 
+    "Bedürfnisanstalten", "Unused", "Unused", "Unused"));
+  part(#407,adjektiv("niedlich", "söt, gullig, rar, näpen", "Unused", 
+    "Unused", "Unused"));
+  part(#408,adjektiv("niedrig", "låg, lågsinnad", 
+    "von niedrigem Wuchs = lågväxt", 
+    "ein niedriges Zimmer = ett rum med lågt i tak", "Unused"));
+  part(#409,adverb("niedrig", "lågt, tarvligt, gement", 
+    "etwas niedrig halten = hålla något lågt", "Unused", "Unused"));
+  part(#410,verb("erschlagen", "slå ihjäl, döda", "erschlug", "erschlagen", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#411,adjektiv("rücksichtlos", "hänsynslös", "Unused", "Unused", 
+    "Unused"));
+  part(#412,adverb("aufwärts", "uppåt, uppför", 
+    "den Fluss aufwärts = uppströms", "Unused", "Unused"));
+  part(#413,substantiv("Rücksicht", "hänsyn", "die", "Rücksichten", 
+    "Rücksicht auf etwas nehmen = ta hänsyn till något", 
+    "aus Rücksicht auf = av hänsyn till, av omtanke om", "Unused"));
+  part(#414,substantiv("Gusto", "smak, förkärlek", "der", "------", 
+    "Du kannst die Wohnung ganz nach deinem Gusto einrichten ", "Unused", 
+    "Unused"));
+  part(#415,verb("abspeisen", "1. utfodra, utspisa 2. avspisa, avfärda", "?"
+    , "?", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#416,adjektiv("ratsam", "tillrådlig, lämplig", "Unused", "Unused", 
+    "Unused"));
+  part(#417,substantiv("Handbuch", "handbok", "das", "Handbücher", "Unused", 
+    "Unused", "Unused"));
+  part(#418,substantiv("Scheusal", "odjur, monster", "das", "Scheusale", 
+    "Unused", "Unused", "Unused"));
+  part(#419,verb("vorgehen", 
+    "1. gå före (om klocka) 2. komma först 3. gå fram, rycka fram (miltärt)"
+     + " 4. gå till väga, förfara 5. försiggå", "vorging", "vorgegangen", 
+    "sein", "nein", "Unused", "Unused", "Unused"));
+  part(#420,substantiv("Vergangenheit", "förfluten tid, förgången tid", "die"
+    , "Vergangenheiten", "in ferner Vergangenheit", "Unused", "Unused"));
+  part(#421,adverb("hüben", 
+    "hüben und drüben = på båda sidor, både för och emot", "Unused", "Unused"
+    , "Unused"));
+  part(#422,substantiv("Ungeheuer", "monster, vidunder", "das", "Ungeheurs", 
+    "Unused", "Unused", "Unused"));
+  part(#423,verb("verstellen", 
+    "1. blockera, spärra, stänga, belamra 2. flytta (om), rubba, ställa fel 3. ställa om, ändra inställningen på, reglera 4. förställa si"
+    , "vorstellte", "vorgestellt", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#426,substantiv("Flitterwochen", "smekmånad", "die", "Flitterwochen", 
+    "Unused", "Unused", "Unused"));
+  part(#428,verb("verschleudern", "1. slumpa bort 2. kasta (slösa) bort", 
+    "verschleuderte", "verschleudert", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#429,substantiv("Wohngemeinshaft", "kollektiv", "die", 
+    "Wohngemeinshaften", "Unused", "Unused", "Unused"));
+  part(#430,substantiv("Wohngemeinshaft", "kollektiv", "die", 
+    "Wohngemeinshaften", "Unused", "Unused", "Unused"));
+  part(#431,adjektiv("gemein", 
+    "1. elak, nedrig, tarvlig, gemen, förarglig 2. vanlig, enkel" + 
+    " 3. gemensam 4. allmän", "eine gemeine Lüge = en grov (gemen) lögn", 
+    "der gemeine Mann = gemene man", "Unused"));
+  part(#432,substantiv("Anstandsdame", "förkläde (bildligt)", "die", 
+    "Anstandsdamen", "Unused", "Unused", "Unused"));
+  part(#433,substantiv("Farm", "farm", "die", "Farmen", "Unused", "Unused", 
+    "Unused"));
+  part(#434,substantiv("Video", "video", "das", "Videos", "Unused", "Unused"
+    , "Unused"));
+  part(#435,substantiv("Videorecorder", "videobandspelare", "der", 
+    "Videorecorder", "Videorekorder (med k också OK)", "Unused", "Unused"));
+  part(#436,substantiv("Videokamera", "videokamera", "die", "Videokameras", 
+    "Unused", "Unused", "Unused"));
+  part(#437,substantiv("Videoband", "videoband", "das", "Videobänder", 
+    "Unused", "Unused", "Unused"));
+  part(#438,substantiv("Kassette", "kassett, kassettband", "die", "Kassetten"
+    , "Unused", "Unused", "Unused"));
+  part(#439,substantiv("Fest", "fest, högtidlighet", "das", "Feste", 
+    "frohes Fest", "ein Fest feiern = fira högtid, födelsedag, ..", "Unused")
+    );
+  part(#440,substantiv("Abfalleimer", "sophink, slaskhink", "der", 
+    "Abfalleimer", "Unused", "Unused", "Unused"));
+  part(#441,substantiv("Text", "text", "der", "Texte", "Unused", "Unused", 
+    "Unused"));
+  part(#442,substantiv("Eselsbrücke", "stöd för minnet, minnesregel", "die", 
+    "Eselsbrücken", "Unused", "Unused", "Unused"));
+  part(#443,substantiv("Eselsohr", "hundöra (i bok)", "das", "Eselsohren", 
+    "Unused", "Unused", "Unused"));
+  part(#444,substantiv("Esel", "åsna", "der", "Esel", "Unused", "Unused", 
+    "Unused"));
+  part(#445,substantiv("Ziege", "get", "die", "Ziegen", 
+    "blöde Ziege = kärring(jävel)", "Unused", "Unused"));
+  part(#446,substantiv("Schaffleisch", "fårkött", "das", "Schaffleisch", 
+    "Unused", "Unused", "Unused"));
+  part(#447,substantiv("Tischordnung", "bordsplacering", "die", 
+    "Tischordnungen", "Unused", "Unused", "Unused"));
+  part(#448,substantiv("Tischrede", "(middags) tal", "die", "Tischreden", 
+    "Unused", "Unused", "Unused"));
+  part(#449,substantiv("Block", 
+    "1. block, stenblock 2. kvarter 3. skrivblock 4. block, sammanslutning", 
+    "der", "Blocke", "Blocks = också plural", "wir wohnen im gleichen Block"
+    , "Unused"));
+  part(#450,substantiv("Türfalle", "dörrhållare", "die", "Türfallen", 
+    "Unused", "Unused", "Unused"));
+  part(#451,substantiv("Mausefalle", "musfälla", "die", "Mausefallen", 
+    "Unused", "Unused", "Unused"));
+  part(#452,substantiv("Bein", "ben", "das", "Beine", "Unused", "Unused", 
+    "Unused"));
+  part(#453,adjektiv("geballt", "1. knuten näve 2. koncentrerad (bildligt)", 
+    "eine geballte Faust", "Unused", "Unused"));
+  part(#454,verb("ballen", 
+    "1. pressa ( trycka, knyckla ) ihop 2. sich ~ hopa sig ", "ballte", 
+    "geballt", "haben", "nein", "die (Hand zur) Faust ballen = knyta näven "
+    , "Unused", "Unused"));
+  part(#455,verb("nerven", "göra nervös", "nervte", "genervt", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#456,substantiv("Strom", "1. ström, flod 2. ström elektriskt", "der", 
+    "Ströme", "unter Strom stehen = vara strömförande", "Unused", "Unused"));
+  part(#457,verb("einschalten", 
+    "1. koppla in / på (elektriskt) 2. infoga, skjuta in", "einschaltete", 
+    "eingeschaltet", "haben", "nein", "das Licht einschalten", "Unused", 
+    "Unused"));
+  part(#458,verb("ausschalten", 
+    "1. slå av (ström, ljus, ..) 2. utesluta, eliminera, förhindra, slå (i sport)"
+    , "ausschaltete", "ausgeschaltet", "haben", "nein", 
+    "das Licht ausschalten", "Unused", "Unused"));
+  part(#459,verb("abschalten", "stänga av, slå av, koppla ifrån (elektriskt)"
+    , "abschaltete", "abgeschaltet", "haben", "nein", 
+    "Kernkraftwerke abschalten = stänga av (lägga ned) kärnkraftverk", 
+    "Unused", "Unused"));
+  part(#460,substantiv("Bedarf", 
+    "behov, bei ~ = vid behov (nach ~ enligt Sandra)", "der", "---", "Unused"
+    , "Unused", "Unused"));
+  part(#461,substantiv("Abruf", 
+    "1. sich auf ~ bereithalten = vara beredd, stå till tjänst 2. auf ~ kaufen = köpa för leverans efter avrop"
+    , "der", "Abrufe", "Unused", "Unused", "Unused"));
+  part(#462,verb("abhauen", 
+    "I sticka iväg, kila iväg II 1. hugga av, fälla 2. skriva av = fuska (i skolan)"
+    , "haute ab", "abgehauen", "haben", "nein", "hau ab! = stick", "Unused", 
+    "Unused"));
+  part(#463,adjektiv("heiter", 
+    "1. glad, munter, gladlynt 2. klar, vacker, strålande (om väder) ", 
+    "ein heiter Tag = en solig dag", "Unused", "Unused"));
+  part(#464,adjektiv("schofel", "taskig", "Unused", "Unused", "Unused"));
+  part(#465,verb("wiegen", "väga", "wog", "gewogen", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#466,verb("wiegen", 
+    "I 1. vagga 2. hacka (kok.) II sich ~ = vagga, gunga, vaja (om gräs)", 
+    "wiegte", "gewiegt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#467,substantiv("Wiegenlied", "vaggvisa", "das", "Wiegenlieder", 
+    "Unused", "Unused", "Unused"));
+  part(#468,substantiv("Wiese", "äng", "die", "Wiesen", "Unused", "Unused", 
+    "Unused"));
+  part(#469,adjektiv("brüchig", "murken, spröd, skör", "Unused", "Unused", 
+    "Unused"));
+  part(#470,verb("immunisieren", "immunisera, göra immun", "immunisierte", 
+    "immunisiert", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#471,verb("geraten", 
+    "1. råka, komma, hamna 2. bli (durcheinander ~ = råka i oordning 3. lyckas 4. brås på någon"
+    , "geriet", "geraten", "sein", "nein", 
+    "an einen Betrüger geraten = råka ut för en bedragare", 
+    "alles geriet ihr = hon lyckades med (i) allt", "Unused"));
+  part(#472,verb("raten", "1. råda 2. gissa ~ Sie Mal", "riet", "geraten", 
+    "haben", "nein", "wozu rätst du mir = vad råder du mig att göra", 
+    "ich halte es nicht für geraten = jag tycker inte att det är någon god ide"
+    , "Unused"));
+  part(#473,substantiv("Verrat", "förräderi, svek", "der", "------", "Unused"
+    , "Unused", "Unused"));
+  part(#474,verb("überführen", "överföra, transportera", "führte über", 
+    "übergeführt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#475,verb("überführen", "1. överbevisa 2. överföra, transportera ", 
+    "überführte", "überführt", "haben", "nein", "Unused", "Unused", "Unused")
+    );
+  part(#476,verb("bestellen", 
+    "1. beställa, rekvirera 2. framföra ein Gruss ~ 3. odla, bruka 4. tillsätta"
+    , "bestellte", "bestellt", "haben", "nein", "Unused", "Unused", "Unused")
+    );
+  part(#477,substantiv("Zäsur", 
+    "punkt där utvecklingen börjar gå i en helt annan riktning", "die", 
+    "Zäsuren", "Unused", "Unused", "Unused"));
+  part(#478,verb("küren", "kora", "kürte", "gekürt", "haben", "nein", 
+    "Unused", "Unused", "Unused"));
+  part(#479,substantiv("Lektüre", "lektyr, läsning", "die", "Lektüren", 
+    "Unused", "Unused", "Unused"));
+  part(#486,substantiv("Ostsee", "Östersjön", "die", "----", "Unused", 
+    "Unused", "Unused"));
+  part(#487,substantiv("Kamm", "kam (för hår, tuppkam, bergskam)", "der", 
+    "Kämme", "alle über einen Kamm scheren = skära (dra) alla över en kam", 
+    "Unused", "Unused"));
+  part(#488,substantiv("Kanadier", "kanadensare (även kanot)", "der", 
+    "Kanadier", "Unused", "Unused", "Unused"));
+  part(#489,substantiv("Kajak", "kajak", "der", "Kajaks", 
+    "även neutrum das Kajak ?", "Unused", "Unused"));
+  part(#490,adjektiv("üblich", "bruklig, gängse, vanlig", 
+    "wie üblich = som vanligt", "ein übliches Benehmen", "Unused"));
+  part(#491,substantiv("Ferse", "häl", "die", "Fersen", 
+    "auf den Fersen sein = vara hack i häl, vara i hälarna på någon", 
+    "Unused", "Unused"));
+  part(#492,substantiv("Vorhang", "draperi, ridå (teater)", "der", "Vorhänge"
+    , "eiserner Vorhang = järnridå", "Unused", "Unused"));
+  part(#493,substantiv("Henker", "bödel, skarprättare", "der", "Henker", 
+    "sich den Henker um etwas scheren = ge tusan (fan) i något", 
+    "zum Henker! = helvete, fan", "Unused"));
+  part(#494,verb("verpatzen", 
+    "1. förstöra, klanta till 2. kladda ner (Östterike)", "verpatzte", 
+    "verpatzt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#495,substantiv("Tatendrang", "full av energi att göra något", "der", 
+    "----", "Er war voller Tatendrang", "Unused", "Unused"));
+  part(#496,verb("einbilden", "inbilla sig", "bildete ein", "eingebildet", 
+    "haben", "nein", 
+    "was bildest du dich eigentlich ein? = vad inbillar du dig ?", 
+    "sich ziemlich viel über etwas einbilden = vara stöddig över något", 
+    "Unused"));
+  part(#497,substantiv("Einbildung", "inbillning, fantasi, inbilskhet", "die"
+    , "Einbildungen", "Unused", "Unused", "Unused"));
+  part(#498,substantiv("Kinn", "haka", "das", "Kinne", "Unused", "Unused", 
+    "Unused"));
+  part(#499,adjektiv("herb", 
+    "1. besk, syrlig, (lite) bitter kärv frän (om vin) 2. hård, sträng, avvisande, otillgänglig"
+    , "Er ist herb und männlich = kärv och manlig", "Unused", "Unused"));
+  part(#500,substantiv("Dasein", "tillvaro, existens, närvaro", "das", "----"
+    , "Unused", "Unused", "Unused"));
+  part(#501,substantiv("Bagger", "grävmaskin, grävskopa, mudderverk", "der", 
+    "Bagger", "Unused", "Unused", "Unused"));
+  part(#502,substantiv("Binnengewässer", "ett lands insjöar och vattendrag", 
+    "die", "Binnengewässer (nur Mehrzahl)", "die Binnengewässer eines Landes"
+    , "Unused", "Unused"));
+  part(#503,substantiv("Binnenhandel", "inrikes handel", "der", "---", 
+    "Unused", "Unused", "Unused"));
+  part(#504,substantiv("Binnenland", "inland", "das", "Binnenländer", 
+    "Unused", "Unused", "Unused"));
+  part(#505,substantiv("Binnenmarkt", "hemmamarknad", "der", "Binnenmärkte", 
+    "Unused", "Unused", "Unused"));
+  part(#506,substantiv("Binnenschifffahrt", "inrikes sjöfart", "die", "----"
+    , "Unused", "Unused", "Unused"));
+  part(#507,substantiv("Binnensee", "insjö", "der", "Binnenseen", "Unused", 
+    "Unused", "Unused"));
+  part(#508,verb("gelten", 
+    "1. gälla, vara giltig 2. jemandem ~ = vara ämnad för, avse (gälla) någon"
+    , "galt", "gegolten", "haben", "nein", 
+    "mein Angebot gilt noch = mitt erbjudande står fast", 
+    "das gilt nicht = det gäller (gills) inte", 
+    "das gillt für alle = det gäller alla"));
+  part(#509,substantiv("Zopf", "1. (hår) fläta 2. (bröd) fläta", "der", 
+    "Zöpfen", 
+    "das ist doch ein alter Zopf = det är totalt förlegat (föråldrat, otidsenligt)"
+    , "Unused", "Unused"));
+  part(#510,verb("übersiedeln", "flytta", "übersiedelte", "übergesiedelt", 
+    "haben", "nein", 
+    "die Firma übersiedelte hierher = die Firma siedelte hierher über = företaget flyttade hit"
+    , "Unused", "Unused"));
+  part(#511,adjektiv("beiläufig", 
+    "parentetisk (som adverb: i förbigående, inom parentes)", "Unused", 
+    "Unused", "Unused"));
+  part(#512,adverb("beiläufig", 
+    "1. inom parentes, i förbigående 2. ungefär (österr.)", "Unused", 
+    "Unused", "Unused"));
+  part(#513,adjektiv("unzugänglich", "otillgänglig, oåtkomlig", "Unused", 
+    "Unused", "Unused"));
+  part(#514,verb("beiwohnen", 
+    "1. bevista (högtidligt) 2. einer Frau ~ = ha samlag med en kvinna (juridiskt)"
+    , "beiwohnte", "beigewohnt", "haben", "nein", "Unused", "Unused", 
+    "Unused"));
+  part(#515,substantiv("Mundstück", "munstycke", "das", "Mundstücke", 
+    "Unused", "Unused", "Unused"));
+  part(#516,verb("stülpen", "hastigt vända upp och ner, stjälpa upp", 
+    "stülpte", "gestülpt", "haben", "nein", 
+    "etwas auf etwas stülpen = sätta något på något", 
+    "die Taschen nach aussen stülpen = vända ut och in på fickorna (ska vara dubbel s)"
+    , "Unused"));
+  part(#517,substantiv("Schläfe", "tinning (anatomiskt)", "die", "Schläfen", 
+    "Unused", "Unused", "Unused"));
+  part(#518,verb("meiden", "undvika (högtidligt)", "mied", "gemieden", 
+    "haben", "nein", "Er mied die Menschen", "Unused", "Unused"));
+  part(#519,verb("schluchzen", "snyfta", "schluchzte", "geschluchzt", "haben"
+    , "nein", "Unused", "Unused", "Unused"));
+  part(#520,substantiv("Zaun", "staket, stängsel, inhägnad", "der", "Zäune", 
+    "Unused", "Unused", "Unused"));
+  part(#521,substantiv("Pfahl", 
+    "påle, pinne (i krocket), (lykt) stolpe, stång, stör", "der", "Pfähle", 
+    "Es war kein Wink mit dem Zaunpfahl = ? påminna någon om något ?", 
+    "Unused", "Unused"));
+  part(#522,substantiv("Mark", 
+    "1. märg (das geht mir durch ~ und Bein) 2. pure (t.ex tomater)", "das", 
+    "----", "Unused", "Unused", "Unused"));
+  part(#523,verb("beneiden", "avundas (någon något)", "beneidete", "beneidet"
+    , "haben", "nein", "jemandem um etwas beneiden", "Unused", "Unused"));
+  part(#524,adjektiv("beneidenswert", "avundsvärd", "Unused", "Unused", 
+    "Unused"));
+  part(#563,adjektiv("baldig", "snar", "baldiger Verlassung", "Unused", 
+    "Unused"));
+  part(#564,verb("beantragen", "1. ansöka 2. föreslå, väcka motion om", 
+    "beantragt", "beantragt", "haben", "nein", "Urlaub beantragen", "Unused"
+    , "Unused"));
+  part(#565,substantiv("Klaps", 
+    "1. dask, klapp 2. einen ~ haben = ha en skruv lös", "der", "Klapse", 
+    "Unused", "Unused", "Unused"));
+  part(#566,verb("schleichen", 
+    "1. krypa, gå sakta, släpa sig 2. smyga (sig) ", "schlich", "geschlichen"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#567,verb("heucheln", "I hyckla  II låtsas", "heuchelte", "geheuchelt"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#568,verb("waschen", "tvätta (sig)", "wusch", "gewaschen", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#569,substantiv("Waschbecken", "tvättställ", "das", "Waschbecken", 
+    "Unused", "Unused", "Unused"));
+  part(#570,substantiv("Wasserhahn", "vattenkran", "der", "Wassehähne", 
+    "Unused", "Unused", "Unused"));
+  part(#571,verb("argwöhnen", "misstänka (högtidligt)", "argwöhnte", 
+    "geargwöhnt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#572,adjektiv("argwönisch", "misstänksam, misstrogen", "Unused", 
+    "Unused", "Unused"));
+  part(#573,substantiv("Gekritzel", "klotter, kråkfötter", "das", "----", 
+    "Unused", "Unused", "Unused"));
+  part(#574,adjektiv("saumselig", "arbeta långsamt och slarvigt", "Unused", 
+    "Unused", "Unused"));
+  part(#575,substantiv("Gefährte", "följeslagare, kamrat, vän", "der", 
+    "Gefährten", "Unused", "Unused", "Unused"));
+  part(#576,adjektiv("begierig", "lysten, ivrig", 
+    "begierige Blicke = lystna blickar", "Unused", "Unused"));
+  part(#577,adjektiv("dämmrig", "halvdunkel, halvmörk", "Unused", "Unused", 
+    "Unused"));
+  part(#578,substantiv("Geschöpf", "varelse, människa", "das", "Geschöpfe", 
+    "Geschöpfe der Fantasi = fantasifoster", "Unused", "Unused"));
+  part(#579,substantiv("Ferkel", "1. griskulting 2. svin, smutsgris", "das", 
+    "Ferkel", "Unused", "Unused", "Unused"));
+  part(#580,substantiv("Höder", "agn, lockbete", "der", "Höder", "Unused", 
+    "Unused", "Unused"));
+  part(#581,verb("rekeln", "sträcka på sig, ligga och dra sig, slappa", 
+    "rekelte", "gerekelt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#582,substantiv("Trauung", "vigsel, vigselakt", "die", "Trauungen", 
+    "Unused", "Unused", "Unused"));
+  part(#583,adjektiv("stetig", "stadig, kontinuerlig, ständig", "Unused", 
+    "Unused", "Unused"));
+  part(#584,substantiv("Wimper", "ögonfrans", "die", "Wimpern", 
+    "ohne mit den Wimpern zu zucken = utan att blinka", "Unused", "Unused"));
+  part(#585,adjektiv("feist", "( tjock och) fet, välgödd", "Unused", "Unused"
+    , "Unused"));
+  part(#586,substantiv("Mitesser", "pormask", "der", "Mitesser", "Unused", 
+    "Unused", "Unused"));
+  part(#587,substantiv("Küken", "1. kyckling 2. litet barn", "das", "Küken", 
+    "Unused", "Unused", "Unused"));
+  part(#588,adjektiv("versonnen", 
+    "drömmande, (själs) frånvarande, försjunken i tankar", "Unused", "Unused"
+    , "Unused"));
+  part(#589,substantiv("Grille", "1. syrsa 2. nycker, griller (plural)", 
+    "die", "Grillen", "Grillen zirpten im Gras", "Unused", "Unused"));
+  part(#590,substantiv("Kehle", "strupe", "die", "Kehlen", "Unused", "Unused"
+    , "Unused"));
+  part(#591,substantiv("Kehlkopf", "struphuvud", "der", "Kehlköpfe", "Unused"
+    , "Unused", "Unused"));
+  part(#592,substantiv("Kahn", "1. flatbottnad båt, eka 2. pråm", "der", 
+    "Kähne", "Unused", "Unused", "Unused"));
+  part(#593,substantiv("Flocke", "flinga,  (sot) flaga", "die", "Flocken", 
+    "Unused", "Unused", "Unused"));
+  part(#594,substantiv("Leumund", "rykte, anseende", "der", "----", "Unused"
+    , "Unused", "Unused"));
+  part(#595,substantiv("Zeugnis", 
+    "1. betyg, intyg, attest, vitsord 2. vittnesbörd, vittnesmål", "das", 
+    "Zeugnisse", "sie hat gute Zeugnisse = hon har goda betyg (referenser)", 
+    "Unused", "Unused"));
+  part(#596,adjektiv("schütter", "om hår, att det växer glest (?)", 
+    "das Haar war schütter", "Unused", "Unused"));
+  part(#597,adjektiv("straff", "spänd, stram", 
+    "straff anziehen = strama till (åt)", "Unused", "Unused"));
+  part(#598,verb("straffen", "spänna, strama till (åt)", "straffte", 
+    "gestrafft", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#599,adjektiv("welk", "vissen, vissnad", "Unused", "Unused", "Unused")
+    );
+  part(#600,verb("welken", "vissna, (om hud) åldras ", "welkte", "gewelkt", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#601,substantiv("Mieder", "korsett, livstycke", "das", "Mieder", 
+    "Unused", "Unused", "Unused"));
+  part(#602,substantiv("Kotflügel", "stänkskärm (på bil)", "der", "Kotflügel"
+    , "Unused", "Unused", "Unused"));
+  part(#603,adjektiv("wuchtig", 
+    "(mycket) kraftig, kraftfull, massiv, stor, mäktig", "Unused", "Unused", 
+    "Unused"));
+  part(#604,adverb("freilich", 
+    "1. emellertid, dock, faktiskt 2. ja ~ = ja visst! naturligtvis!", 
+    "Unused", "Unused", "Unused"));
+  part(#605,verb("nisten", "bygga bo, häcka", "nistete", "genistet", "haben"
+    , "nein", "Unused", "Unused", "Unused"));
+  part(#606,verb("beflügeln", "inspirera, sporra (bildligt)", "beflügelte", 
+    "beflügelt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#607,adjektiv("bieder", "1. präktig, naiv 2. hederlig, rättskaffens", 
+    "Unused", "Unused", "Unused"));
+  part(#608,substantiv("Gemüt", "läggning, sinnelag, sinne, själ, hjärta", 
+    "das", "Gemüter", "das deutsche Gemüt = den tyska mentaliteten", "Unused"
+    , "Unused"));
+  part(#609,substantiv("Gebrauchsgüter", "kapitalvaror", "die", 
+    "Gebrauchsgüter", "Unused", "Unused", "Unused"));
+  part(#610,adjektiv("lauter", 
+    "1. ren, oblandad, ärlig, uppriktig 2. idel, bara", 
+    "Die laute Wahrheit = den nakna sanningen", "lauter Lügen = idel lögner"
+    , "Unused"));
+  part(#611,substantiv("Motte", "mal (zool.)", "die", "Motten", "Unused", 
+    "Unused", "Unused"));
+  part(#612,verb("wühlen", 
+    "I gräva fram, rota fram II 1. gräva, böka, rota 2. gegen ewas ~~", 
+    "wühlte", "gewühlt", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#613,substantiv("Ergebnis", "resultat", "das", "Ergebnisse", "Unused"
+    , "Unused", "Unused"));
+  part(#614,adjektiv("ergebnislos", "resultatlös, utan resultat", "Unused", 
+    "Unused", "Unused"));
+  part(#615,substantiv("Zäsur", 
+    "punkt i en utveckling där allt vänder, tar en annan riktning ", "die", 
+    "Zäsuren", "Unused", "Unused", "Unused"));
+  part(#619,adjektiv("wendig", 
+    "1. lättmanövrerad, lätthanterlig 2. snabbtänkt", "Unused", "Unused", 
+    "Unused"));
+  part(#620,substantiv("Zinke", "pigg, pinne på räfsa, tand på kam", "die", 
+    "Zinken", "Unused", "Unused", "Unused"));
+  part(#621,verb("zinken", "märka (märkta kort)", "zinkte", "gezinkt", 
+    "haben", "nein", "gezinkte Karten", "Unused", "Unused"));
+  part(#622,substantiv("Trampelpfad", "( upptrampad ) stig", "der", 
+    "Trampelpfade", "Unused", "Unused", "Unused"));
+  part(#623,substantiv("Pfad", "stig", "der", "Pfade", "Unused", "Unused", 
+    "Unused"));
+  part(#624,substantiv("Pfote", "tass, labb, hand (vardagligt)", "die", 
+    "Pfoten", "Unused", "Unused", "Unused"));
+  part(#625,verb("gegenüberstehen", 
+    "1. stå vända mot varandra 2. vända emot varandra (stridighet)", "?", "?"
+    , "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#626,praposit("gemäß", "i enlighet med", "dativ", "Gemäß ihren Wunsch"
+    , "Unused", "Unused"));
+  part(#627,substantiv("Knüller", "hit, scoop, panggrej, pangerbjudande", 
+    "der", "Knüller", "Unused", "Unused", "Unused"));
+  part(#628,substantiv("Kritik", "1. kritik 2. recension", "die", "Kritiken"
+    , "Unused", "Unused", "Unused"));
+  part(#629,verb("widmen", "1. ägna 2. tillägna, dedicera", "widmete", 
+    "gewidmet", "haben", "nein", "Aufmerksamkeit widmen", "Unused", "Unused")
+    );
+  part(#634,verb("verstümmeln", "lemlästa, stympa, förvanska", "verstümmelte"
+    , "verstümmelt (?)", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#635,substantiv("Verstümmelung", 
+    "lemlästning, förvanskning, stympning", "die", "Verstümmelungen", 
+    "Unused", "Unused", "Unused"));
+
+ENDMODULE

@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_02.txt
+
+
+  1  die    Tanne                gran
+  2  die    Kehle                strupe
+  3  die    Rücksicht            hänsyn
+  4  die    Genehmigung          tillstånd
+  5  die    Enttäuschung         besvikelse
+  6  der    Strom                1. ström, flod 2. ström elektriskt
+  7  das    Chaos                kaos
+  8  das    Bein                 ben
+  9  der    Scharfmacher         upprorsmakare
+ 10  die    Forstwirtschaft      skogsbruk
+ 11  die    Bescherung           julklappsutdelning
+ 12  der    Aufgang              uppgång
+ 13  der    Pfad                 stig
+ 14  der    Kotflügel            stänkskärm (på bil)
+ 15  der    Makel                skamfläck, fläck, skavank, fel
+ 16  die    Bedürfnisanstalt     bekvämlighetsinrättning, offentlig toilette
+ 17  der    Magistrat            kommunalförvalning
+ 18  der    Wohltäter            välgörare
+ 19  die    Ziege                get
+ 20  das    Gebot                påbud, befallning, bestämmelse
+ 21  das    Mundstück            munstycke
+ 22  das    Mikrofon             mikrofon
+ 23  der    Höder                agn, lockbete
+ 24  die    Mehrheit             majoritet
+ 25  die    Attitüde             attitud
+ 26  der    Elan                 hänförelse, iver
+ 27  das    Kostüm               dräkt, kjol och kavaj
+ 28  die    Vergeltung           1. vedergällning 2. belöning, återgäldande
+ 29  die    Spinne               spindel (zoologisk)
+ 30  die    Begegnung            möte, sammanträffande
+ 31  die    Schläfe              tinning (anatomiskt)
+ 32  die    Geiß                 get (eine weibliche Ziege)
+ 33  der    Ertrag               avkastning, vinst
+ 34  die    Gestaltung           formgivning, utformning, gestaltning
+ 35  der    Binnenhandel         inrikes handel
+ 36  der    Tatort               brottsplats
+ 37  die    Kritik               1. kritik 2. recension
+ 38  die    Wiese                äng
+ 39  die    Verbindlichkeit      1. bindande kraft 2. hövlighet, älskvärdhet, f
+ 40  der    Stöckelschuh         högklackad sko
+ 41  der    Anstand              1. anständighet, fint sätt, god ton, etikett 2
+ 42  der    Erpel                ankhanne
+ 43  die    Ostsee               Östersjön
+ 44  das    Kinn                 haka
+ 45  der    Schurke              skurk, bov
+ 46  der    Ballungsraum         storstadsregion med många industrier, tätbefol
+ 47  die    Schwalbe             svala
+ 48  das    Bund                 förening, förbund
+ 49  das    Kopiergerät          kopieringsapparat
+ 50  die    Hiobsbotschaft       jobspost (olycksbud, sorgebud)

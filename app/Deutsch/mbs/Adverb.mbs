@@ -1,0 +1,46 @@
+! ***************** adverb   **************************** 
+! 
+! +++ 
+! Das Modul registriert ein Adverb
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-04 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert ein Adverb
+  
+GLOBAL GEOMETRY MODULE adverb ( 
+STRING adverb*132      := "adverb" >"Bitte, das Adverb eingeben";
+STRING schwedisch*132  := "svenska"  >"adverb in Schwedisch eingeben";
+STRING unused_1*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused" >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  adverb = "" OR adverb = " " OR adverb = "  " THEN
+    EXIT("adverb Kein Adverb ist eingegeben");
+  ENDIF;
+
+
+ENDMODULE 
+ 
+
+
+
+
+
+
+
+
+
+

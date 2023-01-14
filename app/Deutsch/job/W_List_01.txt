@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_01.txt
+
+
+  1  die    Kunst                    konst
+  2  der    Wirbel                   1. virvel  2. kota  3. stämskruv på fiol
+  3  der    Magistrat                kommunalförvalning
+  4  die    Enttäuschung             besvikelse
+  5  das    Unrecht                  orätt  (zu Unrecht = med orätt)
+  6  das    Geißblatt                blomma ?
+  7  die    Flur                     1. odlingsbar mark  2. korridor
+  8  der    Tatort                   brottsplats
+  9  der    Archipel                 arkipelag, övärld
+ 10  der    Kahlschlag               kalhygge
+ 11  das    Chaos                    kaos
+ 12  die    Nachahmung               härmning, imitering, kopia, imitation
+ 13  der    Elan                     hänförelse, iver
+ 14  der    Kopierapparat            kopiator, kopieringsmaskin
+ 15  die    Windel                   blöja
+ 16  die    Vergeltungsmassnahme     vedergällning(saktion), hämnd(aktion)
+ 17  der    Zuzug                    inflyttning, tillströmning
+ 18  die    Forstwirtschaft          skogsbruk
+ 19  die    Attitüde                 attitud
+ 20  der    Draht                    1. metalltråd 2. (telefon) linje
+ 21  die    Vergewaltigung           våldtäkt
+ 22  der    Wurf                     1. kast, tärningskast 2. kull
+ 23  der    Makel                    skamfläck, fläck, skavank, fel
+ 24  das    Gebot                    påbud, befallning, bestämmelse
+ 25  das    Blatt                    blad
+ 26  das    Kopiergerät              kopieringsapparat
+ 27  der    Block                    1. block, stenblock 2. kvarter 3. skrivblo
+ 28  der    Strich                   1. streck, linje 2. strykning 3. gatuprost
+ 29  der    Aufwand                  kostnader, utgifter
+ 30  die    Anzeige                  1. (polis) anmälan 2. annons, tillkännagiv
+ 31  die    Mehrheit                 majoritet
+ 32  die    Ziege                    get
+ 33  das    Mundstück                munstycke
+ 34  der    Stöckelschuh             högklackad sko
+ 35  das    Bund                     förening, förbund
+ 36  die    Kehle                    strupe
+ 37  die    Geiß                     get (eine weibliche Ziege)
+ 38  die    Sippe                    klan, släkt, stor familj
+ 39  das    Unternehmen              firma, företag
+ 40  der    Verrat                   förräderi, svek
+ 41  der    Ruch                     dåligt rykte (?)
+ 42  der    Nachwuchs                1. återväxt, kommande ny generation 2. til
+ 43  der    Vorhang                  draperi, ridå (teater)
+ 44  das    Durcheinander            oreda, röra, virrvarr, villervalla
+ 45  die    Zäsur                    punkt i en utveckling där allt vänder, tar
+ 46  die    Ballungszone             storstadsregion med många industrier, tätb
+ 47  die    Tanne                    gran
+ 48  die    Lauer                    Lurpassa
+ 49  die    Zerknirschung            ånger (?)
+ 50  die    Vergangenheit            förfluten tid, förgången tid

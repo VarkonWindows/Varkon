@@ -1,0 +1,58 @@
+
+Das Modul registriert ein Verb
+
+Das Modul macht keine Berechnungen. Es registriert nur das Objekt.
+
+Bitte, das Verb in Präsens eingeben 
+Bitte, das Verb in Schwedisch eingeben 
+Bitte, das Verb in Imperfekt eingeben
+Bitte, das Verb in Perfekt Partizip eingeben
+Bitte, das Hilfsverb für Perfekt Partizip eingeben (haben oder sein)
+Ist das Verb reflexive (ja/nein/beide)? 
+Kontrolle von den Eingabedaten 
+Kein Verb ist eingegeben 
+Parameter Reflexive ist nicht ja, nein oder beide
+Hauptmenü für die Applikation Deutsch
+Menü/Funktion ist nicht implementiert
+schuften
+Ich schuftete.
+Ich habe geschuftet.
+Ich habe anhielt.
+Substantiv ist 
+Bitte, das Substantiv eingeben 
+Bitte, dem Genus eingeben 
+Bitte, das Substantiv in Mehrzahl eingeben
+Viele Unternehmer 
+spüren 
+Ich spürte
+Ich habe gespürt
+Bitte, das Adjektiv eingeben 
+Bitte, das Adverb eingeben 
+müßig
+Die Aufgänge sind 
+Der Knüppel ist 
+Die Knüppel sind 
+Die Freiwilde sind traurige Menschen
+Das Bewusstsein ist
+Die Type der Präposition ist Akkusativ, Dativ oder Genitiv
+Ich bin stolz
+Übungen 
+Genus ist 
+Die Gedächtnisse sind
+Die Ritzen sind
+
+   
+Sämtliche 
+
+Möbeln 
+Array mit Identitäten definiert mit Zufallszahlen 
+
+
+
+
+
+
+
+
+
+  

@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_06.txt
+
+
+  1  der    Angestellte        anställd, tjänsteman  (både der och die)
+  2  das    Chaos              kaos
+  3  der    Kahlschlag         kalhygge
+  4  der    Tannenbaum         1. gran 2. julgran
+  5  der    Bagger             grävmaskin, grävskopa, mudderverk
+  6  die    Spur               1. spår 2. körfält, fil 3. en gnutta
+  7  die    Fülle              1. mängd, överflöd, rikhaltighet 2. fullhet, rik
+  8  die    Schare             skara, flock, skock
+  9  die    Tischordnung       bordsplacering
+ 10  der    Kanadier           kanadensare (även kanot)
+ 11  die    Rücksicht          hänsyn
+ 12  der    Kamm               kam (för hår, tuppkam, bergskam)
+ 13  die    Sache              1. sak 2. ärende, affär, historia
+ 14  der    Anleger            investerare, placerare
+ 15  die    Tischrede          (middags) tal
+ 16  der    Höder              agn, lockbete
+ 17  der    Abfalleimer        sophink, slaskhink
+ 18  die    Wimper             ögonfrans
+ 19  die    Hiobsbotschaft     jobspost (olycksbud, sorgebud)
+ 20  das    Handbuch           handbok
+ 21  die    Ferse              häl
+ 22  die    Eselsbrücke        stöd för minnet, minnesregel
+ 23  der    Schöpfer           1. skapare  2. skopa, öskar
+ 24  die    Befindlichkeit     ????
+ 25  die    Anstandsdame       förkläde (bildligt)
+ 26  die    Niederlassung      bosättning
+ 27  die    Maßnahme           åtgärd
+ 28  der    Ballungsraum       storstadsregion med många industrier, tätbefolka
+ 29  die    Zäsur              punkt där utvecklingen börjar gå i en helt annan
+ 30  der    Spinner            1. spinnare (zoologiskt) 2. en som hittar på, in
+ 31  die    Mähne              man (på häst/djur)
+ 32  die    Ritze              springa, spricka
+ 33  der    Magistrat          kommunalförvalning
+ 34  die    Leistung           prestation
+ 35  die    Gewohnheit         vana
+ 36  der    Unternehmer        företagare
+ 37  das    Video              video
+ 38  der    Klaps              1. dask, klapp 2. einen ~ haben = ha en skruv lö
+ 39  die    Gebrauchsgüter     kapitalvaror
+ 40  das    Scheusal           odjur, monster
+ 41  die    Nachahmung         härmning, imitering, kopia, imitation
+ 42  die    Binnengewässer     ett lands insjöar och vattendrag
+ 43  das    Freiwild           lovligt byte
+ 44  das    Bedürfnis          behov
+ 45  der    Videorecorder      videobandspelare
+ 46  die    Strähne            (hår) slinga
+ 47  der    Aberglaube         vidskeplighet, skrock
+ 48  die    Anzeige            1. (polis) anmälan 2. annons, tillkännagivande
+ 49  die    Mehrheit           majoritet
+ 50  der    Fleischwolf        köttkvarn

@@ -1,0 +1,46 @@
+! ***************** adjektiv   **************************** 
+! 
+! +++ 
+! Das Modul registriert ein Adjektiv
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-04 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert ein Adjektiv
+  
+GLOBAL GEOMETRY MODULE adjektiv ( 
+STRING adjektiv*132    := "adjektiv" >"Bitte, das Adjektiv eingeben";
+STRING schwedisch*132  := "svenska"  >"Adjektiv in Schwedisch eingeben";
+STRING unused_1*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused" >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  adjektiv = "" OR adjektiv = " " OR adjektiv = "  " THEN
+    EXIT("adjektiv Kein Adjektiv ist eingegeben");
+  ENDIF;
+
+
+ENDMODULE 
+ 
+
+
+
+
+
+
+
+
+
+

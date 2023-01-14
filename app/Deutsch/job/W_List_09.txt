@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_09.txt
+
+
+  1  der    Esel                 åsna
+  2  das    Bein                 ben
+  3  der    Block                1. block, stenblock 2. kvarter 3. skrivblock 4
+  4  die    Ballungszone         storstadsregion med många industrier, tätbefol
+  5  der    Erpel                ankhanne
+  6  die    Rücksicht            hänsyn
+  7  die    Tat                  1. handling, gärning, dåd 2. in der Tat = verk
+  8  der    Knüller              hit, scoop, panggrej, pangerbjudande
+  9  das    Chaos                kaos
+ 10  die    Zeitspanne           tirymd, tid, period
+ 11  der    Kotflügel            stänkskärm (på bil)
+ 12  das    Ferkel               1. griskulting 2. svin, smutsgris
+ 13  der    Entwurf              utkast, skiss
+ 14  die    Grille               1. syrsa 2. nycker, griller (plural)
+ 15  der    Stöckelschuh         högklackad sko
+ 16  das    Videoband            videoband
+ 17  die    Trauung              vigsel, vigselakt
+ 18  das    Unrecht              orätt  (zu Unrecht = med orätt)
+ 19  das    Ballungsgebiet       storstadsregion med många industrier, tätbefol
+ 20  der    Unternehmer          företagare
+ 21  der    Text                 text
+ 22  die    Strähne              (hår) slinga
+ 23  der    Elan                 hänförelse, iver
+ 24  die    Mähne                man (på häst/djur)
+ 25  das    Erröten              rodnad (?)
+ 26  die    Ziege                get
+ 27  die    Bedrohung            hot, hotelse, hotbild
+ 28  die    Ferse                häl
+ 29  die    Zäsur                punkt där utvecklingen börjar gå i en helt ann
+ 30  die    Kritik               1. kritik 2. recension
+ 31  der    Spinner              1. spinnare (zoologiskt) 2. en som hittar på, 
+ 32  das    Unternehmen          firma, företag
+ 33  der    Ertrag               avkastning, vinst
+ 34  die    Eselsbrücke          stöd för minnet, minnesregel
+ 35  die    Schläfe              tinning (anatomiskt)
+ 36  das    Freiwild             lovligt byte
+ 37  die    Augenbraue           ögonbryn
+ 38  die    Mausefalle           musfälla
+ 39  der    Binnenmarkt          hemmamarknad
+ 40  die    Windel               blöja
+ 41  die    Bedürfnisanstalt     bekvämlighetsinrättning, offentlig toilette
+ 42  das    Binnenland           inland
+ 43  das    Ergebnis             resultat
+ 44  die    Vergewaltigung       våldtäkt
+ 45  der    Tatort               brottsplats
+ 46  die    Sache                1. sak 2. ärende, affär, historia
+ 47  das    Gehalt               lön
+ 48  die    Schmiede             smedja
+ 49  das    Bedürfnis            behov
+ 50  die    Wohngemeinshaft      kollektiv

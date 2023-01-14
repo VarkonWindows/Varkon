@@ -1,0 +1,84 @@
+GLOBAL DRAWING MODULE stars(
+FLOAT radius:=15.0 > "Size of star";
+FLOAT length:=300.0 > "Widht of R";
+FLOAT height:=800.0 > "Height of R");
+
+FLOAT l_v; 
+FLOAT l_c; 
+FLOAT l_l; 
+FLOAT delta; 
+INT n_star; 
+INT i_star; 
+VECTOR poi; 
+
+BEGINMODULE
+
+
+ IF radius < 0.1 THEN 
+    exit("stars radius < 0.1");
+  ENDIF;
+
+  lin_free(#1,vec(0, 0), vec(length, 0.0):BLANK=1);
+  lin_free(#2,vec(0, 0), vec(0.0, -height):BLANK=1);
+  l_v:=arcl(#2);
+  lin_offs(#3,#2, -length:BLANK=1);
+  poi_free(#5,on(#2, 0.3):BLANK=1);
+  poi_free(#6,on(#3, 0.25):BLANK=1);
+  poi_free(#7,on(#2, 0.0):BLANK=1);
+  poi_free(#8,on(#2, 1.0):BLANK=1);
+  poi_free(#9,on(#3, 1.0):BLANK=1);
+  arc_3pos(#10,on(#7), on(#6), on(#5):BLANK=1);
+  l_c:=arcl(#10);
+  poi_free(#12,on(#5)+VEC(length/1.9,-height/4.0):BLANK=1);
+  lin_free(#11,on(#12), on(#9):BLANK=1);
+  l_l:=arcl(#11);
+
+
+! Stars vertical line
+  n_star:=round(l_v/radius/2.0);
+  IF n_star < 3 THEN 
+    n_star:=3;
+  ENDIF;
+
+  delta:=1.0/(n_star - 1);
+
+  FOR i_star := 1 TO n_star DO 
+    poi:=on(#2, (i_star - 1)*delta);
+    PART(#20, star ( poi, radius));
+  ENDFOR;
+
+! Stars circle
+  n_star:=round(l_c/radius/2.0);
+  IF n_star < 3 THEN 
+    n_star:=3;
+  ENDIF;
+
+  delta:=1.0/(n_star - 1);
+
+  FOR i_star := 1+1 TO n_star DO 
+    poi:=on(#10, (i_star - 1)*delta);
+    PART(#21, star ( poi, radius));
+  ENDFOR;
+
+! Stars line
+  n_star:=round(l_l/radius/2.0);
+  IF n_star < 3 THEN 
+    n_star:=3;
+  ENDIF;
+
+  delta:=1.0/(n_star - 1);
+
+  FOR i_star := 1 TO n_star DO 
+    poi:=on(#11, (i_star - 1)*delta);
+    PART(#22, star ( poi, radius));
+  ENDFOR;
+
+
+
+
+
+
+
+ENDMODULE
+
+

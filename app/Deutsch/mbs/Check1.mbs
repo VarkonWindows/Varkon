@@ -1,0 +1,68 @@
+! ***************** check1   **************************** 
+! 
+! +++ 
+! Wortkontrolle
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-11-11 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Wortkontrolle
+  
+GLOBAL DRAWING MODULE check1 ( 
+
+  STRING check_deutsch*132 := " " >"Wort eingeben");
+
+  INT    n_all;            ! 
+  REF    all_id(20);       ! Sämtliche Identitäten
+  REF    prt_id;           ! Identitat
+
+  INT    i_all;            ! Rechner
+
+  CONSTANT  STRING prt_name = "";
+
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+! +++
+! Array mit Identitäten fur identische Wörter
+! ---
+
+  PART(#2, chewort ( check_deutsch, prt_name, n_all, all_id):SAVE=0);
+ 
+
+! +++
+! Ergebnis
+! ----
+
+  IF  n_all = 0 THEN
+    LST_INI("Kein Wort "+check_deutsch);
+    LST_EXI();
+  ENDIF;
+  IF  n_all = 1 THEN
+    LST_INI("Nur ein Wort "+check_deutsch);
+    LST_LIN(STR(1,3,0)+ "  "+RSTR(all_id(1)));
+    LST_EXI();
+  ENDIF;
+
+
+
+  IF  n_all > 1 THEN
+    LST_INI("Dieselbe Wörter "+check_deutsch);
+    FOR  i_all := 1 TO n_all DO 
+       LST_LIN(STR(i_all,3,0)+ "  "+RSTR(all_id(i_all)));
+    ENDFOR;
+    LST_EXI();
+  ENDIF;
+
+
+ENDMODULE 
+
+

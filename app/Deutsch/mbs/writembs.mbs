@@ -1,0 +1,364 @@
+! ***************** writembs   **************************** 
+! 
+! +++ 
+! Write file in mbs directory
+! 
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-11-22 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdesce Write file in mbs directory
+
+
+BASIC GEOMETRY MODULE writembs (
+STRING f_case*132 := "praposit" >"verb\substantiv\adjektiv\adverb\");
+
+! Internal variables 
+  STRING prt_name*10;      ! Part name
+
+  REF    prt_id;           ! Identity for part
+
+  INT    n_wort;           ! Number of words
+  STRING f_name*132;       ! Full file name
+  FILE   mbs;              ! Output file
+
+  STRING praesens*132;
+  STRING schwedisch*132;
+  STRING imperfekt*132; 
+  STRING perfekt*132;
+  STRING hilfsverb*132;
+  STRING reflexive*132;
+  STRING unused_1*132;
+  STRING unused_2*132; 
+  STRING unused_3*132;  
+  STRING substantiv*132; 
+  STRING genus*132;
+  STRING mehrzahl*132;
+  STRING adjektiv*132;
+  STRING adverb*132;
+  STRING praposition*132;
+  STRING type*132;
+
+
+
+  STRING   bakfile*132;         ! Full name of backup file
+
+  INT      status;              ! For TEST_FILE
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+
+
+  STRING  s*1;
+
+
+  CONSTANT  INT    i_undef = -12345;        ! Undefined integer
+  CONSTANT  FLOAT  f_undef = -0.123456789;  ! Undefined float
+ 
+  CONSTANT  INT list = 1;
+
+  
+BEGINMODULE
+
+! +++
+! 1. Checks and initializations
+! ---
+! Initialization of variables
+
+
+! Initialization of internal variables
+
+  prt_id     := #0;
+  n_wort     := i_undef;
+  prt_name   := "Undefined";
+  f_name     := "Undefined";
+
+
+
+! Determine name of the part
+  IF  f_case = "verb" OR  f_case = "VERB" THEN
+    prt_name := "verb";
+    f_name := "C:\varkon\app\"+act_pid()+"\mbs\allverb.txt";
+  ELIF  f_case = "substantiv" OR  f_case = "SUBSTANTIV" THEN
+    prt_name := "substantiv";
+    f_name := "C:\varkon\app\"+act_pid()+"\mbs\allsubs.txt";
+  ELIF  f_case = "adjektiv" OR  f_case = "ADJEKTIV" THEN
+    prt_name := "adjektiv";
+    f_name := "C:\varkon\app\"+act_pid()+"\mbs\alladj.txt";
+  ELIF  f_case = "adverb" OR  f_case = "ADVERB" THEN
+    prt_name := "adverb";
+    f_name := "C:\varkon\app\"+act_pid()+"\mbs\alladv.txt";
+  ELIF  f_case = "praposit" OR  f_case = "praposit" THEN
+    prt_name := "praposit";
+    f_name := "C:\varkon\app\"+act_pid()+"\mbs\allpra.txt";
+  ELSE
+    EXIT("writembs Not yet implemented "+f_case);
+  ENDIF;
+
+
+! Get time and date and construct backup file name
+
+  TIME(year,month,day,hour,minute,second);
+
+  bakfile := f_name+STR(year,-1,0);
+  IF month < 10 THEN
+    bakfile := bakfile + "0"  +STR(month, -1,0);
+  ELSE
+    bakfile := bakfile        +STR(month, -1,0);
+  ENDIF;
+  IF day   < 10 THEN
+    bakfile := bakfile + "0"  +STR(day  , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(day  , -1,0);
+  ENDIF;
+  IF hour  < 10 THEN
+    bakfile := bakfile + "0"  +STR(hour , -1,0);
+  ELSE
+    bakfile := bakfile        +STR(hour , -1,0);
+  ENDIF;
+  IF minute < 10 THEN
+    bakfile := bakfile + "0"  +STR(minute,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(minute,-1,0);
+  ENDIF;
+  IF second < 10 THEN
+    bakfile := bakfile + "0"  +STR(second,-1,0);
+  ELSE
+    bakfile := bakfile        +STR(second,-1,0);
+  ENDIF;
+
+
+
+
+
+! +++
+! 2. Open file and make backup if file already exists
+! ---
+
+  status := TEST_FILE(f_name,"X");
+  IF status = 1 THEN
+    COPY_FILE(f_name,bakfile);
+  ENDIF;
+
+  OPEN(mbs,"W",f_name);
+  IF  IOSTAT(mbs) <> 0 THEN
+     EXIT("writembs Open failed "+f_name);
+  ENDIF;
+
+! +++
+! 3. Get all words
+! ---
+ 
+  SET_ROOT_GM(#0);
+  n_wort  := 0;
+ 
+next_prt:; ! Label next part on the same level
+
+! Get next part
+  prt_id := GET_NEXT_GM (1, 16384, prt_name);
+
+! End of scanning if all parts are retrieved
+  IF  prt_id = #0 THEN
+    GOTO all_prt;
+  ENDIF;
+
+! An additional part is found
+  n_wort := n_wort + 1;
+
+! Case verb
+  IF  prt_name = "verb"  THEN
+    IF  n_wort = 1 THEN
+      OUTSTR(mbs, "GLOBAL DRAWING MODULE allverbx();"  );
+      OUTLIN(mbs);
+      OUTSTR(mbs, "BEGINMODULE"  );
+      OUTLIN(mbs);
+    ENDIF;
+    praesens   := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    imperfekt  := GETSTR(prt_id,3);    
+    perfekt    := GETSTR(prt_id,4);    
+    hilfsverb  := GETSTR(prt_id,5);    
+    reflexive  := GETSTR(prt_id,6);    
+    unused_1   := GETSTR(prt_id,7);    
+    unused_2   := GETSTR(prt_id,8);    
+    unused_3   := GETSTR(prt_id,9);
+    OUTSTR(mbs, "PART(#"+STR(n_wort,-1,0)+", verb(" );
+    OUTLIN(mbs);    
+    OUTSTR(mbs, CHR(34)+praesens+CHR(34)+","  );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+schwedisch+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+imperfekt+CHR(34)+"," );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+perfekt   +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+hilfsverb +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+reflexive +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_1  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_2  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_3  +CHR(34)+"));");
+    OUTLIN(mbs);
+!    s:= INPMT(RSTR(prt_id)+" "+praesens," ",1);
+
+
+  ELIF  prt_name = "substantiv"  THEN
+    IF  n_wort = 1 THEN
+      OUTSTR(mbs, "GLOBAL DRAWING MODULE allsubsx();"  );
+      OUTLIN(mbs);
+      OUTSTR(mbs, "BEGINMODULE"  );
+      OUTLIN(mbs);
+    ENDIF;
+    substantiv := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    genus      := GETSTR(prt_id,3);    
+    mehrzahl   := GETSTR(prt_id,4);    
+    unused_1   := GETSTR(prt_id,5);    
+    unused_2   := GETSTR(prt_id,6);    
+    unused_3   := GETSTR(prt_id,7);
+    OUTSTR(mbs, "PART(#"+STR(n_wort,-1,0)+", substantiv(" );
+    OUTLIN(mbs);    
+    OUTSTR(mbs, CHR(34)+substantiv+CHR(34)+","  );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+schwedisch+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+genus+CHR(34)+"," );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+mehrzahl   +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_1  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_2  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_3  +CHR(34)+"));");
+    OUTLIN(mbs);
+!    s:= INPMT(RSTR(prt_id)+" "+substantiv," ",1);
+
+  ELIF  prt_name = "adjektiv"  THEN
+    IF  n_wort = 1 THEN
+      OUTSTR(mbs, "GLOBAL DRAWING MODULE alladjx();"  );
+      OUTLIN(mbs);
+      OUTSTR(mbs, "BEGINMODULE"  );
+      OUTLIN(mbs);
+    ENDIF;
+    adjektiv   := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    unused_1   := GETSTR(prt_id,3);    
+    unused_2   := GETSTR(prt_id,4);    
+    unused_3   := GETSTR(prt_id,5);
+    OUTSTR(mbs, "PART(#"+STR(n_wort,-1,0)+", adjektiv(" );
+    OUTLIN(mbs);    
+    OUTSTR(mbs, CHR(34)+adjektiv+CHR(34)+","  );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+schwedisch+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_1  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_2  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_3  +CHR(34)+"));");
+    OUTLIN(mbs);
+!    s:= INPMT(RSTR(prt_id)+" "+adjektiv," ",1);
+
+  ELIF  prt_name = "adverb"  THEN
+    IF  n_wort = 1 THEN
+      OUTSTR(mbs, "GLOBAL DRAWING MODULE alladvx();"  );
+      OUTLIN(mbs);
+      OUTSTR(mbs, "BEGINMODULE"  );
+      OUTLIN(mbs);
+    ENDIF;
+    adverb     := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    unused_1   := GETSTR(prt_id,3);    
+    unused_2   := GETSTR(prt_id,4);    
+    unused_3   := GETSTR(prt_id,5);
+    OUTSTR(mbs, "PART(#"+STR(n_wort,-1,0)+", adverb(" );
+    OUTLIN(mbs);    
+    OUTSTR(mbs, CHR(34)+adverb+CHR(34)+","  );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+schwedisch+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_1  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_2  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_3  +CHR(34)+"));");
+    OUTLIN(mbs);
+!    s:= INPMT(RSTR(prt_id)+" "+adverb," ",1);
+
+
+  ELIF  prt_name = "praposit"  THEN
+    IF  n_wort = 1 THEN
+      OUTSTR(mbs, "GLOBAL DRAWING MODULE allprax();"  );
+      OUTLIN(mbs);
+      OUTSTR(mbs, "BEGINMODULE"  );
+      OUTLIN(mbs);
+    ENDIF;
+    praposition:= GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    type       := GETSTR(prt_id,3);
+    unused_1   := GETSTR(prt_id,4);    
+    unused_2   := GETSTR(prt_id,5);    
+    unused_3   := GETSTR(prt_id,6);
+    OUTSTR(mbs, "PART(#"+STR(n_wort,-1,0)+", praposit(" );
+    OUTLIN(mbs);    
+    OUTSTR(mbs, CHR(34)+praposition+CHR(34)+","  );
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+schwedisch+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+type+CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_1  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_2  +CHR(34)+",");
+    OUTLIN(mbs);
+    OUTSTR(mbs, CHR(34)+unused_3  +CHR(34)+"));");
+    OUTLIN(mbs);
+!    s:= INPMT(RSTR(prt_id)+" "+praposition," ",1);
+
+! Not implemented case
+  ELSE
+     CLOSE(mbs);
+     EXIT("writembs Not implemented prt_name "+prt_name);
+  ENDIF;
+
+  GOTO  next_prt;
+
+all_prt:; ! Label all objects are retrieved
+
+  OUTSTR(mbs, "ENDMODULE"  );
+  OUTLIN(mbs);
+
+! Close file
+  CLOSE(mbs);
+
+
+  IF  n_wort = 0 THEN
+    EXIT("writembs Es gibt keine "+prt_name);
+  ENDIF;
+
+! +++
+! n. List the data on screen
+! ---
+
+  IF  list = 1 THEN
+    LST_INI("writembs fur "+prt_name);
+    LST_LIN("Number of words "+STR(n_wort,-1,0));
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE
+

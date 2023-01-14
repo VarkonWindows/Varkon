@@ -1,0 +1,72 @@
+! ***************** substantiv   **************************** 
+! 
+! +++ 
+! Das Modul registriert ein Substantiv
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-04 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert ein Substantiv
+  
+GLOBAL GEOMETRY MODULE substantiv ( 
+STRING substantiv*132  := "substantiv" >"Bitte, das Substantiv eingeben";
+STRING schwedisch*132  := "svenska">"Substantiv in Schwedisch eingeben";
+STRING genus*132       := "die"    >"Bitte, dem Genus eingeben (der/die/das)";
+STRING mehrzahl*132    := " "      >"Substantiv in Mehrzahl eingeben";
+STRING unused_1*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused" >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  substantiv = "" OR substantiv = " " OR substantiv = "  " THEN
+    EXIT("substantiv Kein Substantiv ist eingegeben");
+  ENDIF;
+
+  IF    genus = "der" THEN
+    ;
+  ELIF  genus = "DER" THEN
+    genus := "der";
+  ELIF  genus = "Der" THEN
+    genus := "der";
+  ELIF  genus = "die" THEN
+    genus := "die";
+  ELIF  genus = "DIE" THEN
+    genus := "die";
+  ELIF  genus = "Die" THEN
+    genus := "die";
+  ELIF  genus = "das" THEN
+    genus := "das";
+  ELIF  genus = "DAS" THEN
+    genus := "das";
+  ELIF  genus = "Das" THEN
+    genus := "das";
+  ELSE
+    EXIT("verb Parameter genus ist nicht der, die oder das");
+  ENDIF;
+
+
+
+
+ENDMODULE 
+ 
+
+
+
+
+
+
+
+
+
+

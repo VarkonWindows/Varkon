@@ -1,0 +1,121 @@
+! ***************** vergleich   **************************** 
+! 
+! +++ 
+! Vergleich von Wörter
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-16 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Vergleich von Wörter
+  
+BASIC GEOMETRY MODULE vergleich ( 
+    STRING ein_wort*132;   ! Ein Wort normalerweise aber nicht immer 
+    STRING mehrere*132;    ! Mehrere Wörter 
+VAR INT    status);        ! < 0: Nicht gleich 
+ 
+   STRING mod_wort*132;        ! Modifiziert Wort
+   STRING teil_mehrere*132;    ! Mehrere Wörter 
+   INT  gleich;
+   INT  w_leng;
+   INT  i_c;
+   STRING ein_buchstab*1;
+   STRING  s*1;
+
+BEGINMODULE 
+ 
+  status := 0;
+  gleich := -1;
+  teil_mehrere := "Nicht definiert";
+
+! +++
+! Modifiziere das Eingabewort wenn nötig
+! ---
+
+  w_leng := LENGTH(ein_wort);
+  IF  w_leng = 0 THEN
+    status := -99;
+    EXIT();
+  ENDIF;
+  FOR  i_c := 1 TO w_leng DO
+    ein_buchstab := SUBSTR(ein_wort,i_c,1);
+    IF  ein_buchstab <> " " THEN
+      mod_wort := SUBSTR(ein_wort,i_c);
+      GOTO  schritt1;
+    ENDIF;
+  ENDFOR;
+schritt1:;
+
+
+  w_leng := LENGTH(mod_wort);
+  IF  w_leng = 0 THEN
+    status := -98;
+    EXIT();
+  ENDIF;
+
+  FOR  i_c := 1 TO w_leng DO
+    ein_buchstab := SUBSTR(mod_wort,w_leng-i_c+1,1);
+    IF  ein_buchstab = " " THEN
+      mod_wort := SUBSTR(mod_wort,1,w_leng-i_c);
+    ELSE
+      GOTO  schritt2;
+    ENDIF;
+  ENDFOR;
+schritt2:;
+
+!  s:= INPMT("****"+mod_wort+"***"," ",1);
+
+! +++
+! Vergleichen von Wörter
+! --- 
+
+  gleich := FINDS(mehrere,mod_wort);
+
+  IF  gleich <= 0 THEN
+    status := -1;
+    EXIT();
+  ENDIF;
+
+! +++
+! Muss ein ganzes Wort sein
+! --- 
+
+  teil_mehrere := SUBSTR(mehrere,gleich);
+!  s:= INPMT("****"+teil_mehrere+"***"," ",1);
+
+  w_leng := LENGTH(mod_wort);
+  IF  w_leng = 0 THEN
+    status := -97;
+    EXIT();
+  ENDIF;
+  IF   LENGTH(teil_mehrere) = w_leng THEN
+    status := 2;
+    EXIT();
+  ENDIF;
+  
+  ein_buchstab := SUBSTR(teil_mehrere,w_leng+1,1);
+  IF    ein_buchstab = " " OR ein_buchstab = ","  THEN
+     status := 3;
+     EXIT();
+  ELSE
+     status := -3;
+     EXIT();
+  ENDIF; 
+
+
+! Hier soll man nie kommen ....
+
+  
+  status := 1;
+
+ENDMODULE 
+ 
+
+
+
+
+

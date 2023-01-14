@@ -1,0 +1,38 @@
+! ***************** praposit   **************************** 
+! 
+! +++ 
+! Das Modul registriert eine Präposition
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-06 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert eine Präposition
+  
+GLOBAL GEOMETRY MODULE praposit ( 
+STRING praposition*132 := "präposition" >"Bitte, die Präposition eingeben";
+STRING schwedisch*132  := "svenska"     >"Präposition in Schwedisch eingeben";
+STRING type*132        := "dativ"       >"Type (Akkusativ/Dativ/Genitiv)";
+STRING unused_1*132    := "Unused"      >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused"      >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused"      >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  praposition = "" OR praposition = " " OR praposition = "  " THEN
+    EXIT("praposition Keine Präposition ist eingegeben");
+  ENDIF;
+
+
+ENDMODULE 
+
+

@@ -1,0 +1,124 @@
+GLOBAL DRAWING MODULE alladv1();
+BEGINMODULE
+PART(#1, adverb(
+"müßig",
+"lättjefullt, sysslolöst",
+"Unused",
+"Unused",
+"Unused"));
+PART(#2, adverb(
+"vorübergehend",
+"tillfälligt",
+"Unused",
+"Unused",
+"Unused"));
+PART(#3, adverb(
+"nachdem",
+"1. (je) beroende på, det beror på 2. efter det att 3. eftersom , då (när) nu",
+"Unused",
+"Unused",
+"Unused"));
+PART(#4, adverb(
+"dennoch",
+"ändå, likväl, dock",
+"Unused",
+"Unused",
+"Unused"));
+PART(#5, adverb(
+"unsterblich",
+"otroligt",
+"sich unsterblich blamieren",
+"Unused",
+"Unused"));
+PART(#6, adverb(
+"nur",
+"bara, endast",
+"nur noch = bara (noch översätts ej)",
+"Unused",
+"Unused"));
+PART(#7, adverb(
+"sonst",
+"annars, i annat fall, för övrigt, förr",
+"die er sonnst erhalten könnte = ",
+"Unused",
+"Unused"));
+PART(#8, adverb(
+"entsprechend",
+"i enlighet med, därefter",
+"Unused",
+"Unused",
+"Unused"));
+PART(#9, adverb(
+"jeher",
+"sedan gammalt, i alla tider, alltid (von jeher)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#10, adverb(
+"ungefähr",
+"1. ungefär  2. av en slump (von ungefähr)  ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#11, adverb(
+"bedingt",
+"bedingt arbeitsfähig = partiell arbetsför",
+"Unused",
+"Unused",
+"Unused"));
+PART(#12, adverb(
+"glatt",
+"1. slätt, jämnt  2. smidigt, utan problem 3. rakt, rentav, helt",
+"Unused",
+"Unused",
+"Unused"));
+PART(#13, adverb(
+"vorläufig",
+"tills vidare, för tillfället, för närvarande",
+"Unused",
+"Unused",
+"Unused"));
+PART(#14, adverb(
+"etwa",
+"1. omkring, ungefär 2. kanske, möjligen 3. till exempel",
+"in etwa stimmt das = det stämmer i stort sett",
+"ist er etwa krank? = han är väl inte sjuk",
+"Städte, wie etwa München = städer som till exempel München"));
+PART(#15, adverb(
+"durcheinander",
+"upp och ner, huller om buller",
+"Unused",
+"Unused",
+"Unused"));
+PART(#16, adverb(
+"niedrig",
+"lågt, tarvligt, gement",
+"etwas niedrig halten = hålla något lågt",
+"Unused",
+"Unused"));
+PART(#17, adverb(
+"aufwärts",
+"uppåt, uppför",
+"den Fluss aufwärts = uppströms",
+"Unused",
+"Unused"));
+PART(#18, adverb(
+"hüben",
+"hüben und drüben = på båda sidor, både för och emot",
+"Unused",
+"Unused",
+"Unused"));
+PART(#19, adverb(
+"beiläufig",
+"1. inom parentes, i förbigående 2. ungefär (österr.)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#20, adverb(
+"freilich",
+"1. emellertid, dock, faktiskt 2. ja ~ = ja visst! naturligtvis!",
+"Unused",
+"Unused",
+"Unused"));
+ENDMODULE
+

@@ -1,0 +1,71 @@
+! ***************** tracerv0   ****************************
+!
+! +++
+! Debug function which reads the file active_job.TRACE
+!
+! Refer to tracev0 for a description. This function
+! only calls tracev0 with parameter DEBUG= 199.
+!
+! This function has no input data and should be added
+! to your menu (.MDF) file with calling code "F" in order 
+! not to add the part to GM (to the .RES file)
+!
+! Example MDF file:
+!
+! #include "$VARKON_MDF/v318.MDF" (for UNIX)
+! #include "$VARKON_MDF\v319.MDF" (for WINDOWS 95/NT)
+!
+!Main_menu = 200
+!
+!m200  = "MY APPLICATION"
+!        "my macro"       ,M1200 ! Let MACRO add part to GM
+!        "my module"      ,p1201 ! Add part to GM
+!        "trace"          ,m201  ! Show submenu
+!        "terminate"      ,f173  ! End of session
+!        "help"           ,f153  ! Help
+!        "varkon"         ,m3;   ! Varkon standard 3D menu
+!
+!m201  = "TRACE"
+!        "read file"         ,F1202
+!        "create new file"   ,F1203;
+!
+!t1200 = "m_addxxx"
+!t1201 = "createyy"
+!t1202 = "tracerv0"
+!t1203 = "tracenv0"
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1998-06-19 Gunnar Liden
+! 
+! ---
+!************************************************************
+
+!sdesce Debug function which reads active_job.TRACE
+!sdescs Debug funktion som laeser active_job.TRACE
+
+GLOBAL GEOMETRY MODULE tracerv0  ( );
+
+! Internal variables:
+
+  CONSTANT INT  DEBUG = 199;
+  CONSTANT STRING d_line = " ";
+
+ BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Call tracev0
+! ---
+
+  PART(#1, tracev0 ( DEBUG, d_line ):SAVE=0);
+
+ ENDMODULE
+

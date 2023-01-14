@@ -1,0 +1,1294 @@
+GLOBAL DRAWING MODULE allverb1();
+BEGINMODULE
+PART(#1, verb(
+"meißeln",
+"mejsla",
+"meißelte",
+"gemeißelt",
+"haben",
+"nein",
+"Unused",
+" ä å ö ü ß ",
+"Unused"));
+PART(#2, verb(
+"empfehlen",
+"rekommendera, tillråda",
+"empfahl",
+"empfohlen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#3, verb(
+"zusagen",
+"1. lova 2. tilltala, behaga",
+"zusagte",
+"zugesagt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#4, verb(
+"hinterlegen",
+"deponera",
+"hinterlegte",
+"hinterlegt (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#5, verb(
+"aufplatzen",
+"spricka upp, spricka sönder, brista",
+"aufplatzte",
+"aufgeplatzt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#6, verb(
+"verzichten",
+"avstå ifrån",
+"verzichtete",
+"verzichtet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#7, verb(
+"anhalten",
+"stanna, hejda, stoppa",
+"hielte an",
+"anhielt (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#8, verb(
+"klammern",
+"1. klämma 2. klamra sig fast",
+"klammerte",
+"geklammert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#9, verb(
+"schuften",
+"slita, knoga",
+"schuftete",
+"geschuftet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#10, verb(
+"spüren",
+"1. känna, märka, förnimma 2. spåra",
+"spürte",
+"gespürt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#11, verb(
+"knüppeln",
+"1. slå, prygla  2. ruffa i sport",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#12, verb(
+"zustecken",
+"sticka till (någon något)",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#13, verb(
+"driften",
+"driva",
+"driftete",
+"gedriftet",
+"sein",
+"nein",
+"etwas driftete irgendwo",
+"Unused",
+"Unused"));
+PART(#14, verb(
+"anbringen",
+"1. sätta upp, placera, anbringa 2. bli av med 3. komma hem(dragande) med, släpa med sig (hem) 4. framföra ",
+"anbrachte",
+"angebracht",
+"haben",
+"nein",
+"genau passend für eine bestimmte Situation",
+"Unused",
+"Unused"));
+PART(#15, verb(
+"schlummern",
+"slumra, sova",
+"schlummerte",
+"geschlummert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#16, verb(
+"trügen",
+"1. bedra, svika 2. (itr) bedra, vara bedräglig, svika",
+"trog",
+"getrogen",
+"haben",
+"nein",
+"etwas trügt=etwas lässt einen falschen Eindruck entstehen",
+"Unused",
+"Unused"));
+PART(#17, verb(
+"ergründen",
+"utforska, utröna",
+"ergründete",
+"hat ergründet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#18, verb(
+"vertrösten",
+"inge hopp",
+"vertröstete",
+"vertrötest",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#19, verb(
+"überfordern",
+"ställa för höga krav",
+"überforderte",
+"überfordert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#20, verb(
+"würgen",
+"1. ta struptag på någon, strypa någon  ",
+"würgte",
+"gewürgt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#21, verb(
+"erwürgern",
+"strypa",
+"erwürgte",
+"erwürgt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#22, verb(
+"auseinandersetzen",
+"tala ut, göra upp",
+"auseinendersetzte (?)",
+"auseinendergesetzt (?)",
+"haben7sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#23, verb(
+"erröten",
+"rodna",
+"erröttete",
+"errötet",
+"sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#24, verb(
+"gleichen",
+"likna någon",
+"glich",
+"geglichen",
+"haben",
+"nein",
+"Der französiche Präsident gleicht einen Monarchen",
+"Unused",
+"Unused"));
+PART(#25, verb(
+"salben",
+"smörja",
+"salbete",
+"gesalbt",
+"haben",
+"nein",
+".. vom Volk gesalbt = vara smörjd av folket",
+"Unused",
+"Unused"));
+PART(#26, verb(
+"vorwerfen",
+"förebrå",
+"vorwarf (?)",
+"vorgeworfen (?)",
+"haben",
+"nein",
+"Ich habe mich nichts vorzuwerfen = Jag har inget att förebrå mig",
+"Unused",
+"Unused"));
+PART(#27, verb(
+"genehmigen",
+"1. godkänna, bevilja, bifalla  2. sich etwas ~ unna sig något",
+" genehmigte",
+" genehmigt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#28, verb(
+"wetten",
+"slå vad",
+"wettete",
+"gewettet",
+"haben",
+"nein",
+"auf ein Pferd wetten = satsa på en häst",
+"Unused",
+"Unused"));
+PART(#29, verb(
+"ablenken",
+"störa, distrahera",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#30, verb(
+"erschöpfen",
+"1. göra slut på, förbruka  2. trötta ut, tömma ut ett ämne",
+"erschöpfte",
+"erschöpft",
+"haben",
+"nein",
+"ein Thema erschöpfen = uttömma ett ämne",
+"Unused",
+"Unused"));
+PART(#31, verb(
+"tagen",
+"1. sammanträda  2. dagas, gry",
+" tagte",
+" getagt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#32, verb(
+"vorlegen",
+"1. sätta, lägga för 2. lägga fram, presentera",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#33, verb(
+"vorliegen",
+"föreligga, finnas",
+"",
+" ",
+"haben",
+"nein",
+"gegen ihn liegt nich vor = han är inte misstänkt för något",
+"Unused",
+"Unused"));
+PART(#34, verb(
+"vorangehen",
+"1. gå först  2. gå framåt, göra framsteg  ",
+" ",
+" ",
+"haben",
+"nein",
+"wie geht nun das Projekt voran?",
+"Unused",
+"Unused"));
+PART(#35, verb(
+"lauern",
+"lurpassa (på någon)",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#36, verb(
+"einreihen",
+"inrangera (?)",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#37, verb(
+"langweilen",
+"ha långtråkigt (sich langweilen)",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#38, verb(
+"keimen",
+"gro, spira",
+"keimte",
+"gekeimt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#39, verb(
+"besheren",
+"ge i julklapp",
+"bescherte",
+"beschert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#40, verb(
+"schillern",
+"åka kana, kana, sladda",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#41, verb(
+"schrumpfen",
+"skrumpna",
+"schrumpfte",
+"geschrumpft",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#42, verb(
+"kappen",
+"kapa av",
+"kappte",
+"gekappt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#43, verb(
+"vergewaltigen",
+"våldtaga",
+"vergewaltigte",
+"vergewaltigt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#44, verb(
+"bummeln",
+"flanera, gå, ströva",
+"bummelte",
+"gebummelt",
+"haben/sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#45, verb(
+"sickern",
+"sippra, droppa, läcka ut (även bildligt)",
+"sickerte",
+"gesickert (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#46, verb(
+"versagen",
+"misslyckas, göra fiasko, slå slint 2. strejka, svika, klicka",
+"versagte",
+"versagt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#47, verb(
+"verleugnen",
+"förneka, inte (vilja) kännas vid, inte erkänna",
+"verleugnete",
+"verleugnet (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#48, verb(
+"scheitern",
+"misslyckas, stranda (om förhandlingar), spricka (om äktenskap)",
+"scheiterte",
+"gescheitert",
+"sein",
+"nein",
+"daran ist er gescheitert = det var det han föll på",
+"Unused",
+"Unused"));
+PART(#49, verb(
+"bröseln",
+"falla i bitar genom uttorkning (?)",
+"bröselte",
+"gebröselt",
+"haben",
+"nein",
+"etwas bröselt = etwas is so trocken, das Krummel abfallen (ein Kuchen)",
+"Unused",
+"Unused"));
+PART(#50, verb(
+"zerbröckeln",
+"smulas (fala) sönder, bryta i småbitar",
+"zerbröckelte",
+"zerbröckelt (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#51, verb(
+"erwischen",
+"ertappa, komma på, ta fast, få tagi, komma över",
+"erwischte",
+"erwischt (?)",
+"haben",
+"nein",
+"sich erwischen lassen = åka fast, bli upptäckt",
+"Unused",
+"Unused"));
+PART(#52, verb(
+"schlüpfen",
+"smyga sig, slinka, glida",
+"schlüpfte",
+"geschlüpft",
+"sein",
+"nein",
+"aus dem Eier schlüpfen = kläckas",
+"Unused",
+"Unused"));
+PART(#53, verb(
+"brüten",
+"ligga på ägg, ruva",
+"brütete",
+"gebrütet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#54, verb(
+"hüllen",
+"svepa (in), hölja, slå in",
+"hüllte",
+"gehüllt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#55, verb(
+"mögen",
+"I 1. kunna 2. få, må 3. vilja II 1. tycka om, gilla III 1. vilja",
+"mochte",
+"gemocht",
+"haben",
+"nein",
+"ich mag keinen Fisch essen = jag tycker inte om fisk",
+"Unused",
+"Unused"));
+PART(#56, verb(
+"unterwerfen",
+"underkuva, lägga under sig",
+"unterwarf",
+"unterworfen",
+"haben",
+"nein",
+"er unterwirft sich ...",
+"sich etwas unterwerfen = underkasta sig något",
+"Unused"));
+PART(#57, verb(
+"tarnen",
+"kamouflera,  maskera, dölja (bildligt)",
+"tarnte",
+"getarnt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#58, verb(
+"jaulen",
+"gnälla, yla (om hund)",
+"jaulte",
+"gejault",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#59, verb(
+"verkneifen",
+"undertrycka",
+"verkniff",
+"verkniffen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#60, verb(
+"veralbern",
+"förlöjliga någon, driva med någon",
+"veralberte",
+"veralbert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#61, verb(
+"bewerben",
+"sich um etwas - anstränga sig för, bemöda sig om",
+"bewarb",
+"beworben",
+"haben",
+"ja",
+"sich um eine Stelle bewerben = ansöka om jobb",
+"Unused",
+"Unused"));
+PART(#62, verb(
+"gefallen",
+"behaga, tilltala",
+"gefiel",
+"gefallen",
+"haben",
+"nein",
+"Es gefällt mir",
+"Unused",
+"Unused"));
+PART(#63, verb(
+"bedingen",
+"I orsaka, ha till följd, medföra II förutsätta, kräva",
+"bedingte",
+"bedingt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#64, verb(
+"ausschöpfen",
+"ösa ur, uttömma, Ein Thema ausshöpfen = uttömma ett tema",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#65, verb(
+"trachten",
+"trakta, sträva",
+"trachtete",
+"getrachtet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#66, verb(
+"behüten",
+"bevara, beskydda",
+"behütete",
+"behütet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#67, verb(
+"niederlassen",
+"sich -  slå sig ner",
+" ",
+" ",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#68, verb(
+"nagen",
+"gnaga",
+"nagte",
+"genagt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#69, verb(
+"gönnen",
+"unna",
+"gönnte",
+"gegönnt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#70, verb(
+"zerfetzen",
+"riva, slita sönder",
+"zerfetzte",
+"zerfetzt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#71, verb(
+"platzen",
+"1. spricka, brista, explodera 2. spricka, gå i stöpet 3. plötsligt dyka upp",
+"platzte",
+"geplatzt",
+"sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#72, verb(
+"zerplatzen",
+"spricka, springa sönder, explodera",
+"zerplatzte",
+"zerplatzt",
+"sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#73, verb(
+"inszenieren",
+"iscensätta, sätta upp, regissera",
+"inszenierte",
+"inszeniert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#74, verb(
+"schwanken",
+"1. vackla, tveka, vaja, svänga fram och tillbaka, gunga, ge efter, ge vika, fluktuera 2. stappla, ragla, vingla",
+"schwankte",
+"geschwankt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#75, verb(
+"abschotten",
+"göra så att man inte längre har kontakt med något, utestänga (?)",
+"schottete ab",
+"abgeschottet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#76, verb(
+"erteilen",
+"ge, tilldela",
+"erteilte",
+"erteilt",
+"haben",
+"nein",
+"jemandem Unterricht erteilen = undervisa någon",
+"Unused",
+"Unused"));
+PART(#77, verb(
+"beleidigen",
+"förolämpa, kränka, såra",
+"beleidigte",
+"beleidigt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#78, verb(
+"enttäuschen",
+"göra besviken, jemanden angenehm enttäuschen = göra någon angenämt överraskad ",
+"enttäuschte",
+"enttäuscht",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#79, verb(
+"entwurzeln",
+"rycka upp med rötterna, göra rotlös (bildligt)",
+"entwurzelte (?)",
+"entwurzelt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#80, verb(
+"wuchern",
+"1. växa okontrollerat, sprida sig  2. bedriva ocker",
+"wucherte",
+"gewuchert",
+"haben/sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#81, verb(
+"veräußern",
+"avyttra, sälja",
+"veräußerte",
+"veräußert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#82, verb(
+"spinnen",
+"1. spinna 2. prata strunt, hitta på, ljuga 3. vara knäpp ",
+"spann",
+"gesponnen",
+"haben",
+"nein",
+"jetzt spinnt er wieder = nu hittar han på igen",
+"du spinnst wohl! = du är inte klok",
+"Unused"));
+PART(#83, verb(
+"verzeihen",
+"förlåta, ursäkta",
+"verzieh",
+"verziehen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#84, verb(
+"bedauern",
+"I beklaga II bedaure! tyvärr!",
+"bedauerte",
+"bedauert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#85, verb(
+"tätowieren",
+"tatuera",
+"tätowierte",
+"tätowiert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#86, verb(
+"bedrohen",
+"hota",
+"bedrohte",
+"bedroht",
+"haben",
+"nein",
+"bedrohte Arten = utrotningshotade arter",
+"Unused",
+"Unused"));
+PART(#87, verb(
+"erschlagen",
+"slå ihjäl, döda",
+"erschlug",
+"erschlagen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#88, verb(
+"abspeisen",
+"1. utfodra, utspisa 2. avspisa, avfärda",
+"?",
+"?",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#89, verb(
+"vorgehen",
+"1. gå före (om klocka) 2. komma först 3. gå fram, rycka fram (miltärt) 4. gå till väga, förfara 5. försiggå",
+"vorging",
+"vorgegangen",
+"sein",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#90, verb(
+"verschleudern",
+"1. slumpa bort 2. kasta (slösa) bort",
+"verschleuderte",
+"verschleudert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#91, verb(
+"ballen",
+"1. pressa ( trycka, knyckla ) ihop 2. sich ~ hopa sig ",
+"ballte",
+"geballt",
+"haben",
+"nein",
+"die (Hand zur) Faust ballen = knyta näven ",
+"Unused",
+"Unused"));
+PART(#92, verb(
+"nerven",
+"göra nervös",
+"nervte",
+"genervt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#93, verb(
+"einschalten",
+"1. koppla in / på (elektriskt) 2. infoga, skjuta in",
+"einschaltete",
+"eingeschaltet",
+"haben",
+"nein",
+"das Licht einschalten",
+"Unused",
+"Unused"));
+PART(#94, verb(
+"ausschalten",
+"1. slå av (ström, ljus, ..) 2. utesluta, eliminera, förhindra, slå (i sport)",
+"ausschaltete",
+"ausgeschaltet",
+"haben",
+"nein",
+"das Licht ausschalten",
+"Unused",
+"Unused"));
+PART(#95, verb(
+"abschalten",
+"stänga av, slå av, koppla ifrån (elektriskt)",
+"abschaltete",
+"abgeschaltet",
+"haben",
+"nein",
+"Kernkraftwerke abschalten = stänga av (lägga ned) kärnkraftverk",
+"Unused",
+"Unused"));
+PART(#96, verb(
+"abhauen",
+"I sticka iväg, kila iväg II 1. hugga av, fälla 2. skriva av = fuska (i skolan)",
+"haute ab",
+"abgehauen",
+"haben",
+"nein",
+"hau ab! = stick",
+"Unused",
+"Unused"));
+PART(#97, verb(
+"wiegen",
+"väga",
+"wog",
+"gewogen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#98, verb(
+"wiegen",
+"I 1. vagga 2. hacka (kok.) II sich ~ = vagga, gunga, vaja (om gräs)",
+"wiegte",
+"gewiegt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#99, verb(
+"immunisieren",
+"immunisera, göra immun",
+"immunisierte",
+"immunisiert",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#100, verb(
+"geraten",
+"1. råka, komma, hamna 2. bli (durcheinander ~ = råka i oordning 3. lyckas 4. brås på någon",
+"geriet",
+"geraten",
+"sein",
+"nein",
+"an einen Betrüger geraten = råka ut för en bedragare",
+"alles geriet ihr = hon lyckades med (i) allt",
+"Unused"));
+PART(#101, verb(
+"raten",
+"1. råda 2. gissa ~ Sie Mal",
+"riet",
+"geraten",
+"haben",
+"nein",
+"wozu rätst du mir = vad råder du mig att göra",
+"ich halte es nicht für geraten = jag tycker inte att det är någon god ide",
+"Unused"));
+PART(#102, verb(
+"überführen",
+"överföra, transportera",
+"führte über",
+"übergeführt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#103, verb(
+"überführen",
+"1. överbevisa 2. överföra, transportera ",
+"überführte",
+"überführt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#104, verb(
+"bestellen",
+"1. beställa, rekvirera 2. framföra ein Gruss ~ 3. odla, bruka 4. tillsätta",
+"bestellte",
+"bestellt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#105, verb(
+"küren",
+"kora",
+"kürte",
+"gekürt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#106, verb(
+"verpatzen",
+"1. förstöra, klanta till 2. kladda ner (Östterike)",
+"verpatzte",
+"verpatzt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#107, verb(
+"einbilden",
+"inbilla sig",
+"bildete ein",
+"eingebildet",
+"haben",
+"nein",
+"was bildest du dich eigentlich ein? = vad inbillar du dig ?",
+"sich ziemlich viel über etwas einbilden = vara stöddig över något",
+"Unused"));
+PART(#108, verb(
+"gelten",
+"1. gälla, vara giltig 2. jemandem ~ = vara ämnad för, avse (gälla) någon",
+"galt",
+"gegolten",
+"haben",
+"nein",
+"mein Angebot gilt noch = mitt erbjudande står fast",
+"das gilt nicht = det gäller (gills) inte",
+"das gillt für alle = det gäller alla"));
+PART(#109, verb(
+"übersiedeln",
+"flytta",
+"übersiedelte",
+"übergesiedelt",
+"haben",
+"nein",
+"die Firma übersiedelte hierher = die Firma siedelte hierher über = företaget flyttade hit",
+"Unused",
+"Unused"));
+PART(#110, verb(
+"beiwohnen",
+"1. bevista (högtidligt) 2. einer Frau ~ = ha samlag med en kvinna (juridiskt)",
+"beiwohnte",
+"beigewohnt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#111, verb(
+"stülpen",
+"hastigt vända upp och ner, stjälpa upp",
+"stülpte",
+"gestülpt",
+"haben",
+"nein",
+"etwas auf etwas stülpen = sätta något på något",
+"die Taschen nach aussen stülpen = vända ut och in på fickorna (ska vara dubbel s)",
+"Unused"));
+PART(#112, verb(
+"meiden",
+"undvika (högtidligt)",
+"mied",
+"gemieden",
+"haben",
+"nein",
+"Er mied die Menschen",
+"Unused",
+"Unused"));
+PART(#113, verb(
+"schluchzen",
+"snyfta",
+"schluchzte",
+"geschluchzt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#114, verb(
+"beneiden",
+"avundas (någon något)",
+"beneidete",
+"beneidet",
+"haben",
+"nein",
+"jemandem um etwas beneiden",
+"Unused",
+"Unused"));
+PART(#115, verb(
+"beantragen",
+"1. ansöka 2. föreslå, väcka motion om",
+"beantragt",
+"beantragt",
+"haben",
+"nein",
+"Urlaub beantragen",
+"Unused",
+"Unused"));
+PART(#116, verb(
+"schleichen",
+"1. krypa, gå sakta, släpa sig 2. smyga (sig) ",
+"schlich",
+"geschlichen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#117, verb(
+"heucheln",
+"I hyckla  II låtsas",
+"heuchelte",
+"geheuchelt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#118, verb(
+"waschen",
+"tvätta (sig)",
+"wusch",
+"gewaschen",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#119, verb(
+"argwöhnen",
+"misstänka (högtidligt)",
+"argwöhnte",
+"geargwöhnt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#120, verb(
+"rekeln",
+"sträcka på sig, ligga och dra sig, slappa",
+"rekelte",
+"gerekelt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#121, verb(
+"straffen",
+"spänna, strama till (åt)",
+"straffte",
+"gestrafft",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#122, verb(
+"welken",
+"vissna, (om hud) åldras ",
+"welkte",
+"gewelkt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#123, verb(
+"nisten",
+"bygga bo, häcka",
+"nistete",
+"genistet",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#124, verb(
+"beflügeln",
+"inspirera, sporra (bildligt)",
+"beflügelte",
+"beflügelt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#125, verb(
+"wühlen",
+"I gräva fram, rota fram II 1. gräva, böka, rota 2. gegen ewas ~~",
+"wühlte",
+"gewühlt",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#126, verb(
+"zinken",
+"märka (märkta kort)",
+"zinkte",
+"gezinkt",
+"haben",
+"nein",
+"gezinkte Karten",
+"Unused",
+"Unused"));
+PART(#127, verb(
+"gegenüberstehen",
+"1. stå vända mot varandra 2. vända emot varandra (stridighet)",
+"?",
+"?",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#128, verb(
+"widmen",
+"1. ägna 2. tillägna, dedicera",
+"widmete",
+"gewidmet",
+"haben",
+"nein",
+"Aufmerksamkeit widmen",
+"Unused",
+"Unused"));
+PART(#129, verb(
+"verstümmeln",
+"lemlästa, stympa, förvanska",
+"verstümmelte",
+"verstümmelt (?)",
+"haben",
+"nein",
+"Unused",
+"Unused",
+"Unused"));
+ENDMODULE
+

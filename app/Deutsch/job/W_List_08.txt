@@ -1,0 +1,54 @@
+
+Genus Übung. Datei C:\varkon\APP\deutsch\job\W_List_08.txt
+
+
+  1  der    Bagger              grävmaskin, grävskopa, mudderverk
+  2  der    Schöpfer            1. skapare  2. skopa, öskar
+  3  die    Wohngemeinshaft     kollektiv
+  4  der    Vorhang             draperi, ridå (teater)
+  5  das    Eselsohr            hundöra (i bok)
+  6  die    Zerknirschung       ånger (?)
+  7  die    Tat                 1. handling, gärning, dåd 2. in der Tat = verkl
+  8  der    Trampelpfad         ( upptrampad ) stig
+  9  die    Annehmlichkeit      fördelar, bekvämligheter
+ 10  die    Verbindlichkeit     1. bindande kraft 2. hövlighet, älskvärdhet, fö
+ 11  der    Würfel              tärning, kub
+ 12  die    Geiß                get (eine weibliche Ziege)
+ 13  das    Fest                fest, högtidlighet
+ 14  der    Mitesser            pormask
+ 15  das    Handbuch            handbok
+ 16  die    Eitelkeit           fåfänglighet (nedsättande)
+ 17  die    Strähne             (hår) slinga
+ 18  das    Ballungsgebiet      storstadsregion med många industrier, tätbefolk
+ 19  das    Scheusal            odjur, monster
+ 20  der    Aufwand             kostnader, utgifter
+ 21  der    Block               1. block, stenblock 2. kvarter 3. skrivblock 4.
+ 22  die    Pfote               tass, labb, hand (vardagligt)
+ 23  der    Binnenhandel        inrikes handel
+ 24  das    Gemüt               läggning, sinnelag, sinne, själ, hjärta
+ 25  der    Strich              1. streck, linje 2. strykning 3. gatuprostituti
+ 26  die    Genehmigung         tillstånd
+ 27  der    Kahn                1. flatbottnad båt, eka 2. pråm
+ 28  das    Video               video
+ 29  das    Videoband           videoband
+ 30  der    Unfug               1. hyss, rackartyg, ofog 2. nonsens, strunt
+ 31  der    Spruch              1. domslut, utslag 2. tänkespråk, sentens, vers
+ 32  die    Langeweile          långtråkighet
+ 33  die    Keuschheit          kyskhet
+ 34  die    Sippe               klan, släkt, stor familj
+ 35  die    Flur                1. odlingsbar mark  2. korridor
+ 36  der    Leib                kropp, mage, liv
+ 37  die    Augenbraue          ögonbryn
+ 38  der    Magistrat           kommunalförvalning
+ 39  die    Türfalle            dörrhållare
+ 40  das    Formular            formulär
+ 41  das    Ergebnis            resultat
+ 42  der    Kanadier            kanadensare (även kanot)
+ 43  die    Kruste              skorpa, brodkant
+ 44  die    Befindlichkeit      ????
+ 45  der    Schnürsenkel        skosnöre (dialektalt)
+ 46  der    Luchs               lodjur
+ 47  das    Blatt               blad
+ 48  die    Dolmetscherin       tolk (kvinnlig)
+ 49  das    Gebot               påbud, befallning, bestämmelse
+ 50  die    Schare              skara, flock, skock

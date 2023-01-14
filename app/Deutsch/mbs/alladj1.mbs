@@ -1,0 +1,538 @@
+GLOBAL DRAWING MODULE alladj1();
+BEGINMODULE
+PART(#1, adjektiv(
+"müßig",
+"1. lättjefull, sysslolös, overksam 2. menigslös, onödig, överflödig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#2, adjektiv(
+"vorübergehend",
+"tillfälligt, övergående",
+"Unused",
+"Unused",
+"Unused"));
+PART(#3, adjektiv(
+"schummerig",
+"halvmörk, skum",
+"Unused",
+"Unused",
+"Unused"));
+PART(#4, adjektiv(
+"schräg",
+"sned, diagonal, lutande, sluttande",
+"weder senkrecht noch parallel",
+"Unused",
+"Unused"));
+PART(#5, adjektiv(
+"angebracht",
+"lämplig, passande, på sin plats",
+"Unused",
+"Unused",
+"Unused"));
+PART(#6, adjektiv(
+"befintlich",
+"befintlig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#7, adjektiv(
+"aufwendig",
+"påkostad, flott",
+"Unused",
+"Unused",
+"Unused"));
+PART(#8, adjektiv(
+"unsterblich",
+"odödlig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#9, adjektiv(
+"ähnlich",
+"liknande, (snar)lik, dylik",
+"ähnlich sein",
+"Unused",
+"Unused"));
+PART(#10, adjektiv(
+"anrüchig",
+"beryktad, ökänd,, tvivelaktig",
+"anrüchige Witze = (grova) fräckisar",
+"Unused",
+"Unused"));
+PART(#11, adjektiv(
+"wohltätig",
+"1. välgörande, hälsosam  2. hälsosam",
+"Unused",
+"Unused",
+"Unused"));
+PART(#12, adjektiv(
+"entsprechend",
+"motsvarande, skälig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#13, adjektiv(
+"langweilig",
+"långtråkig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#14, adjektiv(
+"stur",
+"envis, tjurig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#15, adjektiv(
+"längst",
+"1. längst 2. sedan lang tid tillbaka",
+"Unused",
+"Unused",
+"Unused"));
+PART(#16, adjektiv(
+"stolz",
+"1. stolt   2. ståtlig  3. ansenlig, rundlig, rejäl",
+"Unused",
+"Unused",
+"Unused"));
+PART(#17, adjektiv(
+"bescheuert",
+"knasig, knäpp",
+"Unused",
+"Unused",
+"Unused"));
+PART(#18, adjektiv(
+"überheblich",
+"överlägsen, arrogant",
+"Unused",
+"Unused",
+"Unused"));
+PART(#19, adjektiv(
+"abergläubisch",
+"vidskeplig, skrockfull",
+"Unused",
+"Unused",
+"Unused"));
+PART(#20, adjektiv(
+"irdisch",
+"jordisk, världslig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#21, adjektiv(
+"heikel",
+"1. känslig, ömtålig, kinkig, vansklig, prekär 2. kräsen, kinkig, nogräknad",
+"ein heikles Thema = ett laddat (känsligt) ämne",
+"Unused",
+"Unused"));
+PART(#22, adjektiv(
+"makellos",
+"perfekt, felfri, oklanderlig, fläckfri",
+"Unused",
+"Unused",
+"Unused"));
+PART(#23, adjektiv(
+"frivol",
+"frivol, lättsinnig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#24, adjektiv(
+"schlaff",
+"1. slapp, slak, kraftlös, hängig 2. trög, tråkig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#25, adjektiv(
+"mitleidig",
+"medlidsam, deltagande",
+"Unused",
+"Unused",
+"Unused"));
+PART(#26, adjektiv(
+"höfisch",
+"hövisk, hovmannamässig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#27, adjektiv(
+"possierlich",
+"lustig, skojig (i synnerhet om små djur)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#28, adjektiv(
+"unumwunden",
+"rent ut, etwas unumwunden zugeben = medge något öppet",
+"Unused",
+"Unused",
+"Unused"));
+PART(#29, adjektiv(
+"bedingt",
+"betingat, villkorlig (juridiskt)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#30, adjektiv(
+"glatt",
+"1. jämn, slät 2. hal, blank, glatt 3. lätt, enkel, smidig, 4. hal, inställsam  ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#31, adjektiv(
+"trüb(e)",
+"1. grumlig, oklar, glanslös (om ögon), mulen (om väder) 2. dyster, sorglig, trist",
+"im Trüben fischen = fiska i grumliga vatten",
+"Unused",
+"Unused"));
+PART(#32, adjektiv(
+"schlicht",
+"enkel, okonstlad",
+"die schlichte Wahrheit = den nakna sanningen",
+"Unused",
+"Unused"));
+PART(#33, adjektiv(
+"vorläufig",
+"tillfällig, provisorisk",
+"Unused",
+"Unused",
+"Unused"));
+PART(#34, adjektiv(
+"mancherlei",
+"allehanda, diverse, flera (olika)",
+"mancherlei Käse = flera sorters ost",
+"Unused",
+"Unused"));
+PART(#35, adjektiv(
+"segensreich",
+"välsignelserik, framgångsrik",
+"Unused",
+"Unused",
+"Unused"));
+PART(#36, adjektiv(
+"faul",
+"1. rutten, skämd 2. skum, dålig 3. lat",
+"Unused",
+"Unused",
+"Unused"));
+PART(#37, adjektiv(
+"zerknirscht",
+"ångerfull, förkrossad",
+"zerknirscht sein = vara ledsen",
+"Unused",
+"Unused"));
+PART(#38, adjektiv(
+"anständig",
+"1. anständig, passande, lämplig 2. hygglig, renhårig 3. hyfsad, rätt bra, anständig 4. rejäl, ordentlig",
+"bleib anständig = (skämtsamt) sköt dig",
+"das war anständig von dir = det var schysst av dig",
+"Unused"));
+PART(#39, adjektiv(
+"eitel",
+"1. (nedsättande) fåfäng 2. idel, blott",
+"eitel sein = vara alltför mån om sitt yttre",
+"Unused",
+"Unused"));
+PART(#40, adjektiv(
+"töricht",
+"enfaldig, dum, oförnuftig, dåraktig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#41, adjektiv(
+"bescheiden",
+"1. anspråkslös, blygsam, försynt 2. es ist bescheiden det är för jävligt",
+"Unused",
+"Unused",
+"Unused"));
+PART(#42, adjektiv(
+"penetrant",
+"genomträngande, skarp, stickande (om lukt)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#43, adjektiv(
+"schwank",
+"tunn (smal) och böjlig, ranglig, ostadig (om person)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#44, adjektiv(
+"nobel",
+"1. nobel 2. (ofta nedsättande) flott, elegant, lyxig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#45, adjektiv(
+"weltläufig",
+"världsvant (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#46, adjektiv(
+"gewandt",
+"skicklig, smidig, van, rutinerad, belevad",
+"in etwas gewandt sein = vara skicklig på något",
+"Unused",
+"Unused"));
+PART(#47, adjektiv(
+"wüst",
+"1. kaotisk, rörig 2. vild, våldsam 3. oanständig, grov, vulgär 4. fruktansvärd, förfärlig, ful 5. öde, tom, obebodd",
+"wüstes Geschrei = gallskrik, illtjut",
+"Unused",
+"Unused"));
+PART(#48, adjektiv(
+"heil",
+"1. oskadd, helskinnad 2. wieder heil sein = läka 3. hel, oskadd",
+"eine heile Welt = en idealvärld, en oförstörd värld",
+"Unused",
+"Unused"));
+PART(#49, adjektiv(
+"zivilisatorisch",
+"typisk för civilisationen, av civilisationen orsakad (skador, sjukdomar, ..)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#50, adjektiv(
+"entwurzelt",
+"ramlat omkull och med rötterna i luften 2. göra en person rotlös så att hon inga vänner, etc. har",
+"Unused",
+"Unused",
+"Unused"));
+PART(#51, adjektiv(
+"albern",
+"I fånig, larvig, flamsig  II fåna sig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#52, adjektiv(
+"durcheinender",
+"jag känner mig alldeles uppochnervänd = Ich bin ganz ~ ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#53, adjektiv(
+"verzeihlich",
+"förlåtlig, ursäktlig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#54, adjektiv(
+"bedauerlicherweise",
+"tyvärr",
+"Unused",
+"Unused",
+"Unused"));
+PART(#55, adjektiv(
+"tätig",
+"verksam, aktiv",
+"als Lehrer tätig sein = arbeta som lärare ",
+"Unused",
+"Unused"));
+PART(#56, adjektiv(
+"taubstumm",
+"dövstumm",
+"Unused",
+"Unused",
+"Unused"));
+PART(#57, adjektiv(
+"bedrohlich",
+"hotande, hotfull",
+"Unused",
+"Unused",
+"Unused"));
+PART(#58, adjektiv(
+"bedrückt",
+"nedstämd, deprimerad",
+"Unused",
+"Unused",
+"Unused"));
+PART(#59, adjektiv(
+"bedürfnislos",
+"utan behov, anspråkslös",
+"Unused",
+"Unused",
+"Unused"));
+PART(#60, adjektiv(
+"niedlich",
+"söt, gullig, rar, näpen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#61, adjektiv(
+"niedrig",
+"låg, lågsinnad",
+"von niedrigem Wuchs = lågväxt",
+"ein niedriges Zimmer = ett rum med lågt i tak",
+"Unused"));
+PART(#62, adjektiv(
+"rücksichtlos",
+"hänsynslös",
+"Unused",
+"Unused",
+"Unused"));
+PART(#63, adjektiv(
+"ratsam",
+"tillrådlig, lämplig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#64, adjektiv(
+"gemein",
+"1. elak, nedrig, tarvlig, gemen, förarglig 2. vanlig, enkel 3. gemensam 4. allmän",
+"eine gemeine Lüge = en grov (gemen) lögn",
+"der gemeine Mann = gemene man",
+"Unused"));
+PART(#65, adjektiv(
+"geballt",
+"1. knuten näve 2. koncentrerad (bildligt)",
+"eine geballte Faust",
+"Unused",
+"Unused"));
+PART(#66, adjektiv(
+"heiter",
+"1. glad, munter, gladlynt 2. klar, vacker, strålande (om väder) ",
+"ein heiter Tag = en solig dag",
+"Unused",
+"Unused"));
+PART(#67, adjektiv(
+"schofel",
+"taskig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#68, adjektiv(
+"brüchig",
+"murken, spröd, skör",
+"Unused",
+"Unused",
+"Unused"));
+PART(#69, adjektiv(
+"üblich",
+"bruklig, gängse, vanlig",
+"wie üblich = som vanligt",
+"ein übliches Benehmen",
+"Unused"));
+PART(#70, adjektiv(
+"herb",
+"1. besk, syrlig, (lite) bitter kärv frän (om vin) 2. hård, sträng, avvisande, otillgänglig",
+"Er ist herb und männlich = kärv och manlig",
+"Unused",
+"Unused"));
+PART(#71, adjektiv(
+"beiläufig",
+"parentetisk (som adverb: i förbigående, inom parentes)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#72, adjektiv(
+"unzugänglich",
+"otillgänglig, oåtkomlig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#73, adjektiv(
+"beneidenswert",
+"avundsvärd",
+"Unused",
+"Unused",
+"Unused"));
+PART(#74, adjektiv(
+"baldig",
+"snar",
+"baldiger Verlassung",
+"Unused",
+"Unused"));
+PART(#75, adjektiv(
+"argwönisch",
+"misstänksam, misstrogen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#76, adjektiv(
+"saumselig",
+"arbeta långsamt och slarvigt",
+"Unused",
+"Unused",
+"Unused"));
+PART(#77, adjektiv(
+"begierig",
+"lysten, ivrig",
+"begierige Blicke = lystna blickar",
+"Unused",
+"Unused"));
+PART(#78, adjektiv(
+"dämmrig",
+"halvdunkel, halvmörk",
+"Unused",
+"Unused",
+"Unused"));
+PART(#79, adjektiv(
+"stetig",
+"stadig, kontinuerlig, ständig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#80, adjektiv(
+"feist",
+"( tjock och) fet, välgödd",
+"Unused",
+"Unused",
+"Unused"));
+PART(#81, adjektiv(
+"versonnen",
+"drömmande, (själs) frånvarande, försjunken i tankar",
+"Unused",
+"Unused",
+"Unused"));
+PART(#82, adjektiv(
+"schütter",
+"om hår, att det växer glest (?)",
+"das Haar war schütter",
+"Unused",
+"Unused"));
+PART(#83, adjektiv(
+"straff",
+"spänd, stram",
+"straff anziehen = strama till (åt)",
+"Unused",
+"Unused"));
+PART(#84, adjektiv(
+"welk",
+"vissen, vissnad",
+"Unused",
+"Unused",
+"Unused"));
+PART(#85, adjektiv(
+"wuchtig",
+"(mycket) kraftig, kraftfull, massiv, stor, mäktig",
+"Unused",
+"Unused",
+"Unused"));
+PART(#86, adjektiv(
+"bieder",
+"1. präktig, naiv 2. hederlig, rättskaffens",
+"Unused",
+"Unused",
+"Unused"));
+PART(#87, adjektiv(
+"lauter",
+"1. ren, oblandad, ärlig, uppriktig 2. idel, bara",
+"Die laute Wahrheit = den nakna sanningen",
+"lauter Lügen = idel lögner",
+"Unused"));
+PART(#88, adjektiv(
+"ergebnislos",
+"resultatlös, utan resultat",
+"Unused",
+"Unused",
+"Unused"));
+PART(#89, adjektiv(
+"wendig",
+"1. lättmanövrerad, lätthanterlig 2. snabbtänkt",
+"Unused",
+"Unused",
+"Unused"));
+ENDMODULE
+

@@ -1,0 +1,320 @@
+! ***************** tracev0    ****************************
+!
+! +++
+! Debug function which writes to active_job.TRACE
+!
+! The function appends data to the .TRACE file,
+! which is on the active job directory.
+!
+! Call this function with :SAVE= 0 in order not to
+! add data to GM (the .RES file)
+!
+! Example: 
+! PART(#20, tracev0(DEBUG, "I= "+STR(I,4,0)):SAVE=0);
+!
+! The flag DEBUG is used in many other modules for
+! debug output to a list (LST_INI, LST_LIN, LST_EXI)
+! window. Normally is DEBUG= 0, 1, 2 used, with some
+! exceptions. The input DEBUG flag here will use the
+! values 1-9 for printout to the .TRACE file. By adding
+! multiples of 10 (+n*10) will additional trace data
+! be written to the file.
+! 
+! The input flag DEBUG controls the the output:
+! Eq.   0: No output to the debug file 
+! Eq. 1-9: Debug printout of input line
+! Add 10 : Printout of the module name
+! Add 20 : Printout of the path
+! Add 30 : Printout of active coordinate system data
+! Add 80 : Show (with INPMT) the Debug line
+! Eq.  99: Create a new .TRACE file
+! Eq. 199: Read the .TRACE file and show in LIST window
+! ---
+!
+! Revision history
+! ________________
+!
+! 1998-05-24 Gunnar Liden
+! 1998-06-20 Read of trace file added Gunnar Liden
+! 1999-04-11 Bug date on list Gunnar Liden
+! 
+!
+!************************************************************
+
+!sdesce Debug function which writes to active_job.TRACE
+!sdescs Debug funktion som skriver till active_job.TRACE
+
+GLOBAL GEOMETRY MODULE tracev0   ( 
+INT  DEBUG := 0 >"Eq. 0: Do nothing Eq. 1-9: Write Eq. 99: New file";
+STRING d_line*132 := "Debug data" >"Line with Debug Data");
+
+! Internal variables:
+
+
+  STRING   trafile*132;         ! Full name of trace file
+  STRING   jobname*50;          ! Active job name
+
+  INT      status;              ! For TEST_FILE
+
+                                ! For TIME:
+  INT      year;                !
+  INT      month;               !
+  INT      day;                 !
+  INT      hour;                !
+  INT      minute;              !
+  INT      second;              !
+  STRING   date*132;            ! Date as a string
+
+                                ! For get_pathv0:
+  REF     input_id;             ! Reference to an entity
+  STRING  name_part(10)*10;     ! Part names
+  REF     id_prt(10);           ! Reference name on the different levels
+  INT     n_parts;              ! Number of levels (part names)
+  INT     i_part;               ! Loop index for path 
+
+
+  INT    i_lin;                 ! Loop index line in TRACE file
+  STRING rad*132;               ! One line from the TRACE file
+
+  FILE     tra;                 ! Trace file
+
+! Maximum number of lines which can be read from TRACE file
+! Possible to change to any value !
+  CONSTANT INT max_no_lines = 2500;
+
+ BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! Return if DEBUG = 0
+! ---
+
+  IF  DEBUG = 0 THEN
+    EXIT();
+  ENDIF;
+
+! +++
+! Active job name and full name of the trace file
+! ---
+
+! The active job name
+  jobname := ACT_JOBNAM();
+! Full file name of the debug file
+  trafile := ACT_JOBDIR()+jobname+".TRACE";
+
+! +++
+! Get the path
+! ---
+
+! Dummy #0 entity is needed 
+  input_id := GLOBAL_REF(#0);
+  PART(#1,get_pathv0 (input_id, name_part, id_prt, n_parts):SAVE=0);
+
+! +++
+! Determine if the .TRACE file exists
+! ---
+
+  status := TEST_FILE(trafile,"X");
+! IF status = 1 THEN
+!   EXIT(" "+jobname+".TRACE exists on your job directory");
+! ENDIF;
+
+! +++
+! Read a TRACE file and show on LIST window for DEBUG= 199
+! --------------------------------------------------------
+! ---
+
+  IF  DEBUG = 199 THEN
+
+! +++
+!   Error message to LIST window if file no exists
+! ---
+    IF  status <> 1 THEN
+      LST_INI("ERROR*ERROR*ERROR* tracev0 *ERROR*ERROR*ERROR*");
+      LST_LIN("There is no "+trafile+" file!");
+      LST_EXI();
+    ENDIF;
+
+! +++
+!   Open the file
+! ---
+  
+!   Open file (and make an unnecessary programming check)
+    OPEN(tra,"R", trafile);
+    IF  IOSTAT(tra) <> 0 THEN
+      EXIT("tracev0 Open TRACE file failed");
+    ENDIF;
+
+!   Open the LIST window
+    LST_INI("File: "+trafile);
+
+!   Start loop read lines (note max_no_lines)
+    FOR  i_lin := 1 TO max_no_lines DO 
+!     Read current line
+      rad := INLIN(tra);
+!     Error is assumed to be End Of File
+      IF  IOSTAT(tra) <> 0 THEN
+        GOTO eof;
+      ENDIF;
+!     Current line to LIST window
+      LST_LIN(rad);
+
+!   End   loop read lines 
+    ENDFOR;
+
+!   Error: max_no_lines must be increased
+    LST_LIN("   ");
+    LST_LIN("   ");
+    LST_LIN("*******ERROR*ERROR*ERROR******************************");
+    LST_LIN("  ");
+    LST_LIN("There are additional lines in the file !");
+    LST_LIN("   ");
+    LST_LIN("Create a new "+trafile+" either by:");
+    LST_LIN("Delete "+jobname+".TRACE on your job directory");
+    LST_LIN("             or ");
+    LST_LIN("Call the function tracenv0 (actually this function");
+    LST_LIN("tracev0 with code DEBUG= 99");
+    LST_LIN("             or ");
+    LST_LIN("Make a programming change:   ");
+    LST_LIN("Increase the maximum number of lines in");
+    LST_LIN("module tracev0. Current value of parameter ");
+    LST_LIN("max_no_lines is "+STR(max_no_lines,4,0));
+    LST_LIN("  ");
+    LST_LIN("*******ERROR*ERROR*ERROR******************************");
+    LST_LIN("   ");
+    LST_LIN("   ");
+
+eof:; ! Label: End of file
+
+!   Close the LIST window
+    LST_EXI();
+!   Close the TRACE file
+    CLOSE(tra);
+!   Exit with no error (no stop) from the function
+    EXIT();
+  ENDIF;
+
+! +++
+! Create a new TRACE file for DEBUG= 99
+! -------------------------------------
+! ---
+
+  IF  DEBUG = 99 THEN
+
+! +++
+!   Current date (call of TIME)
+! ---
+
+    TIME(year,month,day,hour,minute,second);
+
+    IF year  <= 99 THEN
+      date    := "19" + STR(year , -1,0)+"-";
+    ELSE
+      date    := "20" + STR(year , -1,0)+"-";
+    ENDIF;
+    IF month < 10 THEN
+      date    := date    + "0"  +STR(month, -1,0)+"-";
+    ELSE
+    date    := date           +STR(month, -1,0)+"-";
+    ENDIF;
+    IF day   < 10 THEN
+      date    := date    + "0"  +STR(day  , -1,0);
+    ELSE
+      date    := date           +STR(day  , -1,0);
+    ENDIF;
+! +++
+!   Open (create) a new file
+! ---
+  
+    OPEN(tra,"W", trafile);
+    IF  IOSTAT(tra) <> 0 THEN
+      EXIT("tracev0 Open of new .TRACE file failed");
+    ENDIF;
+
+! +++
+!   Write header data
+! ---
+
+    OUTSTR(tra,"File: "+trafile+" Date: "+date);
+    OUTLIN(tra);
+    OUTSTR(tra,"      (File created by module tracev0)");
+    OUTLIN(tra);
+
+    IF  n_parts > 0 THEN
+      OUTSTR(tra,"Path: ");
+      OUTLIN(tra);
+      FOR  i_part := 1 TO n_parts DO
+        OUTSTR(tra,STR(i_part,4,0)+" Name "+name_part(i_part));
+        OUTLIN(tra);
+      ENDFOR;
+!   ELSE
+!     OUTSTR(tra,"   A path is not defined. This function is");
+!     OUTLIN(tra);
+!     OUTSTR(tra,"   probably called by a MACRO");
+!     OUTLIN(tra);
+    ENDIF;
+
+    OUTSTR(tra,
+     "! _________________________________________________________");
+    OUTLIN(tra);
+    OUTLIN(tra);
+    OUTLIN(tra);
+
+! +++
+!   Write input line if defined
+! ---
+
+    IF  d_line <> "" AND d_line <> " " THEN
+      OUTSTR(tra,d_line);
+      OUTLIN(tra);
+    ENDIF;
+
+! +++
+!   Close the file and return.
+! ---
+
+    CLOSE(tra);
+    EXIT();
+  ENDIF; ! End DEBUG= 99
+  
+! +++
+! Write Debug Data for DEBUG = 1-9
+
+  IF  DEBUG >= 1 AND DEBUG <= 9  THEN
+! +++
+!   Open file for append of data
+! ---
+  
+    OPEN(tra,"A", trafile);
+    IF  IOSTAT(tra) <> 0 THEN
+      EXIT("tracev0 Open of .TRACE file for append failed");
+    ENDIF;
+
+! +++
+!   Write input line if defined
+! ---
+
+    IF  d_line <> "" AND d_line <> " " THEN
+      OUTSTR(tra,d_line);
+      OUTLIN(tra);
+    ENDIF;
+
+
+! +++
+!   Close the file and return.
+! ---
+
+    CLOSE(tra);
+    EXIT();
+
+  ELSE
+    EXIT("tracev0 DEBUG "+STR(DEBUG,-1,0)+" not yet implemented");
+  ENDIF;
+
+
+ ENDMODULE
+

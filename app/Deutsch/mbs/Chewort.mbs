@@ -1,0 +1,120 @@
+! ***************** chewort   **************************** 
+! 
+! +++ 
+! Check word
+! 
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-11-11 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdesce Check word
+
+
+BASIC GEOMETRY MODULE chewort (
+    STRING check_deutsch*132; ! German word that shall be changed
+    STRING prt_name*10;       ! Part name (empty = all parts)
+VAR INT    n_all;             ! Total number of words that are equal
+VAR REF    all_id(20));       ! All identities for the retrieved words
+ 
+! Internal variables 
+
+  STRING deutsch*132;      ! Deutsches Wort
+
+  INT    n_wort;           ! Total number of words
+
+  REF    prt_id;           ! Identity for part
+
+  INT    i_wort;           ! Loop index
+
+  CONSTANT  INT    i_undef = -12345;        ! Undefined integer
+  CONSTANT  FLOAT  f_undef = -0.123456789;  ! Undefined float
+ 
+  CONSTANT  INT list = 0;
+
+  
+BEGINMODULE
+
+! +++
+! 1. Checks and initializations
+! ---
+  IF  check_deutsch = "" OR check_deutsch = " " THEN
+    EXIT("chewort Kein Wort!");
+  ENDIF;
+
+! Initialization of variables
+
+  n_all := 0;
+
+  FOR  i_wort := 1 TO 20 DO
+    all_id(i_wort)    := #0;
+  ENDFOR;
+
+! Initialization of internal variables
+
+  prt_id     := #0;
+ 
+
+
+! +++
+! 2. Search
+! ---
+ 
+  SET_ROOT_GM(#0);
+  n_wort  := 0;
+
+next_prt:; ! Label next part
+
+! Get next part
+  IF  prt_name = "" THEN
+    prt_id := GET_NEXT_GM (0, 16384);
+  ELSE
+    prt_id := GET_NEXT_GM (0, 16384, prt_name);
+  ENDIF;
+
+! End of scanning if all parts are retrieved
+  IF  prt_id = #0 THEN
+    GOTO all_prt;
+  ENDIF;
+
+! An additional part is found
+  n_wort := n_wort + 1;
+
+! Get the german word
+  deutsch   := GETSTR(prt_id,1);    
+
+! Compare
+  IF  deutsch = check_deutsch THEN
+    n_all := n_all + 1;
+    all_id(n_all) := prt_id;
+  ENDIF;
+
+  GOTO  next_prt;
+
+all_prt:; ! Label all objects are retrieved
+
+  IF  n_wort = 0 THEN
+    EXIT("chewort Es gibt keine "+prt_name);
+  ENDIF;
+ 
+! +++
+! n. List the data on screen
+! ---
+
+  IF  list = 1 THEN
+    LST_INI("chewort fur "+prt_name);
+    LST_LIN(" ");
+    LST_LIN("n_all =     "+STR(n_all,6,0));
+    FOR  i_wort := 1 TO n_all DO
+      LST_LIN(STR(i_wort,4,0)+" Identitat " + RSTR(all_id(i_wort)));  
+    ENDFOR;
+    LST_EXI();
+  ENDIF;
+
+ENDMODULE
+
+

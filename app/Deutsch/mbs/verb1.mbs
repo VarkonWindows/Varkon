@@ -1,0 +1,78 @@
+! ***************** verb1   **************************** 
+! 
+! +++ 
+! Verb Übung
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-16 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Verb Übung
+  
+GLOBAL DRAWING MODULE verb1 ( 
+INT    n_all         := 10 >"Wieviele Wörter?");
+
+
+  REF    all_id(100);      ! Sämtliche Identitäten
+  REF    prt_id;           ! Identitat
+  STRING substantiv*132;   ! Substantiv
+  STRING schwedisch*132;   ! Auf Schwedish
+  STRING genus*132;        ! Genus
+  STRING mehrzahl*132;     ! Mehrzahl
+   
+  STRING antwort*3;        ! Antwort
+
+  STRING fehler(100)*132;  ! Fehler
+  INT    n_fehler;         ! Anzahl Fehler
+  INT    i_fehler;         ! Rechner
+  INT    i_all;            ! Rechner
+  INT    z_fall;           ! Zeichnungsfall
+
+  CONSTANT  STRING prt_name = "verb";
+
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+! +++
+! Array mit Identitäten definiert mit Zufallszahlen
+! ---
+
+  PART(#2, getworter ( prt_name, n_all, all_id):SAVE=0);
+ 
+! +++
+! Fragen und Antworte
+! ---
+
+  PART(#3, ma_verb(n_all, all_id, n_fehler, fehler));
+
+! +++
+! Resultat
+! ----
+
+  IF  n_fehler = 0 THEN
+    z_fall := 1;
+    PART(#10,keinfehl( n_all, all_id, z_fall):SAVE=1);
+  ENDIF;
+
+
+  IF  n_fehler > 0 THEN
+    LST_INI("Fehler ");
+    FOR  i_fehler := 1 TO n_fehler DO 
+       LST_LIN(STR(i_fehler,3,0)+ "  "+fehler(i_fehler));
+    ENDFOR;
+    LST_EXI();
+  ENDIF;
+
+
+ENDMODULE 
+
+
+
+

@@ -1,0 +1,65 @@
+#include "$VARKON_MDF\v319.MDF"
+
+!sdescd Hauptmenü für die Applikation Deutsch
+
+! 2000-11-05  Gunnar Liden
+
+Main_menu = 200
+
+m200  = "DEUTSCH"
+        "Verb",          ,p700
+        "Substantiv",    ,p701
+        "Adjektiv",      ,p702
+        "Adverb",        ,p703
+        "Pronomen",      ,p704
+        "Präposition",   ,p705
+        "Übungen"        ,m202
+        "Administration" ,m203
+        "terminate"      ,f173
+        "help"           ,f153
+        "varkon"         ,m2;
+
+
+
+m201  = "TRACE"
+        "read file"         ,F750
+        "create new file"   ,F751
+        "update part"       ,f109;
+
+m202  = "ÜBUNGEN"
+        "Genus"             ,F710
+        "Verb"              ,F711
+        "Adjektiv"          ,F712
+        "Adverb"            ,F713
+        "Papier"            ,F716;
+!        "Schwedisch->"      ,m299
+!        "Deutsch->"         ,m299;
+
+m203  = "ADMINISTRATION"
+        "Kontrolle"         ,F714
+        "Write txt"         ,F715;
+
+
+
+m299 = "...."     
+       "Nicht implementiert"   , m299;
+
+
+t700 = "verb"
+t701 = "substantiv"
+t702 = "adjektiv"
+t703 = "adverb"
+t704 = "pronomen"
+t705 = "praposit"
+
+t710 = "genus1"
+t711 = "verb1"
+t712 = "adjekt1"
+t713 = "adverb1"
+t714 = "check1"
+t715 = "writembs"
+t716 = "genuslist"
+
+t750 = "tracerv0"
+t751 = "tracenv0"
+

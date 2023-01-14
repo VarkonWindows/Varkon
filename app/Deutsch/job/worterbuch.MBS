@@ -1,0 +1,50 @@
+GLOBAL DRAWING MODULE worterbuch();
+
+
+BEGINMODULE
+
+  part(#1,allverb1());
+  part(#2,alladj1());
+  part(#3,alladv1());
+  part(#4,allpra1());
+  part(#20,allsubs1());
+  part(#5,pronomen("jener", "den denne, den där", 
+    "zu jener zeit = på den tiden", "Unused", "Unused"));
+  part(#6,pronomen("derlei", 
+    "1. detta slags, dylik  2. något sådant (dylikt, liknande)", "Unused", 
+    "Unused", "Unused"));
+  part(#7,pronomen("jener", "den denne, den där", 
+    "zu jener zeit = på den tiden", "Unused", "Unused"));
+  part(#8,pronomen("derlei", 
+    "1. detta slags, dylik  2. något sådant (dylikt, liknande)", "Unused", 
+    "Unused", "Unused"));
+  part(#9,verb("verheiraten", "1. gifta bort 2. sich ~ gifta sig", 
+    "verheiratete", "verheiratet", "haben", "nein", "sich wieder verheiraten"
+    , "jung verheiratet = nygift", "Unused"));
+  part(#10,verb("heiraten", "gifta sig", "heiratete", "heiratete", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#11,verb("mausen", "knycka, nalla, sno", "mauste", "gemaust", "haben"
+    , "nein", "mausern", "byta fjädrar , ömsa skinn ", "mauserte"));
+  part(#12,verb("mausern", "byta fjädrar, ömsa skinn", "mauserte", 
+    "gemausert", "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#13,adjektiv("hinfällig", 
+    "1. skröplig, bräcklig (om person) 2. ogiltig (bildligt)", 
+    "Damit wird die Sache hinfällig = därmed faller saken (det hela)", 
+    "Unused", "Unused"));
+  part(#14,adverb("eh", 
+    "1. i alla fall, ändå 2. wie seit ~ und je = som i alla tider (alltid)", 
+    "Unused", "Unused", "Unused"));
+  part(#15,verb("verunstalten", "vanställa, förstöra", " ", "verunstaltet", 
+    "haben", "nein", "Unused", "Unused", "Unused"));
+  part(#16,verb("schnippeln", "klippa, skära i bitar", "?", "?", "haben", 
+    "nein", "Unused", "Unused", "Unused"));
+  part(#17,substantiv("Nachwuchs", 
+    "1. återväxt, kommande ny generation 2. tillökning (barn)", "der", 
+    "Nachwuchs", "Unused", "Unused", "Unused"));
+  part(#18,substantiv("Schnürsenkel", "skosnöre (dialektalt)", "der", 
+    "Schnürsenkel", "Unused", "Unused", "Unused"));
+  part(#19,substantiv("Sache", "1. sak 2. ärende, affär, historia", "die", 
+    "Sachen", "In Sachen Umwelt = när det gäller (beträffande) miljön", 
+    "Unused", "Unused"));
+
+ENDMODULE

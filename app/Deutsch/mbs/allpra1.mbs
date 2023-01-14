@@ -1,0 +1,25 @@
+GLOBAL DRAWING MODULE allpra1();
+BEGINMODULE
+PART(#1, praposit(
+"angesichts",
+"1. inför, i åsynen av  2. med hänsyn till, i betraktande av",
+"Genitiv",
+"Unused",
+"Unused",
+"Unused"));
+PART(#2, praposit(
+"anlässlich",
+"med anledning av",
+"genitiv",
+"Unused",
+"Unused",
+"Unused"));
+PART(#3, praposit(
+"gemäß",
+"i enlighet med",
+"dativ",
+"Gemäß ihren Wunsch",
+"Unused",
+"Unused"));
+ENDMODULE
+

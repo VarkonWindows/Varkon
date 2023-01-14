@@ -1,0 +1,70 @@
+! ***************** verb   **************************** 
+! 
+! +++ 
+! Das Modul registriert ein Verb
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-04 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Das Modul registriert ein Verb
+  
+GLOBAL GEOMETRY MODULE verb ( 
+STRING praesens*132    := "Verb"   >"Bitte, das Verb in Präsens eingeben";
+STRING schwedisch*132  := "svenska">"Bitte, das Verb in Schwedisch eingeben";
+STRING imperfekt*132   := " "      >"Bitte, das Verb in Imperfekt eingeben";
+STRING perfekt*132     := " "      >"Verb in Perfekt Partizip (PP) eingeben";
+STRING hilfsverb*132   := "haben"  >"Hilfsverb für PP eingeben (haben/sein)";
+STRING reflexive*132   := "nein"   >"Ist das Verb reflexive (ja/nein/beide)?";
+STRING unused_1*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_2*132    := "Unused" >"@ A not yet used parameter ";
+STRING unused_3*132    := "Unused" >"@ A not yet used parameter ");
+
+ 
+BEGINMODULE 
+ 
+! +++
+! Kontrolle von den Eingabedaten
+! --- 
+
+  IF  praesens = "" OR praesens = " " OR praesens = "  " THEN
+    EXIT("verb Kein Verb ist eingegeben");
+  ENDIF;
+
+  IF    reflexive = "ja" THEN
+    ;
+  ELIF  reflexive = "JA" THEN
+    reflexive := "ja";
+  ELIF  reflexive = "Ja" THEN
+    reflexive := "ja";
+  ELIF  reflexive = "nein" THEN
+    reflexive := "nein";
+  ELIF  reflexive = "NEIN" THEN
+    reflexive := "nein";
+  ELIF  reflexive = "Nein" THEN
+    reflexive := "nein";
+  ELIF  reflexive = "beide" THEN
+    reflexive := "beide";
+  ELIF  reflexive = "BEIDE" THEN
+    reflexive := "beide";
+  ELIF  reflexive = "Beide" THEN
+    reflexive := "beide";
+  ELSE
+    EXIT("verb Parameter Reflexive ist nicht ja, nein oder beide");
+  ENDIF;
+
+
+ENDMODULE 
+ 
+
+
+
+
+
+
+
+

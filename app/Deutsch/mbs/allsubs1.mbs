@@ -1,0 +1,1861 @@
+GLOBAL DRAWING MODULE allsubs1();
+BEGINMODULE
+PART(#1, substantiv(
+"Gehalt",
+"lön",
+"das",
+"Gehälter",
+"Unused",
+"Unused",
+"Unused"));
+PART(#2, substantiv(
+"Unternehmer",
+"företagare",
+"der",
+"Unternehmer",
+"Unused",
+"Unused",
+"Unused"));
+PART(#3, substantiv(
+"Fleischwolf",
+"köttkvarn",
+"der",
+"Fleischwölfe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#4, substantiv(
+"Aufgang",
+"uppgång",
+"der",
+"Aufgänge",
+"Unused",
+"Unused",
+"Unused"));
+PART(#5, substantiv(
+"Knüppel",
+"1. påk, knölpåk, käpp 2. (runt) vedträ 3. växelspak, styrspak",
+"der",
+"Knüppel",
+"Unused",
+"Unused",
+"Unused"));
+PART(#6, substantiv(
+"Penner",
+"uteliggare",
+"der",
+"Penner",
+"Unused",
+"Unused",
+"Unused"));
+PART(#7, substantiv(
+"Kruste",
+"skorpa, brodkant",
+"die",
+"Krusten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#8, substantiv(
+"Begegnung",
+"möte, sammanträffande",
+"die",
+"Begegnungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#9, substantiv(
+"Bewusstsein",
+"medvetande",
+"das",
+"Bewusstsein",
+"Unused",
+"Unused",
+"Unused"));
+PART(#10, substantiv(
+"Freiwild",
+"lovligt byte",
+"das",
+"Freiwilde",
+"Unused",
+"Unused",
+"Unused"));
+PART(#11, substantiv(
+"Schmiede",
+"smedja",
+"die",
+"Schmieden",
+"Unused",
+"Unused",
+"Unused"));
+PART(#12, substantiv(
+"Geiß",
+"get (eine weibliche Ziege)",
+"die",
+"Geißen",
+"eine weibliche Ziege",
+"Unused",
+"Unused"));
+PART(#13, substantiv(
+"Geißblatt",
+"blomma ?",
+"das",
+"Geißblätter",
+"Unused",
+"Unused",
+"Unused"));
+PART(#14, substantiv(
+"Mehrheit",
+"majoritet",
+"die",
+"Mehrheiten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#15, substantiv(
+"Schlummer",
+"slummer, sömn",
+"der",
+"Schlummers",
+"Unused",
+"Unused",
+"Unused"));
+PART(#16, substantiv(
+"Befindlichkeit",
+"????",
+"die",
+" ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#17, substantiv(
+"Aufwand",
+"kostnader, utgifter",
+"der",
+"Aufwande",
+"Unused",
+"Unused",
+"Unused"));
+PART(#18, substantiv(
+"Erröten",
+"rodnad (?)",
+"das",
+" ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#19, substantiv(
+"Genehmigung",
+"tillstånd",
+"die",
+"Genehmigungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#20, substantiv(
+"Strecke",
+"sträcka, väg, linje",
+"die",
+"Strecken",
+"auf der Strecke bleiben = bli kvar, inte komma längre, bli utslagen",
+"Unused",
+"Unused"));
+PART(#21, substantiv(
+"Keuschheit",
+"kyskhet",
+"die",
+" .. keine .. (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#22, substantiv(
+"Not",
+"nöd, trångmål",
+"die",
+"Note",
+"Not tun = vara nödvändig, behövas",
+"Not kennt kein Gebot = nöden har ingen lag",
+"Unused"));
+PART(#23, substantiv(
+"Flur",
+"1. odlingsbar mark  2. korridor",
+"die",
+"Fluren",
+"stand sie allein auf weiter Flur = ?",
+"Unused",
+"Unused"));
+PART(#24, substantiv(
+"Unternehmen",
+"firma, företag",
+"das",
+"Unternehmens",
+"Unused",
+"Unused",
+"Unused"));
+PART(#25, substantiv(
+"Bund",
+"förening, förbund",
+"das",
+"Weltärztbund",
+"Unused",
+"Unused",
+"Unused"));
+PART(#26, substantiv(
+"Wohltäter",
+"välgörare",
+"der",
+"Wohltäters",
+"Unused",
+"Unused",
+"Unused"));
+PART(#27, substantiv(
+"Anleger",
+"investerare, placerare",
+"der",
+"Anleger",
+"Unused",
+"Unused",
+"Unused"));
+PART(#28, substantiv(
+"Lauer",
+"Lurpassa",
+"die",
+"Lauer",
+"Auf der Lauer liegen = ligga på lur",
+"Unused",
+"Unused"));
+PART(#29, substantiv(
+"Schare",
+"skara, flock, skock",
+"die",
+"Scharen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#30, substantiv(
+"Hiobsbotschaft",
+"jobspost (olycksbud, sorgebud)",
+"die",
+"Hiobsbotschaften",
+"Unused",
+"Unused",
+"Unused"));
+PART(#31, substantiv(
+"Langeweile",
+"långtråkighet",
+"die",
+"die Langeweile haben = ha langtrakigt",
+"Unused",
+"Unused",
+"Unused"));
+PART(#32, substantiv(
+"Bescherung",
+"julklappsutdelning",
+"die",
+"Bescherungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#33, substantiv(
+"Ertrag",
+"avkastning, vinst",
+"der",
+"Ertrage",
+"Unused",
+"Unused",
+"Unused"));
+PART(#34, substantiv(
+"GAU",
+"reaktorhaveri, kärnkraftsolycka, [stor olycka]",
+"der",
+"GAUs",
+"Grosster anzunehmender Unfall",
+"Unused",
+"Unused"));
+PART(#35, substantiv(
+"Archipel",
+"arkipelag, övärld",
+"der",
+"Archipel (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#36, substantiv(
+"Gebot",
+"påbud, befallning, bestämmelse",
+"das",
+"Gebote",
+"die Zehn Gebote",
+"Unused",
+"Unused"));
+PART(#37, substantiv(
+"Zuzug",
+"inflyttning, tillströmning",
+"der",
+"Zuzuge (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#38, substantiv(
+"Haltung",
+"attityd",
+"die",
+"Haltungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#39, substantiv(
+"Attitüde",
+"attitud",
+"die",
+"Attitude (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#40, substantiv(
+"Gewohnheit",
+"vana",
+"die",
+"Gewohnheiten (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#41, substantiv(
+"Dolmetscher",
+"tolk",
+"der",
+"Dolmetscher (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#42, substantiv(
+"Dolmetscherin",
+"tolk (kvinnlig)",
+"die",
+"Dolmetscherin (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#43, substantiv(
+"Wirbelsäule",
+"ryggrad, kotpelare",
+"die",
+"Wirbelsäulen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#44, substantiv(
+"Wirbel",
+"1. virvel  2. kota  3. stämskruv på fiol",
+"der",
+"Wirbel (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#45, substantiv(
+"Auftritt",
+"1. scen  2. uppträdande, entre  3. uppträde, scen",
+"der",
+"Auftritte",
+"Unused",
+"Unused",
+"Unused"));
+PART(#46, substantiv(
+"Träger",
+"1. bärare  2. balk (i byggnad)",
+"der",
+"Träger  (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#47, substantiv(
+"Durchsage",
+"meddelande",
+"die",
+"Durchsage  (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#48, substantiv(
+"Stöckelschuh",
+"högklackad sko",
+"der",
+"Stöckelschuhen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#49, substantiv(
+"Nachahmung",
+"härmning, imitering, kopia, imitation",
+"die",
+"Nachahmungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#50, substantiv(
+"Windel",
+"blöja",
+"die",
+"Windel (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#51, substantiv(
+"Leib",
+"kropp, mage, liv",
+"der",
+"Leib (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#52, substantiv(
+"Kostüm",
+"dräkt, kjol och kavaj",
+"das",
+"Kostüme (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#53, substantiv(
+"Anzug",
+"kostym",
+"der",
+"Anzüge",
+"Unused",
+"Unused",
+"Unused"));
+PART(#54, substantiv(
+"Mähne",
+"man (på häst/djur)",
+"die",
+"Mähnen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#55, substantiv(
+"Augenbraue",
+"ögonbryn",
+"die",
+"Augenbrauen (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#56, substantiv(
+"Sippe",
+"klan, släkt, stor familj",
+"die",
+"Sippen (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#57, substantiv(
+"Erpel",
+"ankhanne",
+"der",
+"Erpel (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#58, substantiv(
+"Annehmlichkeit",
+"fördelar, bekvämligheter",
+"die",
+"Annehmlichkeit (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#59, substantiv(
+"Vogelbeere",
+"rönnbär",
+"die",
+"Vogelebeere  (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#60, substantiv(
+"Luchs",
+"lodjur",
+"der",
+"Luchs  (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#61, substantiv(
+"Entwurf",
+"utkast, skiss",
+"der",
+"Entwürfe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#62, substantiv(
+"Makel",
+"skamfläck, fläck, skavank, fel",
+"der",
+"Makels",
+"Unused",
+"Unused",
+"Unused"));
+PART(#63, substantiv(
+"Schöpfer",
+"1. skapare  2. skopa, öskar",
+"der",
+"Schöpfer  (?)",
+"Unused",
+"Unused",
+"Unused"));
+PART(#64, substantiv(
+"Gedächtnis",
+"minne",
+"das",
+"Gedächtnisse",
+"Unused",
+"Unused",
+"Unused"));
+PART(#65, substantiv(
+"Ritze",
+"springa, spricka",
+"die",
+"Ritzen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#66, substantiv(
+"Blatt",
+"blad",
+"das",
+"Blätter",
+"Unused",
+"Unused",
+"Unused"));
+PART(#67, substantiv(
+"Vergewaltigung",
+"våldtäkt",
+"die",
+"Vergewaltigungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#68, substantiv(
+"Bummelzug",
+"ett tåg som stannar vid varje station",
+"der",
+"Bummelzüge",
+"Unused",
+"Unused",
+"Unused"));
+PART(#69, substantiv(
+"Abgeordnete",
+"parlamentsledamot",
+"der",
+"Abgeordneten",
+"auch die Abgeordnete",
+"Unused",
+"Unused"));
+PART(#70, substantiv(
+"Formular",
+"formulär",
+"das",
+"Formulare",
+"Unused",
+"Unused",
+"Unused"));
+PART(#71, substantiv(
+"Auftrag",
+"1. uppdrag, uppgift 2. påstrykning (av färg)",
+"der",
+"Aufträge",
+"im Auftrag von jemandem = på uppdrag av någon",
+"Unused",
+"Unused"));
+PART(#72, substantiv(
+"Kopiergerät",
+"kopieringsapparat",
+"das",
+"Kopiergeräte",
+"Unused",
+"Unused",
+"Unused"));
+PART(#73, substantiv(
+"Kopierapparat",
+"kopiator, kopieringsmaskin",
+"der",
+"Koiperapparate",
+"Unused",
+"Unused",
+"Unused"));
+PART(#74, substantiv(
+"Ueberzeugung",
+"1. övertygande, övertalning 2. övertygelse, förvissning",
+"die",
+"Ueberzeugungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#75, substantiv(
+"Kunst",
+"konst",
+"die",
+"Kunste",
+"Unused",
+"Unused",
+"Unused"));
+PART(#76, substantiv(
+"Unfug",
+"1. hyss, rackartyg, ofog 2. nonsens, strunt",
+"der",
+"Unfuge",
+"Unused",
+"Unused",
+"Unused"));
+PART(#77, substantiv(
+"Programm",
+"program",
+"das",
+"Programme",
+"Unused",
+"Unused",
+"Unused"));
+PART(#78, substantiv(
+"Mikrofon",
+"mikrofon",
+"das",
+"Mikrofone",
+"Unused",
+"Unused",
+"Unused"));
+PART(#79, substantiv(
+"Chaos",
+"kaos",
+"das",
+"-",
+"Unused",
+"Unused",
+"Unused"));
+PART(#80, substantiv(
+"Reisebüro",
+"resebyrå",
+"das",
+"Reisebüros",
+"Unused",
+"Unused",
+"Unused"));
+PART(#81, substantiv(
+"Reporter",
+"reporter",
+"der",
+"Reporters",
+"Unused",
+"Unused",
+"Unused"));
+PART(#82, substantiv(
+"Angestellte",
+"anställd, tjänsteman  (både der och die)",
+"der",
+"Angestellen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#83, substantiv(
+"Aberglaube",
+"vidskeplighet, skrock",
+"der",
+"Aberglauben",
+"Unused",
+"Unused",
+"Unused"));
+PART(#84, substantiv(
+"Verbindlichkeit",
+"1. bindande kraft 2. hövlighet, älskvärdhet, förbindlighet 3. skyldighet",
+"die",
+"Verbindlichkeiten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#85, substantiv(
+"Leistung",
+"prestation",
+"die",
+"Leistungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#86, substantiv(
+"Ruch",
+"dåligt rykte (?)",
+"der",
+" ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#87, substantiv(
+"Strähne",
+"(hår) slinga",
+"die",
+"Strähnen (?)",
+"eine glückliche Strähne haben = ha tur hela tiden",
+"Unused",
+"Unused"));
+PART(#88, substantiv(
+"Unrecht",
+"orätt  (zu Unrecht = med orätt)",
+"das",
+"Nur singular?",
+"nicht zu Unrecht = inte utan anledning",
+"Unused",
+"Unused"));
+PART(#89, substantiv(
+"Annehmlichkeit",
+"fördelar, bekvämligheter",
+"die",
+" ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#90, substantiv(
+"Fülle",
+"1. mängd, överflöd, rikhaltighet 2. fullhet, rikedom 3. körperliche Fülle 0 korpulens",
+"die",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#91, substantiv(
+"Niederlassung",
+"bosättning",
+"die",
+"Niederlassungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#92, substantiv(
+"Mehrheit",
+"majoritet",
+"die",
+"Mehrheiten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#93, substantiv(
+"Scharfmacher",
+"upprorsmakare",
+"der",
+" ",
+"Unused",
+"Unused",
+"Unused"));
+PART(#94, substantiv(
+"Schurke",
+"skurk, bov",
+"der",
+"Schurken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#95, substantiv(
+"Kahlschlag",
+"kalhygge",
+"der",
+"------",
+"Unused",
+"Unused",
+"Unused"));
+PART(#96, substantiv(
+"Elan",
+"hänförelse, iver",
+"der",
+"-------",
+"Unused",
+"Unused",
+"Unused"));
+PART(#97, substantiv(
+"Leitfaden",
+"1. (grundläggande) lärobok, handledning, manual 2. ledmotiv, tema",
+"der",
+"?",
+"Unused",
+"Unused",
+"Unused"));
+PART(#98, substantiv(
+"Zerknirschung",
+"ånger (?)",
+"die",
+"-----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#99, substantiv(
+"Magistrat",
+"kommunalförvalning",
+"der",
+"Magistrate",
+"Unused",
+"Unused",
+"Unused"));
+PART(#100, substantiv(
+"Eitelkeit",
+"fåfänglighet (nedsättande)",
+"die",
+"Eitelkeiten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#101, substantiv(
+"Anstand",
+"1. anständighet, fint sätt, god ton, etikett 2. keinen ~ nehmen = inte tveka att göra något",
+"der",
+"---",
+"den Anstand wahren = iaktta god ton",
+"Unused",
+"Unused"));
+PART(#102, substantiv(
+"Bedürfnis",
+"behov",
+"das",
+"Bedürfnisse",
+"Unused",
+"Unused",
+"Unused"));
+PART(#103, substantiv(
+"Inzenierung",
+"iscensättning, uppsättning, regi",
+"die",
+"Inzenierungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#104, substantiv(
+"Tanne",
+"gran",
+"die",
+"Tannen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#105, substantiv(
+"Tannenbaum",
+"1. gran 2. julgran",
+"der",
+"Tannenbäume",
+"Unused",
+"Unused",
+"Unused"));
+PART(#106, substantiv(
+"Klüngel",
+"gäng, kumpaner, er und sein Klüngel = han och hans gäng",
+"der",
+"Klüngels",
+"Unused",
+"Unused",
+"Unused"));
+PART(#107, substantiv(
+"Gestaltung",
+"formgivning, utformning, gestaltning",
+"die",
+"Gestaltungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#108, substantiv(
+"Spur",
+"1. spår 2. körfält, fil 3. en gnutta",
+"die",
+"Spuren",
+"auf die Spur kommen = komma någon på spåren",
+"die Spur wechseln = byta fil",
+"eine Spur Paprika = en gnutta (anig) paprika"));
+PART(#109, substantiv(
+"Draht",
+"1. metalltråd 2. (telefon) linje",
+"der",
+"Drähte",
+"der heisse Draht = eine direkte Telefoneverbindung zwischen den Regierungen zweier Staaten",
+"Unused",
+"Unused"));
+PART(#110, substantiv(
+"Anlass",
+"anledning, skäl, grund, orsak",
+"der",
+"Anlässe",
+"aus gegebenem Anlass = kanslityska",
+"Unused",
+"Unused"));
+PART(#111, substantiv(
+"Vergeltung",
+"1. vedergällning 2. belöning, återgäldande",
+"die",
+"Vergeltungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#112, substantiv(
+"Vergeltungsmassnahme",
+"vedergällning(saktion), hämnd(aktion)",
+"die",
+"Vergelungsmassnahmen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#113, substantiv(
+"Zeitspanne",
+"tirymd, tid, period",
+"die",
+"Zeitspannen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#114, substantiv(
+"Beleidigung",
+"förolämpning, ärekränkning (juridiskt)",
+"die",
+"Beleidigungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#115, substantiv(
+"Enttäuschung",
+"besvikelse",
+"die",
+"Enttäuschungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#116, substantiv(
+"Vorwurf",
+"1. förebråelse 2. ämne, motiv",
+"der",
+"Vorwürfe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#117, substantiv(
+"Wurf",
+"1. kast, tärningskast 2. kull",
+"der",
+"Würfe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#118, substantiv(
+"Würfel",
+"tärning, kub",
+"der",
+"Würfel",
+"die Würfel sind gefallen = tärningen är kastad",
+"in Würfel schneiden = skära i tärningar, tärna",
+"Unused"));
+PART(#119, substantiv(
+"Ballungsgebiet",
+"storstadsregion med många industrier, tätbefolkad region",
+"das",
+"Ballungsgebiete",
+"Unused",
+"Unused",
+"Unused"));
+PART(#120, substantiv(
+"Ballungsraum",
+"storstadsregion med många industrier, tätbefolkad region",
+"der",
+"Ballungsräume",
+"Unused",
+"Unused",
+"Unused"));
+PART(#121, substantiv(
+"Ballungszone",
+"storstadsregion med många industrier, tätbefolkad region",
+"die",
+"Ballungszonen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#122, substantiv(
+"Forstwirtschaft",
+"skogsbruk",
+"die",
+"-------",
+"Unused",
+"Unused",
+"Unused"));
+PART(#123, substantiv(
+"Vormund",
+"förmyndare",
+"der",
+"Vormünder",
+"Unused",
+"Unused",
+"Unused"));
+PART(#124, substantiv(
+"Anzeige",
+"1. (polis) anmälan 2. annons, tillkännagivande",
+"die",
+"Anzeigen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#125, substantiv(
+"Schwalbe",
+"svala",
+"die",
+"Schwalben",
+"eine Schwalbe macht kein Sommer",
+"Unused",
+"Unused"));
+PART(#126, substantiv(
+"Durcheinander",
+"oreda, röra, virrvarr, villervalla",
+"das",
+"-----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#127, substantiv(
+"Spruch",
+"1. domslut, utslag 2. tänkespråk, sentens, vers, bibelspråk 3. fras, vers 4. paroll, slagord",
+"der",
+"Sprüche",
+"das sind nur Sprüche = det är ju bara tomma fraser",
+"Unused",
+"Unused"));
+PART(#128, substantiv(
+"Spinne",
+"spindel (zoologisk)",
+"die",
+"Spinnen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#129, substantiv(
+"Spinner",
+"1. spinnare (zoologiskt) 2. en som hittar på, inte är klok 3. spinnare = fiskedrag",
+"der",
+"Spinner",
+"er ist ein Spinner",
+"Unused",
+"Unused"));
+PART(#130, substantiv(
+"Bedauern",
+"beklagande",
+"das",
+"---",
+"Zu meinem Bedauern fiel das Konzert aus",
+"Unused",
+"Unused"));
+PART(#131, substantiv(
+"Maßnahme",
+"åtgärd",
+"die",
+"Maßnamen",
+"Maßnamen ergreifen = vidta åtgärder",
+"Unused",
+"Unused"));
+PART(#132, substantiv(
+"Strich",
+"1. streck, linje 2. strykning 3. gatuprostitution, horgata, horkvarter 4. streck på kompass",
+"der",
+"Striche",
+"unter dem Strich = när allt kommer omkring, på det hela taget",
+"auf den Striche gehen",
+"Unused"));
+PART(#133, substantiv(
+"Tat",
+"1. handling, gärning, dåd 2. in der Tat = verkligen, faktiskt",
+"die",
+"Taten",
+"auf frischer Tat ertappen = ta någon på bar gärning",
+"Unused",
+"Unused"));
+PART(#134, substantiv(
+"Tatort",
+"brottsplats",
+"der",
+"Orte",
+"Unused",
+"Unused",
+"Unused"));
+PART(#135, substantiv(
+"Tätowierung",
+"tatuering",
+"die",
+"Tätowierungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#136, substantiv(
+"Bedrohung",
+"hot, hotelse, hotbild",
+"die",
+"Bedrohungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#137, substantiv(
+"Bedürfnisanstalt",
+"bekvämlighetsinrättning, offentlig toilette",
+"die",
+"Bedürfnisanstalten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#138, substantiv(
+"Rücksicht",
+"hänsyn",
+"die",
+"Rücksichten",
+"Rücksicht auf etwas nehmen = ta hänsyn till något",
+"aus Rücksicht auf = av hänsyn till, av omtanke om",
+"Unused"));
+PART(#139, substantiv(
+"Gusto",
+"smak, förkärlek",
+"der",
+"------",
+"Du kannst die Wohnung ganz nach deinem Gusto einrichten ",
+"Unused",
+"Unused"));
+PART(#140, substantiv(
+"Handbuch",
+"handbok",
+"das",
+"Handbücher",
+"Unused",
+"Unused",
+"Unused"));
+PART(#141, substantiv(
+"Scheusal",
+"odjur, monster",
+"das",
+"Scheusale",
+"Unused",
+"Unused",
+"Unused"));
+PART(#142, substantiv(
+"Vergangenheit",
+"förfluten tid, förgången tid",
+"die",
+"Vergangenheiten",
+"in ferner Vergangenheit",
+"Unused",
+"Unused"));
+PART(#143, substantiv(
+"Ungeheuer",
+"monster, vidunder",
+"das",
+"Ungeheurs",
+"Unused",
+"Unused",
+"Unused"));
+PART(#144, substantiv(
+"Flitterwochen",
+"smekmånad",
+"die",
+"Flitterwochen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#145, substantiv(
+"Wohngemeinshaft",
+"kollektiv",
+"die",
+"Wohngemeinshaften",
+"Unused",
+"Unused",
+"Unused"));
+PART(#146, substantiv(
+"Wohngemeinshaft",
+"kollektiv",
+"die",
+"Wohngemeinshaften",
+"Unused",
+"Unused",
+"Unused"));
+PART(#147, substantiv(
+"Anstandsdame",
+"förkläde (bildligt)",
+"die",
+"Anstandsdamen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#148, substantiv(
+"Farm",
+"farm",
+"die",
+"Farmen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#149, substantiv(
+"Video",
+"video",
+"das",
+"Videos",
+"Unused",
+"Unused",
+"Unused"));
+PART(#150, substantiv(
+"Videorecorder",
+"videobandspelare",
+"der",
+"Videorecorder",
+"Videorekorder (med k också OK)",
+"Unused",
+"Unused"));
+PART(#151, substantiv(
+"Videokamera",
+"videokamera",
+"die",
+"Videokameras",
+"Unused",
+"Unused",
+"Unused"));
+PART(#152, substantiv(
+"Videoband",
+"videoband",
+"das",
+"Videobänder",
+"Unused",
+"Unused",
+"Unused"));
+PART(#153, substantiv(
+"Kassette",
+"kassett, kassettband",
+"die",
+"Kassetten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#154, substantiv(
+"Fest",
+"fest, högtidlighet",
+"das",
+"Feste",
+"frohes Fest",
+"ein Fest feiern = fira högtid, födelsedag, ..",
+"Unused"));
+PART(#155, substantiv(
+"Abfalleimer",
+"sophink, slaskhink",
+"der",
+"Abfalleimer",
+"Unused",
+"Unused",
+"Unused"));
+PART(#156, substantiv(
+"Text",
+"text",
+"der",
+"Texte",
+"Unused",
+"Unused",
+"Unused"));
+PART(#157, substantiv(
+"Eselsbrücke",
+"stöd för minnet, minnesregel",
+"die",
+"Eselsbrücken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#158, substantiv(
+"Eselsohr",
+"hundöra (i bok)",
+"das",
+"Eselsohren",
+"Unused",
+"Unused",
+"Unused"));
+PART(#159, substantiv(
+"Esel",
+"åsna",
+"der",
+"Esel",
+"Unused",
+"Unused",
+"Unused"));
+PART(#160, substantiv(
+"Ziege",
+"get",
+"die",
+"Ziegen",
+"blöde Ziege = kärring(jävel)",
+"Unused",
+"Unused"));
+PART(#161, substantiv(
+"Schaffleisch",
+"fårkött",
+"das",
+"Schaffleisch",
+"Unused",
+"Unused",
+"Unused"));
+PART(#162, substantiv(
+"Tischordnung",
+"bordsplacering",
+"die",
+"Tischordnungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#163, substantiv(
+"Tischrede",
+"(middags) tal",
+"die",
+"Tischreden",
+"Unused",
+"Unused",
+"Unused"));
+PART(#164, substantiv(
+"Block",
+"1. block, stenblock 2. kvarter 3. skrivblock 4. block, sammanslutning",
+"der",
+"Blocke",
+"Blocks = också plural",
+"wir wohnen im gleichen Block",
+"Unused"));
+PART(#165, substantiv(
+"Türfalle",
+"dörrhållare",
+"die",
+"Türfallen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#166, substantiv(
+"Mausefalle",
+"musfälla",
+"die",
+"Mausefallen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#167, substantiv(
+"Bein",
+"ben",
+"das",
+"Beine",
+"Unused",
+"Unused",
+"Unused"));
+PART(#168, substantiv(
+"Strom",
+"1. ström, flod 2. ström elektriskt",
+"der",
+"Ströme",
+"unter Strom stehen = vara strömförande",
+"Unused",
+"Unused"));
+PART(#169, substantiv(
+"Bedarf",
+"behov, bei ~ = vid behov (nach ~ enligt Sandra)",
+"der",
+"---",
+"Unused",
+"Unused",
+"Unused"));
+PART(#170, substantiv(
+"Abruf",
+"1. sich auf ~ bereithalten = vara beredd, stå till tjänst 2. auf ~ kaufen = köpa för leverans efter avrop",
+"der",
+"Abrufe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#171, substantiv(
+"Wiegenlied",
+"vaggvisa",
+"das",
+"Wiegenlieder",
+"Unused",
+"Unused",
+"Unused"));
+PART(#172, substantiv(
+"Wiese",
+"äng",
+"die",
+"Wiesen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#173, substantiv(
+"Verrat",
+"förräderi, svek",
+"der",
+"------",
+"Unused",
+"Unused",
+"Unused"));
+PART(#174, substantiv(
+"Zäsur",
+"punkt där utvecklingen börjar gå i en helt annan riktning",
+"die",
+"Zäsuren",
+"Unused",
+"Unused",
+"Unused"));
+PART(#175, substantiv(
+"Lektüre",
+"lektyr, läsning",
+"die",
+"Lektüren",
+"Unused",
+"Unused",
+"Unused"));
+PART(#176, substantiv(
+"Ostsee",
+"Östersjön",
+"die",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#177, substantiv(
+"Kamm",
+"kam (för hår, tuppkam, bergskam)",
+"der",
+"Kämme",
+"alle über einen Kamm scheren = skära (dra) alla över en kam",
+"Unused",
+"Unused"));
+PART(#178, substantiv(
+"Kanadier",
+"kanadensare (även kanot)",
+"der",
+"Kanadier",
+"Unused",
+"Unused",
+"Unused"));
+PART(#179, substantiv(
+"Kajak",
+"kajak (auch das Kajak)",
+"der",
+"Kajaks",
+"auch das Kajak",
+"Unused",
+"Unused"));
+PART(#180, substantiv(
+"Ferse",
+"häl",
+"die",
+"Fersen",
+"auf den Fersen sein = vara hack i häl, vara i hälarna på någon",
+"Unused",
+"Unused"));
+PART(#181, substantiv(
+"Vorhang",
+"draperi, ridå (teater)",
+"der",
+"Vorhänge",
+"eiserner Vorhang = järnridå",
+"Unused",
+"Unused"));
+PART(#182, substantiv(
+"Henker",
+"bödel, skarprättare",
+"der",
+"Henker",
+"sich den Henker um etwas scheren = ge tusan (fan) i något",
+"zum Henker! = helvete, fan",
+"Unused"));
+PART(#183, substantiv(
+"Tatendrang",
+"full av energi att göra något",
+"der",
+"----",
+"Er war voller Tatendrang",
+"Unused",
+"Unused"));
+PART(#184, substantiv(
+"Einbildung",
+"inbillning, fantasi, inbilskhet",
+"die",
+"Einbildungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#185, substantiv(
+"Kinn",
+"haka",
+"das",
+"Kinne",
+"Unused",
+"Unused",
+"Unused"));
+PART(#186, substantiv(
+"Dasein",
+"tillvaro, existens, närvaro",
+"das",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#187, substantiv(
+"Bagger",
+"grävmaskin, grävskopa, mudderverk",
+"der",
+"Bagger",
+"Unused",
+"Unused",
+"Unused"));
+PART(#188, substantiv(
+"Binnengewässer",
+"ett lands insjöar och vattendrag",
+"die",
+"Binnengewässer (nur Mehrzahl)",
+"die Binnengewässer eines Landes",
+"Unused",
+"Unused"));
+PART(#189, substantiv(
+"Binnenhandel",
+"inrikes handel",
+"der",
+"---",
+"Unused",
+"Unused",
+"Unused"));
+PART(#190, substantiv(
+"Binnenland",
+"inland",
+"das",
+"Binnenländer",
+"Unused",
+"Unused",
+"Unused"));
+PART(#191, substantiv(
+"Binnenmarkt",
+"hemmamarknad",
+"der",
+"Binnenmärkte",
+"Unused",
+"Unused",
+"Unused"));
+PART(#192, substantiv(
+"Binnenschifffahrt",
+"inrikes sjöfart",
+"die",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#193, substantiv(
+"Binnensee",
+"insjö",
+"der",
+"Binnenseen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#194, substantiv(
+"Zopf",
+"1. (hår) fläta 2. (bröd) fläta",
+"der",
+"Zöpfen",
+"das ist doch ein alter Zopf = det är totalt förlegat (föråldrat, otidsenligt)",
+"Unused",
+"Unused"));
+PART(#195, substantiv(
+"Mundstück",
+"munstycke",
+"das",
+"Mundstücke",
+"Unused",
+"Unused",
+"Unused"));
+PART(#196, substantiv(
+"Schläfe",
+"tinning (anatomiskt)",
+"die",
+"Schläfen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#197, substantiv(
+"Zaun",
+"staket, stängsel, inhägnad",
+"der",
+"Zäune",
+"Unused",
+"Unused",
+"Unused"));
+PART(#198, substantiv(
+"Pfahl",
+"påle, pinne (i krocket), (lykt) stolpe, stång, stör",
+"der",
+"Pfähle",
+"Es war kein Wink mit dem Zaunpfahl = ? påminna någon om något ?",
+"Unused",
+"Unused"));
+PART(#199, substantiv(
+"Mark",
+"1. märg (das geht mir durch ~ und Bein) 2. pure (t.ex tomater)",
+"das",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#200, substantiv(
+"Klaps",
+"1. dask, klapp 2. einen ~ haben = ha en skruv lös",
+"der",
+"Klapse",
+"Unused",
+"Unused",
+"Unused"));
+PART(#201, substantiv(
+"Waschbecken",
+"tvättställ",
+"das",
+"Waschbecken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#202, substantiv(
+"Wasserhahn",
+"vattenkran",
+"der",
+"Wassehähne",
+"Unused",
+"Unused",
+"Unused"));
+PART(#203, substantiv(
+"Gekritzel",
+"klotter, kråkfötter",
+"das",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#204, substantiv(
+"Gefährte",
+"följeslagare, kamrat, vän",
+"der",
+"Gefährten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#205, substantiv(
+"Geschöpf",
+"varelse, människa",
+"das",
+"Geschöpfe",
+"Geschöpfe der Fantasi = fantasifoster",
+"Unused",
+"Unused"));
+PART(#206, substantiv(
+"Ferkel",
+"1. griskulting 2. svin, smutsgris",
+"das",
+"Ferkel",
+"Unused",
+"Unused",
+"Unused"));
+PART(#207, substantiv(
+"Höder",
+"agn, lockbete",
+"der",
+"Höder",
+"Unused",
+"Unused",
+"Unused"));
+PART(#208, substantiv(
+"Trauung",
+"vigsel, vigselakt",
+"die",
+"Trauungen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#209, substantiv(
+"Wimper",
+"ögonfrans",
+"die",
+"Wimpern",
+"ohne mit den Wimpern zu zucken = utan att blinka",
+"Unused",
+"Unused"));
+PART(#210, substantiv(
+"Mitesser",
+"pormask",
+"der",
+"Mitesser",
+"Unused",
+"Unused",
+"Unused"));
+PART(#211, substantiv(
+"Küken",
+"1. kyckling 2. litet barn",
+"das",
+"Küken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#212, substantiv(
+"Grille",
+"1. syrsa 2. nycker, griller (plural)",
+"die",
+"Grillen",
+"Grillen zirpten im Gras",
+"Unused",
+"Unused"));
+PART(#213, substantiv(
+"Kehle",
+"strupe",
+"die",
+"Kehlen",
+"Unused",
+"Unused",
+"Unused"));
+PART(#214, substantiv(
+"Kehlkopf",
+"struphuvud",
+"der",
+"Kehlköpfe",
+"Unused",
+"Unused",
+"Unused"));
+PART(#215, substantiv(
+"Kahn",
+"1. flatbottnad båt, eka 2. pråm",
+"der",
+"Kähne",
+"Unused",
+"Unused",
+"Unused"));
+PART(#216, substantiv(
+"Flocke",
+"flinga,  (sot) flaga",
+"die",
+"Flocken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#217, substantiv(
+"Leumund",
+"rykte, anseende",
+"der",
+"----",
+"Unused",
+"Unused",
+"Unused"));
+PART(#218, substantiv(
+"Zeugnis",
+"1. betyg, intyg, attest, vitsord 2. vittnesbörd, vittnesmål",
+"das",
+"Zeugnisse",
+"sie hat gute Zeugnisse = hon har goda betyg (referenser)",
+"Unused",
+"Unused"));
+PART(#219, substantiv(
+"Mieder",
+"korsett, livstycke",
+"das",
+"Mieder",
+"Unused",
+"Unused",
+"Unused"));
+PART(#220, substantiv(
+"Kotflügel",
+"stänkskärm (på bil)",
+"der",
+"Kotflügel",
+"Unused",
+"Unused",
+"Unused"));
+PART(#221, substantiv(
+"Gemüt",
+"läggning, sinnelag, sinne, själ, hjärta",
+"das",
+"Gemüter",
+"das deutsche Gemüt = den tyska mentaliteten",
+"Unused",
+"Unused"));
+PART(#222, substantiv(
+"Gebrauchsgüter",
+"kapitalvaror",
+"die",
+"Gebrauchsgüter",
+"Unused",
+"Unused",
+"Unused"));
+PART(#223, substantiv(
+"Motte",
+"mal (zool.)",
+"die",
+"Motten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#224, substantiv(
+"Ergebnis",
+"resultat",
+"das",
+"Ergebnisse",
+"Unused",
+"Unused",
+"Unused"));
+PART(#225, substantiv(
+"Zäsur",
+"punkt i en utveckling där allt vänder, tar en annan riktning ",
+"die",
+"Zäsuren",
+"Unused",
+"Unused",
+"Unused"));
+PART(#226, substantiv(
+"Zinke",
+"pigg, pinne på räfsa, tand på kam",
+"die",
+"Zinken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#227, substantiv(
+"Trampelpfad",
+"( upptrampad ) stig",
+"der",
+"Trampelpfade",
+"Unused",
+"Unused",
+"Unused"));
+PART(#228, substantiv(
+"Pfad",
+"stig",
+"der",
+"Pfade",
+"Unused",
+"Unused",
+"Unused"));
+PART(#229, substantiv(
+"Pfote",
+"tass, labb, hand (vardagligt)",
+"die",
+"Pfoten",
+"Unused",
+"Unused",
+"Unused"));
+PART(#230, substantiv(
+"Knüller",
+"hit, scoop, panggrej, pangerbjudande",
+"der",
+"Knüller",
+"Unused",
+"Unused",
+"Unused"));
+PART(#231, substantiv(
+"Kritik",
+"1. kritik 2. recension",
+"die",
+"Kritiken",
+"Unused",
+"Unused",
+"Unused"));
+PART(#232, substantiv(
+"Verstümmelung",
+"lemlästning, förvanskning, stympning",
+"die",
+"Verstümmelungen",
+"Unused",
+"Unused",
+"Unused"));
+ENDMODULE
+
+

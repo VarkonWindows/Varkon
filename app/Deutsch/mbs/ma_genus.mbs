@@ -1,0 +1,244 @@
+! ***************** ma_genus ******************************** 
+! 
+! +++ 
+! Genus Übung Fenster
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-16 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Genus Übung Fenster
+
+MACRO MODULE ma_genus(
+      INT    n_all;            ! Anzahl Identitäten
+VAR   REF    all_id(100);      ! Sämtliche Identitäten
+VAR   INT    n_fehler;         ! Anzahl Fehler
+VAR   STRING fehler(100)*132); ! Fehler
+
+  REF    prt_id;           ! Identität
+  STRING substantiv*132;   ! Substantiv
+  STRING schwedisch*132;   ! Auf Schwedish
+  STRING genus*132;        ! Genus
+  STRING mehrzahl*132;     ! Mehrzahl
+  INT    n_recht;          ! Anzahl richtige Antworten
+  INT    i_wort;           ! Rechner
+  INT    s_flag;           ! Flagge 
+  INT    m_flag;           ! Flagge Mehrzahl
+
+INT main_id,bidx;
+INT bid1,
+    bid2,
+    bid3,
+    bid4,
+    bid5,
+    bid6;
+INT eid1,
+    eid2,
+    eid3,
+    eid4,
+    eid5,
+    eid6;
+
+BEGINMODULE
+
+main_id:=cre_win(vec(0,0),205+20,240,"         Genus Übung");
+bid1:=cre_button(main_id,vec(10,170),50,20,2,"Der","Der");
+bid2:=cre_button(main_id,vec(75,170),50,20,2,"Die","Die");
+bid3:=cre_button(main_id,vec(140,170),50,20,2,"Das","Das");
+bid4:=cre_button(main_id,vec(140,210),50,20,2,"Cancel","Cancel");
+bid5:=cre_button(main_id,vec(195,90),20,20,2,"S","-");
+bid6:=cre_button(main_id,vec(195,50),20,20,2,"M","-");
+
+
+n_fehler := 0;
+n_recht  := 0;
+s_flag   := 0;
+m_flag   := 0;
+
+i_wort   := 1;
+
+show_win(main_id);
+
+loop: 
+!   Substantiv und Genus
+    prt_id := all_id(i_wort);
+    IF  prt_id = #0  THEN
+      LST_INI("ma_genus Programm Fehler");
+      LST_LIN("prt_in = #0 fur i_wort= "+STR(i_wort,3,0)+
+                            " n_all= "+STR(n_all,3,0));
+      LST_EXI();
+      GOTO ende;
+    ENDIF;
+    substantiv := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    genus      := GETSTR(prt_id,3);    
+    mehrzahl   := GETSTR(prt_id,4);    
+
+eid1:=cre_edit(main_id,vec(10,130),180,20,2,substantiv,45);
+
+IF s_flag = 0 THEN
+  eid2:=cre_edit(main_id,vec(10,90),180,20,2,"",45);
+ELSE
+  eid2:=cre_edit(main_id,vec(10,90),180,20,2,schwedisch,45);
+ENDIF;
+IF m_flag = 0 THEN
+  eid3:=cre_edit(main_id,vec(10,50),180,20,2,"",45);
+ELSE
+  eid3:=cre_edit(main_id,vec(10,50),180,20,2,mehrzahl,45);
+ENDIF;
+
+
+eid4:=cre_button(main_id,vec( 40,10),50,30,0,"R= "+STR(n_recht,4,0),"");
+eid5:=cre_button(main_id,vec(120,10),50,30,0,"F= "+STR(n_fehler,4,0),"");
+
+
+eid6:=cre_button(main_id,vec(10,200),100,25,0,"Id= "+RSTR(prt_id),"-");
+
+bidx:=wait_win(main_id);
+
+! Der
+if bidx = bid1 then
+    IF  genus = "der" THEN
+      n_recht  := n_recht + 1;
+    ELSE
+      n_fehler := n_fehler + 1;
+      fehler(n_fehler) := genus+" "+substantiv+ "     "+schwedisch;
+    ENDIF;
+    i_wort := i_wort + 1;
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    IF  i_wort <= n_all THEN
+      GOTO loop;
+    ELSE
+      GOTO  ende;
+    ENDIF;
+endif;
+
+! Die
+if bidx = bid2 then
+    IF  genus = "die" THEN
+      n_recht  := n_recht + 1;
+    ELSE
+      n_fehler := n_fehler + 1;
+      fehler(n_fehler) := genus+" "+substantiv+ "     "+schwedisch;
+    ENDIF;
+    i_wort := i_wort + 1;
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    IF  i_wort <= n_all THEN
+      GOTO loop;
+    ELSE
+      GOTO  ende;
+    ENDIF;
+endif;
+
+! Das
+if bidx = bid3 then
+    IF  genus = "das" THEN
+      n_recht  := n_recht + 1;
+    ELSE
+      n_fehler := n_fehler + 1;
+      fehler(n_fehler) := genus+" "+substantiv+ "     "+schwedisch;
+    ENDIF;
+    i_wort := i_wort + 1;
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    IF  i_wort <= n_all THEN
+      GOTO loop;
+    ELSE
+      GOTO  ende;
+    ENDIF;
+endif;
+! Schwedisch
+if bidx = bid5 then
+!QQ  DEL_WIN(main_id,eid2);
+  IF s_flag = 0 THEN
+    s_flag := 1;
+  ELSE
+    s_flag := 0;
+  ENDIF;
+  DEL_WIN(main_id,eid1); 
+  DEL_WIN(main_id,eid2);
+  DEL_WIN(main_id,eid3);
+  DEL_WIN(main_id,eid4); 
+  DEL_WIN(main_id,eid5);
+  DEL_WIN(main_id,eid6);
+  GOTO loop;
+endif;
+! Mehrzahl
+if bidx = bid6 then
+!QQ  DEL_WIN(main_id,eid3);
+  IF m_flag = 0 THEN
+    m_flag := 1;
+  ELSE
+    m_flag := 0;
+  ENDIF;
+  DEL_WIN(main_id,eid1); 
+  DEL_WIN(main_id,eid2);
+  DEL_WIN(main_id,eid3);
+  DEL_WIN(main_id,eid4); 
+  DEL_WIN(main_id,eid5);
+  DEL_WIN(main_id,eid6);
+  GOTO loop;
+endif;
+
+! Cancel
+if bidx = bid4 then
+  GOTO  ende;
+endif;
+
+! TEXT
+if bidx = eid1 then
+  GOTO loop;
+endif;
+
+! TEXT
+if bidx = eid2 then
+  GOTO loop;
+endif;
+
+! TEXT
+if bidx = eid3 then
+  GOTO loop;
+endif;
+
+! RR
+if bidx = eid4 then
+  GOTO loop;
+endif;
+
+! FF
+if bidx = eid5 then
+  GOTO loop;
+endif;
+! Id
+if bidx = eid6 then
+  GOTO loop;
+endif;
+
+ende:
+
+del_win(main_id);
+
+ENDMODULE
+
+
+
+
+

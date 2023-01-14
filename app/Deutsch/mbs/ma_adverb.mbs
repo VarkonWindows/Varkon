@@ -1,0 +1,406 @@
+! ***************** ma_adverb ******************************** 
+! 
+! +++ 
+! Adverb Übung Fenster
+! --- 
+! 
+! Revision history 
+! ________________ 
+! 
+! 2000-10-22 Gunnar Liden 
+!  
+!************************************************************ 
+ 
+!sdescd Adverb Übung Fenster
+
+MACRO MODULE ma_adverb(
+      INT    n_all;            ! Anzahl Identitäten
+VAR   REF    all_id(100);      ! Sämtliche Identitäten
+VAR   INT    n_fehler;         ! Anzahl Fehler
+VAR   STRING fehler(100)*132); ! Fehler
+
+  REF    prt_id;           ! Identität
+  STRING adverb*132;       ! Adverb
+  STRING schwedisch*132;   ! Auf Schwedish
+  STRING beispiel_1*132;   ! Beispiel
+  STRING beispiel_2*132;   ! Beispiel
+  STRING beispiel_3*132;   ! Beispiel
+
+  STRING antwort*132;      ! Antwort
+
+  INT    n_recht;          ! Anzahl richtige Antworten
+  INT    i_wort;           ! Rechner
+  INT    d_flag;           ! Flagge Deutsch
+  INT    m_flag;           ! Flagge Beispiel 1
+  INT    p_flag;           ! Flagge Beispiel 2
+  INT    a_flag;           ! Flagge Antwort
+
+INT main_id,bidx;
+!INT bid1,
+!    bid2,
+INT bid3,
+    bid4,
+    bid5,
+    bid6,
+    bid7,
+    bid8,
+!    bid9,
+!    bid10,
+    bid11,
+    bid12,
+    bid13,
+    bid14,
+    bid15,
+    bid16,
+    bid17;
+INT eid1,
+    eid2,
+    eid3,
+    eid4,
+    eid5,
+    eid6;
+INT eid7, eid8;
+! INT eid9,eid10;
+
+INT status;
+
+BEGINMODULE
+
+status := -1;
+!   bid1  := -12345;
+!   bid2  := -12345;
+!   bid9  := -12345;
+!   bid10 := -12345;
+!   eid9  := -12345;
+!   eid10 := -12345;
+
+main_id:=cre_win(vec(0,0),205+60,240+80+20,"                Adverb Übung");
+
+bid4:=cre_button(main_id,vec(200,310-40),50,20,2,"Cancel","Cancel");
+bid5:=cre_button(main_id,vec(195,90),20,20,2,"D","D");
+bid6:=cre_button(main_id,vec(195,50),20,20,2,"B1","B1");
+bid7:=cre_button(main_id,vec(195,10),20,20,2,"B2","B2");
+bid8:=cre_button(main_id,vec(195,130),20,20,0,"S","-");
+bid11:=cre_button(main_id,vec(195,170),50,20,2,"Antwort","Antwort");
+bid12:=cre_button(main_id,vec(195,205),50,20,2,"Nächstes","Nächstes");
+bid13:=cre_button(main_id,vec( 25,195),20,20,2,"å","å");
+bid14:=cre_button(main_id,vec( 50,195),20,20,2,"ä","ä");
+bid15:=cre_button(main_id,vec( 75,195),20,20,2,"ö","ö");
+bid16:=cre_button(main_id,vec(100,195),20,20,2,"ß","ß");
+bid17:=cre_button(main_id,vec(125,195),20,20,2,"ü","ü");
+
+n_fehler := 0;
+n_recht  := 0;
+d_flag   := 0;
+m_flag   := 0;
+p_flag   := 0;
+a_flag   := 0;
+
+i_wort   := 1;
+
+antwort    := "";
+show_win(main_id);
+
+loop: 
+!   Verb
+    prt_id := all_id(i_wort);
+    IF  prt_id = #0  THEN
+      LST_INI("ma_adverb Programm Fehler");
+      LST_LIN("prt_in = #0 fur i_wort= "+STR(i_wort,3,0)+
+                            " n_all= "+STR(n_all,3,0));
+      LST_EXI();
+      GOTO ende;
+    ENDIF;
+
+    adverb   := GETSTR(prt_id,1);    
+    schwedisch := GETSTR(prt_id,2);    
+    beispiel_1 := GETSTR(prt_id,3);    
+    beispiel_2 := GETSTR(prt_id,4);    
+    beispiel_3 := GETSTR(prt_id,5);      
+    IF  beispiel_1 = "Unused" OR beispiel_1 = "" OR beispiel_1 = " " THEN
+      beispiel_1 := "Kein Beispiel";
+    ENDIF;
+    IF  beispiel_2 = "Unused" OR beispiel_2 = "" OR beispiel_2 = " " THEN
+      beispiel_2 := "Kein Beispiel";
+    ENDIF;
+    IF  beispiel_3 = "Unused" OR beispiel_3 = "" OR beispiel_3 = " " THEN
+      beispiel_3 := "Kein Beispiel";
+    ENDIF;
+
+
+eid1:=cre_edit(main_id,vec(10,130),180,20,2,schwedisch,132);
+
+
+IF d_flag = 0 THEN
+  eid2:=cre_edit(main_id,vec(10,90),180,20,2,"",45);
+ELSE
+  eid2:=cre_edit(main_id,vec(10,90),180,20,2,adverb,80);
+ENDIF;
+IF m_flag = 0 THEN
+  eid3:=cre_edit(main_id,vec(10,50),180,20,2,"",45);
+ELSE
+  eid3:=cre_edit(main_id,vec(10,50),180,20,2,beispiel_1,45);
+ENDIF;
+
+
+eid4:=cre_button(main_id,vec(10,245+60),50,30,0,"R= "+STR(n_recht,4,0),"");
+eid5:=cre_button(main_id,vec(90,245+60),50,30,0,"F= "+STR(n_fehler,4,0),"");
+
+
+eid6:=cre_button(main_id,vec(2,225),100,25,0,"Id= "+RSTR(prt_id),"-");
+
+eid7:=cre_edit(main_id,vec(10,170),180,20,2,antwort,45);
+IF p_flag = 0 THEN
+eid8:=cre_edit(main_id,vec(10, 10),180,20,2,""     ,45);
+ELSE
+eid8:=cre_edit(main_id,vec(10, 10),180,20,2,beispiel_2,45);
+ENDIF;
+
+bidx:=wait_win(main_id);
+
+
+
+! Deutsch
+if bidx = bid5 then
+  IF d_flag = 0 THEN
+    d_flag := 1;
+  ELSE
+    d_flag := 0;
+  ENDIF;
+  IF  a_flag = 0 THEN
+    a_flag := 1;
+    antwort   := adverb;
+    n_fehler  := n_fehler + 1;
+    fehler(n_fehler) := adverb+ "     "+schwedisch;
+  ENDIF;
+  DEL_WIN(main_id,eid1); 
+  DEL_WIN(main_id,eid2);
+  DEL_WIN(main_id,eid3);
+  DEL_WIN(main_id,eid4); 
+  DEL_WIN(main_id,eid5);
+  DEL_WIN(main_id,eid6);
+  DEL_WIN(main_id,eid7);
+  DEL_WIN(main_id,eid8);
+  GOTO loop;
+endif;
+! Beispiel 1
+if bidx = bid6 then
+  IF a_flag = 0 THEN
+    LST_INI("Beispiel wird nicht gezeigt bevor eine Antwort is gegeben");
+    LST_LIN("  ");
+    LST_EXI();
+    GOTO loop;
+  ENDIF;
+  IF m_flag = 0 THEN
+    m_flag := 1;
+  ELSE
+    m_flag := 0;
+  ENDIF;
+  antwort := GET_EDIT(main_id,eid7); 
+  DEL_WIN(main_id,eid1); 
+  DEL_WIN(main_id,eid2);
+  DEL_WIN(main_id,eid3);
+  DEL_WIN(main_id,eid4); 
+  DEL_WIN(main_id,eid5);
+  DEL_WIN(main_id,eid6);
+  DEL_WIN(main_id,eid7);
+  DEL_WIN(main_id,eid8);
+  GOTO loop;
+endif;
+! Beispiel 2
+if bidx = bid7 then
+  IF a_flag = 0 THEN
+    LST_INI("Beispiel wird nicht gezeigt bevor eine Antwort is gegeben");
+    LST_LIN("  ");
+    LST_EXI();
+    GOTO loop;
+  ENDIF;
+  IF p_flag = 0 THEN
+    p_flag := 1;
+  ELSE
+    p_flag := 0;
+  ENDIF;
+  antwort := GET_EDIT(main_id,eid7); 
+  DEL_WIN(main_id,eid1); 
+  DEL_WIN(main_id,eid2);
+  DEL_WIN(main_id,eid3);
+  DEL_WIN(main_id,eid4); 
+  DEL_WIN(main_id,eid5);
+  DEL_WIN(main_id,eid6);
+  DEL_WIN(main_id,eid7);
+  DEL_WIN(main_id,eid8);
+  GOTO loop;
+endif;
+
+! Cancel
+if bidx = bid4 then
+  GOTO  ende;
+endif;
+! Antwort vergleichen
+if bidx = bid11 then
+    IF  a_flag = 1 THEN
+      LST_INI("Eine Antwort is schon gegeben");
+      LST_EXI();
+      GOTO gegeben;
+    ENDIF;
+    antwort := GET_EDIT(main_id,eid7); 
+    IF  antwort = "" OR antwort = " " OR antwort = "  " THEN
+      LST_INI("Die Antwort is leer");
+      LST_EXI();
+      GOTO empty;
+    ENDIF;
+    a_flag := 1;
+    PART(#2, vergleich ( antwort, adverb, status ):SAVE=0);
+    IF  status > 0 THEN
+      n_recht  := n_recht + 1;
+    ELSE
+      n_fehler := n_fehler + 1;
+      fehler(n_fehler) := adverb+ "     "+schwedisch;
+    ENDIF; 
+gegeben:;
+empty:;
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+
+! Nächstes Wort
+if bidx = bid12 then
+    IF  a_flag = 0 THEN
+      LST_INI("Keine Antwort is gegeben");
+      LST_EXI();
+      antwort := GET_EDIT(main_id,eid7); 
+    ELSE
+      antwort    := "";
+      i_wort := i_wort + 1;
+      a_flag     :=  0;
+      d_flag     :=  0;
+      m_flag     :=  0;
+      p_flag     :=  0;
+    ENDIF;
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    IF  i_wort <= n_all THEN
+      GOTO loop;
+    ELSE
+      GOTO  ende;
+    ENDIF;
+ENDIF;
+
+! å
+if bidx = bid13 then
+    antwort := GET_EDIT(main_id,eid7)+"å"; 
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+
+! ä
+if bidx = bid14 then
+    antwort := GET_EDIT(main_id,eid7)+"ä"; 
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+! ö
+if bidx = bid15 then
+    antwort := GET_EDIT(main_id,eid7)+"ö"; 
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+
+! ss
+if bidx = bid16 then
+    antwort := GET_EDIT(main_id,eid7)+"ß"; 
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+
+! ue
+if bidx = bid17 then
+    antwort := GET_EDIT(main_id,eid7)+"ü"; 
+    DEL_WIN(main_id,eid1); 
+    DEL_WIN(main_id,eid2);
+    DEL_WIN(main_id,eid3);
+    DEL_WIN(main_id,eid4); 
+    DEL_WIN(main_id,eid5);
+    DEL_WIN(main_id,eid6);
+    DEL_WIN(main_id,eid7);
+    DEL_WIN(main_id,eid8);
+    GOTO loop;
+endif;
+
+
+
+! TEXT
+if bidx = eid1 then
+  GOTO loop;
+endif;
+
+! TEXT
+if bidx = eid2 then
+  GOTO loop;
+endif;
+
+! TEXT
+if bidx = eid3 then
+  GOTO loop;
+endif;
+
+! RR
+if bidx = eid4 then
+  GOTO loop;
+endif;
+
+! FF
+if bidx = eid5 then
+  GOTO loop;
+endif;
+! Id
+if bidx = eid6 then
+  GOTO loop;
+endif;
+
+ende:
+
+del_win(main_id);
+
+ENDMODULE
