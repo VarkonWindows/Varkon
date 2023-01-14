@@ -1,0 +1,418 @@
+!***************** opt_1shoot ****************************
+
+!
+
+! +++
+
+! Calculate intersects, select point and reflect line 
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-10-10 Gunnar Liden
+
+!
+
+! ---
+
+!************************************************************
+
+
+
+!sdesce Calculate intersects, select point and reflect line 
+
+!sdescs Beräkna skärningar, välj punkt och reflekterar linje
+
+
+
+GLOBAL GEOMETRY MODULE opt_1shoot (
+
+    REF       s_id;               ! Reference to surface 
+
+    VECTOR    uv_start;           ! Start UV point and surface from
+
+                                  ! a previous calculation.
+
+                                  ! Negative values: Not defined
+
+    VECTOR    p_s_in;             ! Source point   input
+
+    VECTOR    v_s_in;             ! Source vector  input
+
+VAR VECTOR    p_s_out;            ! Source point  output
+
+VAR VECTOR    v_s_out;            ! Source vector output
+
+VAR VECTOR    uv_out;             ! Output UV pt corresp. to p_s_out
+
+    INT       graphic);           ! Graphical representation
+
+
+
+
+
+! Internal variables
+
+
+
+  STRING str_in*132;             ! String for CUR_GL
+
+  STRING s*1;                    ! For INPMT
+
+
+
+  INT    s_case;                 ! Solution selection case
+
+                                 ! Eq. 1: All intersect points
+
+                                 ! Eq. 2: Only in shooting direction
+
+                                 ! Eq. 3: As 2, with surface normals
+
+                                 !        in shooting direction
+
+                                 ! Eq. 4: As 2, with surface normals
+
+                                 !        opposite shooting direction
+
+  VECTOR s_uv;                   ! Start UV point
+
+  VECTOR i_uv;                   ! Intersect point
+
+  INT    s_no;                   ! Solution number
+
+  INT    n_sol;                  ! Total number of solutions in one surface
+
+  VECTOR uv_sol(10);             ! Solution U,V points for current surface
+
+  VECTOR r3_sol(10);             ! Solution R*3 points for current surface
+
+
+
+  VECTOR s_n;                    ! Surface normal for uv_out
+
+
+
+  INT    nu;                     ! Number of patches in U direction
+
+  INT    nv;                     ! Number of patches in V direction
+
+
+
+  INT    graphic_a;              ! Graphics r_raybouv0 
+
+
+
+  INT    DEBUG;                  ! Debug
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! ________
+
+! ---
+
+
+
+! +++
+
+! 1. Initializations and checks
+
+! ---
+
+
+
+  DEBUG := 0;                       ! Change to 0 or 1
+
+
+
+  GETSURH(s_id ,"NPATU",nu );       ! Number of U patches
+
+  GETSURH(s_id ,"NPATV",nv );       ! Number of V patches
+
+
+
+  IF   uv_start.x >= 0 THEN         ! Start point is given
+
+    IF uv_start.x > nu OR           !
+
+       uv_start.y > nv     THEN     !
+
+       uv_start.x:= -1.0;           !
+
+       uv_start.y:= -1.0;           !
+
+       uv_start.z:= -1.0;           !
+
+    ENDIF;                          !
+
+  ENDIF;                            !
+
+
+
+  s_case := 6;                      ! Solution selection case
+
+
+
+  p_s_out:= VEC(0,0,0);             ! Initialization output data
+
+  v_s_out:= VEC(0,0,0);             !
+
+  uv_out := VEC(-1,-1,-1);          !
+
+
+
+
+
+  IF VECL(v_s_in) < 0.000001 THEN   !
+
+    EXIT("opt_1shoot v_s_in is"+    !
+
+          " a zero vector");        !
+
+  ENDIF;                            !
+
+
+
+  IF DEBUG = 1 THEN                 ! Debug
+
+   s:= INPMT("opt_1shoot uv_start "+!
+
+     STR(uv_start.x,-10,3)+ " "+    !
+
+     STR(uv_start.y,-10,3)+ " "+    !
+
+     STR(uv_start.z,-10,3)          !
+
+      ," ",1);                      !
+
+  ENDIF;                            !
+
+
+
+! +++
+
+! 2. Calculate line/surface intersect points
+
+! ---
+
+
+
+! +++
+
+! Create straight line for graphic = 2 (blue line) ?????
+
+! ---
+
+
+
+! +++
+
+! Calculate the line/surface intersect point
+
+! ---
+
+
+
+  IF graphic = 2 THEN               !
+
+    LIN_FREE(#23,p_s_in,            !
+
+       p_s_in+1900*v_s_in :PEN=3);  !
+
+  ENDIF;                            !
+
+
+
+restrt:;                            ! Label: No intersect with start pt
+
+
+
+  s_uv.x := -1.0;                   ! Undefined start point
+
+  s_uv.y := -1.0;                   !
+
+  s_uv.z := -1.0;                   ! 
+
+
+
+    IF   uv_start.x >  0 THEN       ! Start point is given
+
+      s_uv := uv_start;             !
+
+    ENDIF;                          !
+
+
+
+    ALL_INT_LIN_SUR(s_id,           ! Calculate all solutions for surface s_id
+
+     p_s_in, v_s_in, s_case,        !
+
+     uv_start,                      !
+
+     n_sol, uv_sol, r3_sol);        !
+
+
+
+
+
+    IF DEBUG = 1 THEN               ! Debug
+
+    s:= INPMT("opt_1shoot n_sol "+  ! 
+
+    STR(n_sol ,-1,0)+" for surface "!
+
+      +RSTR(s_id)," ",1);           !
+
+    ENDIF;                          !
+
+
+
+    IF n_sol = 0 AND uv_start.x > 0 ! No solutions for given start point ?
+
+                            THEN    !
+
+      uv_start.x := -1.0;           !
+
+      uv_start.y := -1.0;           !
+
+      uv_start.z := -1.0;           !
+
+      IF DEBUG = 1 THEN             ! Debug
+
+      s:= INPMT("opt_1shoot " +     !
+
+       "Calculation failed for " +  !
+
+       "the given point "+          ! 
+
+        " and surface "+RSTR(s_id)  !
+
+          ," ",1);                  !
+
+      ENDIF;                        !
+
+      GOTO  restrt;                 ! Goto restrt in this case
+
+    ELIF n_sol = 0 THEN             ! Return if there are no solution points
+
+      IF graphic = 2 THEN           !
+
+        DEL(GLOBAL_REF(#23));       !
+
+      ENDIF;                        !
+
+      EXIT();                       !
+
+    ENDIF;                          !
+
+    IF n_sol > 0 AND uv_start.x > 0 !
+
+                            THEN    !
+
+      IF DEBUG = 1 THEN             ! Debug
+
+      s:= INPMT("opt_1shoot There "+!
+
+       "was a solution for the " +  !
+
+       "given point "+              ! 
+
+        " in surface "+RSTR(s_id)   !
+
+         ," ",1);                   !
+
+      ENDIF;                        !
+
+      GOTO  enough;                 !
+
+    ENDIF;                          !
+
+
+
+enough:;                             ! Label: Solution(s) for start point
+
+
+
+    IF graphic = 2 THEN             !
+
+      DEL(GLOBAL_REF(#23));         !
+
+    ENDIF;                          !
+
+
+
+! +++
+
+! 3. Output data             
+
+! ---
+
+
+
+  IF n_sol <> 1 THEN                ! Surface which gives multiple solutions
+
+    EXIT("opt_1shoot Surface not "+ ! is not acceptable
+
+          "OK");                    !
+
+  ENDIF;                            !
+
+
+
+  uv_out := uv_sol(1);              !
+
+  p_s_out:= r3_sol(1);              !
+
+
+
+! +++
+
+! 4. Calculate output direction vector. 
+
+! ---
+
+
+
+
+
+  IF graphic = 2 THEN               !
+
+    graphic_a := 1;                 !
+
+  ELSE                              !
+
+    graphic_a := 0;                 !
+
+  ENDIF;                            !
+
+
+
+  
+
+  s_n := NORM(s_id,uv_out);         !
+
+  PART(#6, opt_2shoot (             !
+
+    v_s_in,p_s_out,s_n,v_s_out,     !
+
+                graphic_a));        ! 
+
+
+
+
+
+ENDMODULE
+

@@ -1,0 +1,146 @@
+
+! ***************** c_energyv0 ****************************
+!
+! +++
+! The function calculates the energy of a curve.     
+!
+! The energy is the integral of curvature**2. The function  
+! approximates the integral with a sum curvature**2 values.
+! 
+! The intended use of this function is to calculate the
+! an objective function value for a FANGA optimization.
+! 
+!
+! Remark:
+!
+! This module may only be called by another module. There
+! is an output (VAR) parameter
+!
+!
+! Revision history
+! ________________
+!
+! 1994-10-18 Gunnar Liden
+! 1995-01-20 Sum of values to area (integral) G Liden
+! 1995-01-24 Initiering d_area                G Liden
+! 1995-11-24 Delete G_REFSEL                  G Liden
+! ---
+!************************************************************
+
+!sdesce Energy of a curve (integral curvature**2)
+!sdescs Energin i en kurva (integral kr|kning**2)
+
+
+BASIC GEOMETRY MODULE c_energyv0 (
+
+    REF    idc;                  ! Curve reference
+    INT    n_poi;                ! Number of points within 
+                                 ! segment (numerical accuracy)
+VAR FLOAT  energy);              ! Output energy
+
+! Internal variables:
+
+                                 ! For GETCURH:
+  INT      ns_geo;               ! No geometry segments
+  INT      ns_gra;               ! No graphical segments
+  INT      fnt;                  ! Font typ,subtyp;
+  FLOAT    sl;                   ! Total arclength
+
+  INT      i_seg;                ! Loop index curve segment
+  INT      i_poi;                ! Loop index point within segment
+
+  FLOAT    delta;                ! Parameter step in loop
+
+  FLOAT    param;                ! Current parameter value 
+  VECTOR   p_s;                  ! Current  point
+  VECTOR   p_pre;                ! Previous point
+  VECTOR   c_s;                  ! Current curvature centre
+  FLOAT    kappa;                ! Curvature
+  FLOAT    radius;               ! Radius of curvature
+
+  FLOAT    l_a;                  ! Length of d_area
+  FLOAT    d_area;               ! Delta area
+  FLOAT    h1_a;                 ! Height 1 of d_area
+  FLOAT    h2_a;                 ! Height 2 of d_area
+   
+  INT      DEBUG;                ! =0 No debug   =1 Debug
+  STRING   s*1;                  ! For debug printout to screen
+
+
+BEGINMODULE
+
+! +++
+! 1. Initializations and checks
+! ---
+
+  DEBUG:=0;                       ! Change to 0 or 1
+
+! +++
+! Retrieve number of curve segments
+! ---
+
+  GETCURH(idc ,                   ! Retrieve no segments
+   fnt,sl,ns_geo,ns_gra);         !
+
+! +++
+! Initiate loop variables. Let energy= 0
+! and delta parameter step 1/n_poi 
+! ---
+
+                                            
+  energy:= 0.0;                   ! Start energy
+
+  IF n_poi > 2 THEN               ! Delta parameter
+    delta:= 1.0/n_poi-0.00000001; !
+  ELSE                            !
+    EXIT("c_energyv0 n_poi < 2"); !
+  ENDIF;                          !
+
+
+! +++
+! 2. Calculate energy of the curve
+! ---
+
+  FOR i_seg:= 1 TO ns_geo DO      ! Start loop segment in curve
+    FOR i_poi:= 1 TO n_poi+1  DO  ! Start loop point in segment 
+  
+    param := i_seg-1.0+           ! Current parameter value
+        delta*(i_poi-1.0);        !
+
+    p_s :=   ON(idc,param);       ! Current point
+    c_s := CENTRE(idc,param);     ! Current curvature centre
+
+    radius := VECL(p_s-c_s);      ! Radius of curvature
+    IF radius > 0.0000001 THEN    ! Curvature
+       kappa:= 1.0/radius;        !
+    ELSE                          !
+       kappa:= 10000.0;           !
+    ENDIF;                        !
+
+    IF i_seg=1 AND i_poi=1 THEN   !
+      p_pre:= p_s;                ! Previous point
+      h1_a := kappa*kappa;        ! Height 1 d_area
+      d_area:= 0.0;               ! Delta area
+    ELSE                          !
+      l_a := VECL(p_s-p_pre);     !
+      h2_a := kappa*kappa;        ! Height 2 d_area
+      d_area:= l_a*(h1_a+h2_a)/2.;! Delta area
+      p_pre:= p_s;                ! Previous point
+      h1_a := h2_a;               ! Height 1 d_area
+    ENDIF;                        !
+
+    energy := energy+d_area;      ! Add energy d_area  
+                                 
+    IF DEBUG = 1 AND i_seg>ns_geo-2 THEN ! Debug
+      s:=INPMT("c_curenergy "     ! Printout to screen
+     +str(energy,-25,10)+" param "!
+     +str(param ,-20,10)+" i_seg "!
+     +str(i_seg ,-1,0  )+" i_poi "!
+     +str(i_poi ,-1,0  )+" "      !
+     ,"",1);                      !
+    ENDIF;                        !
+
+    ENDFOR;                       ! End   loop point in segment 
+  ENDFOR;                         ! End   loop segment in curve
+  
+ENDMODULE

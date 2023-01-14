@@ -1,0 +1,400 @@
+! ***************** opt_pipe   *******************************************
+
+!
+
+! +++
+
+! The module creates a pipe as set of straight lines
+
+!
+
+! Instructions for the test example
+
+! _________________________________
+
+!
+
+! 1. Read information in this document.
+
+!
+
+! 2. Start a VARKON session: 
+
+!    xv3    optdemo  pipetest  (or   varkon optim  pipetest )
+
+!
+
+! 3. Select menues: 
+
+!    examples - pipe - create  (calls opt_pipe   which calls OPT_LIMV0)
+
+!    examples - pipe - analyze (calls opt_anacur which calls OPT_FUNCV0) 
+
+!    Use the default input values for opt_pipe and opt_anacur.
+
+!
+
+! 4. Select menue: optimize
+
+!    Input data for the optimization is given in three panels (Xwindows)
+
+!
+
+!    Requested number of iterations: 50                  Panel 1
+
+!    Case:                           optimize
+
+!    Module 1 with variables:        opt_pipe  
+
+!    Objective function value:       OPT_FUNCV0
+
+!    Variable limit module:          OPT_LIMV0
+
+!    No Gradient, Hessian or Constraint module
+
+!    Select all variables (yes for all)                  Panel 2
+
+!    Epsilon gradient calculation:   0.1                 Panel 3
+
+!    Step one-dimensional search     0.5
+
+!    Use default values for all other input data
+
+!
+
+! 5. Change opt_anacur (select A symbol) and change variable print to 1
+
+!    Select menue undo and switch between 0 and 50 iterations
+
+!
+
+! 6. Select menue analysis variables, ...
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-11-25 Gunnar Liden
+
+!
+
+! ---
+
+!***************************************************************************
+
+
+
+!sdesce Create a pipe, defined by straight lines
+
+!sdescs Skapa rör i form av sammansatta räta linjer
+
+
+
+GLOBAL GEOMETRY MODULE opt_pipe(
+
+FLOAT d_l1:=-50.0 > "Distance from mid point line 1 to 2";
+
+FLOAT d_l2:=75.0 > "Distance from mid point line 2 to 3";
+
+FLOAT l_l1:=130.0 > "Pipe length along line 1 to 2";
+
+FLOAT l_l2:=145.0 > "Pipe length along line 2 to 3";
+
+FLOAT lh1:=100.0 > "Length line 1 ";
+
+FLOAT lh12:=300.0 > "Length line 12 ";
+
+FLOAT lh23:=400.0 > "Length line 23 ";
+
+FLOAT lh3:=500.0 > "Length line 3 ";
+
+FLOAT l_c:=  0.1*2*3.14*1150 > "Position line in fuslage, delta length  ";
+
+FLOAT p_y:=  0.0 > "Direction mid line, Y component ";
+
+FLOAT p_z:=  0.0 > "Direction mid line, Z component ");
+
+
+
+! Internal variables
+
+
+
+  VECTOR  v_mid;            ! Normalised mid vector
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! Algorithm
+
+! _________
+
+! ---
+
+
+
+! +++
+
+! 1. Create inner structure          
+
+! ---
+
+
+
+  CSYS_1P(#1,"spant1", vec(1000, 50, 0), 0.0, 90, 0:BLANK=1);
+
+  CSYS_1P(#2,"spant2", vec(2000, 50, 0), 0, 90, 0:BLANK=1);
+
+  CSYS_1P(#3,"spant3", vec(4000, 50, 0), 0, 90, 0:BLANK=1);
+
+  MODE_LOCAL(#1);
+
+  ARC_1POS(#4,vec(0, 0, 0), 1150, 0.0, 360.0);
+
+  MODE_LOCAL(#2);
+
+  ARC_1POS(#5,vec(0, 0, 0), 1150, 0.0, 360.0);
+
+  MODE_LOCAL(#3);
+
+  ARC_1POS(#6,vec(0, 0, 0), 1150, 0.0, 360.0);
+
+  MODE_LOCAL(#1);
+
+  ARC_1POS(#8,vec(700, 700, 0), 40, 0.0, 360.0);
+
+  MODE_LOCAL(#2);
+
+  ARC_1POS(#9,vec(800, 100, 0), 40, 0.0, 360.0);
+
+  MODE_LOCAL(#3);
+
+  ARC_1POS(#10,vec(600, 800, 0), 40, 0.0, 360.0);
+
+  MODE_GLOBAL();
+
+
+
+! +++
+
+! 2. Pipe creation                   
+
+! ---
+
+
+
+  LIN_FREE(#11,ON(#4,l_c/(2*3.14*1150)),ON(#5,l_c/(2*3.14*1150)):BLANK=1);
+
+  LIN_FREE(#12,ON(#5,l_c/(2*3.14*1150)),ON(#6,l_c/(2*3.14*1150)):BLANK=1);
+
+  POI_FREE(#13,CENTRE(#8, 0.0));
+
+  POI_FREE(#14,CENTRE(#9, 0.0));
+
+  POI_FREE(#15,CENTRE(#10, 0.0));
+
+
+
+  v_mid := VEC(100, p_y, p_z );
+
+  v_mid := VECN(v_mid);
+
+
+
+  LIN_FREE(#16,ON(#13, 0.0), ON(#13, 0.0) + lh1*vec(1, 0, 0):BLANK=1);
+
+  LIN_FREE(#17,ON(#14, 0.0) - lh12*v_mid       , ON(#14, 0.0):BLANK=1);
+
+  LIN_FREE(#18,ON(#14, 0.0), ON(#14, 0.0) + lh23*v_mid       :BLANK=1);
+
+  LIN_FREE(#19,ON(#15, 0.0) - lh3*vec(1, 0, 0), ON(#15, 0.0):BLANK=1);
+
+
+
+  LIN_FREE(#20,ON(#11, 0.5) + (d_l1 - l_l1/2)*vec(1, 0, 0), 
+
+               ON(#11, 0.5) + (d_l1 + l_l1/2)*vec(1, 0, 0):BLANK=1);
+
+  LIN_FREE(#21,ON(#12, 0.5) + (d_l2 - l_l2/2)*vec(1, 0, 0), 
+
+               ON(#12, 0.5) + (d_l2 + l_l2/2)*vec(1, 0, 0):BLANK=1);
+
+
+
+  LIN_FREE(#22,ON(#16, 1.0), ON(#20, 0.0):BLANK=1);
+
+  LIN_FREE(#23,ON(#20, 1.0), ON(#17, 0.0):BLANK=1);
+
+  LIN_FREE(#24,ON(#18, 1.0), ON(#21, 0.0):BLANK=1);
+
+  LIN_FREE(#25,ON(#21, 1.0), ON(#19, 0.0):BLANK=1);
+
+
+
+  CUR_COMP(#26,#16, #22, #20, #23, #17, #18, #24, #21, #25, #19:PEN=2,BLANK=0);
+
+
+
+! +++
+
+! 3. Registrate limits for optimization variables
+
+! ---
+
+
+
+  PART(#31,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                     -300 , 300,        ! Lower and upper limit
+
+                      1  ));            ! Parameter number in module
+
+
+
+  PART(#32,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                     -600 , 600,        ! Lower and upper limit
+
+                      2  ));            ! Parameter number in module
+
+
+
+  PART(#33,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      130 , 190,        ! Lower and upper limit
+
+                      3  ));            ! Parameter number in module
+
+
+
+  PART(#34,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      130 , 190,        ! Lower and upper limit
+
+                      4  ));            ! Parameter number in module
+
+
+
+  PART(#35,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                       50 , 500,        ! Lower and upper limit
+
+                      5  ));            ! Parameter number in module
+
+
+
+  PART(#36,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      100 , 500,        ! Lower and upper limit
+
+                      6  ));            ! Parameter number in module
+
+
+
+
+
+  PART(#37,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      100 , 500,        ! Lower and upper limit
+
+                      7  ));            ! Parameter number in module
+
+
+
+  PART(#38,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+                      100 , 500,        ! Lower and upper limit
+
+                      8  ));            ! Parameter number in module
+
+
+
+  PART(#39,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+              0.0 , 2*3.1*1150,         ! Lower and upper limit
+
+                      9  ));            ! Parameter number in module
+
+
+
+  PART(#40,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+            -10.0 , 20.0 ,              ! Lower and upper limit
+
+                     10  ));            ! Parameter number in module
+
+
+
+  PART(#41,OPT_LIMV0 (                  ! Registrate tp_y limits
+
+                      #0,               ! No id, parameter in this module
+
+                      12,               ! Both limits are defined
+
+            -10.0 , 20.0 ,              ! Lower and upper limit
+
+                     11  ));            ! Parameter number in module
+
+
+
+! Graphical representation of parts along fuselage
+
+
+
+  LIN_FREE(#50,ON(#20,0.0),ON(#20,1.0):PEN=4);
+
+  LIN_FREE(#51,ON(#21,0.0),ON(#21,1.0):PEN=4);
+
+
+
+ENDMODULE
+

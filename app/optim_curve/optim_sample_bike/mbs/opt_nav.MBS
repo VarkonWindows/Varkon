@@ -1,0 +1,26 @@
+!*************************** opt_nav *************************************
+! +++
+! Hub
+!
+! ---
+!****************************************************************************
+!sdesce Hub
+
+
+BASIC DRAWING MODULE opt_nav(
+
+VECTOR p:=vec(0.0,0.0) > "Centre of hub !";
+
+FLOAT d:=50.0 > "Hub diameter !");
+
+BEGINMODULE
+
+  set(PEN=3);
+
+  arc_1pos(#1,p, d/2);
+
+  arc_1pos(#2,centre(#1),6);
+
+
+ENDMODULE
+

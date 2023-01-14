@@ -1,0 +1,36 @@
+!*************************** opt_hjul *************************************
+! +++
+! Wheel
+!
+! ---
+!****************************************************************************
+!sdesce Wheel
+
+
+BASIC DRAWING MODULE opt_hjul(
+VECTOR p:=vec(0.0,0.0) > "Centre of wheel";
+FLOAT fd:=620.0 > "Wheel diameter";
+FLOAT nd:=50.0 > "Hub diameter";
+FLOAT ekrar_f:=36 > "Number of spokes " );
+
+INT  ekrar;
+
+BEGINMODULE
+
+  ekrar:= ROUND(ekrar_f);
+
+  part(#1,opt_nav(p, nd));
+
+  part(#2,opt_falg(centre(#1#2, 0.0), fd));
+
+  part(#5,opt_dack(#2#1, 25));
+
+  part(#7,opt_ekrar(#1#1, #2#2, ekrar));
+
+  part(#8 ,OPT_LIMV0(#0, 12, 200, 5000, 2));
+
+  part(#9 ,OPT_LIMV0(#0, 12, 10, 90, 4));
+
+ENDMODULE
+
+

@@ -1,0 +1,85 @@
+!*************************** opt_tpsymb *************************************
+! +++
+! Center of gravity symbol
+!
+! ---
+!****************************************************************************
+!sdesce Center of gravity symbol
+
+
+basic drawing module opt_tpsymb(
+
+FLOAT tp:=1     >"Weight";
+
+FLOAT tpx:=0    >"Position in X direction";
+
+FLOAT tpy:=0    >"Position in Y direction ");
+
+
+
+INT i;
+
+
+
+CONSTANT FLOAT size = 30;
+
+
+
+beginmodule
+
+
+
+   set(PEN=4);
+
+   arc_1pos(#1,vec(tpx,tpy),size);
+
+   lin_ang(#2,vec(tpx,tpy-2*size),90,4*size);
+
+   lin_ang(#3,vec(tpx-2*size,tpy),0,4*size);
+
+
+
+   set(PEN=1);   
+
+   text(#4,vec(tpx+3*size,tpy),0,str(tp,-1,3):TSIZE=size,TSLANT=0);
+
+   text(#9,vec(tpx,-4*size+tpy),0,"X= "+str(tpx,-1,2):TSIZE=size,TSLANT=0);
+
+
+
+   arc_1pos(#5,vec(tpx,tpy),0.9*size,0,90);
+
+   for i:=1 to 8 do
+
+     arc_offs(#6,#5,-0.1*size*i);
+
+   endfor;
+
+
+
+  arc_1pos(#7,vec(tpx,tpy),0.9*size,180,270);
+
+   for i:=1 to 8 do
+
+     arc_offs(#8,#7,-0.1*size*i);
+
+   endfor;
+
+
+
+endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,78 @@
+!***************** opt_gtbott ****************************
+
+!
+
+! +++
+
+! Get identities to bottle profile and rotation axis
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-06-11 Gunnar Liden
+
+! ---
+
+!************************************************************
+
+
+
+!sdescs Hämta identiteter till flaskprofil och rotationsaxel
+
+!sdesce Get identities to bottle profile and rotation axis
+
+
+
+GLOBAL GEOMETRY MODULE opt_gtbott  (
+
+     REF    part_id;          ! Part which created the bottle
+
+VAR  REF    lin_id;           ! Rotation axis   identity 
+
+VAR  REF    cur_id );         ! Rotation curve  identity 
+
+
+
+! Internal variables
+
+
+
+  STRING lin_ids*50;       ! Rotations axis id. as  string
+
+  STRING cur_ids*50;       ! Rotation curve id. as  string
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! 1. Leta igenom part_id efter grupper PROFILE och ROTAXIS
+
+! ---
+
+
+
+! Fusk !!!  Leta procedur får skriva senare  !!!!!
+
+
+
+  lin_ids:= RSTR(part_id)+"#2.1";
+
+  cur_ids:= RSTR(part_id)+"#7.1";
+
+  lin_id := RVAL(lin_ids);
+
+  cur_id := RVAL(cur_ids);
+
+
+
+ENDMODULE
+

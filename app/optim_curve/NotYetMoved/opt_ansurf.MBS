@@ -1,0 +1,56 @@
+! ***************** opt_ansurf *****************************************
+
+!
+
+! +++
+
+! Dummy routine which only refers to varkon analyse routines
+
+! 
+
+!
+
+! Revision history
+
+! ________________
+
+!
+
+! 1995-06-19 Gunnar Liden
+
+! ---
+
+!*************************************************************************
+
+
+
+!sdesce Dummy routine which only refers to varkon analyse routines
+
+!sdescs Hänvisning till FANGA analyser under varkons ordinarie menyer
+
+
+
+GLOBAL GEOMETRY MODULE opt_ansurf ();
+
+
+
+BEGINMODULE
+
+
+
+  LST_INI("opt_ansurf FANGA surface analysis");
+
+  LST_LIN(" ");      
+
+  LST_LIN("Refer to VARKON's standard menues !");      
+
+  LST_LIN(" ");      
+
+  LST_LIN("varkon-analyse-geometry-fanga-part ");      
+
+  LST_EXI();
+
+
+
+ENDMODULE
+

@@ -1,0 +1,234 @@
+!*************************** opt_ram *************************************
+! +++
+! Frame
+!
+! ---
+!****************************************************************************
+!sdesce Frame
+
+BASIC DRAWING MODULE opt_ram(
+VECTOR p:=vec(0.0,0.0) > "Centre for pedals";
+STRING hd*1:="M" > "Man's (M) or lady's (L) bicycle";
+FLOAT h:=600.0 > "Height of frame";
+FLOAT bl:=450.0 > "Back fork length";
+FLOAT fl:=15.0 > "Front fork slope (0=Vertical)";
+FLOAT sh:=80.0 > "Height for seat " );
+
+FLOAT rl,tv;
+VECTOR hdrf;
+
+BEGINMODULE
+
+  part(#72,OPT_LIMV0(#0, 12, 0, 35, 5));
+
+  part(#73,OPT_LIMV0(#0, 12, 200, 2000, 3));
+
+  part(#74,OPT_LIMV0(#0, 12, 100, 2000, 4));
+
+  set(PEN=2);
+
+  rl:=100; tv:=310;
+
+  if sh < 10 then sh:=10; endif;
+
+  arc_1pos(#1,p,30);
+
+  lin_ang(#2,p,rl,h:BLANK=1);
+
+  lin_offs(#3,#2,12:BLANK=1);
+
+  lin_offs(#4,#2,-12:BLANK=1);
+
+  trim(#3,0,#1,1);
+
+  unblank(#3);
+
+  trim(#4,0,#1,1);
+
+  unblank(#4);
+
+  lin_ang(#75,on(#3,1)+vec(0,-10),0,(h/10)*9.5:BLANK=1);
+
+  if hd = "M" or hd = "m" then hdrf:=on(#75,0);
+
+  else                       hdrf:=on(#3,0.3);
+
+  endif;
+
+
+  lin_free(#5,hdrf,on(#75,1):BLANK=1);
+
+  lin_offs(#6,#5,22);
+
+  lin_ang(#7,on(#5,1)+vec(0,10),270+fl,130);
+
+  lin_offs(#8,#7,-32);
+
+  trim(#5,1,#7,-1);
+
+  trim(#5,0,#3,-1);
+
+  unblank(#5);
+
+  if hd = "M" or hd ="m" then
+
+    trim(#6,0,#3,1);
+
+  else
+
+    trim(#6,0,#3,-1);
+
+  endif;
+
+  trim(#6,1,#7,-1);
+
+  unblank(#6);
+
+  lin_free(#9,p,on(#7,0.8):BLANK=1);
+
+  lin_offs(#10,#9,12:BLANK=1);
+
+  lin_offs(#11,#9,-12:BLANK=1);
+
+  trim(#10,0,#1,1);
+
+  trim(#10,1,#7,-1);
+
+  unblank(#10);
+
+  trim(#11,0,#1,1);
+
+  trim(#11,1,#7,-1);
+
+  unblank(#11);
+
+  lin_ang(#12,p,180,bl:BLANK=1);
+
+  lin_offs(#13,#12,6:BLANK=1);
+
+  lin_offs(#14,#12,-6:BLANK=1);
+
+  trim(#13,0,#1,1);
+
+  unblank(#13);
+
+  trim(#14,0,#1,1);
+
+  unblank(#14);
+
+  arc_1pos(#15,on(#12,1),6,90,270);
+
+  lin_free(#16,on(#13,1),on(#4,1)+vec(0,-30):BLANK=1);
+
+  trim(#16,1,#4,-1);
+
+  unblank(#16);
+
+  lin_offs(#17,#16,11:BLANK=1);
+
+  trim(#17,0,#13,-1);
+
+  trim(#17,1,#4,-1);
+
+  unblank(#17);
+
+  lin_free(#18,on(#7,1),on(#8,1));
+
+  lin_ang(#19,on(#18,0.5),270+fl,h/3:BLANK=1);
+
+  lin_free(#20,on(#18,0.5),intersect(#12,#19,-1):BLANK=1);
+
+  poi_free(#21,on(#20,1):BLANK=1);
+
+  cur_conic(#22,"FREE",on(#19,1),on(#19,0),0.55,
+
+               on(#21,0)+vec(50,0),on(#21,0)+vec(56,0):BLANK=1);
+
+  lin_offs(#23,#19,-10:BLANK=0);
+
+  lin_offs(#24,#19,10:BLANK=0);
+
+  cur_offs(#27,#22,-10:BLANK=0);
+
+  cur_offs(#28,#22,10:BLANK=0);
+
+  arc_2pos(#29,on(#28,1),on(#27,1),11);
+
+  lin_free(#30,on(#7,0),on(#8,0));
+
+  lin_free(#37,on(#4,1),on(#3,1));
+
+  lin_ang(#38,on(#37,0.2),rl,sh);
+
+  lin_ang(#39,on(#37,0.8),rl,sh:BLANK=1);
+
+  lin_ang(#40,on(#38,1)+vec(-30,0),0,150);
+
+  trim(#39,1,#40,-1);
+
+  unblank(#39);
+
+  lin_ang(#41,on(#38,1)+vec(-15,40),0,135);
+
+  arc_2pos(#42,on(#41,0),on(#40,0),-25);
+
+  arc_2pos(#43,on(#40,1),on(#41,1),25);
+
+  arc_1pos(#58,p,15);
+
+  lin_ang(#44,p,tv,170:BLANK=1);
+
+  lin_offs(#45,#44,-6:BLANK=1);
+
+  lin_offs(#46,#44,6:BLANK=1);
+
+  lin_ang(#47,on(#44,1)+vec(-50,6),0,100);
+
+  lin_ang(#48,on(#47,0)+vec(0,-12),0,100);
+
+  trim(#45,0,#58,1);
+
+  trim(#45,1,#47,-1);
+
+  unblank(#45);
+
+  trim(#46,0,#58,1);
+
+  trim(#46,1,#47,-1);
+
+  unblank(#46);
+
+  arc_2pos(#49,on(#48,1),on(#47,1),14);
+
+  arc_2pos(#50,on(#47,0),on(#48,0),14);
+
+  lin_ang(#51,p,tv-180,170:BLANK=1);
+
+  lin_offs(#52,#51,-6:BLANK=1);
+
+  lin_offs(#53,#51,6:BLANK=1);
+
+  trim(#52,0,#1,1);
+
+  unblank(#52);
+
+  trim(#53,0,#1,1);
+
+  unblank(#53);
+
+  lin_ang(#54,on(#51,1)+vec(-50,6),0,100);
+
+  lin_ang(#55,on(#54,0)+vec(0,-12),0,100);
+
+  arc_2pos(#56,on(#55,1),on(#54,1),14);
+
+  arc_2pos(#57,on(#54,0),on(#55,0),14);
+
+  arc_1pos(#59,on(#44,1),6);
+
+  arc_1pos(#61,on(#51,1),6);
+
+ENDMODULE
+
+
+

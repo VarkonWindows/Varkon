@@ -1,0 +1,153 @@
+! ***************** opt_anacur *****************************************
+!
+! +++
+! This module calculates the value of objective function for a curve in 
+! an optimization calculation.  
+! 
+! The objective function value is registered with a call of module OPT_FUNCV0.
+! The only requirement, from the get routine OPT_GTOV1 in this application,
+! is that the first parameter is the objective function value (an attribute
+! of the type FLOAT).
+!
+! A constraint is also defined in this module. There is a minimum curvature 
+! radius on the curve.
+!
+! Revision history
+! ________________
+!
+! 1995-11-25 Gunnar Liden
+! 2009-01-05 Constraint TODO Gunnar Liden
+!
+! ---
+!*************************************************************************
+
+!sdesce Objective function calculation for (analysis of) a curve
+!sdescs Målfunktionsberäkning för (analys av) en kurva.
+
+GLOBAL GEOMETRY MODULE opt_anacur (
+REF    cur_id                  >"@t8 Select curve to be optimized (analysed)";
+STRING o_type*9 := "arclength" > "Objective function type (energy or arclength) ";
+FLOAT  r_min    := 50.0        > "Minimum radius of curvature";
+FLOAT  penalty  :=  0.01       > "Penalty (= radius parabola) for constraint";
+INT    print    :=    0        > "Print flag Eq. 0: Nothing Eq. 1: Show result";
+INT    graphic  :=    1        > "Eq. 0: No analysis symbol Eq. 1: Show symbol");
+
+! Internal variables
+
+  INT    n_poi;                    ! Accuracy of energy calculation
+                                   ! (number of pts within curve segment)
+  FLOAT  e_c;                      ! Energy of curve
+  FLOAT  chord_l;                  ! Chord length      
+  FLOAT  r_cur;                    ! Current minimum radius of curvature
+  FLOAT  r_poi;                    ! Radius of curvature for a point
+  FLOAT  u_poi;                    ! Current parameter value for a point
+  INT    i_poi;                    ! Loop index point
+  VECTOR eval_v;                   ! Vector for the EVAL function
+  VECTOR p_s;                      ! Current  point
+  VECTOR c_s;                      ! Current curvature centre
+  FLOAT  cst_val;                  ! Constraint function value
+  STRING cst_str*30;               ! Constraint description name
+  VECTOR p_symb;                   ! Position of the symbol
+  FLOAT  l_s;                      ! Size of the symbol";
+  INT    graphic_symb;             !=1: 3D and input l_s (no scale) 
+                                   !=2: Scaled =3: Scaled and in XY plane
+
+  STRING s*1;                      ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Calculate objective function value                     
+! ---
+
+  IF    o_type = "energy" THEN     !
+    n_poi := 30;                   ! Accuracy of energy calculation
+    PART(#2 , c_energyv0 (         ! Energy in curve
+     cur_id ,  n_poi , e_c )       ! 
+     :SAVE=0);                     !
+  ELIF  o_type = "arclength" THEN  !
+    e_c := ARCL(cur_id);           !
+  ELSE                             !
+    EXIT("opt_anacur o_type ");    !
+  ENDIF;                           !
+
+
+! +++
+! 2. Registrate objective function value. Call of OPT_FUNCV0
+! ---
+
+  PART(#1,OPT_FUNCV0( e_c ));      ! Registrate objective fctn value
+
+! +++
+! 3. Registrate constraint for the optimization calculation
+! ---
+
+  r_cur := 50000.0;                ! Radius of curvature start value
+
+  IF  print = 2 THEN               
+    LST_INI("opt_anacur All curvature values");
+  ENDIF;  
+
+  n_poi := 20;                     !
+  FOR i_poi:= 1 TO n_poi DO        ! Start loop points
+    u_poi:= (i_poi-1)/(n_poi-1);   !
+    p_s :=   ON(cur_id,u_poi);     ! Current point
+    c_s := CENTRE(cur_id,u_poi);   ! Current curvature centre
+    r_poi  := VECL(p_s-c_s);       ! Radius of curvature
+
+    IF  print = 2 THEN               
+      LST_LIN(STR(i_poi,3,0)+" u_poi "+STR(u_poi,7,4)+
+	            " r_poi "+STR(r_poi, 15,8));      
+    ENDIF;  
+
+    IF r_poi < r_cur THEN          !
+      r_cur:= r_poi;               !
+    ENDIF;                         !
+
+  ENDFOR;                          !
+
+  IF  print = 2 THEN               
+    LST_EXI();
+  ENDIF;  
+
+  cst_val:= r_min - r_cur;         ! Constraint function
+  cst_str:= "Min_radius";          ! Description
+
+!TODO  PART(#3,OPT_CSTV0 ( cst_val,     ! Registrate
+!                      penalty,     !
+!                      cst_str ));  !
+
+! +++
+! 4. Create analysis symbol if graphic= 1
+! ---
+
+  p_symb:= ON(cur_id,0.0) +        !
+  0.2*ARCL(cur_id)*TANG(cur_id,0); !
+  l_s := 10.0;                     !
+  graphic_symb:= 3;                !
+  IF graphic = 1 THEN              !
+    PART(#4,opt_ansymb ( p_symb,   ! Create symbol
+         l_s, graphic_symb));      !
+  ENDIF;                           !
+
+! +++
+! 5. Show result if print= 1
+! ---
+
+  IF  print = 1 THEN               
+    LST_INI("opt_anacur Curve analysis");
+    LST_LIN("Objective  function value " + STR( e_c   , 15,8));      
+    LST_LIN("Constraint function value " + STR(cst_val, 15,8));      
+    LST_EXI();
+  ENDIF;  
+
+ENDMODULE
+
+
+
+

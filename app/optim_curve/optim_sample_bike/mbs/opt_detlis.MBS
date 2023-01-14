@@ -1,0 +1,290 @@
+!*************************** opt_detlis *************************************
+! +++
+! Parts list for bicycle
+!
+! ---
+!****************************************************************************
+!sdesce Parts list for bicycle
+
+ macro module opt_detlis();
+
+
+ STRING pnamn*20,namn*20,svar*1,idstr1*80,idstr2*80,ids3*80,code*1;
+
+ INT    penna,plgd,j,typ,att,np,nm,nref,blnk,niv,pen;
+
+ FLOAT  ram1(10),ram2(10),ram3(10),fl(20),da(20),na(20);
+
+ INT    ek(20),i,ii,nt;
+
+ REF    id1,ppid,kid,idm(10),gid(3),spid,id,kbid;
+
+
+
+ beginmodule
+
+
+! +++
+! Search in GM for parts with name opt_ram (frame), opt_hjul (wheel)
+! and opt_styre (handbarrels) 
+! ---   
+
+
+   for i := 1 to 9 do
+
+     ram1(i):=0; ram2(i):=0; ram3(i):=0;
+
+   endfor;
+
+
+
+   for i := 1 to 19 do
+
+     fl(i):=0; da(i):=0;  na(i):=0; ek(i):=0;
+
+   endfor;
+
+
+
+   i:=0; ii:=0; code:="F";
+
+
+
+LOOP1: 
+
+   id := getid(code);
+
+   code := "P";
+
+   if id <> #0 then
+
+! +++
+! Check that identity it is part
+! ---
+
+
+     gethdr(id,typ,nref,blnk,niv,pen,gid);
+
+     if typ <> 16384 then goto LOOP1; endif;
+
+	 
+! +++
+! Get the part name
+! ---
+
+     getprt(id,pnamn,typ,att,kid,np,nm,idm);
+
+	 
+	 
+! +++
+! Frame
+! ---
+	 
+     if pnamn = "opt_ram" then
+
+       i:=i+1;
+
+       ram1(i):=getflt(id,3); ! Frame height
+
+       ram2(i):=getflt(id,4); ! Back fork length
+
+       ram3(i):=getflt(id,5); ! Front fork angle
+
+       goto LOOP1;
+
+
+! +++
+! Wheel
+! ---
+
+     elif pnamn = "opt_hjul" then
+
+       ii:=ii+1;
+
+       ppid:=global_ref(id,1);
+
+       idstr1:=rstr(ppid);
+
+       goto LOOP2;
+
+     else 
+
+       goto LOOP1;
+
+     endif;
+
+   else
+
+     goto END;
+
+   endif;
+
+
+LOOP2:
+
+   id := getid(code);
+
+   if id <> #0 then
+
+     gethdr(id,typ,nref,blnk,niv,pen,gid);
+
+     if typ <> 16384 then goto LOOP2; endif;
+
+
+     getprt(id,namn,typ,att,kid,np,nm,idm);
+
+     if np = 0 then goto LOOP2; endif;
+
+! +++
+! Wheel
+! ---
+
+     if namn = "opt_hjul" then
+
+       ii:=ii+1;
+
+       ppid:=global_ref(id,1);
+
+       idstr1:=rstr(ppid);
+
+       goto LOOP2;
+
+     elif namn = "opt_ram" then
+
+       i:=i+1;
+
+       ram1(i):=getflt(id,3); ! Frame height
+
+       ram2(i):=getflt(id,4); ! Back fork length
+
+       ram3(i):=getflt(id,5); ! Front fork angle
+
+       goto LOOP2;
+
+     endif;
+
+
+     if   namn = "opt_falg"   then goto LOOP3;
+
+     elif namn = "opt_dack"   then goto LOOP3;
+
+     elif namn = "opt_nav"    then goto LOOP3;
+
+     elif namn = "opt_ekrar"  then goto LOOP3;
+
+     endif;
+
+     goto LOOP2;
+
+
+LOOP3:
+
+   nt:=length(idstr1);
+
+   ids3:=rstr(global_ref(id,3));
+
+   if substr(ids3,1,nt) <> idstr1 then goto LOOP2; endif;
+
+
+     if   namn = "opt_falg" then
+
+       fl(ii):=getflt(id,2);
+
+     elif namn = "opt_dack" then
+
+       da(ii):=getflt(id,2);
+
+     elif namn = "opt_nav" then
+
+       na(ii):=getflt(id,2);
+
+     elif namn = "opt_ekrar" then
+
+       ek(ii):=getint(id,3);
+
+     endif;
+
+     goto LOOP2;
+
+   endif;
+
+
+END:
+
+     if i > 0 or ii > 0 then
+
+       lst_ini(" ");
+
+     endif;
+
+     if i > 0 then
+
+       j:=1;
+
+RAM:
+
+       if i > 1 then
+
+         lst_lin("Frame "+str(j,-1,0)+" : ");
+
+       endif;
+
+       lst_lin("Frame height        : "+str(ram1(j),-1,2)+" mm");
+
+       lst_lin("Back fork length    : "+str(ram2(j),-1,2)+" mm");
+
+       lst_lin("Front fork angle    : "+str(ram3(j),-1,2)+" degrees");
+
+       lst_lin(" ");
+
+       j:=j+1;
+
+       if j <= i then goto RAM; endif;
+
+     endif;
+
+
+
+     if ii > 0 then
+
+       j:=1;
+
+HJUL:
+
+       if ii > 1 then
+
+         lst_lin("Wheel "+str(j,-1,0)+" : ");
+
+       endif;
+
+       lst_lin("Rim outer diameter  : "+str(fl(j),-1,2)+" mm");
+
+       lst_lin("Rim inner diameter  : "+str(fl(j)-10,-1,2)+" mm");
+
+       lst_lin("Tube thickness      : "+str(da(j),-1,2)+" mm");
+
+       lst_lin("Hub diameter        : "+str(na(j),-1,2)+" mm");
+
+       lst_lin("Number of spokes    : "+str(ek(j),-1,0));
+
+       lst_lin(" ");
+
+       j:=j+1;
+
+       if j <= ii then goto HJUL; endif;
+
+     endif;
+
+
+
+     if i > 0 or ii > 0 then
+
+       lst_exi();
+
+     endif;
+
+
+
+ endmodule
+
+

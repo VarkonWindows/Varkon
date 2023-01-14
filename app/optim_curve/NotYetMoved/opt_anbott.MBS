@@ -1,0 +1,468 @@
+!***************** opt_anbott ****************************
+
+!
+
+! +++
+
+! Analyse a bottle defined by opt_bottle
+
+!
+
+! 1995-06-15 Gunnar Liden
+
+! ---
+
+!************************************************************
+
+
+
+!sdesce Analyse a bottle 
+
+!sdescs Analysera en flaska
+
+
+
+GLOBAL GEOMETRY MODULE opt_anbott  (
+
+REF    part_id              > "@t16384 Select bottle";
+
+FLOAT  volym    :=  100.0   > "Requested volume of bottle";
+
+STRING o_type*9 := "volume" > "Objective  function (volume/area/energy) ";
+
+STRING c_type*9 := "none"   > "Constraint function (volume/area/energy/none)";
+
+FLOAT  straff   := 0.0001   > "Penalty radius for constraint";
+
+FLOAT  area     :=    4.55  > "Maximum area of bottle  (for constraint area)";
+
+FLOAT  energy   :=50000.0   > "Maximum energy of curve (for constraint energy)";
+
+INT    print    :=    0     > "=1: List result on screen";
+
+INT    grafik   :=    1     > "Graphical representation 0= None  1= Calculations");
+
+
+
+! Internal variables
+
+
+
+  INT    bflag;            ! Value for BLANK (0 eller 1)
+
+  REF    lin_id;           ! Rotation axis  identity 
+
+  REF    cur_id;           ! Rotation curve identity 
+
+
+
+  FLOAT  e_length;         ! Element length (accuracy in
+
+                           ! computations)         
+
+  FLOAT  s_tot;            ! Total   arclength
+
+  FLOAT  s_cur;            ! Current arclength
+
+  INT    n_poi;            ! Number of points for the calculation
+
+  INT    i_poi;            ! Loop index point on curve 
+
+  
+
+  FLOAT  u_cur;            ! Current  parameter value curve 
+
+  FLOAT  u_lin;            ! Current  parameter value line 
+
+
+
+  FLOAT  c_h;              ! Current delta height
+
+  FLOAT  c_vol;            ! Current  volume
+
+  FLOAT  c_area;           ! Current  area 
+
+
+
+  FLOAT  c_radie;          ! Current    radius
+
+  FLOAT  p_radie;          ! Previous   radius
+
+
+
+  VECTOR p_cur;            ! Punkt on curve 
+
+  VECTOR p_lin;            ! Punkt on line 
+
+  VECTOR p_pre;            ! Previous point on line 
+
+
+
+  INT    e_poi;            ! Accuracy energy calculation  
+
+  FLOAT  c_energy;         ! Current curve energy   
+
+
+
+  FLOAT  objfunc;          ! Objective function value
+
+  FLOAT  cst_val;          ! Constraint function value
+
+  STRING cst_str*30;       ! Constraint description name
+
+
+
+  FLOAT  pi;               ! pi= 3.14
+
+
+
+  INT    DEBUG;            ! Debug
+
+
+
+BEGINMODULE
+
+
+
+! +++
+
+! 0. Initializations and checks
+
+! ---
+
+
+
+  IF    grafik = 0 THEN
+
+    bflag:= 1;
+
+  ELIF  grafik = 1 THEN
+
+    bflag:= 1;
+
+  ELSE
+
+    bflag:= 0;
+
+  ENDIF;
+
+
+
+  pi:= 3.1415926535897932; 
+
+
+
+  e_length := 10.0;
+
+
+
+  DEBUG := 0;
+
+
+
+! +++
+
+! 1. Get identities for curves, which define the bottle
+
+! ---
+
+
+
+  PART(#8, opt_gtbott ( part_id, lin_id, cur_id ):SAVE=0);
+
+
+
+! +++
+
+! 2. Calculate volume
+
+! ---
+
+
+
+  s_tot:= ARCL(cur_id);          ! Arclength curve  
+
+  s_cur:= 0.0;                   ! Current arclength
+
+
+
+  FOR i_poi :=1 TO 200   DO      ! Start loop all points  
+
+
+
+     IF s_cur > s_tot THEN       !
+
+       GOTO endcalc;             !
+
+     ENDIF;                      !
+
+
+
+     u_cur:= INV_ARCL(cur_id,    ! Current parameter value
+
+              s_cur);            !
+
+
+
+     p_cur:= ON(cur_id,u_cur);   ! Current point on curve 
+
+
+
+     u_lin:= INV_ON(lin_id,      ! Closest point on line
+
+             p_cur,1);           !
+
+
+
+     IF u_lin > 0.92 THEN        ! Not filled to max.
+
+       GOTO endcalc;             !
+
+     ENDIF;                      !
+
+    
+
+     p_lin:= ON(lin_id,u_lin);   !
+
+
+
+     c_radie:= VECL(p_cur-p_lin);!
+
+
+
+     IF i_poi = 1 THEN           !
+
+       p_pre:= p_lin;            !
+
+       c_vol:= 0.0;              ! Current volume
+
+       p_radie:= 0.0;            !
+
+       c_h    := 0.0;            !
+
+       c_area := 0.0;
+
+     ELSE                        !
+
+       c_h:=VECL(p_lin-p_pre);   !
+
+       c_vol:= c_vol +           !
+
+              c_h       *pi*     !
+
+       ((c_radie+p_radie)/2)**2; !
+
+       p_pre:= p_lin;            !
+
+       p_radie:= c_radie;        !
+
+       c_area := c_area +        !
+
+              2.0*pi*e_length*   !
+
+        (c_radie+p_radie)/2;     !
+
+     ENDIF;                      !
+
+
+
+     IF DEBUG = 2 THEN           !
+
+     LST_LIN(STR(i_poi,3,0)+" c_area  "+STR(c_area ,15,8)+
+
+                            " c_radie "+STR(c_radie,15,8)+" c_h "+STR(c_h,15,8));
+
+     LST_LIN(STR(i_poi,3,0)+" s_cur "+STR(s_cur,15,8)+" c_vol "+STR(c_vol,15,4));
+
+     ENDIF;                      !
+
+
+
+     IF grafik = 1 THEN          !
+
+       LIN_FREE(#1,p_cur,p_lin   !
+
+           :PEN=3);              !
+
+     ENDIF;                      !
+
+
+
+     s_cur := s_cur + e_length;  !
+
+
+
+  ENDFOR;                        ! End   loop all  points 
+
+
+
+
+
+endcalc:;                        ! Calculation finished
+
+
+
+! +++
+
+! 2. Registrate objective function value. Call of OPT_FUNCV0
+
+! ---
+
+
+
+  e_poi := 10;                          !
+
+  PART(#5, c_energyv0 ( cur_id,         ! Calculate curve energy
+
+       e_poi, c_energy):SAVE=0);        !
+
+
+
+  IF    o_type = "volume" THEN          ! Select objective fctn
+
+    objfunc:= (volym-c_vol/10000.0)**2; !
+
+  ELIF  o_type = "energy" THEN          !
+
+    objfunc:= c_energy*1000.0;          !
+
+  ELIF  o_type = "area"   THEN          !
+
+    objfunc:= c_area/10000.0;           !
+
+  ELSE                                  !
+
+    EXIT("opt_anbott Objective fctn "   !
+
+         +o_type+" not implemented");   !
+
+  ENDIF;                                !
+
+
+
+  PART(#2,OPT_FUNCV0(objfunc));         ! Registrate objective fctn value
+
+
+
+
+
+! +++
+
+! 3. Registrate constraint. Call of OPT_CSTV0
+
+! ---
+
+
+
+  
+
+  IF    c_type =  o_type   THEN         ! Check that constraint = objective
+
+   EXIT("opt_anbott o_type=c_type");    !
+
+  ENDIF;                                !
+
+
+
+  IF    c_type =  "volume" THEN         ! Volume constraint
+
+
+
+    cst_val:= (volym-c_vol/10000.0)**2; ! Constraint value
+
+    cst_str:= "Volume";                 ! Description
+
+
+
+  ELIF  c_type =  "energy" THEN         ! Energy constraint
+
+    cst_val:= c_energy*1000-energy;     !
+
+    cst_str:= "Energy";                 ! 
+
+
+
+  ELIF  c_type =  "area"   THEN         ! Area   constraint
+
+    cst_val:= c_area/10000.0-area;      !
+
+    cst_str:= "Area";                   ! 
+
+
+
+  ELIF  c_type =  "none"   THEN         ! No     constraint
+
+    ;                                   !
+
+  ELSE                                  !
+
+    EXIT("opt_anbott Constraint "       !
+
+         +c_type+" not implemented");   !
+
+  ENDIF;                                !
+
+
+
+  IF   c_type <> "none"  THEN           !
+
+    PART(#3,OPT_CSTV0 ( cst_val,        ! Registrate
+
+                        straff ,        !
+
+                        cst_str ));     !
+
+  ENDIF;                                !
+
+
+
+
+
+! +++
+
+! 4. List data on screen if print= 1
+
+! ---
+
+
+
+  IF print = 1 THEN
+
+  LST_INI("opt_anbott");
+
+  LST_LIN(" Volume  "+STR(c_vol/10000.0,15,4)+" cl");
+
+  LST_LIN(" Area   "+STR(c_area/10000.0,15,4)+" dm**2     ");
+
+  LST_LIN(" Energy "+STR(c_energy*10000.0,15,4)+"           ");
+
+  LST_LIN("  ");
+
+  LST_LIN(" Selected objective function: "+ o_type );
+
+  LST_LIN("  ");
+
+  LST_LIN("  ");
+
+  IF   c_type <> "none"  THEN  
+
+    LST_LIN(" Selected constraint function: "+ c_type );
+
+    LST_LIN(" Function value  "+STR(cst_val,25,10));
+
+    LST_LIN(" Penalty  radius "+STR(straff ,25,10));
+
+    LST_LIN(" Description         "+ cst_str );
+
+    LST_LIN("  ");
+
+  ENDIF;                      
+
+  LST_EXI();
+
+  ENDIF;
+
+
+
+ENDMODULE
+
