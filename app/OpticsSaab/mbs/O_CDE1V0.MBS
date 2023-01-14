@@ -1,0 +1,171 @@
+!***************** o_cde1v0  ******************************
+! +++
+! Calculation with fixed angle/direction deformation function 
+!
+! The module correponds to the o_def1v0 module.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-27 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Calculation with fixed angle/direction deformation 
+!sdescs Beraekning med fix vinkel/riktning deformation
+
+
+GLOBAL GEOMETRY MODULE o_cde1v0   (
+
+    REF    def_id;      ! Reference to deformation function 
+    VECTOR v_in;        ! Input vector direction
+VAR VECTOR v_out);      ! Output vector direction
+
+
+! Internal variables
+
+                        ! Data from o_def1v0:
+  REF    g_id;          ! 1. Transparency";
+  REF    c_id;          ! 2. Coordinate system
+  VECTOR d_v ;          ! 3. Deformation direction (fixed for all rays)
+  FLOAT  d_a ;          ! 4. Deformation angle (fixed value for all rays)
+  INT    graphic_1;     ! 5. Graphics .... not yet used ..... 
+
+  FLOAT  dot;           ! Scalar product
+  VECTOR d_v_t;         ! Vector d_v transformed to the global system
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+
+  v_out := VEC(0,0,0);
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! +++
+! 2. Make calculations for fixed angle and direction (o_def1v0)
+! ---
+
+
+! +++
+! Retrieve attribute data from the input deformation part (function)
+! ---
+
+  g_id       := GETREF(def_id,1);
+  c_id       := GETREF(def_id,2);
+  d_v        := GETVEC(def_id,3);
+  d_a        := GETFLT(def_id,4);
+  graphic_1  := GETINT(def_id,5);
+
+
+! +++
+! Check input vector
+! ---
+
+  IF  VECL(v_in) < 0.01 THEN
+    EXIT("o_cde1v0 Input vector length < 0.01");
+  ENDIF;
+
+! +++
+! Check deformation vector
+! ---
+
+  IF  VECL(d_v ) < 0.01 THEN
+    EXIT("o_cde1v0 Deformation vector length < 0.01");
+  ENDIF;
+
+! +++
+! Transformate deviation vector to global system
+! if a local system (c_id) is defined.
+! ---
+
+  IF  c_id = #0 THEN
+    GOTO  nocsys;
+  ENDIF;
+
+
+  MODE_LOCAL(c_id);
+  LIN_FREE(#4, VEC(0,0,0), d_v :BLANK=1);
+  MODE_GLOBAL();
+  d_v_t := TANG(GLOBAL_REF(#4));
+  DEL(GLOBAL_REF(#4));
+
+nocsys:;
+
+! +++
+! Let input vector be equal to output vector if they
+! are parallell
+! ---
+
+
+  dot := VECN(d_v_t)*VECN(v_in);
+
+  IF  ABS(dot-1.0) < 0.0001 OR  ABS(dot+1.0) < 0.0001 THEN
+    v_out := v_in;
+    v_out := VECN(v_out);
+    LST_INI("o_gdefv0 WARNING Vectors are parallell WARNING");
+    LST_EXI();
+    GOTO parallell;
+  ENDIF;
+
+! +++
+! Change direction of d_v if opposite v_in
+! ---
+
+  IF  dot < 0 THEN
+    d_v_t := - d_v_t;
+  ENDIF;
+
+! +++
+! Create local system with input and deformation vector
+! ---
+
+  CSYS_3P(#1, "Circle", VEC(0,0,0), v_in, d_v_t:BLANK=1,PEN=3);
+
+  MODE_LOCAL (GLOBAL_REF(#1));
+
+  ARC_1POS(#2, VEC(0,0,0), 1000.0, 0.0, d_a :BLANK=1,PEN=2);
+
+  LIN_FREE(#3, VEC(0,0,0), ON(GLOBAL_REF(#2),1.0):BLANK=1,PEN=4);
+
+  MODE_GLOBAL();
+
+  v_out := TANG(GLOBAL_REF(#3), 0.0);
+
+  IF  DEBUG = 1 THEN
+    LIN_FREE(#8, VEC(0,0,0), -500*v_in  :BLANK=0,PEN=1);
+    LIN_FREE(#9, VEC(0,0,0),  500*v_out :BLANK=0,PEN=1);
+    s:= INPMT("o_cde1v0 Continue (y/n) ?","y",1);
+    IF  s <> "y" THEN
+      EXIT("o_defv0 Execution interrupted");
+    ENDIF;
+  ENDIF;
+
+! +++
+! Delete all temporarely used geometry
+! ---
+
+  DEL(GLOBAL_REF(#1));
+  DEL(GLOBAL_REF(#2));
+  DEL(GLOBAL_REF(#3));
+
+
+parallell:; ! Label: Vectors are parallell
+
+  
+ENDMODULE

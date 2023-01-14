@@ -1,0 +1,31 @@
+!***************** o_rsurv0   ******************************
+! +++
+! Registration of surface in object and in picture plane
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-25 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registration of surface in object and picture plane
+!sdescs Registrering av yta i objekt och bildplan
+
+GLOBAL GEOMETRY MODULE o_rsurv0    (
+
+REF    osur_id;            ! 1. Object plane surface (optical fctn)
+REF    psur_id;            ! 2. Picture plane surface
+REF    ocsy_id;            ! 3. Optical fctn (object) plane
+REF    pcsy_id);           ! 4. Picture plane
+
+BEGINMODULE
+
+! +++
+! No calculations. Only registration
+! ---
+
+;
+
+ENDMODULE

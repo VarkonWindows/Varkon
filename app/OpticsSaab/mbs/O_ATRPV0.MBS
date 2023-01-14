@@ -1,0 +1,138 @@
+!***************** o_atrpv0  ******************************
+! +++
+! Definition of a two surfaces transparency for optical analysis
+!
+! The function determines U and V rectangle for the limited 
+! area and the data is registered as attribute values to the
+! o_rtrpv0 module.
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Two surfaces transparency for optical analysis
+!sdescs Två ytors transparens (?) foer optisk analys
+
+
+GLOBAL GEOMETRY MODULE o_atrpv0   (
+
+REF    s_eye_id       >"@t16 Select surface closest to the eye point";
+REF    s_out_id       >"@t16 Select outer lens surface";
+FLOAT  b_n2   := 1.49 >"Refractive index (1.49 glass)";
+REF    cur_id := #0   >"@ @t8 Limit curve (<CR>= whole eye surface)";
+STRING material*80 := "Glass" >"Material in transparency";
+INT    graphic:= 1    >"Eq. 0: Show nothing Eq. 1: Edges Eq. 2: All");
+
+
+! Internal variables
+
+  FLOAT  u_start;                ! Start (minimum) U value
+  FLOAT  u_end;                  ! End   (maximum) U value
+  FLOAT  v_start;                ! Start (minimum) V value
+  FLOAT  v_end;                  ! End   (maximum) V value
+
+                                 ! Values which should be calculated ..
+  FLOAT  offset;                 ! Offset (Undefined here)
+
+  INT    npatu_e;                ! No. of patches in U direction
+  INT    npatv_e;                ! No. of patches in V direction
+  INT    npatu_o;                ! No. of patches in U direction
+  INT    npatv_o;                ! No. of patches in V direction
+
+  INT    b_val_a;                ! Blank flag for all other entities
+  INT    b_val_c;                ! Blank flag for curves
+  INT    b_val_s;                ! Blank flag offset surface
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+  DEBUG := 1; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+    b_val_s   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+    b_val_s   := 0;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+    b_val_s   := 0;
+  ELSE
+   EXIT("o_atrpv0 graphic not 0 or 1");
+  ENDIF;
+
+
+! +++
+! 2. Determine maximum and minimum limit parameter values
+! ---
+
+  PART(#2,  o_ltrpv0 ( cur_id, s_out_id, s_eye_id, b_n2,
+                       u_start, u_end, v_start, v_end));
+
+! +++
+! 3. Registrate transparency data
+! ---
+
+  offset := -0.123456789;
+  PART(#1, o_rtrpv0 ( s_out_id,  s_eye_id, offset, b_n2,
+                      cur_id, material, 
+                      u_start, u_end,
+                      v_start, v_end));
+
+! +++
+! 4. Create graphical symbol for the transparency
+! ---
+
+  IF  graphic = 0 THEN
+    GOTO nograph;
+  ENDIF;
+
+! Retrieve number of U and V patches
+  GETSURH(s_out_id,"NPATU",npatu_o);
+  GETSURH(s_out_id,"NPATV",npatv_o);
+  GETSURH(s_eye_id,"NPATU",npatu_e);
+  GETSURH(s_eye_id,"NPATV",npatv_e);
+
+  CUR_ISO(#3, s_out_id, "U",  0.0   ,   0.0  , npatv_o
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#4, s_out_id, "V", npatv_o,   0.0  , npatu_o
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#5, s_out_id, "U", npatu_o, npatv_o,  0.0   
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#6, s_out_id, "V",  0.0   , npatu_o,  0.0   
+           :BLANK=b_val_c,PEN=3);
+
+  CUR_ISO(#7, s_eye_id, "U",  0.0   ,   0.0  , npatv_e
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#8, s_eye_id, "V", npatv_e,   0.0  , npatu_e
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#9, s_eye_id, "U", npatu_e, npatv_e,  0.0   
+           :BLANK=b_val_c,PEN=3);
+  CUR_ISO(#10,s_eye_id, "V",  0.0   , npatu_e,  0.0   
+           :BLANK=b_val_c,PEN=3);
+
+nograph:;
+
+ENDMODULE

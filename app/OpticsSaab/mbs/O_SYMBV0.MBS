@@ -1,0 +1,492 @@
+!***************** o_symbv0 ******************************
+! +++
+! The function transforms and scales a symbol (a Varkon .PLT
+! file) to the object plane and maps the symbol to the picture
+! plane.
+!
+! The calculation is heavy since creation of the symbol
+! in the object plane means calculation of intersects
+! between lines and the object surface (optical function).
+! There can be many hundreds lines in a .PLT file, and there
+! will be an intersect calculation for each start and end
+! point of these lines.
+!
+! The MBS statement SYMB is not available in GEOMETRY (3D)
+! mode. A symbol (a plot .PLT) must therefore first be 
+! converted to a text file . There is a DRAWING (2D) module
+! for this. Start a new job in the optics application but
+! as a DRAWING job. Call the function o_stodat.MBS, which
+! will create a .DAT file on the subdirectory GEO to the 
+! active job directory. 
+!
+! Input to this module is the name to the text file with
+! the plot data. The subdirectory name and extension .DAT 
+! will be added automatically to the input name.
+! Full file name example: 
+! /usr/varkon/app/optics/GEO/picture1.DAT      (UNIX)
+!   C:\varkon\app\optics\GEO\picture1.DAT     (WINDOWS)
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Symbol in object plane mapped to the picture plane
+!sdescs Symbol (.PLT) i objektyta "mappas" till bildplansyta
+
+
+GLOBAL GEOMETRY MODULE o_symbv0  (
+
+REF    g_id        >"@t16384  Select optical function creation part";
+STRING m_name*30:= "picture1" >"Name of picture file";
+FLOAT  scale := 1.0>"Scale for picture";
+FLOAT  d_x := 50.0 >"Delta translation X value for the picture";
+FLOAT  d_y := 50.0 >"Delta translation Y value for the picture";
+INT    graphic:= 1 >"Eq. 0: Show nothing Eq. 1: Picture Eq. 2: All");
+
+
+! Internal variables
+
+                        ! Data from o_rsurv0
+  REF    osur_id;       ! 1. Object plane surface (optical fctn)
+  REF    psur_id;       ! 2. Picture plane surface
+  REF    ocsy_id;       ! 3. Optical fctn (object) plane
+  REF    pcsy_id;       ! 4. Picture plane
+
+  REF    nxt_id;        ! For GET_NEXT_GM
+
+                        ! For o_smaxv0:
+  FLOAT  minx;          ! Minimum X value
+  FLOAT  maxx;          ! Maximum X value
+  FLOAT  miny;          ! Minimum Y value
+  FLOAT  maxy;          ! Maximum Y value
+  FLOAT  minz;          ! Minimum Z value
+  FLOAT  maxz;          ! Maximum Z value
+
+  STRING s_file*80;     ! Full file name
+  FILE   dat;           ! Input file 
+  STRING rad*132;       ! Dummy string
+
+  INT    n_lin;         ! Number of lines
+  FLOAT  minx_p;        ! Minimum X value for the picture
+  FLOAT  maxx_p;        ! Maximum X value for the picture
+  FLOAT  miny_p;        ! Minimum Y value for the picture
+  FLOAT  maxy_p;        ! Maximum Y value for the picture
+  
+  INT    i_lin;         ! Loop index for lines
+  INT    c_pen;         ! Pen (color) number
+  VECTOR p_s;           ! Start point
+  VECTOR p_e;           ! End   point
+  VECTOR p_s_t;         ! Start point translated and scaled
+  VECTOR p_e_t;         ! End   point translated and scaled
+  VECTOR p_s_l;         ! Start point deformed by the lens
+  VECTOR p_e_l;         ! End   point deformed by the lens
+
+  VECTOR uv_sur;        ! UV start point 
+
+  INT    s_case;        ! Selection case:
+                        ! =1: All 
+                        ! =2: Direct 
+                        ! =3: Pos n 
+                        ! =4: Neg n 
+                        ! =5: Normal for 3 
+                        ! =6: Normal for 4
+
+  VECTOR p_s_in;        ! Source point   input
+  VECTOR p_e_in;        ! Source point   input
+  VECTOR v_s_in;        ! Source vector  input
+  VECTOR uv_sol(10);    ! Solution U,V points for surface
+  VECTOR r3_sol(10);    ! Solution R*3 points for surface
+  INT    n_sol;         ! Total number of solutions
+
+  INT    n_iter;        ! Number of iterations
+
+  INT    w_flag;        ! Bad object surface warning flag
+
+  INT    b_val_a;       ! Blank flag for all other entities
+  INT    b_val_l;       ! Blank flag for picture lines
+  INT    b_val_p;       ! Blank flag for points
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_l   := 1;
+    b_val_p   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_l   := 0;
+    b_val_p   := 1;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_l   := 0;
+    b_val_p   := 0;
+  ELSE
+   EXIT("o_symbv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Check scaling value
+  IF  scale < 0.1 THEN
+   EXIT("o_symbv0 Scale < 0.1");
+  ENDIF;
+
+
+! Initialize local variables
+  nxt_id  := #0;
+  psur_id := #0;
+  osur_id := #0;
+  pcsy_id := #0;
+  ocsy_id := #0;
+  p_s     := VEC( -0.12345679, -0.12345679, -0.12345679);
+  p_e     := VEC( -0.12345679, -0.12345679, -0.12345679);
+  p_s_t   := VEC( -0.12345679, -0.12345679, -0.12345679);
+  p_e_t   := VEC( -0.12345679, -0.12345679, -0.12345679);
+  p_s_l   := VEC( -0.12345679, -0.12345679, -0.12345679);
+  p_e_l   := VEC( -0.12345679, -0.12345679, -0.12345679);
+
+  n_iter  :=  0;
+  c_pen   :=  1;
+  w_flag  := -1;
+
+! +++
+! 2. Retrieve data from the optical function creation part r_surv0
+! ---
+ 
+! Scan the r_surv0 part (sub-tree)
+  SET_ROOT_GM(g_id);
+
+! Get the reference to the r_surv0 registration part
+  nxt_id    := GET_NEXT_GM(0, 16384, "o_rsurv0");
+  
+! Check that surfaces  have been registered 
+  IF  nxt_id = #0  THEN
+    EXIT("o_symbv0 No optical fctns registered in part "+RSTR(g_id));
+  ENDIF;
+
+! Get data about the surfaces
+
+  osur_id   := GETREF(nxt_id, 1);
+  psur_id   := GETREF(nxt_id, 2);
+  ocsy_id   := GETREF(nxt_id, 3);
+  pcsy_id   := GETREF(nxt_id, 4);
+
+
+! +++
+! 3. Get minimum and maximum X and Y coordinates for object surface
+! ---
+
+! +++
+! Not yet used. Can be used for automatic calculation of scale  
+! and translation of the picture .......
+! ---
+
+  PART(#2, o_smaxv0  ( osur_id, ocsy_id, 
+      minx, maxx, miny, maxy, minz, maxz));
+
+! +++
+! 4. Header data from the picture file
+! ---
+
+! +++
+! Add subdirectory name and extension .DAT
+! ---
+
+
+  IF       ACT_OSTYPE() = "UNIX"    THEN
+     s_file := ACT_JOBDIR()+"GEO/"+m_name+".DAT";
+  ELIF     ACT_OSTYPE() = "WINDOWS" THEN
+     s_file := ACT_JOBDIR()+"GEO\"+m_name+".DAT";
+  ELIF     ACT_OSTYPE() = "WIN32" THEN
+     s_file := ACT_JOBDIR()+"GEO\"+m_name+".DAT";
+  ELSE
+    EXIT("o_symbv0 Not programmed for OS "+ACT_OSTYPE());
+  ENDIF;
+
+! +++
+! Open file with picture data
+! ---
+
+  OPEN(dat, "R", s_file);
+  IF  IOSTAT(dat) <> 0 THEN
+    EXIT("o_symbv0 No file "+s_file+" on directory GEO");
+  ENDIF;
+
+! +++
+! Read total number of lines
+! ---
+
+! Read comment line
+  rad   := INLIN(dat);
+
+  n_lin := ININT(dat);
+  rad   := INLIN(dat);
+
+! +++
+! Read maximum and minimum coordinate values for the picture.
+! Not yet used. Can be used for automatic calculation of 
+! scale and translation of the picture .......
+! ---
+
+  minx_p  := INFLT(dat);
+  rad     := INLIN(dat);
+  maxx_p  := INFLT(dat);
+  rad     := INLIN(dat);
+  miny_p  := INFLT(dat);
+  rad     := INLIN(dat);
+  maxy_p  := INFLT(dat);
+  rad     := INLIN(dat);
+
+! +++
+! 5. Map the lines
+! ---
+
+
+  MODE_LOCAL(ocsy_id);
+  LIN_FREE(#5, VEC(0,0,0), VEC(0,0,1):BLANK=b_val_a);
+  MODE_GLOBAL();
+  v_s_in := TANG(GLOBAL_REF(#5));
+  DEL(GLOBAL_REF(#5));
+
+! Start value for line/surface intersect
+  uv_sur := VEC(-1,-1,-1);
+
+! Case for line/surface intersect
+  s_case := 1;
+  
+! +++
+! Start loop all lines
+! ---
+
+  FOR  i_lin := 1 TO 2*n_lin STEP 2 DO
+
+! +++
+!   Read start, end point and pen (color) number from file
+! ---
+
+    p_s.x   := INFLT(dat);
+    p_s.y   := INFLT(dat);
+    rad     := INLIN(dat);
+    IF  IOSTAT(dat) <> 0 THEN
+      CLOSE(dat);
+      EXIT("o_symbv0 Error reading start point");
+    ENDIF;
+    p_e.x   := INFLT(dat);
+    p_e.y   := INFLT(dat);
+    c_pen   := ININT(dat);
+    rad     := INLIN(dat);
+    IF  IOSTAT(dat) <> 0 THEN
+      CLOSE(dat);
+      EXIT("o_symbv0 Error reading end   point");
+    ENDIF;
+  
+! +++
+!   Translate and scale point
+! ---
+
+    p_s_t := scale*(p_s + VEC(d_x,d_y,0));
+    p_e_t := scale*(p_e + VEC(d_x,d_y,0));
+    
+! +++
+!   Show current (transformed) line if graphic >= 1
+! ---
+   
+    IF  graphic >= 1  THEN
+      MODE_LOCAL(ocsy_id);
+      IF  VECL(p_s_t-p_e_t) > 0.1 THEN
+      LIN_FREE(#101, p_s_t, p_e_t :PEN=c_pen);
+      ENDIF;
+      MODE_GLOBAL();
+    ENDIF;
+
+! +++
+!   Calculate the surface/line intersect for the start point
+!   and end point of the current (transformed) line.
+! ---
+
+    
+!   Transformate start and end points to the global system
+!   from the input object plane coordinate system
+    MODE_LOCAL(ocsy_id);
+    POI_FREE(#3, p_s_t:PEN=c_pen,BLANK=b_val_p);
+    POI_FREE(#4, p_e_t:PEN=c_pen,BLANK=b_val_p);
+    MODE_GLOBAL();
+
+    p_s_in := ON(GLOBAL_REF(#3));
+    p_e_in := ON(GLOBAL_REF(#4));
+
+!   Delete temporary used geometry (Necessary as programmed
+!   since references are made to #3.1 and #4.1. No deletion
+!   means that #3.1, #3.2, #3.3, will be created ... )
+    DEL(GLOBAL_REF(#3));
+    DEL(GLOBAL_REF(#4));
+
+try_again1:; ! Label: No intersect with a given start point
+
+!   Programming check. Increase maximum number of iterations
+!   if the plot file has many points
+    n_iter := n_iter + 1;
+    IF  n_iter > 10000 THEN
+      CLOSE(dat);
+      EXIT("o_symbv0 Programming error n_iter > 10000 (1)");
+    ENDIF;
+
+!   Calculate intersect between object surface and line 
+!   defined by the (transformed) start point and the 
+!   Z axis of the object plane coordinate system
+    ALL_INT_LIN_SUR(osur_id,
+     p_s_in, v_s_in, s_case, uv_sur,
+     n_sol, uv_sol, r3_sol);
+
+!   Check that there is one solution
+    IF    n_sol = 1 THEN
+!     Mapped point on the picture surface. The UV value
+!     from the object surface/line intersect point is used
+      p_s_l  := ON(psur_id, uv_sol(1));
+!     Start UV value for the next line/surface intersect
+      uv_sur := uv_sol(1);
+    ELIF  n_sol = 0 AND uv_sur.x >= 0 THEN
+!     Intersect calculation failed. Try to calculate the 
+!     intersect with no start point given. The ALL_INT_LIN
+!     will for this case try to find a solution in all the
+!     patches of the surface (and not just in the neighbouring
+!     patches to the UV start point).
+      uv_sur := VEC(-1,-1,-1);
+      GOTO  try_again1;
+    ELIF  n_sol = 0 AND uv_sur.x <  0 THEN
+!     The intersect calculation failed also when no start 
+!     point was given. Assume that the current (transformed)
+!     line is outside the object surface, i.e. no mapped line
+!     will be created.
+      GOTO  skip_line;
+    ELIF  n_sol > 1 THEN
+!     The intersect calculation resulted in multiple intersect
+!     points. The object surface is probably "crossing itself". 
+!     A warning is given to the user and the line is skipped.
+      IF  w_flag = -1 THEN
+        LST_INI("WARNING WARNING WARNING WARNING WARNING ");
+        LST_LIN("The object surface (optical function) is "+
+                 "probably not OK");
+        LST_LIN("Modify the lens or move the eye point !"); 
+        LST_LIN("This warning is given by module o_symbv0"); 
+        LST_EXI();
+        w_flag := 1;
+      ENDIF;
+      GOTO  skip_line;
+    ENDIF;
+  
+
+try_again2:; ! Label: No intersect with a given start point
+
+!   Programming check. Increase maximum number of iterations
+!   if the plot file has many points
+    n_iter := n_iter + 1;
+    IF  n_iter > 10000 THEN
+      CLOSE(dat);
+      EXIT("o_symbv0 Programming error n_iter > 10000 (2)");
+    ENDIF;
+
+!   Calculate intersect between object surface and line 
+!   defined by the (transformed) end   point and the 
+!   Z axis of the object plane coordinate system
+    ALL_INT_LIN_SUR(osur_id,
+     p_e_in, v_s_in, s_case, uv_sur,
+     n_sol, uv_sol, r3_sol);
+
+!   Check that there is one solution
+    IF    n_sol = 1 THEN
+!     Mapped point on the picture surface. The UV value
+!     from the object surface/line intersect point is used
+      p_e_l  := ON(psur_id, uv_sol(1));
+!     Start UV value for the next line/surface intersect
+      uv_sur := uv_sol(1);
+    ELIF  n_sol = 0 AND uv_sur.x >= 0 THEN
+!     Intersect calculation failed. Try to calculate the 
+!     intersect with no start point given. The ALL_INT_LIN
+!     will for this case try to find a solution in all the
+!     patches of the surface (and not just in the neighbouring
+!     patches to the UV start point).
+      uv_sur := VEC(-1,-1,-1);
+      GOTO  try_again2;
+    ELIF  n_sol = 0 AND uv_sur.x <  0 THEN
+!     The intersect calculation failed also when no start 
+!     point was given. Assume that the current (transformed)
+!     line is outside the object surface, i.e. no mapped line
+!     will be created.
+      GOTO  skip_line;
+    ELIF  n_sol > 1 THEN
+!     The intersect calculation resulted in multiple intersect
+!     points. The object surface is probably "crossing itself". 
+!     A warning is given to the user and the line is skipped.
+      IF  w_flag = -1 THEN
+        LST_INI("WARNING WARNING WARNING WARNING WARNING ");
+        LST_LIN("The object surface (optical function) is "+
+                 "probably not OK");
+        LST_LIN("Modify the lens or move the eye point !"); 
+        LST_LIN("This warning is given by module o_symbv0"); 
+        LST_EXI();
+        w_flag := 1;
+      ENDIF;
+      GOTO  skip_line;
+    ENDIF;
+
+!   Create line in the picture plane
+    IF  VECL(p_s_l-p_e_l) > 0.1 THEN
+      LIN_FREE(#1, p_s_l, p_e_l:PEN=c_pen,BLANK=b_val_l);
+    ENDIF;
+
+    IF  graphic = 2 THEN
+      POI_FREE(#102, p_s_l:PEN= 2);
+      POI_FREE(#103, p_e_l:PEN= 4);
+    ENDIF;
+
+skip_line:;
+
+! +++
+! End   loop all lines
+! ---
+
+  ENDFOR;
+
+
+! +++
+! 6. Exit
+! ---
+
+! +++
+! Close file with picture data
+! ---
+
+  CLOSE(dat);
+
+! +++
+! Repaint screen
+! ---
+
+  IF  graphic > 0 THEN
+    REP_VIEW( );
+  ENDIF;
+
+ENDMODULE
+

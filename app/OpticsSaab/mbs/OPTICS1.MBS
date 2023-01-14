@@ -1,0 +1,69 @@
+!***************** optics1    ******************************
+! +++
+! Demonstration example for the OPTICS application
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-24 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Demonstration example for the OPTICS application
+!sdescs Demonstrationsexempel i applikationen OPTICS 
+
+GLOBAL GEOMETRY MODULE optics1();
+
+
+BEGINMODULE
+
+! Create a rotational surface, which will be the lens
+! ---------------------------------------------------
+
+! Start defining the profile curve as one-segment conic
+
+  CUR_CONIC(#8,"FREE", 
+   vec( 2800, 0, 4200 ), vec(4400, 0, 3400 - 3900), 0.6, 
+   vec( 4400, 0, 3400 ), vec(2800, 0, 4200 + 1450):BLANK=1);
+
+! Create rotation axis as two points
+  POI_FREE(#9 ,startp(#8) + vec(0, 0, 700):BLANK=1);
+  POI_FREE(#10,  endp(#8) + vec(0, 0, 700):BLANK=1);
+
+! Create surface
+  SUR_ROT(#11,#8, on(#9), on(#10), -60, 60, 1, 1);
+
+! Definition of the transparency
+! -------------------------------
+
+  PART(#16,o_trpv0(global_ref(#11), -41, 1.49, #0, "Glass", 1));
+
+! Definition of the object X/Y plane, i.e. the plane for the 
+! grid of lines
+! ----------------------------------------------------------
+
+  CSYS_1P(#17,"Object_plane", vec(1000, 0, 3500), 0.0, 90, 0:BLANK=1);
+
+! Definition of the picture plane, i.e. the plane for the
+! deformed grid
+! -------------------------------------------------------
+
+  CSYS_1P(#18,"Picture_plane", vec(-8000, 0, 3500), 0, 90, 0:BLANK=1);
+
+! Calculate the optical deformation function, which are defined
+! as two surfaces in the objective function plane and in the
+! picture plane.
+! -----------------------------------------------------------
+
+  PART(#20,o_efnv0(global_ref(#16), vec(4900.0, 0.0, 4600.0), global_ref(#17)
+    , global_ref(#18), 10, 1));
+
+! Define the grid of lines in the object plane and calculate
+! the (curved) lines in the picture plane. (Mathematically: Map
+! surface (UV) curves from the object plane surface to the picture
+! plane surface)
+
+  PART(#21,o_gridv0(global_ref(#20), 200, 200, 1));
+
+ENDMODULE

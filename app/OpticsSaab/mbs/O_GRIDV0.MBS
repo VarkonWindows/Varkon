@@ -1,0 +1,303 @@
+!***************** o_gridv0 ******************************
+! +++
+! Create grid in object surface and map to picture surface
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-26 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Create object surface grid and map to picture surface
+!sdescs Skapa grid objektyta och "mappa" till bildplansyta
+
+
+GLOBAL GEOMETRY MODULE o_gridv0  (
+
+REF    g_id        >"@t16384  Select optical function creation part";
+FLOAT  d_x := 50.0 >"Delta X value for the grid";
+FLOAT  d_y := 50.0 >"Delta Y value for the grid";
+INT    graphic:= 1 >"Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+
+! Internal variables
+
+                        ! Data from o_rsurv0
+  REF    osur_id;       ! 1. Object plane surface (optical fctn)
+  REF    psur_id;       ! 2. Picture plane surface
+  REF    ocsy_id;       ! 3. Optical fctn (object) plane
+  REF    pcsy_id;       ! 4. Picture plane
+
+  REF    nxt_id;        ! For GET_NEXT_GM
+
+                        ! For o_smaxv0:
+  FLOAT  minx;          ! Minimum X value
+  FLOAT  maxx;          ! Maximum X value
+  FLOAT  miny;          ! Minimum Y value
+  FLOAT  maxy;          ! Maximum Y value
+  FLOAT  minz;          ! Minimum Z value
+  FLOAT  maxz;          ! Maximum Z value
+
+  INT    n_x;           ! Number of X planes
+  INT    n_y;           ! Number of Y planes
+  FLOAT  x_s;           ! Start X value
+  FLOAT  y_s;           ! Start Y value
+  INT    n_n;           ! Dummy for s_x, s_y calculation
+
+  VECTOR i_norm;        ! Intersect plane normal
+  VECTOR p1_s;          ! Point 1 for start   B-plane
+  VECTOR p2_s;          ! Point 2 for start   B-plane
+  VECTOR p3_s;          ! Point 3 for start   B-plane
+  VECTOR p4_s;          ! Point 4 for start   B-plane
+
+  INT    i_plane;       ! Loop index plane
+  INT    i_b;           ! Loop index curve branch
+  INT    no_branch;     ! Number of branches
+  INT    n_int;         ! Total number of intersect curves
+  REF    int_id;        ! Identity of intersect curve
+
+                        ! For o_mapv0:
+  INT    n_add;         ! Additional points in each segment
+  INT    graphic_m;     ! Graphic
+
+  INT    b_val_a;       ! Blank flag for all other entities
+  INT    b_val_c;       ! Blank flag for picture curves
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+    graphic_m := 0;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+    graphic_m := 1;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+    graphic_m := 2;
+  ELSE
+   EXIT("o_gridv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Check delta values
+  IF  d_x < 0.1 THEN
+   EXIT("o_gridv0 Delta X < 0.1");
+  ENDIF;
+  IF  d_y < 0.1 THEN
+   EXIT("o_gridv0 Delta Y < 0.1");
+  ENDIF;
+
+! Number of additional points for mapped curve
+  n_add := 0;
+
+! Initialize local variables
+  nxt_id  := #0;
+  psur_id := #0;
+  osur_id := #0;
+  pcsy_id := #0;
+  ocsy_id := #0;
+  int_id  := #0;
+  n_x     := -12345;
+  n_y     := -12345;
+  x_s     := -0.12345;
+  y_s     := -0.12345;
+  n_int   := -12345;
+
+! +++
+! 2. Retrieve data from the optical function creation part r_surv0
+! ---
+ 
+! Scan the r_surv0 part (sub-tree)
+  SET_ROOT_GM(g_id);
+
+! Get the reference to the r_surv0 registration part
+  nxt_id    := GET_NEXT_GM(0, 16384, "o_rsurv0");
+  
+! Check that surfaces  have been registered 
+  IF  nxt_id = #0  THEN
+    EXIT("o_gridv0 No optical fctns registered in part "+RSTR(g_id));
+  ENDIF;
+
+! Get data about the surfaces
+
+  osur_id   := GETREF(nxt_id, 1);
+  psur_id   := GETREF(nxt_id, 2);
+  ocsy_id   := GETREF(nxt_id, 3);
+  pcsy_id   := GETREF(nxt_id, 4);
+
+
+! +++
+! 3. Get minimum and maximum X and Y coordinates for object surface
+! ---
+
+  PART(#2, o_smaxv0  ( osur_id, ocsy_id, 
+      minx, maxx, miny, maxy, minz, maxz));
+
+! +++
+! Calculate number of X and Y planes and start values
+! ---
+
+  n_x := TRUNC((maxx-minx)/d_x)+2;
+  n_y := TRUNC((maxy-miny)/d_y)+2;
+
+  n_n := ROUND(minx/d_x);
+  x_s := n_n*d_x;
+  n_n := ROUND(miny/d_y);
+  y_s := n_n*d_y;
+
+
+! +++
+! 4. Calculate and map X intersects
+! ---
+
+  i_norm := VEC( 1.0,    0.0,   0.0);
+  p1_s   := VEC(x_s  ,   0.0,   0.0 );
+  p2_s   := VEC(x_s  ,1000.0,1000.0 );
+  p3_s   := VEC(x_s  ,1000.0,1000.0 );
+  p4_s   := VEC(x_s  ,2000.0,   0.0 );
+
+
+! Number of intersect curves. Initialization
+  n_int := 0;
+
+! Start loop planes
+  FOR i_plane := 1 TO n_x  DO  
+
+    IF    ocsy_id  <>  #0  THEN
+      MODE_LOCAL(ocsy_id);
+    ENDIF;
+
+    PSH_PMT("Intersect plane X= "+STR((i_plane-1)*d_x,-10,2));
+
+    B_PLANE( #3, p1_s + (i_plane-1)*d_x*i_norm,  
+                 p2_s + (i_plane-1)*d_x*i_norm,  
+                 p3_s + (i_plane-1)*d_x*i_norm,  
+                 p4_s + (i_plane-1)*d_x*i_norm  :BLANK=0);
+
+    MODE_GLOBAL();
+
+
+    no_branch := N_CUR_INT( osur_id, GLOBAL_REF(#3) ); 
+
+    IF no_branch = 0 THEN 
+        DEL(GLOBAL_REF(#3));         
+        GOTO nointerx;   
+    ENDIF;             
+
+!   Start loop branches
+    FOR i_b:= 1 TO no_branch DO 
+
+      CUR_INT(#4,osur_id, GLOBAL_REF(#3), i_b :BLANK=b_val_c,PEN=3);
+      IF i_b = no_branch THEN 
+        DEL(GLOBAL_REF(#3));   
+      ENDIF;      
+
+      n_int := n_int + 1;
+      int_id := GLOBAL_REF(REFC(4,n_int));
+      PART(#7 , o_mapv0  ( int_id, psur_id, n_add, graphic_m));
+
+!   End   loop branches
+    ENDFOR;
+
+nointerx:;  ! Label: No intersect 
+
+    POP_PMT();
+
+! End   loop planes
+  ENDFOR; 
+
+
+
+! +++
+! 5. Calculate and map Y intersects
+! ---
+
+  i_norm := VEC(   0.0,  1.0,    0.0);
+  p1_s   := VEC(   0.0, y_s  ,   0.0 );
+  p2_s   := VEC(1000.0, y_s  ,1000.0 );
+  p3_s   := VEC(1000.0, y_s  ,1000.0 );
+  p4_s   := VEC(2000.0, y_s  ,   0.0 );
+
+
+! Number of intersect curves. Initialization
+  n_int := 0;
+
+! Start loop planes
+  FOR i_plane := 1 TO n_y  DO  
+
+    IF    ocsy_id  <>  #0  THEN
+      MODE_LOCAL(ocsy_id);
+    ENDIF;
+
+    PSH_PMT("Intersect plane Y= "+STR((i_plane-1)*d_y,-10,2));
+
+    B_PLANE( #5, p1_s + (i_plane-1)*d_y*i_norm,  
+                 p2_s + (i_plane-1)*d_y*i_norm,  
+                 p3_s + (i_plane-1)*d_y*i_norm,  
+                 p4_s + (i_plane-1)*d_y*i_norm  :BLANK=0);
+
+    MODE_GLOBAL();
+
+
+    no_branch := N_CUR_INT( osur_id, GLOBAL_REF(#5) ); 
+
+    IF no_branch = 0 THEN 
+        DEL(GLOBAL_REF(#5));         
+        GOTO nointery;   
+    ENDIF;             
+
+!   Start loop branches
+    FOR i_b:= 1 TO no_branch DO 
+
+      CUR_INT(#6,osur_id, GLOBAL_REF(#5), i_b :BLANK=b_val_c,PEN=3);
+      IF i_b = no_branch THEN 
+        DEL(GLOBAL_REF(#5));   
+      ENDIF;      
+
+      n_int := n_int + 1;
+      int_id := GLOBAL_REF(REFC(6,n_int));
+      PART(#8 , o_mapv0  ( int_id, psur_id, n_add, graphic_m));
+
+!   End   loop branches
+    ENDFOR;
+
+nointery:;  ! Label: No intersect 
+
+    POP_PMT();
+
+! End   loop planes
+  ENDFOR; 
+
+
+! +++
+!  n. Exit
+! ---
+
+  IF  graphic > 0 THEN
+    REP_VIEW(1);
+  ENDIF;
+
+ENDMODULE

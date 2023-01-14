@@ -1,0 +1,60 @@
+!***************** o_def2v0 ******************************
+! +++
+! Definition of random angle and direction deformation 
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-26 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Definition of random angle and direction deformation 
+!sdescs Definition av slumpmaessig deformation 
+
+
+GLOBAL GEOMETRY MODULE o_def2v0  (
+
+REF    g_id              >"@t16384  Select transparency";
+FLOAT  d_a := 0.06875    >"Deformation angle, maximum value ";
+INT    graphic:= 1       >"Graphics .... not yet used ..... ");
+
+
+! Internal variables
+
+  INT    b_val_a;       ! Blank flag for all other entities
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+  ELSE
+   EXIT("o_def2v0 graphic not 0, 1 or 2");
+  ENDIF;
+
+
+ENDMODULE

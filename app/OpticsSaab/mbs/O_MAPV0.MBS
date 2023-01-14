@@ -1,0 +1,222 @@
+! ***************** o_mapv0    ****************************
+! +++
+! Map a surface curve to another surface
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-25 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Map a surface curve to another surface
+!sdescs Avbilda en ytkurva på en annan yta
+
+
+GLOBAL GEOMETRY MODULE o_mapv0    (
+
+REF    cur_id      > "@t8 Curve on a surface";
+REF    sur_id      > "@t16 Select mapping surface";
+INT    n_add  := 1 >"Additional points in each segment";
+INT    graphic:= 1 > "=0: Blank all  =1: Show curve  =2: Show all");
+
+
+! Internal variables
+
+                                 ! For GETCURH:
+  INT    ns_geo;                 ! No of geometrical segments
+  INT    ns_gra;                 ! No of graphical   segments
+  INT    fnt;                    ! Font type, subtype
+  FLOAT  sl;                     ! Dash length 
+
+  INT    npatu;                  ! Number of U patches
+  INT    npatv;                  ! Number of V patches
+  
+  INT    i_i;                    ! Loop index intersect
+  INT    n_i;                    ! Total number of points on curve
+  FLOAT  u_d;                    ! Delta   curve parameter value
+  FLOAT  u_c;                    ! Current curve parameter value
+  VECTOR p_c;                    ! Point on the curve
+  VECTOR t_c;                    ! Tangent on curve
+  VECTOR t_cuv;                  ! Tangent on free UV curve
+  VECTOR p_s;                    ! Point on the surface
+             
+  VECTOR sur_uv;                 ! Surface point (U,V)
+
+  INT    i_s;                    ! Loop index point on curve
+
+  INT    n_poi;                  ! Number of points in poi
+  VECTOR poi(311);               ! Points for surface and tangent curve 
+  VECTOR tanpoi(311);            ! Tangent points for surface curve
+  VECTOR pm(311);                ! Mid point
+  STRING mf(311)*1;              ! Mid point flag
+  FLOAT  pval(311);              ! P-value
+  INT    i_poi;                  ! Loop index point
+
+  STRING s_t_cuv*132;            ! t_cuv as string  
+  
+  INT    bflag_a;                ! Blank flag for all 
+  INT    bflag_c;                ! Blank flag for curve
+  
+  INT    DEBUG;                  ! For Debug printout
+
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+  DEBUG := 0;                    ! Debug printout
+
+  IF   graphic = 0 THEN
+    bflag_a := 1;   
+    bflag_c := 1;
+  ELIF graphic = 1 THEN  
+    bflag_a := 1;
+    bflag_c := 0;       
+  ELIF graphic = 2 THEN  
+    bflag_a := 0;  
+    bflag_c := 0;     
+  ELSE             
+    EXIT("o_mapv0 Graphic not 0, 1 or 2");
+  ENDIF;         
+
+! Retrieve number of patches
+  GETSURH(sur_id,"NPATU",npatu);
+  GETSURH(sur_id,"NPATV",npatv);  
+  
+! Check number of additional points
+  IF  n_add < 0 THEN
+    EXIT("o_mapv0  n_add < 0");
+  ENDIF;
+
+ 
+! Get number of segments in the curve
+  GETCURH(cur_id, fnt,sl,ns_geo,ns_gra);
+
+
+  IF DEBUG = 1 THEN 
+  LST_INI("o_mapv0   Debug printout");
+  LST_LIN("ns_geo "+STR(ns_geo,3,0)+" n_add "+STR(n_add,3,0));
+  ENDIF;
+
+! +++
+! 3. Calculate all points for the approximate R*3 curve
+! ---
+
+  n_i := ns_geo + 1 + n_add*ns_geo;
+  u_d := 1.0/(n_add+1);
+
+  IF DEBUG = 1 THEN 
+  LST_LIN("Number of points n_i "+STR(n_i,3,0));
+  ENDIF;
+
+
+! +++
+! Start loop all points
+! ---
+
+  n_poi    := 0;
+
+
+  
+  FOR  i_i := 1 TO n_i DO
+
+!   Current parameter value u_c
+    u_c := (i_i-1)*u_d;
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("u_c "+STR(u_c,10,5));
+    ENDIF;
+
+!   Current point on curve
+    p_c   := ON(cur_id,u_c);
+    IF graphic = 2 THEN
+      POI_FREE(#100,p_c:PEN=4);
+    ENDIF;
+
+
+!   UV surface point for current curve point
+    sur_uv := EVAL(cur_id,"UV", VEC(u_c,0,0));
+    sur_uv := sur_uv - VEC(1,1,0);
+
+!   Tangent UV value for current curve point
+    t_cuv := EVAL(cur_id,"DUVDT", VEC(u_c,0,0));
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("p_c "+STR(p_c.x,10,5)+" "+STR(p_c.y,10,5));
+    LST_LIN("t_cuv "+STR(t_cuv.x,12,9)+" "+STR(t_cuv.y,12,9));
+    LST_LIN("´sur_uv "+STR(sur_uv.x,10,5)+" "+STR(sur_uv.y,10,5));
+    ENDIF;   
+    
+!   Current point on surface ?
+    IF   sur_uv.x >= -0.000001 AND sur_uv.x <  npatu+0.000001 AND
+         sur_uv.y >= -0.000001 AND sur_uv.y <  npatv+0.000001 THEN
+      ; !OK
+    ELSE
+      IF DEBUG = 1 THEN 
+      LST_EXI();
+      ENDIF; 
+      EXIT("o_mapv0 UV curve pt outside surface");
+    ENDIF;
+    
+!   Point on mapping surface
+    p_s := ON(sur_id,sur_uv);
+    IF graphic = 2 THEN
+      POI_FREE(#101,p_s:PEN=4);
+    ENDIF;
+
+!   Tangent on maaping surface
+    s_t_cuv := STR(t_cuv.x,15,12)+ " " + STR(t_cuv.y,15,12);
+    t_c := EVAL(sur_id,"DUVTOD3 "+s_t_cuv,sur_uv);
+
+    IF DEBUG = 1 THEN 
+    LST_LIN("p_s "+STR(p_s.x,10,5)+" "+STR(p_s.y,10,5)+" "+STR(p_s.z,10,5));
+    LST_LIN("t_c "+STR(t_c.x/VECL(t_c),12,9)+" "+STR(t_c.y/VECL(t_c),12,9)+
+               " "+STR(t_c.z/VECL(t_c),12,9));
+    LST_LIN(" ");
+    ENDIF;
+
+! +++
+!   Surface point and tangent to curve arrays
+! ---
+
+    n_poi      := n_poi + 1;
+    IF  n_poi > 311 THEN
+     EXIT("o_mapv0   n_poi > 311");
+    ENDIF;
+
+    poi(n_poi)    := p_s;
+    tanpoi(n_poi) := p_s + t_c;
+    pm(n_poi)     := VEC(0,0,0);
+    mf(n_poi)     := "P";
+    pval(n_poi)   := 0.5;    
+
+  ENDFOR;
+
+! +++
+! 4. Create curve on the surface 
+! ---
+
+  CUR_CONARR(#1,"FREE",n_poi,poi,tanpoi,mf,pval,pm:BLANK=bflag_c);
+
+
+! +++
+! 5. Exit
+! ---
+
+  IF DEBUG = 1 THEN 
+  LST_EXI();
+  ENDIF;
+
+  
+ENDMODULE

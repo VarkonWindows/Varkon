@@ -1,0 +1,341 @@
+!***************** o_efn1v0   ******************************
+! +++
+!
+! Calculation for one ray from eye point to optical fctn plane
+!
+! ---
+! Revision history
+! ________________
+!
+! 1997-05-26 Gunnar Liden
+!
+!************************************************************
+
+!sdesce One ray from eye point to optical fctn plane
+!sdescs En straele fraen oegonpunkt till optiska bildplanet
+
+GLOBAL GEOMETRY MODULE o_efn1v0    (
+
+    VECTOR eye_pt;               ! Eye point
+    REF    s_id;                 ! Surface                
+    REF    s_ofs_id;             ! Identity of offset surface
+    VECTOR uv_sur;               ! UV point offset surface 
+    REF    oc_id;                ! Object  coordinate system identity 
+    REF    pc_id;                ! Picture coordinate system identity 
+    FLOAT  b_n1;                 ! Break index air   
+    FLOAT  b_n2;                 ! Break index glass
+    INT    graphic;              ! Graphical case
+    REF    def_id;               ! Reference to deformation function 
+VAR FILE   mbs;                  ! Output data file
+VAR VECTOR p_plane;              ! Point in function plane
+VAR VECTOR p_notr;               ! Direct point in function plane
+                                 ! (with no transparency)
+VAR INT    status);              ! Error code
+                                 ! Eq.  0: Picture point calculated
+                                 ! Eq. -2: No intersect with surface
+                                 ! Eq. -3: No intersect with plane 
+                                 ! Eq. -5: Multiple surface points  
+                                 ! Eq. -6: Optics calc. offset  failed
+                                 ! Eq. -7: Optics calc. surface failed
+                                 ! Eq. -8: Direct point calc. failed    
+
+
+! Internal variables
+
+  REF    l_id;                   ! Start ray line identity
+
+  INT    s_case;                 ! Selection case:
+                                 ! =1: All 
+                                 ! =2: Direct 
+                                 ! =3: Pos n 
+                                 ! =4: Neg n 
+                                 ! =5: Normal for 3 
+                                 ! =6: Normal for 4
+
+  VECTOR p_s_in;                 ! Source point   input
+  VECTOR v_s_in;                 ! Source vector  input
+  VECTOR uv_sol(10);             ! Solution U,V points for surface
+  VECTOR r3_sol(10);             ! Solution R*3 points for surface
+  INT    n_sol;                  ! Total number of solutions
+
+!                                ! For v_break:
+  VECTOR v_in;                   ! Input  vector
+  VECTOR v_out1;                 ! Output vector offset surface
+  VECTOR v_out2;                 ! Output vector
+  VECTOR p_s;                    ! Pt on surface
+  VECTOR p_l;                    ! Start point line
+  VECTOR n_s;                    ! Surface normal for p_s
+
+  VECTOR v_input;                ! Input  vector 
+  VECTOR v_output;               ! Output vector 
+  FLOAT  ang_diff;               ! Angle difference
+  FLOAT  dot;                    ! Scalar product 
+  VECTOR v_proj;                 ! Projected vector
+  FLOAT  ang_x;                  ! Angle to X axis
+  FLOAT  ang_y;                  ! Angle to Y axis
+  FLOAT  ang_z;                  ! Angle to Z axis
+
+  VECTOR v_def;                  ! Deformed vector
+
+  INT    n_int;                  ! Number of intersect pts
+
+  INT    b_val_a;                ! Blank flag for all other entities
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+  ELSE
+   EXIT("o_efn1v0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Initialize output variables
+  status :=  0;
+  p_plane := VEC( -0.123456789, -0.123456789, -0.123456789 );
+  p_notr  := VEC( -0.123456789, -0.123456789, -0.123456789 );
+
+! Initialize local variables
+  v_def   := VEC( -0.123456789, -0.123456789, -0.123456789 );
+
+
+! +++
+! 2. Point in the offset surface
+! ---
+
+  p_s := ON(s_ofs_id, uv_sur);
+
+  LIN_FREE(#2, eye_pt, p_s:BLANK=b_val_a,PEN=4);
+  l_id := GLOBAL_REF(#2);
+
+! Write data to output file
+  OUTLIN(mbs);
+  OUTSTR(mbs,"o_efn1v0 UV "  
+       +STR(uv_sur.x, 5,2)+" "
+       +STR(uv_sur.y, 5,2)+" PT "
+       +STR(p_s.x, 8,2)+" "
+       +STR(p_s.y, 8,2)+" "+STR(p_s.z, 8,2));
+  OUTLIN(mbs);
+
+! +++
+! 3. New direction from air into glass
+! ---
+ 
+! Start (eye) point
+  p_l  :=   eye_pt;
+
+! Input vector
+  v_in:= p_s - p_l;
+
+! Input vector to the module
+  v_input := VECN(v_in);
+
+! Print input vector to Debug file
+  OUTSTR(mbs,"o_efn1v0 Input  vector "  
+       +STR(v_input.x,12,8)+" "
+       +STR(v_input.y,12,8)+" "+STR(v_input.z,12,8));
+  OUTLIN(mbs);
+
+! Surface normal
+  n_s:= -1.0*NORM(s_ofs_id, uv_sur );
+
+! Calculate output vector
+  PART(#3, o_bendv0( p_s, n_s,v_in, b_n1,b_n2,mbs, v_out1));
+
+  IF VECL(v_out1) < 0.00001 THEN 
+    status:= -6; 
+    EXIT();
+  ENDIF;
+
+! OUTSTR(mbs,"o_efn1v0 v_out1 "  
+!      +STR(v_out1.x,10,4)+" "
+!      +STR(v_out1.y,10,4)+" "+STR(v_out1.z,10,4));
+! OUTLIN(mbs);
+
+! +++
+! 4. Intersect in the surface
+! ---
+
+  s_case := 1;
+
+! Start point of ray input line
+  p_s_in :=   p_s;
+
+! Tangent for the ray input line
+  v_s_in := v_out1;
+
+! Calculate the surface/line intersect
+
+   ALL_INT_LIN_SUR(s_id,
+     p_s_in, v_s_in, s_case, uv_sur,
+     n_sol, uv_sol, r3_sol);
+
+! Check that there is only one solution
+  IF    n_sol = 1 THEN
+    ;
+  ELIF  n_sol = 0 THEN
+    status := -2;
+    EXIT();
+  ELIF  n_sol > 1 THEN
+    status := -5;
+    EXIT();
+  ENDIF;
+  
+! Graphics
+  IF  graphic = 2 THEN
+    LIN_FREE(#5, p_s_in, r3_sol(1):PEN=2);
+  ENDIF;
+
+! +++
+! 5. New direction from glass into air
+! ---
+ 
+! Point on surface
+  p_s  := r3_sol(1);
+
+! Start point from offset surface
+  p_l  :=   p_s_in;
+
+
+! Input vector
+  v_in:= p_s - p_l;
+
+! Surface normal
+  n_s:= -1.0*NORM(s_id, uv_sol(1) );
+
+
+! Calculate output vector
+  PART(#6, o_bendv0( p_s, n_s,v_in, b_n2,b_n1,mbs, v_out2));
+
+  IF VECL(v_out2) < 0.00001 THEN 
+    status:= -7; 
+    EXIT();
+  ENDIF;
+
+! Deformation if deformation function is defined
+
+  IF  def_id <> #0 THEN
+    PART(#17, o_cdefv0 ( def_id, v_out2, v_def ));
+    v_out2 := v_def;
+  ENDIF;
+
+! OUTSTR(mbs,"o_efn1v0 v_out2 "  
+!      +STR(v_out2.x,10,4)+" "
+!      +STR(v_out2.y,10,4)+" "+STR(v_out2.z,10,4));
+! OUTLIN(mbs);
+
+! Output vector from the module
+  v_output := VECN(v_out2);
+
+! Print output vector to Debug file
+  OUTSTR(mbs,"o_efn1v0 Output vector "  
+       +STR(v_output.x,12,8)+" "
+       +STR(v_output.y,12,8)+" "+STR(v_output.z,12,8));
+  OUTLIN(mbs);
+
+! Angle difference
+  dot:= v_input*v_output;
+  ang_diff:=ARCCOS(dot);
+! Print angle difference to Debug file
+  OUTSTR(mbs,"o_efn1v0 Angle difference "  
+       +STR(ang_diff,10,4)+" degrees");
+  OUTLIN(mbs);
+
+!QQQQ  PART(#30, vec_aproj ( v_input, VEC(0,0,1), v_proj));
+!QQQQ  PART(#31, vec_aproj ( v_input, VEC(0,1,0), v_proj));
+
+! Angles
+  v_proj := VEC(1,0,0);
+  dot    := v_input*v_proj;
+  ang_x  :=ARCCOS(dot);
+  v_proj := VEC(0,1,0);
+  dot    := v_input*v_proj;
+  ang_y  :=ARCCOS(dot);
+  v_proj := VEC(0,0,1);
+  dot    := v_input*v_proj;
+  ang_z  :=ARCCOS(dot);
+  IF  ang_x > 90.0 THEN
+    ang_x := ang_x - 90.0;
+  ENDIF;
+  IF  ang_y > 90.0 THEN
+    ang_y := ang_y - 90.0;
+  ENDIF;
+  IF  ang_z > 90.0 THEN
+    ang_z := ang_z - 90.0;
+  ENDIF;
+
+! Print plane angles  to Debug file
+  OUTSTR(mbs,"o_efn1v0 Angle to X "  
+       +STR(ang_x,10,4)+" to Y "+STR(ang_y,10,4)+" to Z "+STR(ang_z,10,4));
+  OUTLIN(mbs);
+
+   
+
+! +++
+! 6. Intersect point in optical function plane    
+! ---
+ 
+! Create ray line from surface in the direction of the 
+! optical function plane
+  LIN_FREE(#7, p_s, p_s + 100.0*v_out2 :BLANK=b_val_a,PEN=3);
+
+! Check that the intersect point exists
+  n_int := N_INTERSECT(oc_id, GLOBAL_REF(#7), -1);
+  IF  n_int = 0 THEN
+    status:= -3; 
+    EXIT();
+  ENDIF;
+
+! Calculate the intersect point
+  p_plane := INTERSECT(oc_id, GLOBAL_REF(#7), -1);
+
+! Graphics
+  IF  graphic <= 1 THEN
+    DEL(GLOBAL_REF(#7));
+  ENDIF;
+
+  IF  graphic = 2 THEN
+    LIN_FREE(#8, p_s, p_plane :PEN=1);
+  ENDIF;
+
+! +++
+! 7. Point directly from eye point to picture plane
+! ---
+ 
+! Check that the intersect point exists
+  n_int := N_INTERSECT(pc_id, l_id, -1);
+  IF  n_int = 0 THEN
+    status:= -8; 
+    EXIT();
+  ENDIF;
+
+! Calculate the intersect point
+  p_notr  := INTERSECT(pc_id, l_id, -1);
+
+! Graphics
+  IF  graphic = 2 THEN
+    LIN_FREE(#9, ON(l_id,0.0), p_notr 
+     :PEN=3,LDASHL=0.1*VECL(ON(l_id,0.0)-p_notr),LFONT=1);
+  ENDIF;
+
+
+ENDMODULE

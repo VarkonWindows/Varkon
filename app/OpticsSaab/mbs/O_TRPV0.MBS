@@ -1,0 +1,140 @@
+!***************** o_trpv0  ******************************
+! +++
+! Definition of transparency for optical analysis
+!
+! The function creates the offset surface, determines 
+! U and V rectangle for the limited area, etc. The
+! data is registered as attribute values to the
+! o_rtrpv0 module.
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Definition of transparency for optical analysis
+!sdescs Definition av transparens (?) foer optisk analys
+
+
+GLOBAL GEOMETRY MODULE o_trpv0   (
+
+REF    s_id           >"@t16 Select (windscreen/hood/..) surface";
+FLOAT  offset :=-26.5 >"Transparency thickness (surface offset)";
+FLOAT  b_n2   := 1.49 >"Refractive index (1.49 glass)";
+REF    cur_id := #0   >"@ @t8 Select limit curve (<CR>= whole surface)";
+STRING material*80 := "Glass" >"Material in transparency";
+INT    graphic:= 1    >"Eq. 0: Show nothing Eq. 1: Offset Eq. 2: All");
+
+
+! Internal variables
+
+  REF    s_ofs_id;               ! Identity of offset surface
+
+  INT    sur_typ;                ! Type of surface
+  INT    npatu;                  ! No. of patches in U direction
+  INT    npatv;                  ! No. of patches in V direction
+
+  FLOAT  u_start;                ! Start (minimum) U value
+  FLOAT  u_end;                  ! End   (maximum) U value
+  FLOAT  v_start;                ! Start (minimum) V value
+  FLOAT  v_end;                  ! End   (maximum) V value
+
+                                 ! Values which should be calculated ..
+  FLOAT  u_start_lim;            ! Start (minimum) U value
+  FLOAT  u_end_lim;              ! End   (maximum) U value
+  FLOAT  v_start_lim;            ! Start (minimum) V value
+  FLOAT  v_end_lim;              ! End   (maximum) V value
+
+  INT    i_seg;                  ! Loop index segment in curve
+  INT    i_poi;                  ! Loop index point in segment
+  INT    n_poi;                  ! Number of points per segment
+
+  FLOAT  u_c;                    ! Curve parameter value
+  VECTOR uv_sur;                 ! Surface parameter point
+
+                                 ! For GETCURH:
+  INT    n_seg;                  ! Number of geometry segments
+  INT    ns_gra;                 ! Number of graphical segments
+  INT    fnt;                    ! Font typ,subtyp;
+  FLOAT  sl;                     ! Dash length
+
+  INT    b_val_a;                ! Blank flag for all other entities
+  INT    b_val_c;                ! Blank flag for curves
+  INT    b_val_s;                ! Blank flag offset surface
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+  DEBUG := 1; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+    b_val_s   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+    b_val_s   := 0;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+    b_val_s   := 0;
+  ELSE
+   EXIT("o_trpv0 graphic not 0 or 1");
+  ENDIF;
+
+
+! +++
+! Retrieve surface data
+! ---
+
+
+! Retrieve surface type
+  GETSURH(s_id,"SUR_TYPE",sur_typ);
+! Retrieve number of U and V patches
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+! +++
+! 2. Create offset surface
+! ---
+
+  SUR_OFFS (#2, s_id, offset:BLANK=b_val_s,PEN=2);
+  s_ofs_id := GLOBAL_REF(#2);
+
+! +++
+! 3. Determine maximum and minimum limit parameter values
+! ---
+
+  PART(#3,  o_ltrpv0 ( cur_id, s_id, s_ofs_id, b_n2,
+                       u_start, u_end, v_start, v_end));
+
+! +++
+! 4. Registrate transparency data
+! ---
+
+  PART(#1, o_rtrpv0 ( s_id,  s_ofs_id, offset, b_n2,
+                      cur_id, material, 
+                      u_start, u_end,
+                      v_start, v_end));
+
+
+ENDMODULE

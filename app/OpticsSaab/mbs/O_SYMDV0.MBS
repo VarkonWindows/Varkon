@@ -1,0 +1,247 @@
+!******************* rama3 ******************************************
+!
+! Convert SYMB (a .PLT file) to a text file .DAT
+!
+! Revision history
+! _________________
+!
+! 1997-05-31 Gunnar Liden
+!
+!
+!********************************************************************
+
+!sdescs Konvertera SYMB (en .PLT fil) till en text fil .DAT
+!sdesce Convert SYMB (a .PLT file) to a text file .DAT
+
+GLOBAL DRAWING MODULE o_symdv0 (
+
+STRING  s_plot*30 := "gripen"   >"Plot file";
+STRING  m_name*10 := "picture1" >"Name of DAT file";
+INT     c_case    :=  1         >"Case: .. not yet used ..");
+
+! Internal variables
+
+  REF    nxt_id;       ! Identity for a line
+  VECTOR p_s;          ! Start point
+  VECTOR p_e;          ! End   point
+  INT    n_lin;        ! Number of lines
+  FLOAT  xmin;         ! Minimum X
+  FLOAT  xmax;         ! Maximum X
+  FLOAT  ymin;         ! Minimum Y
+  FLOAT  ymax;         ! Maximum Y
+
+  FILE   dat;          ! Output file 
+  STRING f_name*132;   ! Full name of file
+
+                       ! For function GETHDR:
+  INT    typ;          ! Type of entity
+  INT    nref;         ! Number of references to part
+                       ! (not used any more !!!! )
+  INT    blank;        ! Eq. 0: Unblanked Eq. 1: Blanked
+  INT    level;        ! The layer for the entity
+  INT    c_pen;        ! Pen number (colour)
+  REF    group_id(3);  ! Global identities for the
+                       ! groups, which the entity is part of ..
+
+  INT    DEBUG;        ! Debug
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Initializations and checks
+! ---
+
+! Debug. Change to 0 or 1.
+  DEBUG := 0;
+
+  IF  DEBUG = 1 THEN
+  LST_INI("Output from o_symdv0. Output name of file "+m_name);
+  ENDIF;
+
+! Initialize local variables
+  f_name := "Undefined";
+
+! +++
+! 2. Read the plot file
+! ---
+
+  SYMB(#1, s_plot , vec(0, 0), 1.0, 0.0);
+
+! +++
+! 3. Determine the number of lines and maximum/minimu coordinates
+! ---
+
+! Initialization of extreme values
+  xmin  :=  50000.0;
+  xmax  := -50000.0;
+  ymin  :=  50000.0;
+  ymax  := -50000.0;
+
+! Initialize the number of lines
+  n_lin := 0;
+
+! Scan the part (sub-tree) #1, which is a "SYMB part"
+  SET_ROOT_GM(GLOBAL_REF(#1));
+
+nxt_lin1:; ! Label: Next line created by SYMB
+
+! Get the reference to the next line created by SYMB.
+! No more lines if nxt_id = #0
+  nxt_id := GET_NEXT_GM(0,2);
+  IF  nxt_id = #0 THEN
+    GOTO all_lin1;
+  ENDIF;
+
+! Start and end point of current line 
+  p_s := ON(nxt_id,0.0);
+  p_e := ON(nxt_id,1.0);
+
+! Update of extreme values
+  IF  p_s.x < xmin THEN
+    xmin := p_s.x;
+  ENDIF;
+  IF  p_s.x > xmax THEN
+    xmax := p_s.x;
+  ENDIF;
+  IF  p_e.x < xmin THEN
+    xmin := p_e.x;
+  ENDIF;
+  IF  p_e.x > xmax THEN
+    xmax := p_e.x;
+  ENDIF;
+
+
+  IF  p_s.y < ymin THEN
+    ymin := p_s.y;
+  ENDIF;
+  IF  p_s.y > ymax THEN
+    ymax := p_s.y;
+  ENDIF;
+  IF  p_e.y < ymin THEN
+    ymin := p_e.y;
+  ENDIF;
+  IF  p_e.y > ymax THEN
+    ymax := p_e.y;
+  ENDIF;
+
+! An additional line
+  n_lin := n_lin + 1;
+
+  IF  DEBUG = 1 THEN
+  LST_LIN(STR(n_lin,4,0)
+      +" xmin "+STR(xmin,5,1) +" xmax "+STR(xmax,5,1)
+      +" ymin "+STR(ymin,5,1) +" ymax "+STR(ymax,5,1) );
+  ENDIF;
+  
+! Continue scanning the "SYMB part"
+  GOTO nxt_lin1;
+
+all_lin1:; ! Label: All lines from SYMB is retrieved
+
+  IF  DEBUG = 1 THEN
+  LST_EXI();
+  ENDIF;
+
+! +++
+! 4. Write plot data to the text file .DAT
+! ---
+
+! +++
+! Full name (add directory and .DAT) of output file
+! ---
+
+  IF       ACT_OSTYPE() = "UNIX"    THEN
+     f_name := ACT_JOBDIR()+"GEO/"+m_name+".DAT";
+  ELIF     ACT_OSTYPE() = "WINDOWS" THEN
+     f_name := ACT_JOBDIR()+"GEO\"+m_name+".DAT";
+  ELSE
+    EXIT("o_symdv0 Not programmed for OS "+ACT_OSTYPE());
+  ENDIF;
+
+! +++
+! Check if the file already exists.
+! ---
+
+  IF  TEST_FILE( f_name, "X" ) = 1 THEN
+    EXIT("o_symdv0 Picture "+m_name+" already exists!");
+  ENDIF;
+
+! +++
+! Open the output file. 
+! ---
+
+  OPEN(dat, "W", f_name);
+  IF  IOSTAT(dat) <> 0 THEN
+    EXIT("o_symdv0 Open failed");
+  ENDIF;
+
+! +++
+! Write header data to the file (number of lines, extreme values)
+! --
+
+  OUTSTR(dat, "Plot data from plotfile "+s_plot +" (Module: o_symdv0)");
+  OUTLIN(dat);
+
+  OUTINT(dat, n_lin, 10  ); OUTSTR(dat, " No. of lines"); OUTLIN(dat);
+  OUTFLT(dat, xmin, 15, 8); OUTSTR(dat, " xmin"); OUTLIN(dat);
+  OUTFLT(dat, xmax, 15, 8); OUTSTR(dat, " xmax"); OUTLIN(dat);
+  OUTFLT(dat, ymin, 15, 8); OUTSTR(dat, " ymin"); OUTLIN(dat);
+  OUTFLT(dat, ymax, 15, 8); OUTSTR(dat, " ymax"); OUTLIN(dat);
+
+
+! +++
+! Write start and end points to the file
+! ---
+
+! Initialize the number of lines
+  n_lin := 0;
+
+! Scan the part (sub-tree) #1, which is a "SYMB part"
+  SET_ROOT_GM(GLOBAL_REF(#1));
+
+nxt_lin2:; ! Label: Next line created by SYMB
+
+! Get the reference to the next line created by SYMB.
+! No more lines if nxt_id = #0
+  nxt_id := GET_NEXT_GM(0,2);
+  IF  nxt_id = #0 THEN
+    GOTO all_lin2;
+  ENDIF;
+
+! Start and end point of current line 
+  p_s := ON(nxt_id,0.0);
+  p_e := ON(nxt_id,1.0);
+
+! Read header for the entity. i.e. get the pen number
+  GETHDR(nxt_id,typ,nref, blank,level,c_pen,group_id);
+
+! An additional line
+  n_lin := n_lin + 1;
+
+! Write data for the current line
+  OUTFLT(dat,p_s.x,15,6);OUTFLT(dat,p_s.y,15,6);
+  OUTINT(dat,n_lin, 5); OUTSTR(dat," Line"); OUTLIN(dat);
+  OUTFLT(dat,p_e.x,15,6);OUTFLT(dat,p_e.y,15,6);
+  OUTINT(dat,c_pen  , 5); OUTSTR(dat," Pen "); OUTLIN(dat);
+
+! Continue scanning the "SYMB part"
+  GOTO nxt_lin2;
+
+all_lin2:; ! Label: All lines from SYMB is retrieved
+
+! +++
+! 5. Exit
+! ---
+
+! +++
+! Close the output file
+! ---
+
+  CLOSE(dat);
+
+ENDMODULE

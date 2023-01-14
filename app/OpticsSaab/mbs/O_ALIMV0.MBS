@@ -1,0 +1,121 @@
+!***************** o_alimv0 ******************************
+! +++
+! Definition of a isoparametric limit curve for a surface
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-23 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Isoparametric limit curve for a surface
+!sdescs Isoparametrisk begransningskurva foer en yta
+
+
+GLOBAL GEOMETRY MODULE o_alimv0  (
+
+REF    s_id            >"@t16 Select surface";
+FLOAT  u_start :=  0.8 >"Start U value";
+FLOAT  u_end   := 11.2 >"End   U value";
+FLOAT  v_start :=  5.0 >"Start V value";
+FLOAT  v_end   := 15.0 >"End   V value";
+INT    graphic:= 1     >"Eq. 0: Show nothing Eq. 1: Curve Eq. 2: All");
+
+
+! Internal variables
+
+  INT    sur_typ;                ! Type of surface
+  INT    npatu;                  ! No. of patches in U direction
+  INT    npatv;                  ! No. of patches in V direction
+
+  INT    b_val_a;                ! Blank flag for all other entities
+  INT    b_val_c;                ! Blank flag for curves
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+  DEBUG := 1; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+  ELSE
+   EXIT("o_alimv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+
+! +++
+! Retrieve surface data
+! ---
+
+
+! Retrieve surface type
+  GETSURH(s_id,"SUR_TYPE",sur_typ);
+! Retrieve number of U and V patches
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+! +++
+! Check input isoparametric values
+! ---
+
+  IF  u_start < 0      OR u_start >  npatu OR
+      u_end   < 0      OR u_end   >  npatu OR
+      v_start < 0      OR v_start >  npatv OR
+      v_end   < 0      OR v_end   >  npatv OR
+      u_start > u_end OR v_start >  v_end     THEN
+
+    LST_INI("Input data error to module o_alimv0");
+    LST_LIN("The U parameter values must be between 0.0 and "+
+             STR(npatu,5,2));
+    LST_LIN("The V parameter values must be between 0.0 and "+
+             STR(npatv,5,2));
+    LST_LIN("A start parameter value (U or V) must be less "+
+             "than the end parameter value");
+    LST_EXI();
+    EXIT("o_alimv0 Parameter values not OK");
+  ENDIF;
+
+  
+
+! +++
+! 2. Create the composite isoparametric limit curve 
+! ---
+
+  CUR_ISO(#3, s_id, "U", u_start, v_start, v_end
+           :BLANK=b_val_a,PEN=3);
+  CUR_ISO(#4, s_id, "V", v_end,   u_start, u_end
+           :BLANK=b_val_a,PEN=3);
+  CUR_ISO(#5, s_id, "U", u_end,   v_end,   v_start
+           :BLANK=b_val_a,PEN=3);
+  CUR_ISO(#6, s_id, "V", v_start, u_end,   u_start
+           :BLANK=b_val_a,PEN=3);
+
+  CUR_COMP(#1, GLOBAL_REF(#3), GLOBAL_REF(#4), 
+               GLOBAL_REF(#5), GLOBAL_REF(#6)
+           :BLANK=b_val_c);
+
+ENDMODULE

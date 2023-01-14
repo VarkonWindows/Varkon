@@ -1,0 +1,213 @@
+!***************** o_ltrpv0  ******************************
+! +++
+! Determine maximum and minimum limit parameter values
+! for a surface, which shall be a lens surface.
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Determine maximum and minimum limit parameter values
+!sdescs Bestaem maximum och minimum limit parameter vaerden
+
+
+GLOBAL GEOMETRY MODULE o_ltrpv0   (
+
+    REF    cur_id;       ! Limit curve (Not defined if = #0)
+    REF    s_eye_id;     ! Identity of surface closest to eye
+    REF    s_out_id;     ! Identity of lens outer surface
+    FLOAT  b_n2;         ! Refractive index
+                         ! Output surface parameter limit values:
+VAR FLOAT  u_start;      ! Start (minimum) U value
+VAR FLOAT  u_end;        ! End   (maximum) U value
+VAR FLOAT  v_start;      ! Start (minimum) V value
+VAR FLOAT  v_end);       ! End   (maximum) V value
+
+
+! Internal variables
+
+  INT    npatu;                  ! No. of patches in U direction
+  INT    npatv;                  ! No. of patches in V direction
+
+  FLOAT  u_start_lim;            ! Start (minimum) U value
+  FLOAT  u_end_lim;              ! End   (maximum) U value
+  FLOAT  v_start_lim;            ! Start (minimum) V value
+  FLOAT  v_end_lim;              ! End   (maximum) V value
+
+  INT    i_seg;                  ! Loop index segment in curve
+  INT    i_poi;                  ! Loop index point in segment
+  INT    n_poi;                  ! Number of points per segment
+
+  FLOAT  u_c;                    ! Curve parameter value
+  VECTOR uv_sur;                 ! Surface parameter point
+
+                                 ! For GETCURH:
+  INT    n_seg;                  ! Number of geometry segments
+  INT    ns_gra;                 ! Number of graphical segments
+  INT    fnt;                    ! Font typ,subtyp;
+  FLOAT  sl;                     ! Dash length
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables (and for calculation below)
+  u_start :=  50000.0;
+  u_end   := -50000.0;
+  v_start :=  50000.0;
+  v_end   := -50000.0;
+
+! Debug. Change to 0 or 1.
+  DEBUG := 0; 
+
+! Initialize internal variables
+  u_start_lim := -0.123456789;
+  u_end_lim   := -0.123456789;
+  v_start_lim := -0.123456789;
+  v_end_lim   := -0.123456789;
+  npatu       := -12345;
+  npatv       := -12345;
+  n_seg       := -12345;
+  i_seg       := -12345;
+  n_poi       := -12345;
+
+! +++
+! Retrieve number of patches for the surface closest to eye
+! ---
+
+
+! Retrieve number of U and V patches
+  GETSURH(s_eye_id,"NPATU",npatu);
+  GETSURH(s_eye_id,"NPATV",npatv);
+
+
+! +++
+! 2. Absolute limit values for given input surfaces
+! ---
+
+
+! +++
+! The input lens surfaces and the refractive index determines the 
+! maximum size of the surface, which is possible to analyse. 
+! These values should be calculated, but here is only default 
+! values used (0.1 from the surface outer boundary). These limits
+! will be used when no limit curve has been defined. The limits
+! will also be used for the check of an input limit curve.
+! ---
+
+  u_start_lim :=      0.1;
+  u_end_lim   := npatu - 0.1;
+  v_start_lim :=      0.1;
+  v_end_lim   := npatv - 0.1;
+
+! +++
+! Goto no_lim if no limit curve is defined
+! --
+
+  IF   cur_id = #0 THEN
+    u_start := u_start_lim;
+    u_end   := u_end_lim;
+    v_start := v_start_lim;
+    v_end   := v_end_lim;
+    GOTO no_lim;
+  ENDIF;
+
+
+! +++
+! 3. Determine limit values for the "eye" surface
+! ---
+
+
+! +++
+! Retrieve number of curve segments in the limit curve
+! ---
+
+  GETCURH(  cur_id, fnt, sl, n_seg, ns_gra);
+
+! +++
+! Calculate points along the curve in order to determine
+! the minimum and maximum parameter values (a rectangle
+! in the UV plane) corresponding to the limit curve.
+! ---
+
+! Number of points per segment 
+  n_poi := 5;
+
+! Start loop segments in curve
+  FOR  i_seg:= 1 TO n_seg DO
+
+!   Start loop points in segment 
+    FOR  i_poi:= 1 TO n_poi DO
+
+!     Current curve parameter value
+      u_c    := i_seg - 1.0 + (i_poi-1)*1.0/(n_poi-1);
+
+!     Corresponding parameter point on the surface
+      uv_sur := EVAL(cur_id,"UV",VEC(u_c,0.0,0.0));
+      uv_sur := uv_sur - VEC(1.0,1.0,0.0);
+
+!     Update maximum and minimum parameter values
+      IF  uv_sur.x < u_start THEN
+        u_start := uv_sur.x;
+      ENDIF;
+      IF  uv_sur.x > u_end   THEN
+        u_end   := uv_sur.x;
+      ENDIF;
+      IF  uv_sur.y < v_start THEN
+        v_start := uv_sur.y;
+      ENDIF;
+      IF  uv_sur.y > v_end   THEN
+        v_end   := uv_sur.y;
+      ENDIF;
+
+!   End   loop points in segment 
+    ENDFOR;
+
+! End   loop segments in curve
+  ENDFOR;
+
+! +++
+! Check that calculated minimum values not is outside
+! limitation defined by the offset value and 
+! ---
+
+  IF  u_start < u_start_lim  OR
+      u_end   > u_end_lim    OR
+      v_start < v_start_lim  OR
+      v_end   > v_end_lim    THEN
+    LST_INI("Input error to module o_ltrpv0");
+    LST_LIN("The calculated maximum and minimum parameter "+
+             "values are outside");
+    LST_LIN("area which is possible to analyse with the "+
+             "given input data.");
+    LST_LIN("U area possible to make analysis is between "+
+             STR(u_start_lim,5,2)+" - "+STR(u_end_lim,5,2));
+    LST_LIN("V area possible to make analysis is between "+
+             STR(v_start_lim,5,2)+" - "+STR(v_end_lim,5,2));
+    LST_LIN("U area calculated from the limit curve is   "+
+             STR(u_start,5,2)+" - "+STR(u_end,5,2));
+    LST_LIN("V area calculated from the limit curve is   "+
+             STR(v_start,5,2)+" - "+STR(v_end,5,2));
+    LST_EXI();
+   EXIT("o_ltrpv0 Limit curve is outside optical area");
+  ENDIF;
+
+no_lim:; ! Label: No limit curve was defined
+
+ENDMODULE

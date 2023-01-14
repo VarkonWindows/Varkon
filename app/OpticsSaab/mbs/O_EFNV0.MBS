@@ -1,0 +1,674 @@
+!***************** o_efnv0  ******************************
+! +++
+! Create optical function for plane and eye point
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Create optical function for plane and eyepoint 
+!sdescs Skapa optik funktion foer plan och oegonpunkt
+
+
+GLOBAL GEOMETRY MODULE o_efnv0   (
+
+REF    g_id        >"@t16384  Select transparency";
+VECTOR eye_pt := VEC(4910,0,3540) >"@ Eye point <CR>= 39A";
+REF    ocsy_id     >"@t8192 Select optical fctn (object) plane";
+REF    pcsy_id     >"@t8192 Select picture plane";
+INT    n_add  := 3 >"Number of points to be added in each patch";
+INT    graphic:= 1 >"Eq. 0: Show nothing Eq. 1: Surface Eq. 2: All");
+
+
+! Internal variables
+
+  INT    npatu;         ! No patches in U direction
+  INT    npatv;         ! No patches in V direction
+
+  INT    i_u;           ! Loop index patch in U direction
+  INT    i_v;           ! Loop index patch in V direction
+  INT    i_au;          ! Loop index additional pts in U 
+  INT    i_av;          ! Loop index additional pts in V 
+
+  VECTOR uv_sur;        ! UV point on surface
+
+  FLOAT  u_val;         ! U value for surface point
+  FLOAT  v_val;         ! V value for surface point
+  INT    i_a;           ! Ray (point) U address for surfaces
+  INT    i_b;           ! Ray (point) V address for surfaces
+  INT    n_a;           ! Number of points in U direction
+  INT    n_b;           ! Number of points in V direction
+
+                        ! Data from o_rtrpv0:
+  REF    s_id;          !  1. Windscreen/hood/.. surface identity
+  REF    s_ofs_id;      !  2. Offset surface identity
+  FLOAT  offset;        !  3. Transparency thickness (surface offset)
+  FLOAT  b_n2;          !  4. Refractive index
+  REF    lim_id;        !  5. Select limit curve (#0 = whole surface)
+  STRING material*80;   !  6. Material in transparency
+  FLOAT  u_start;       !  7. Start U value
+  FLOAT  u_end;         !  8. End   U value
+  FLOAT  v_start;       !  9. Start V value
+  FLOAT  v_end;         ! 10. End   V value
+
+  FLOAT  b_n1;          ! Break index air     
+
+  REF    def_id;        ! Reference to deformation function 
+
+  REF    nxt_id;        ! For GET_NEXT_GM
+
+  VECTOR p_plane;       ! Point in function plane
+  VECTOR p_notr;        ! Direct point in function plane
+                        ! (with no transparency)
+
+  REF    this_id;       ! Identity of this part
+  STRING this_ids*132;  ! this_id as string
+  INT    n_this;        ! No. of characters in this_id
+
+  INT    graphic_1;     ! Graphical case for o_efn1v0
+  INT    status_1;      ! Error code     for o_efn1v0
+                        ! Eq.  0: Function point calculated
+                        ! Eq. -2: No intersect with surface
+                        ! Eq. -3: No intersect with plane 
+                        ! Eq. -5: Multiple surface points  
+                        ! Eq. -6: Optics calc. offset  failed
+                        ! Eq. -7: Optics calc. surface failed
+                        ! Eq. -8: Direct point calc. failed    
+
+                        ! For o_ecal2v0:
+  INT    c_case;        ! Curve creation case:
+                        ! Eq. 1: Create U-param. object curve
+                        ! Eq. 2: Create V-param. object curve
+                        ! Eq. 3: Create U-param. picture curve
+                        ! Eq. 4: Create V-param. picture curve
+  INT    r_curno;       ! Requested curve number
+  INT    graphic_2;     ! Graphics
+  INT    pen_no;        ! Pen (colour) number
+  REF    cur_id;        ! Identity for the output curve
+  INT    status_2;      ! Error code
+
+  INT    n_acur;        ! Number of U-param.  picture curves
+  INT    n_bcur;        ! Number of U-param.  picture curves
+  REF    acur_id(50);   ! U-param.  curves in picture plane
+  REF    bcur_id(50);   ! U-param.  curves in picture plane
+  INT    n_acur_g;      ! Number of U-param.  picture curves
+  INT    n_bcur_g;      ! Number of U-param.  picture curves
+  REF    acur_g_id(50); ! U-param.  curves in picture plane
+  REF    bcur_g_id(50); ! U-param.  curves in picture plane
+
+
+  INT    n_up,n_vp;     ! Number of points in U and V direction
+  VECTOR poi( 50, 50);  ! Points for SUR_SPLARR
+  VECTOR tanu( 50, 50); ! U tangents for SUR_SPLARR
+  VECTOR tanv( 50, 50); ! V tangents for SUR_SPLARR
+  STRING metod*15;      ! Method for tangent length calculation 
+                        ! ZEROTWIST_1 or ADINI_1
+
+                        ! For o_rsurv0:
+  REF    osur_id;       ! 1. Object plane surface (optical fctn)
+  REF    psur_id;       ! 2. Picture plane surface
+
+  INT    b_val_a;       ! Blank flag for all other entities
+  INT    b_val_c;       ! Blank flag for angle curves
+  INT    b_val_d;       ! Blank flag deviation line
+  INT    b_val_s;       ! Blank flag optical function
+
+  STRING filename*132;  ! Name of .DAT file     
+  FILE   mbs;           ! Output  .DAT file
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+    b_val_d   := 1;
+    b_val_s   := 1;
+    graphic_1 := 0;
+    graphic_2 := 0;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+    b_val_d   := 0;
+    b_val_s   := 1;
+    graphic_1 := 1;
+    graphic_2 := 1;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+    b_val_d   := 0;
+    b_val_s   := 0;
+    graphic_1 := 2;
+    graphic_2 := 2;
+  ELSE
+   EXIT("o_efnv0 graphic not 0, 1 or 2");
+  ENDIF;
+
+! Break index air
+  b_n1 := 1.0;
+
+! Get reference to this part
+  this_id  := GLOBAL_REF(#0);
+  this_ids := RSTR(this_id);
+  n_this   := LENGTH(this_ids);
+! Remove .#0.1 = 4 characters
+  this_ids := SUBSTR(this_ids,1,n_this-4); 
+  this_id  := RVAL(this_ids);
+
+! Initialize local variables
+  nxt_id  := #0;
+  psur_id := #0;
+  osur_id := #0;
+  def_id  := #0;
+  i_a     := -12345;
+  i_b     := -12345;
+  n_a     := -12345;
+  n_b     := -12345;
+
+  FOR  i_a   := 1 TO  50     DO
+    FOR  i_b   := 1 TO  50  DO
+       poi(i_a,i_b):= VEC(-0.123456789,-0.123456789,-0.123456789);
+      tanu(i_a,i_b):= VEC(-0.123456789,-0.123456789,-0.123456789);
+      tanv(i_a,i_b):= VEC(-0.123456789,-0.123456789,-0.123456789);
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Open file o_efnv0.DAT for Debug output
+! ---
+
+   filename:= "o_efnv0";
+   IF filename <> " " THEN 
+     OPEN(mbs,"w",act_jobdir()+ filename+".DAT"); 
+     IF (IOSTAT(mbs)<>0 ) THEN 
+      EXIT("Open of " +filename+".DAT failed");
+     ENDIF;
+   ENDIF;
+
+! +++
+! Write header data in Debug file
+! ---
+
+  OUTSTR(mbs,"Debug output from module o_efnv0 and called modules");
+  OUTLIN(mbs);
+  OUTSTR(mbs,"===================================================");
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+  OUTSTR(mbs,"Active job is "+ ACT_JOBNAM());
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+  OUTSTR(mbs,"Eye point "+STR(eye_pt.x,10,4)+" "+STR(eye_pt.y,10,4)+ 
+                      " "+STR(eye_pt.z,10,4));
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+! +++
+! 2. Retrieve data from the transparency part
+! ---
+ 
+! Scan the transparency part (sub-tree)
+  SET_ROOT_GM(g_id);
+
+! Get the reference to the transparency registration part
+  nxt_id    := GET_NEXT_GM(0, 16384, "o_rtrpv0");
+  
+! Check that a transparency has been registered 
+  IF  nxt_id = #0  THEN
+    EXIT("o_efnv0 No transparency registered in part "+RSTR(g_id));
+  ENDIF;
+
+! Get data about the transparency
+  s_id      := GETREF(nxt_id, 1);
+  s_ofs_id  := GETREF(nxt_id, 2);
+  offset    := GETFLT(nxt_id, 3);
+  b_n2      := GETFLT(nxt_id, 4);
+  lim_id    := GETREF(nxt_id, 5);
+  material  := GETSTR(nxt_id, 6);
+  u_start   := GETFLT(nxt_id, 7);
+  u_end     := GETFLT(nxt_id, 8);
+  v_start   := GETFLT(nxt_id, 9);
+  v_end     := GETFLT(nxt_id,10);
+
+  OUTSTR(mbs,"offset "+STR(offset,5,2)+" b_n2 "+STR(b_n2 ,5,3));
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+!?? User opinion ?? IF  graphic >= 1 THEN
+!   LIN_FREE(#31, eye_pt, ON(s_ofs_id,
+!   VEC(u_start+0.5*(u_end-u_start),v_start+0.5*(v_end-v_start),0)));
+    LIN_FREE(#32, eye_pt, ON(s_ofs_id, VEC(u_start,v_start,0)):PEN=2);
+    LIN_FREE(#33, eye_pt, ON(s_ofs_id, VEC(u_start,v_end  ,0)):PEN=3);
+    LIN_FREE(#34, eye_pt, ON(s_ofs_id, VEC(u_end  ,v_start,0)):PEN=3);
+    LIN_FREE(#35, eye_pt, ON(s_ofs_id, VEC(u_end  ,v_end  ,0)):PEN=3);
+!?? User opinion ?? ENDIF;
+
+! +++
+! Retrieve number of U and V patches
+! ---
+
+  GETSURH(s_id,"NPATU",npatu);
+  GETSURH(s_id,"NPATV",npatv);
+
+! +++
+! Retrieve reference to a deformation function (if defined)
+! ---
+
+  PART(#18, o_gdefv0   ( g_id, def_id ));
+
+  IF  def_id <> #0 THEN
+  OUTSTR(mbs,"Deformation funtion ( "+RSTR(def_id)+" ) is defined");
+  ELSE
+  OUTSTR(mbs,"No deformation funtion is defined");
+  ENDIF;
+  OUTLIN(mbs);
+  OUTLIN(mbs);
+
+! +++
+! 3. Calculate optical function points
+! ---
+
+! Point U address initialization
+  i_a := 0;
+
+! Start loop all patches in U direction
+  FOR  i_u := 1 TO npatu DO
+
+!   Start loop additional points in U patch
+    FOR  i_au := 0 TO n_add DO
+
+!     Current U value on surface
+      u_val := (i_u-1.0)+i_au/(n_add+1);
+
+!     Check if U is inside surface limit
+      IF     u_val     <  u_start THEN
+        GOTO  out_u;  
+      ELIF   u_val     >  u_end   THEN
+        GOTO  out_u;  
+      ENDIF;
+
+!     Message to screen
+      PSH_PMT("Create rays along isoparameter U= "+STR(u_val,4,1));
+
+!     An additional U point
+      i_a := i_a + 1;
+
+!     Point V address initialization
+      i_b := 0;
+
+!     Start loop all patches in V direction
+      FOR  i_v := 1 TO npatv DO
+
+!       Start loop additional points in V patch
+        FOR  i_av := 0 TO n_add DO
+
+!         Current V value on surface
+          v_val := (i_v-1.0)+i_av/(n_add+1);
+
+!         Check if V is inside surface limit
+          IF     v_val     <  v_start THEN
+            GOTO  out_v;  
+          ELIF   v_val     >  v_end   THEN
+            GOTO  out_v;  
+          ENDIF;
+
+!         An additional V point
+          i_b := i_b + 1;
+
+!         Current UV point on surface
+          uv_sur := VEC(u_val, v_val, 0.0);
+
+!         Printout to Debug file
+!         OUTSTR(mbs,"i_a "+STR(i_a,3,0)+" i_u "+STR(i_u,3,0)+ 
+!                  " i_au "+STR(i_au,3,0)+
+!                    " U "+STR(uv_sur.x,5,2));
+!         OUTLIN(mbs);
+!         OUTSTR(mbs,"i_b "+STR(i_b,3,0)+" i_v "+STR(i_v,3,0)+ 
+!                  " i_av "+STR(i_av,3,0)+
+!                    " V "+STR(uv_sur.y,5,2));
+!         OUTLIN(mbs);
+
+          IF  graphic = 9 THEN
+            LIN_FREE(#20, eye_pt, ON(s_ofs_id,uv_sur):PEN=3);
+          ENDIF;
+ 
+!         Calculate point in object and picture plane
+          PART(#1, o_efn1v0 ( eye_pt, s_id, s_ofs_id, uv_sur,
+                      ocsy_id, pcsy_id, b_n1, b_n2, graphic_1, 
+                      def_id, mbs, p_plane, p_notr, status_1)); 
+          IF  status_1 < 0 THEN
+            CLOSE(mbs);
+            EXIT("o_efnv0 Ray calculation failed");
+          ENDIF;
+
+!         Registrate point in object and picture plane
+          PART(#2, o_rpoiv0 ( i_a, i_b, p_plane, p_notr,
+                              u_val, v_val));
+
+out_v:;   ! Label: Outside V limits
+
+!       End   loop additional points in V patch
+        ENDFOR;
+
+!     End   loop all patches in V direction
+      ENDFOR;
+
+!     Erase message from screen
+      POP_PMT();
+
+out_u:;   ! Label: Outside U limits
+
+!   End   loop additional points in U patch
+    ENDFOR;
+
+! End   loop all patches in U direction
+  ENDFOR;
+
+! Total number of U and V points
+  n_a := i_a;
+  n_b := i_b;
+
+! Printout to Debug file
+  OUTSTR(mbs,"Number of U lines n_a= "+STR(n_a,3,0)+
+              " and V lines n_b= "+STR(n_b,3,0));
+  OUTLIN(mbs);
+
+
+! +++
+! 4. Create U parameter curves for optical function in object plane
+! ---
+
+! Case U parameter curve in object plane
+  c_case := 1;
+
+! Initialize number of curves
+  n_acur := 0;
+
+! Pen (colour) number
+  pen_no := 2;
+
+! Start loop all U parameter points
+  FOR  i_a := 1 TO n_a DO
+
+!   Message to screen
+    PSH_PMT("Create parameter curve U= "+STR(i_a,4,1)+
+             " in object plane ");
+
+!   Requested curve number
+    r_curno := i_a;
+
+!   Create the curve
+    PART(#8, o_efn2v0  ( this_id, c_case, r_curno, graphic_2,
+                         pen_no, mbs, cur_id, status_2));
+
+!   An additional curve
+    IF   status_2 = 0 THEN
+      n_acur := n_acur + 1;
+      acur_id(n_acur) := cur_id;
+    ENDIF;
+
+!   Erase message from screen
+    POP_PMT();
+
+! End   loop all U parameter points
+  ENDFOR;
+
+
+! +++
+! 5. Create V parameter curves for optical function in object plane
+! ---
+
+! Case V parameter curve in object plane
+  c_case := 2;
+
+! Initialize number of curves
+  n_bcur := 0;
+
+! Pen (colour) number
+  pen_no := 4;
+
+! Start loop all V parameter points
+  FOR  i_b := 1 TO n_b DO
+
+!   Message to screen
+    PSH_PMT("Create parameter curve V= "+STR(i_b,4,1)+
+             " in object plane ");
+
+!   Requested curve number
+    r_curno := i_b;
+
+!   Create the curve
+    PART(#9, o_efn2v0  ( this_id, c_case, r_curno, graphic_2,
+                         pen_no, mbs, cur_id, status_2));
+
+!   An additional curve
+    IF   status_2 = 0 THEN
+      n_bcur := n_bcur + 1;
+      bcur_id(n_bcur) := cur_id;
+    ENDIF;
+
+!   Erase message from screen
+    POP_PMT();
+
+! End   loop all V parameter points
+  ENDFOR;
+
+
+
+
+
+! +++
+! 6. Create U parameter curves in picture plane
+! ---
+
+! Case U parameter curve in picture plane
+  c_case := 3;
+
+! Initialize number of curves
+  n_acur_g := 0;
+
+! Pen (colour) number
+  pen_no := 2;
+
+! Start loop all U parameter points
+  FOR  i_a := 1 TO n_a DO
+
+!   Message to screen
+    PSH_PMT("Create parameter curve U= "+STR(i_a,4,1)+
+             " in picture plane ");
+
+!   Requested curve number
+    r_curno := i_a;
+
+!   Create the curve
+    PART(#10, o_efn2v0  ( this_id, c_case, r_curno, graphic_2,
+                          pen_no, mbs, cur_id, status_2));
+
+!   An additional curve
+    IF   status_2 = 0 THEN
+      n_acur_g := n_acur_g + 1;
+      acur_g_id(n_acur_g) := cur_id;
+    ENDIF;
+
+!   Erase message from screen
+    POP_PMT();
+
+! End   loop all U parameter points
+  ENDFOR;
+
+
+! +++
+! 7. Create V parameter curves in picture plane
+! ---
+
+! Case V parameter curve in picture plane
+  c_case := 4;
+
+! Initialize number of curves
+  n_bcur_g := 0;
+
+! Pen (colour) number
+  pen_no := 4;
+
+! Start loop all V parameter points
+  FOR  i_b := 1 TO n_b DO
+
+!   Message to screen
+    PSH_PMT("Create parameter curve V= "+STR(i_b,4,1)+
+             " in picture plane ");
+
+!   Requested curve number
+    r_curno := i_b;
+
+!   Create the curve
+    PART(#11, o_efn2v0  ( this_id, c_case, r_curno, graphic_2,
+                          pen_no, mbs, cur_id, status_2));
+
+!   An additional curve
+    IF   status_2 = 0 THEN
+      n_bcur_g := n_bcur_g + 1;
+      bcur_g_id(n_bcur_g) := cur_id;
+    ENDIF;
+
+!   Erase message from screen
+    POP_PMT();
+
+! End   loop all V parameter points
+  ENDFOR;
+
+! +++
+! 8. Create surfaces
+! ---
+
+! +++
+! Points and U tangents to SUR_SPLARR arrays for object plane surface
+! ---
+
+! Programming check
+  IF  n_acur <> n_a THEN
+    EXIT("o_efnv0 n_acur <> n_a ");
+  ENDIF;
+  IF  n_bcur <> n_b THEN
+    EXIT("o_efnv0 n_bcur <> n_b ");
+  ENDIF;
+
+  FOR  i_a   := 1 TO  n_acur DO
+    FOR  i_b   := 1 TO  n_b DO
+       poi(i_a,i_b):=   ON(acur_id(i_a),i_b-1.0);
+      tanu(i_a,i_b):= TANG(acur_id(i_a),i_b-1.0);
+    ENDFOR;
+  ENDFOR;
+
+  FOR  i_b   := 1 TO  n_bcur DO
+    FOR  i_a   := 1 TO  n_a DO
+      tanv(i_a,i_b):= TANG(bcur_id(i_b),i_a-1.0);
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Create optical function, i.e. the object plane surface
+! ---
+
+  metod := "ZEROTWIST_1";  
+
+  SUR_SPLARR(#15,metod,n_a,n_b,poi,tanv,tanu:BLANK=b_val_s );
+  osur_id := GLOBAL_REF(#15);
+
+! +++
+! Points and U tangents to SUR_SPLARR arrays for picture plane surface
+! ---
+
+! Programming check
+  IF  n_acur_g <> n_a THEN
+    EXIT("o_efnv0 n_acur_g <> n_a ");
+  ENDIF;
+  IF  n_bcur_g <> n_b THEN
+    EXIT("o_efnv0 n_bcur_g <> n_b ");
+  ENDIF;
+
+  FOR  i_a   := 1 TO  n_acur_g DO
+    FOR  i_b   := 1 TO  n_b DO
+       poi(i_a,i_b):=   ON(acur_g_id(i_a),i_b-1.0);
+      tanu(i_a,i_b):= TANG(acur_g_id(i_a),i_b-1.0);
+    ENDFOR;
+  ENDFOR;
+
+  FOR  i_b   := 1 TO  n_bcur_g DO
+    FOR  i_a   := 1 TO  n_a DO
+      tanv(i_a,i_b):= TANG(bcur_g_id(i_b),i_a-1.0);
+    ENDFOR;
+  ENDFOR;
+
+! +++
+! Create the picture plane surface
+! ---
+
+  metod := "ZEROTWIST_1";  
+
+  SUR_SPLARR(#16,metod,n_a,n_b,poi,tanv,tanu:BLANK=b_val_s );
+  psur_id := GLOBAL_REF(#16);
+
+  IF  graphic = 1 THEN 
+    CUR_ISO(#21, osur_id, "U",  0.0,  0.0, n_b - 1.0:PEN=3);
+    CUR_ISO(#22, osur_id, "U", n_a-1, 0.0, n_b - 1.0:PEN=3);
+    CUR_ISO(#23, osur_id, "V",  0.0,  0.0, n_a - 1.0:PEN=3);
+    CUR_ISO(#24, osur_id, "V", n_b-1, 0.0, n_a - 1.0:PEN=3);
+    CUR_ISO(#25, psur_id, "U",  0.0,  0.0, n_b - 1.0:PEN=1);
+    CUR_ISO(#26, psur_id, "U", n_a-1, 0.0, n_b - 1.0:PEN=1);
+    CUR_ISO(#27, psur_id, "V",  0.0,  0.0, n_a - 1.0:PEN=1);
+    CUR_ISO(#28, psur_id, "V", n_b-1, 0.0, n_a - 1.0:PEN=1);
+  ENDIF;
+
+! +++
+! 9. Registration of surfaces with o_rsurv0
+! ---
+
+  PART(#17, o_rsurv0 ( osur_id, psur_id, ocsy_id, pcsy_id  ));
+
+! +++
+! 10. Exit
+! ---
+
+! +++
+! Delete all (temporarely used) curves 
+! ---
+
+  FOR  i_a   := 1 TO  n_a DO
+    DEL(acur_id(i_a));
+    DEL(acur_g_id(i_a));
+  ENDFOR;
+
+  FOR  i_b   := 1 TO  n_b DO
+    DEL(bcur_id(i_b));
+    DEL(bcur_g_id(i_b));
+  ENDFOR;
+
+! +++
+! Close Debug file o_efnv0.DAT
+! ---
+
+  CLOSE(mbs);
+
+ENDMODULE

@@ -1,0 +1,187 @@
+!***************** o_cde2v0  ******************************
+! +++
+! Calculation with random angle/direction deformation function 
+!
+! The module correponds to the o_def2v0 module.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-27 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Calculation with random angle/direction deformation 
+!sdescs Beraekning med slumpm. vinkel/riktning deformation
+
+
+GLOBAL GEOMETRY MODULE o_cde2v0   (
+
+    REF    def_id;      ! Reference to deformation function 
+    VECTOR v_in;        ! Input vector direction
+VAR VECTOR v_out);      ! Output vector direction
+
+
+! Internal variables
+
+                        ! Data from o_def2v0:
+  REF    g_id;          ! 1. Transparency";
+  FLOAT  d_a ;          ! 2. Deformation angle, maximum
+  INT    graphic_1;     ! 3. Graphics .... not yet used ..... 
+
+  REF    c_id;          ! Coordinate system input vector
+  REF    c_r_id;        ! Coordinate system rotated
+  VECTOR d_v;           ! Deformation direction
+  FLOAT  d_a_r;         ! Random deviation angle
+
+  FLOAT  rand_val;      ! Random value
+  FLOAT  seed;          ! Seed for random value
+  INT    year;          ! Year
+  INT    month;         ! Month 
+  INT    day;           ! Day
+  INT    hour;          ! Hour 
+  INT    minute;        ! Minute
+  INT    second;        ! Second
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+
+  v_out := VEC(0,0,0);
+
+! Initialize local variables
+  d_v   := VEC(0,0,0);
+  c_id  := #0;
+
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! +++
+! Retrieve attribute data from the input deformation part (function)
+! ---
+
+  g_id       := GETREF(def_id,1);
+  d_a        := GETFLT(def_id,2);
+  graphic_1  := GETINT(def_id,3);
+
+
+! +++
+! Start random value
+! ---
+
+! Start seed for random value from current time (second)
+  TIME(year,month,day,hour, minute,second);
+  seed     := second/60.0;
+
+! Random start value
+  rand_val := RANDOM(seed);
+
+! +++
+! Angle random value
+! ---
+
+  d_a_r  := rand_val*d_a;
+
+! New random value
+  rand_val := RANDOM(rand_val);
+
+! Random sign
+  IF  rand_val > 0.5 THEN
+    d_a_r := -d_a_r;
+  ENDIF;
+
+! New random value
+  rand_val := RANDOM(rand_val);
+
+
+! +++
+! Let input vector be equal to output vector if random 
+! angle is zero (0).
+! ---
+
+  IF  ABS(4000.0*TAN(d_a_r)) < 0.05 THEN
+    v_out := VECN(v_in);
+    GOTO a_zero;
+  ENDIF;
+
+! +++
+! Check input vector
+! ---
+
+  IF  VECL(v_in) < 0.01 THEN
+    EXIT("o_cde2v0 Input vector length < 0.01");
+  ENDIF;
+
+! +++
+! 2. Calculate random output vector
+! ---
+
+! +++
+! Create local coordinate system with input vector as X axis
+! (the Y axis is undefined and will be calculated by the fctn)
+! ---
+
+  CSYS_3P(#1, "Random", VEC(0,0,0), v_in:BLANK=1);
+  c_id := GLOBAL_REF(#1);
+
+! +++
+! Rotate system around X axis with random angle
+! ---
+
+  MODE_LOCAL(c_id);
+  CSYS_1P(#2, "Rotate", VEC(0,0,0), rand_val*180.0, 0, 0:BLANK=1);
+  c_r_id := GLOBAL_REF(#2);
+  
+! +++
+! Activate local system, create circle with random angle and
+! create output vector
+! ---
+
+  MODE_LOCAL (c_r_id);
+
+  ARC_1POS(#3, VEC(0,0,0), 4000.0, 0.0, d_a_r :BLANK=1,PEN=2);
+
+  LIN_FREE(#4, VEC(0,0,0), ON(GLOBAL_REF(#3),1.0):BLANK=1,PEN=4);
+
+  MODE_GLOBAL();
+
+  v_out := TANG(GLOBAL_REF(#4), 0.0);
+
+  IF  DEBUG = 1 THEN
+    LIN_FREE(#8, VEC(0,0,0), -500*v_in  :BLANK=0,PEN=1);
+    LIN_FREE(#9, VEC(0,0,0),  500*v_out :BLANK=0,PEN=1);
+    s:= INPMT("o_cde2v0 Continue (y/n) ?","y",1);
+    IF  s <> "y" THEN
+      EXIT("o_defv0 Execution interrupted");
+    ENDIF;
+  ENDIF;
+
+! +++
+! Delete all temporarely used geometry
+! ---
+
+  DEL(GLOBAL_REF(#1));
+  DEL(GLOBAL_REF(#2));
+  DEL(GLOBAL_REF(#3));
+  DEL(GLOBAL_REF(#4));
+
+
+a_zero:; ! Label: Random angle is zero
+
+  
+ENDMODULE

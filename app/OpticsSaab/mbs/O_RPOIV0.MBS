@@ -1,0 +1,33 @@
+!***************** o_rpoiv0   ******************************
+! +++
+! Registration of points in object and picture plane
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-24 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Registration of points in object and picture plane
+!sdescs Registrering av punkter i objekt och bildplan
+
+GLOBAL GEOMETRY MODULE o_rpoiv0    (
+
+INT    i_a;                ! 1. Ray address in U direction
+INT    i_b;                ! 2. Ray address in V direction
+VECTOR p_plane;            ! 3. Point in object  plane
+VECTOR p_notr;             ! 4. Point in picture plane
+FLOAT  u_val;              ! 5. U value          
+FLOAT  v_val);             ! 6. V value          
+
+BEGINMODULE
+
+! +++
+! No calculations. Only registration
+! ---
+
+;
+
+ENDMODULE

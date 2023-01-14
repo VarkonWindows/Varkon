@@ -1,0 +1,117 @@
+!***********************   o_bendv0 ************************************
+! +++
+!
+! Calculates the light ray bending at a transparency surface
+!
+! Algorithm:
+! __________
+!
+! n1*sin(ang) = n2*sin(ang2)
+!
+! For ang2 > 0
+!    i. Create circle with start angle zero, end angle ang2,
+!       center equal to origin in the local system REFL and
+!       with radius equal to length
+!   ii. Let tpout= start point of circle
+! For ang2 = 0
+!    i. Let tpout= p_c + length*t_c
+! 
+! ---
+!
+! Revision history
+! ________________
+!
+! 1994-02-17 Originally written  Ronny Gyllensten
+! 1994-03-21 Modifications       Gunnar Liden
+! 1997-05-25 V_BRYT -> o_bendv0  Gunnar Liden
+! 
+!***********************************************************************
+
+!sdesce Calculates the light ray bending at a transparency surface
+!sdescs Brytning av ljus 
+
+GLOBAL GEOMETRY MODULE o_bendv0 (
+
+    VECTOR   p_c;         ! Surface point
+    VECTOR   normal;      ! Surface normal
+    VECTOR   t_c;         ! Input ray direction
+    FLOAT    n1;          ! Refractive index in    
+    FLOAT    n2;          ! Refractive index out   
+VAR FILE     mbs;         ! File for Debug output
+VAR VECTOR   tpout);      ! Output direction
+
+! Internal variables
+ 
+  FLOAT dot;              ! Scalar product 
+  FLOAT length;           ! Circle radius  
+  FLOAT ang;              ! Angle between normal and in vector
+  FLOAT ang2;             ! Angle between "-normal" and out vector
+
+BEGINMODULE
+
+   IF VECL(normal) > 0 AND 
+      VECL(t_c) > 0  AND
+      ABS(n2) > 0         THEN
+
+  length:= 10.0;
+
+   normal:=VECN(normal);
+
+   t_c:=VECN(t_c);
+
+   dot:=t_c*normal;
+
+   ang:=ARCCOS(dot);
+!  Assumption that angle < 90 degrees (??)
+   IF    ang > 90.0 THEN 
+      ang:= 180.0 - ang;
+   ENDIF;
+
+   normal:=VECN(-normal);
+
+   IF ABS(n1/n2*SIN(ang)) > 1.0 THEN
+   OUTSTR(mbs,"o_bendv01 "  +   
+   STR(n1,-8,4) + " n2 "+ STR(n2,-8,4) +
+   " Angle  "  +  STR(ang     ,-10,6) + 
+   " n1/n2*SIN(ang) "  +  STR(n1/n2*SIN(ang)  ,-10,6) + 
+   " Error");
+   OUTLIN(mbs);  
+   ang2:=ARCSIN( 1.0 );
+   ELSE  
+   ang2:=ARCSIN(n1/n2*SIN(ang));
+   ENDIF;
+
+   ELSE
+    EXIT("o_bendv0Fel i indata");
+   ENDIF;
+
+ IF ABS(ang2)  >=  0.02 THEN
+
+   CSYS_3P(#1,"REFL",p_c,p_c+normal,p_c+t_c:BLANK=1);
+
+   MODE_LOCAL(#1);
+
+   ARC_1POS(#2,VEC(0,0,0),length,0,ang2:BLANK=1);
+
+   MODE_GLOBAL();
+
+   tpout:=ON(#2,1.0)-p_c;
+
+ ELSE
+   tpout:= t_c;
+ ENDIF;
+
+   tpout:=VECN(tpout);
+   IF t_c*tpout < 0 THEN  
+      tpout := -tpout;
+   ENDIF;
+
+!  OUTSTR(mbs,"o_bendv01 "  +  
+!  STR(n1,-8,4) + " n2 "+ STR(n2,-8,4) +    
+!  " Angle  a1 "  + STR(ang   ,-10,6) +    
+!  " Angle  a2 "  + STR(ang2  ,-10,6) +   
+!  " ");
+!  OUTLIN(mbs);  
+
+
+ENDMODULE

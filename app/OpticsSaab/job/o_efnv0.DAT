@@ -1,0 +1,228 @@
+Debug output from module o_efnv0 and called modules
+===================================================
+
+Active job is demo_two
+
+Eye point  4900.0000   250.0000  4600.0000
+
+offset -0.12 b_n2 1.490
+
+No deformation funtion is defined
+
+
+o_efn1v0 UV  0.27  0.27 PT  3158.19   136.36  3835.51
+o_efn1v0 Input  vector  -0.91405543  -0.05963322  -0.40118145
+o_efn1v0 Output vector  -0.95947339  -0.05962876  -0.27541827
+o_efn1v0 Angle difference     7.6669 degrees
+o_efn1v0 Angle to X    66.0719 to Y     3.4188 to Z    23.6521
+
+o_efn1v0 UV  0.27  0.36 PT  3158.19   181.82  3835.51
+o_efn1v0 Input  vector  -0.91509737  -0.03582072  -0.40163875
+o_efn1v0 Output vector  -0.96054586  -0.03581782  -0.27580562
+o_efn1v0 Angle difference     7.6713 degrees
+o_efn1v0 Angle to X    66.2196 to Y     2.0528 to Z    23.6807
+
+o_efn1v0 UV  0.27  0.45 PT  3158.19   227.27  3835.51
+o_efn1v0 Input  vector  -0.91561967  -0.01194705  -0.40186800
+o_efn1v0 Output vector  -0.96108347  -0.01194605  -0.27599973
+o_efn1v0 Angle difference     7.6735 degrees
+o_efn1v0 Angle to X    66.2939 to Y     0.6845 to Z    23.6950
+
+o_efn1v0 UV  0.27  0.55 PT  3158.19   272.73  3835.51
+o_efn1v0 Input  vector  -0.91561967   0.01194705  -0.40186800
+o_efn1v0 Output vector  -0.96108347   0.01194605  -0.27599973
+o_efn1v0 Angle difference     7.6735 degrees
+o_efn1v0 Angle to X    66.2939 to Y    89.3155 to Z    23.6950
+
+o_efn1v0 UV  0.27  0.64 PT  3158.19   318.18  3835.51
+o_efn1v0 Input  vector  -0.91509737   0.03582072  -0.40163875
+o_efn1v0 Output vector  -0.96054586   0.03581782  -0.27580562
+o_efn1v0 Angle difference     7.6713 degrees
+o_efn1v0 Angle to X    66.2196 to Y    87.9472 to Z    23.6807
+
+o_efn1v0 UV  0.27  0.73 PT  3158.19   363.64  3835.51
+o_efn1v0 Input  vector  -0.91405543   0.05963322  -0.40118145
+o_efn1v0 Output vector  -0.95947339   0.05962876  -0.27541827
+o_efn1v0 Angle difference     7.6669 degrees
+o_efn1v0 Angle to X    66.0719 to Y    86.5812 to Z    23.6521
+
+o_efn1v0 UV  0.36  0.27 PT  3265.73   136.36  3716.05
+o_efn1v0 Input  vector  -0.87793952  -0.06104600  -0.47486376
+o_efn1v0 Output vector  -0.94867076  -0.06104539  -0.31031798
+o_efn1v0 Angle difference    10.2757 degrees
+o_efn1v0 Angle to X    61.3948 to Y     3.4999 to Z    28.3505
+
+o_efn1v0 UV  0.36  0.36 PT  3265.73   181.82  3716.05
+o_efn1v0 Input  vector  -0.87898835  -0.03667136  -0.47543105
+o_efn1v0 Output vector  -0.94976381  -0.03667096  -0.31081176
+o_efn1v0 Angle difference    10.2806 degrees
+o_efn1v0 Angle to X    61.5206 to Y     2.1016 to Z    28.3874
+
+o_efn1v0 UV  0.36  0.45 PT  3265.73   227.27  3716.05
+o_efn1v0 Input  vector  -0.87951418  -0.01223110  -0.47571547
+o_efn1v0 Output vector  -0.95031180  -0.01223096  -0.31105928
+o_efn1v0 Angle difference    10.2830 degrees
+o_efn1v0 Angle to X    61.5838 to Y     0.7008 to Z    28.4059
+
+o_efn1v0 UV  0.36  0.55 PT  3265.73   272.73  3716.05
+o_efn1v0 Input  vector  -0.87951418   0.01223110  -0.47571547
+o_efn1v0 Output vector  -0.95031092   0.01222874  -0.31106206
+o_efn1v0 Angle difference    10.2828 degrees
+o_efn1v0 Angle to X    61.5838 to Y    89.2992 to Z    28.4059
+
+o_efn1v0 UV  0.36  0.64 PT  3265.73   318.18  3716.05
+o_efn1v0 Input  vector  -0.87898835   0.03667136  -0.47543105
+o_efn1v0 Output vector  -0.94976381   0.03667096  -0.31081176
+o_efn1v0 Angle difference    10.2806 degrees
+o_efn1v0 Angle to X    61.5206 to Y    87.8984 to Z    28.3874
+
+o_efn1v0 UV  0.36  0.73 PT  3265.73   363.64  3716.05
+o_efn1v0 Input  vector  -0.87793952   0.06104600  -0.47486376
+o_efn1v0 Output vector  -0.94867076   0.06104539  -0.31031798
+o_efn1v0 Angle difference    10.2757 degrees
+o_efn1v0 Angle to X    61.3948 to Y    86.5001 to Z    28.3505
+
+o_efn1v0 UV  0.45  0.27 PT  3375.64   136.36  3629.55
+o_efn1v0 Input  vector  -0.84189744  -0.06276079  -0.53597554
+o_efn1v0 Output vector  -0.93110551  -0.06276079  -0.35930991
+o_efn1v0 Angle difference    11.3581 degrees
+o_efn1v0 Angle to X    57.3410 to Y     3.5983 to Z    32.4101
+
+o_efn1v0 UV  0.45  0.36 PT  3375.64   181.82  3629.55
+o_efn1v0 Input  vector  -0.84296063  -0.03770403  -0.53665239
+o_efn1v0 Output vector  -0.93220197  -0.03770403  -0.35996931
+o_efn1v0 Angle difference    11.3598 degrees
+o_efn1v0 Angle to X    57.4541 to Y     2.1608 to Z    32.4560
+
+o_efn1v0 UV  0.45  0.45 PT  3375.64   227.27  3629.55
+o_efn1v0 Input  vector  -0.84349374  -0.01257596  -0.53699177
+o_efn1v0 Output vector  -0.93275175  -0.01257596  -0.36029991
+o_efn1v0 Angle difference    11.3607 degrees
+o_efn1v0 Angle to X    57.5109 to Y     0.7206 to Z    32.4791
+
+o_efn1v0 UV  0.45  0.55 PT  3375.64   272.73  3629.55
+o_efn1v0 Input  vector  -0.84349374   0.01257596  -0.53699176
+o_efn1v0 Output vector  -0.93275175   0.01257596  -0.36029990
+o_efn1v0 Angle difference    11.3607 degrees
+o_efn1v0 Angle to X    57.5109 to Y    89.2794 to Z    32.4791
+
+o_efn1v0 UV  0.45  0.64 PT  3375.64   318.18  3629.55
+o_efn1v0 Input  vector  -0.84296065   0.03770403  -0.53665236
+o_efn1v0 Output vector  -0.93220198   0.03770403  -0.35996927
+o_efn1v0 Angle difference    11.3598 degrees
+o_efn1v0 Angle to X    57.4541 to Y    87.8392 to Z    32.4560
+
+o_efn1v0 UV  0.45  0.73 PT  3375.64   363.64  3629.55
+o_efn1v0 Input  vector  -0.84189747   0.06276079  -0.53597550
+o_efn1v0 Output vector  -0.93110554   0.06276079  -0.35930984
+o_efn1v0 Angle difference    11.3581 degrees
+o_efn1v0 Angle to X    57.3410 to Y    86.4017 to Z    32.4101
+
+o_efn1v0 UV  0.55  0.27 PT  3492.19   136.36  3571.27
+o_efn1v0 Input  vector  -0.80569584  -0.06503479  -0.58874841
+o_efn1v0 Output vector  -0.87174672  -0.06503479  -0.48562140
+o_efn1v0 Angle difference     7.0212 degrees
+o_efn1v0 Angle to X    53.6775 to Y     3.7289 to Z    36.0682
+
+o_efn1v0 UV  0.55  0.36 PT  3492.19   181.82  3571.27
+o_efn1v0 Input  vector  -0.80678853  -0.03907379  -0.58954687
+o_efn1v0 Output vector  -0.87276729  -0.03907379  -0.48657014
+o_efn1v0 Angle difference     7.0117 degrees
+o_efn1v0 Angle to X    53.7833 to Y     2.2393 to Z    36.1249
+
+o_efn1v0 UV  0.55  0.45 PT  3492.19   227.27  3571.27
+o_efn1v0 Input  vector  -0.80733654  -0.01303345  -0.58994732
+o_efn1v0 Output vector  -0.87327910  -0.01303345  -0.48704593
+o_efn1v0 Angle difference     7.0069 degrees
+o_efn1v0 Angle to X    53.8365 to Y     0.7468 to Z    36.1533
+
+o_efn1v0 UV  0.55  0.55 PT  3492.19   272.73  3571.27
+o_efn1v0 Input  vector  -0.80733654   0.01303345  -0.58994732
+o_efn1v0 Output vector  -0.87327910   0.01303345  -0.48704593
+o_efn1v0 Angle difference     7.0069 degrees
+o_efn1v0 Angle to X    53.8365 to Y    89.2532 to Z    36.1533
+
+o_efn1v0 UV  0.55  0.64 PT  3492.19   318.18  3571.27
+o_efn1v0 Input  vector  -0.80678853   0.03907379  -0.58954687
+o_efn1v0 Output vector  -0.87276729   0.03907379  -0.48657014
+o_efn1v0 Angle difference     7.0117 degrees
+o_efn1v0 Angle to X    53.7833 to Y    87.7607 to Z    36.1249
+
+o_efn1v0 UV  0.55  0.73 PT  3492.19   363.64  3571.27
+o_efn1v0 Input  vector  -0.80569584   0.06503479  -0.58874841
+o_efn1v0 Output vector  -0.87174672   0.06503479  -0.48562140
+o_efn1v0 Angle difference     7.0212 degrees
+o_efn1v0 Angle to X    53.6775 to Y    86.2711 to Z    36.0682
+
+o_efn1v0 UV  0.64  0.27 PT  3620.09   136.36  3538.87
+o_efn1v0 Input  vector  -0.76804154  -0.06819025  -0.63675920
+o_efn1v0 Output vector  -0.74665768  -0.06819026  -0.66170417
+o_efn1v0 Angle difference     1.8826 degrees
+o_efn1v0 Angle to X    50.1783 to Y     3.9100 to Z    39.5506
+
+o_efn1v0 UV  0.64  0.36 PT  3620.09   181.82  3538.87
+o_efn1v0 Input  vector  -0.76918692  -0.04097516  -0.63770880
+o_efn1v0 Output vector  -0.74751631  -0.04097516  -0.66297843
+o_efn1v0 Angle difference     1.9074 degrees
+o_efn1v0 Angle to X    50.2809 to Y     2.3484 to Z    39.6212
+
+o_efn1v0 UV  0.64  0.45 PT  3620.09   227.27  3538.87
+o_efn1v0 Input  vector  -0.76976154  -0.01366859  -0.63818519
+o_efn1v0 Output vector  -0.74794705  -0.01366857  -0.66361765
+o_efn1v0 Angle difference     1.9199 degrees
+o_efn1v0 Angle to X    50.3325 to Y     0.7832 to Z    39.6566
+
+o_efn1v0 UV  0.64  0.55 PT  3620.09   272.73  3538.87
+o_efn1v0 Input  vector  -0.76976154   0.01366859  -0.63818519
+o_efn1v0 Output vector  -0.74794704   0.01366857  -0.66361765
+o_efn1v0 Angle difference     1.9199 degrees
+o_efn1v0 Angle to X    50.3325 to Y    89.2168 to Z    39.6566
+
+o_efn1v0 UV  0.64  0.64 PT  3620.09   318.18  3538.87
+o_efn1v0 Input  vector  -0.76918692   0.04097516  -0.63770880
+o_efn1v0 Output vector  -0.74751631   0.04097516  -0.66297844
+o_efn1v0 Angle difference     1.9074 degrees
+o_efn1v0 Angle to X    50.2809 to Y    87.6516 to Z    39.6212
+
+o_efn1v0 UV  0.64  0.73 PT  3620.09   363.64  3538.87
+o_efn1v0 Input  vector  -0.76804154   0.06819025  -0.63675920
+o_efn1v0 Output vector  -0.74665767   0.06819026  -0.66170417
+o_efn1v0 Angle difference     1.8826 degrees
+o_efn1v0 Angle to X    50.1783 to Y    86.0900 to Z    39.5506
+
+o_efn1v0 UV  0.73  0.27 PT  3765.08   136.36  3532.07
+o_efn1v0 Input  vector  -0.72634254  -0.07272686  -0.68347445
+o_efn1v0 Output vector  -0.61023038  -0.07272686  -0.78887876
+o_efn1v0 Angle difference     8.9943 degrees
+o_efn1v0 Angle to X    46.5806 to Y     4.1706 to Z    43.1157
+
+o_efn1v0 UV  0.73  0.36 PT  3765.08   181.82  3532.07
+o_efn1v0 Input  vector  -0.72757503  -0.04371016  -0.68463421
+o_efn1v0 Output vector  -0.61099752  -0.04370798  -0.79042498
+o_efn1v0 Angle difference     9.0290 degrees
+o_efn1v0 Angle to X    46.6835 to Y     2.5052 to Z    43.2068
+
+o_efn1v0 UV  0.73  0.45 PT  3765.08   227.27  3532.07
+o_efn1v0 Input  vector  -0.72819363  -0.01458244  -0.68521630
+o_efn1v0 Output vector  -0.61138195  -0.01458233  -0.79120128
+o_efn1v0 Angle difference     9.0465 degrees
+o_efn1v0 Angle to X    46.7352 to Y     0.8355 to Z    43.2526
+
+o_efn1v0 UV  0.73  0.55 PT  3765.08   272.73  3532.07
+o_efn1v0 Input  vector  -0.72819363   0.01458244  -0.68521631
+o_efn1v0 Output vector  -0.61138194   0.01458233  -0.79120129
+o_efn1v0 Angle difference     9.0465 degrees
+o_efn1v0 Angle to X    46.7352 to Y    89.1645 to Z    43.2526
+
+o_efn1v0 UV  0.73  0.64 PT  3765.08   318.18  3532.07
+o_efn1v0 Input  vector  -0.72757502   0.04371016  -0.68463421
+o_efn1v0 Output vector  -0.61099750   0.04370798  -0.79042499
+o_efn1v0 Angle difference     9.0290 degrees
+o_efn1v0 Angle to X    46.6835 to Y    87.4948 to Z    43.2068
+
+o_efn1v0 UV  0.73  0.73 PT  3765.08   363.64  3532.07
+o_efn1v0 Input  vector  -0.72634253   0.07272686  -0.68347446
+o_efn1v0 Output vector  -0.61023035   0.07272686  -0.78887878
+o_efn1v0 Angle difference     8.9943 degrees
+o_efn1v0 Angle to X    46.5806 to Y    85.8294 to Z    43.1157
+Number of U lines n_a=   6 and V lines n_b=   6

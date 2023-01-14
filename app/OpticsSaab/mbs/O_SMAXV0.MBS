@@ -1,0 +1,127 @@
+!***************** o_smaxv0 ******************************
+! +++
+! Get maximum and minimum coordinates for a surface
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-25 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Get maximum and minimum coordinates for a surface
+!sdescs Maximum och minimum koordinater foer en yta
+
+
+GLOBAL GEOMETRY MODULE o_smaxv0  (
+
+    REF    sur_id;       ! Surface
+    REF    csy_id;       ! Coordinate system
+VAR FLOAT  minx;         ! Minimum X value
+VAR FLOAT  maxx;         ! Maximum X value
+VAR FLOAT  miny;         ! Minimum Y value
+VAR FLOAT  maxy;         ! Maximum Y value
+VAR FLOAT  minz;         ! Minimum Z value
+VAR FLOAT  maxz);        ! Maximum Z value
+
+
+
+! Internal variables
+
+  VECTOR  box_pt(8);    ! Vertices of BOX_SUR
+  VECTOR  p_s;          ! Current vertex
+  INT     i_p;          ! Loop index vertices
+
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+  minx := +50000.0;  
+  maxx := -50000.0; 
+  miny := +50000.0;
+  maxy := -50000.0;
+  minz := +50000.0;
+  maxz := -50000.0;
+
+! +++
+! 2. Approximate surface with a box of six B-planes 
+! ---
+
+  SUR_APPROX(#2, sur_id, "BOX_SUR", 1, -1:BLANK=0);
+
+! +++
+! 3. Activate local system
+! ---
+
+  IF csy_id = #0.1 THEN
+    ;  
+  ELSE 
+    MODE_LOCAL(csy_id);
+  ENDIF; 
+
+! +++
+! 4. Calculate box vertices   
+! ---
+
+  box_pt(1) := ON(GLOBAL_REF(#2), VEC( 0, 0, 0 ));
+  box_pt(2) := ON(GLOBAL_REF(#2), VEC( 1, 0, 0 ));
+  box_pt(3) := ON(GLOBAL_REF(#2), VEC( 1, 1, 0 ));
+  box_pt(4) := ON(GLOBAL_REF(#2), VEC( 1, 2, 0 ));
+  box_pt(5) := ON(GLOBAL_REF(#2), VEC( 1, 3, 0 ));
+  box_pt(6) := ON(GLOBAL_REF(#2), VEC( 1, 4, 0 ));
+  box_pt(7) := ON(GLOBAL_REF(#2), VEC( 1, 5, 0 ));
+  box_pt(8) := ON(GLOBAL_REF(#2), VEC( 1, 6, 0 ));
+
+
+! +++
+! 5. Determine maximum and minimum coordinates 
+! ---
+
+
+  FOR i_p := 1 TO 8  DO 
+
+!   Current vertex on cube
+    p_s := box_pt(i_p);
+
+    IF p_s.x < minx         THEN ! Minimum X value
+      minx := p_s.x;             !
+    ENDIF;                       !
+    IF p_s.x > maxx         THEN ! Maximum X value
+      maxx := p_s.x;             !
+    ENDIF;                       !
+
+    IF p_s.y < miny         THEN ! Minimum Y value
+      miny := p_s.y;             !
+    ENDIF;                       !
+    IF p_s.y > maxy         THEN ! Maximum Y value
+      maxy := p_s.y;             !
+    ENDIF;                       !
+
+    IF p_s.z < minz         THEN ! Minimum Z value
+      minz := p_s.z;             !
+    ENDIF;                       !
+    IF p_s.z > maxz         THEN ! Maximum Z value
+      maxz := p_s.z;             !
+    ENDIF;                       !
+
+  ENDFOR; 
+
+! +++
+! 6. Delete box
+! ---
+
+  DEL(GLOBAL_REF(#2));
+
+ENDMODULE

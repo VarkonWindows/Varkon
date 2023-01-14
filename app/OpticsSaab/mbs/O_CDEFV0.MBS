@@ -1,0 +1,99 @@
+!***************** o_cdefv0  ******************************
+! +++
+! Calculation with deformation function 
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-27 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Calculation with deformation function 
+!sdescs Beraekning med deformationsfunktion
+
+
+GLOBAL GEOMETRY MODULE o_cdefv0   (
+
+    REF    def_id;      ! Reference to deformation function 
+    VECTOR v_in;        ! Input vector direction
+VAR VECTOR v_out);      ! Output vector direction
+
+
+! Internal variables
+
+
+                        ! For function GETPRT:
+  STRING namn*10;       ! Name of the part
+  STRING  prt_name*10;  ! Name of part prep_id
+  INT    mtyp;          ! Module type
+                        ! Eq. 2: DRAWING
+                        ! Eq. 3: GEOMETRY
+  INT    mattr;         ! Module attribute
+                        ! Eq. 1: LOCAL
+                        ! Eq. 2: GLOBAL
+                        ! Eq. 3: BASIC
+  REF    kid;           ! Global identity for the 
+                        ! coord. system used to position
+                        ! the part
+  INT    np;            ! Number of parameters in the part
+  INT    mant;          ! Number of entities in the part
+  REF    idm(5);        ! Array with global references (##)
+
+
+                        ! Data from o_def1v0:
+  REF    g_id;          ! 1. Transparency";
+  REF    c_id;          ! 2. Coordinate system
+  VECTOR d_v ;          ! 3. Deformation direction (fixed for all rays)
+  FLOAT  d_a ;          ! 4. Deformation angle (fixed value for all rays)
+  INT    graphic_1;     ! 5. Graphics .... not yet used ..... 
+
+  FLOAT  dot;           ! Scalar product
+  VECTOR d_v_t;         ! Vector d_v transformed to the global system
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+
+  v_out := VEC(0,0,0);
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! +++
+! 2. Switch to the right deformation calculation module
+! ---
+ 
+! +++
+! Get name of deformation function part.
+! Call o_cde1v0 for o_def1v0.
+! Call o_cde2v0 for o_def2v0.
+! ----
+
+  GETPRT(def_id, prt_name,mtyp, mattr,kid,np,mant,idm);
+
+  IF    prt_name = "o_def1v0" THEN
+    PART(#1, o_cde1v0 ( def_id, v_in, v_out ));
+  ELIF  prt_name = "o_def2v0" THEN
+    PART(#2, o_cde2v0 ( def_id, v_in, v_out ));
+  ELSE
+    EXIT("o_cdefv0 Not programmed for " + prt_name);
+  ENDIF;
+
+  
+ENDMODULE

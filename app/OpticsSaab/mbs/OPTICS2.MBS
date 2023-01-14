@@ -1,0 +1,172 @@
+!********************** optics2 ******************************
+! +++
+! Demonstration example for the OPTICS application
+!
+! The lens is defined by two surfaces and the plot 
+! pictures are mapped.
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+!************************************************************
+
+!sdesce Demonstration example for the OPTICS application
+!sdescs Demonstrationsexempel i applikationen OPTICS 
+
+GLOBAL GEOMETRY MODULE optics2(
+FLOAT rdist   := 0.0 >"Distance between surface 0-1";
+INT   npict   := 1   >"Picture number 1-4";
+INT   p_pos   := 1   >"Picture plane position";
+INT   graphic := 1   >"Eq. 1: Show optical fctns  Eq. 2: Show rays");
+
+! Internal variables
+
+  FLOAT  p_eye;         ! P-value for surface closest to eye point
+  FLOAT  p_out;         ! P-value for outer lens surface
+  FLOAT  dist;          ! Distance between surfaces
+  STRING p_name*30;     ! Picture name
+  FLOAT  d_x;           ! Delta translation X for picture
+  FLOAT  d_y;           ! Delta translation Y for picture
+  FLOAT  scale;         ! Scale for picture
+  VECTOR origin;        ! Origin for picture plane
+
+BEGINMODULE
+
+! P-values for curves
+  p_eye := 0.60;
+  p_out := 0.53;
+
+! Check input distance
+  IF  rdist >= 0.0 AND rdist <= 1.0 THEN
+    ; ! OK
+  ELSE
+    LST_INI("ERROR ERROR ERROR ERROR ERROR");
+    LST_LIN("Relative thickness not between 0 and 1");
+    LST_LIN("Relative thickness changed to 1");
+    LST_EXI();
+    rdist := 1.0;
+  ENDIF;
+
+! Distance between surfaces
+
+  dist := 100.0 + rdist*500.0;
+
+! Picture parameters
+
+  IF   npict = 1 THEN
+    p_name := "picture1";
+    scale  :=   2.0;
+    d_x    := 800.0;
+    d_y    :=  50.0;
+  ELIF npict = 2 THEN
+    p_name := "picture2";
+    scale  :=    0.2;
+    d_x    := 8000.0;
+    d_y    :=  500.0;
+  ELIF npict = 3 THEN
+    p_name := "picture3";
+    scale  :=   3.5;
+    d_x    := 400.0;
+    d_y    :=  50.0;
+  ELIF npict = 4 THEN
+    p_name := "picture4";
+    scale  :=   3.0;
+    d_x    := 450.0;
+    d_y    :=  50.0;
+  ELIF npict = 9 THEN
+    p_name := "pictured";
+    scale  :=   2.0;
+    d_x    := 800.0;
+    d_y    :=  50.0;
+  ELSE
+    LST_INI("ERROR ERROR ERROR ERROR ERROR");
+    LST_LIN("Not a valid picture number");
+    LST_LIN("Changed to 9 !");
+    LST_EXI();
+    npict := 9;
+    p_name := "pictured";
+    scale  :=   2.0;
+    d_x    := 800.0;
+    d_y    :=  50.0;
+  ENDIF;
+
+
+  IF    p_pos = 1 THEN
+    origin := VEC(-3000, 0, 3500);
+  ELIF  p_pos = 2 THEN
+    origin := VEC( 3700, 0, 3500);
+  ELIF  p_pos = 3 THEN
+    origin := VEC( 9000, 0, 3500);
+  ELSE
+    LST_INI("ERROR ERROR ERROR ERROR ERROR");
+    LST_LIN("Not a valid picture position");
+    LST_LIN("Changed to 1 !");
+    LST_EXI();
+    p_pos := 1;
+    origin := VEC(-3000, 0, 3500);
+  ENDIF;
+
+
+
+
+! Create a cylinder surfaces, which will define a lens
+! ---------------------------------------------------
+
+! Start defining the profile curves as one-segment conic
+
+  CUR_CONIC(#4,"FREE", 
+   VEC( 2800, 0, 4200 ), VEC(4400, 0, 3400-3000), p_out, 
+   VEC( 4400, 0, 3400 ), VEC(2800, 0, 4200-1450):BLANK=1);
+
+  CUR_CONIC(#5,"FREE", 
+   VEC( 2800, 0, 4200+dist ), VEC(4400, 0, 3400-3000+dist), p_eye, 
+   VEC( 4400, 0, 3400+dist ), VEC(2800, 0, 4200-1450+dist):BLANK=1);
+
+! Create outer lens surface
+  SUR_CYL(#1, GLOBAL_REF(#4), 500.0:PEN=2,BLANK=1);
+
+! Create eye surface
+  SUR_CYL(#2, GLOBAL_REF(#5), 500.0:PEN=3,BLANK=1);
+
+! Definition of a limit curve
+! ---------------------------
+
+  PART(#6,o_alimv0(GLOBAL_REF(#2), 0.2, 0.8, 0.2, 0.8, 1));
+
+! Definition of the transparency
+! -------------------------------
+
+  PART(#3,o_atrpv0(GLOBAL_REF(#2),GLOBAL_REF(#1),1.49,
+                   GLOBAL_REF(#6#1),"Glass",1));
+
+! Definition of the object X/Y plane, i.e. the plane for the 
+! grid of lines
+! ----------------------------------------------------------
+
+  CSYS_1P(#7,"Object_plane", VEC( 500, 0, 3500), 0.0, 45,  0:BLANK=1);
+
+! Definition of the picture plane, i.e. the plane for the
+! deformed grid
+! -------------------------------------------------------
+
+  CSYS_1P(#8,"Picture_plane", origin, 0, 45,  0:BLANK=1);
+
+! Calculate the optical deformation function, which are defined
+! as two surfaces in the objective function plane and in the
+! picture plane.
+! -----------------------------------------------------------
+
+  PART(#9,o_efnv0(GLOBAL_REF(#3), VEC(4900.0, 250.0, 4600.0), 
+                  GLOBAL_REF(#7), GLOBAL_REF(#8), 10, graphic));
+
+! Create the symbol in the object plane and calculate the
+! (curved) lines in the picture plane. (Mathematically: Map
+! surface (UV) curves from the object plane surface to the picture
+! plane surface)
+
+  PART(#10,o_symbv0(GLOBAL_REF(#9),p_name , scale, d_x , d_y, 1));
+
+ENDMODULE

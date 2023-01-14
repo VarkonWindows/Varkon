@@ -1,0 +1,112 @@
+!***************** o_gdefv0  ******************************
+! +++
+! Get deformation function for the given transparency 
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-26 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Get deformation function for the given transparency 
+!sdescs Haemta deformationsfunktion            
+
+
+GLOBAL GEOMETRY MODULE o_gdefv0   (
+
+    REF    g_id;        ! Transparency
+VAR REF    def_id);     ! Reference to deformation function 
+
+! Internal variables
+
+  INT    n_def;         ! Number of deformation functions for transparency
+
+  REF    t_id;          ! Reference to transparency from deformation part
+
+  REF    nxt_id;        ! Current identity
+
+  INT    DEBUG;         ! For Debug printout
+  STRING s*1;           ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+
+  def_id := #0;
+
+! Debug. Change to 0 or 1
+  DEBUG := 0; 
+
+! +++
+! 2. Retrieve the deformation function
+! ---
+ 
+! Scan the whole GM
+  SET_ROOT_GM(#0);
+
+! Number of deformation functions for the given transparency.
+! Initialization 
+
+  n_def := 0;
+
+nxtdef:; ! Label: Next deformation function
+
+! Get the reference to the next deformation function,
+! i.e. all parts starting with o_def
+  nxt_id    := GET_NEXT_GM(0, 16384, "o_def*");
+  
+! The whole active module is scanned. The scanning 
+! will end when nxt_id= #0 i.e. when there are no additional 
+! o_def... parts in the active module.
+
+  IF  nxt_id = #0 THEN
+    GOTO alldef;
+  ENDIF;
+
+! Get the first attribute value, which always is (shall be if
+! additional deformation functions are added) a reference to
+! the transparency.
+
+  t_id  := GETREF(nxt_id,1);
+
+! Retrieve next deformation funtion if current deformation 
+! function not is linked the given transparency
+  IF  t_id  <> g_id THEN
+    GOTO  nxtdef;
+  ENDIF;
+
+! At least one deformation function, linked to the transparency,
+! is found. Continue scanning in order to check that exactly 
+! one (1) is defined.
+
+  def_id := nxt_id;
+
+  n_def  := n_def + 1;
+
+  GOTO  nxtdef;
+
+
+alldef:; ! Label: All deformation function references are retrieved
+
+! +++
+! 3. Check that only zero or one deformation is found
+! ---
+ 
+  IF  n_def > 1 THEN
+    EXIT("o_gdefv0 More than 1 deformation fctn for "+RSTR(g_id));
+  ENDIF;
+  
+ENDMODULE

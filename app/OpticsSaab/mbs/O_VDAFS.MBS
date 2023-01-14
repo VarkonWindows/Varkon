@@ -1,0 +1,124 @@
+!**************** o_vdafs    ***************************
+! +++
+!
+! The function creates a surface with data from a
+! VDA-FS file.
+!
+! The VDA-FS file must be on the subdirectory GEO
+! to the active job directory. The name of the 
+! VDA-FS file is input to the function and the 
+! subdirectory name and extension .VDA will 
+! be added automatically by this module.
+! Full file name example: 
+! /usr/varkon/app/optics/GEO/windshield.VDA    (UNIX)
+!   C:\varkon\app\optics\GEO\windshield.VDA   (WINDOWS)
+!
+! 
+! This is a MACRO module which adds a call of the 
+! SUR_EXDEF in the active module. 
+!
+! SUR_EXDEF is an interface function for import 
+! of surfaces defined in other systems. Refer to
+! the manual for information about the other formats 
+! of data the function SUR_EXDEF can handle.
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-24 Gunnar Liden
+!
+!*****************************************************
+
+! Short descriptions in different languages:
+!sdesce Add SUR_EXDEF VDA-FS statement to active module 
+!sdescs Addera SUR_EXDEF VDA-FS sats till aktiva modulen
+
+MACRO MODULE o_vdafs ();
+
+CONSTANT INT language= 1;        ! 1: English Eq. 2: Swedish
+
+! Internal variables:
+
+  REF    s_id;                   ! Surface identity
+  STRING s_ids*132;              ! Surface identity as string
+
+  STRING p_file*80;              ! File name prompt string
+  STRING s_file*80;              ! Full file name
+
+  STRING s_type*80;              ! File type     
+
+  STRING s_surf*80;              ! Surface type         
+
+  REF    a_id;                   ! ADD_MBS identity
+
+BEGINMODULE 
+
+! +++
+! Algorithm
+! _________
+! ---
+
+! +++
+! 1. Definition of English or Swedish prompt strings
+! ---
+
+! English strings
+IF   language = 1 THEN 
+  p_file:= "Name of surface (file)";
+
+! Swedish strings
+ELIF language = 2 THEN
+  p_file:= "Yta (fil)";
+ELSE
+
+  EXIT("o_vdafs Language error");
+ENDIF; 
+
+! +++
+! 2. SUR_EXDEF parameter values VDA-FS and POL_SUR
+! ---
+
+  s_type := CHR(34)+ "VDA-FS"  +CHR(34);
+  s_surf := CHR(34)+ "POL_SUR" +CHR(34);
+
+
+! +++
+! 3. File name
+! ---
+
+! +++
+! Interactive input of the file name
+! ---
+
+s_file := INPMT(p_file, "windshield",80);
+IF s_file = "" THEN
+  EXIT();
+ENDIF;
+
+! +++
+! Add subdirectory name and extension .VDA
+! ---
+
+
+  IF       ACT_OSTYPE() = "UNIX"    THEN
+     s_file := ACT_JOBDIR()+"GEO/"+s_file+".VDA";
+  ELIF     ACT_OSTYPE() = "WINDOWS" THEN
+     s_file := ACT_JOBDIR()+"GEO\"+s_file+".VDA";
+  ELSE
+    EXIT("o_vdafs Not programmed for OS "+ACT_OSTYPE());
+  ENDIF;
+
+! Add CHR(34) in order to add " for the string parameter value
+  s_file:=CHR(34)+s_file+CHR(34);
+
+
+! +++
+! 4. Add and execute MBS statement SUR_EXDEF
+! ---
+
+  a_id:= ADD_MBS("SUR_EXDEF", s_file,s_type,s_surf);
+
+ENDMODULE 
+

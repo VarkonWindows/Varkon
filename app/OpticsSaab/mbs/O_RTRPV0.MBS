@@ -1,0 +1,42 @@
+!***************** o_rtrpv0  ******************************
+! +++
+! Registration of transparency for optical analysis
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-31 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Registration of transparency for optical analysis
+!sdescs Registrera av transparens (?) foer optisk analys
+
+
+GLOBAL GEOMETRY MODULE o_rtrpv0   (
+
+REF    s_out_id;      !  1. Identity of outer surface for lens
+REF    s_eye_id;      !  2. Identity of surface closest to the eye
+FLOAT  offset;        !  3. Transparency thickness (surface offset)
+                      !     (= -0.123456789 <==> Not defined)
+FLOAT  b_n2;          !  4. Refractive index
+REF    cur_id;        !  5. Select limit curve (#0 = whole surface)
+STRING material*80;   !  6. Material in transparency
+FLOAT  u_start;       !  7. Start U value
+FLOAT  u_end;         !  8. End   U value
+FLOAT  v_start;       !  9. Start V value
+FLOAT  v_end);        ! 10. End   V value
+
+
+BEGINMODULE
+
+! +++
+! No calculations. Just registration
+! ---
+
+;
+
+ENDMODULE

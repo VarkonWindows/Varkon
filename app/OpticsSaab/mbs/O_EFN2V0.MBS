@@ -1,0 +1,204 @@
+!***************** o_efn2v0  ******************************
+! +++
+! Create curve in the object or picture plane
+!
+! ---
+!
+! Revision history
+! ________________
+!
+! 1997-05-24 Gunnar Liden
+! 
+! 
+!********************************************************
+
+!sdesce Create curve in the object or picture plane
+!sdescs Skapa kurva i objekt- eller bildplan
+
+
+GLOBAL GEOMETRY MODULE o_efn2v0   (
+
+    REF    prt_id;      ! Reference to part with o_rpoiv0 parts
+    INT    c_case;      ! Curve creation case:
+                        ! Eq. 1: Create U-param.  object curve
+                        ! Eq. 2: Create V-param.  object curve
+                        ! Eq. 3: Create U-param.  picture curve
+                        ! Eq. 4: Create V-param.  picture curve
+    INT    r_curno;     ! Requested curve number
+    INT    graphic;     ! Eq. 0: Show nothing Eq. 1: Curve Eq. 2: All
+    INT    pen_no;      ! Pen (colour) number
+VAR FILE   mbs;         ! Output .DAT file
+VAR REF    cur_id;      ! Identity for the output curve
+VAR INT    status);     ! Error code
+                        ! Eq.  0: A curve has been created
+                        ! Eq. -1: No curve has been created
+
+! Internal variables
+
+  REF    nxt_id;                 ! Current identity
+
+  INT    i_a;                    ! Ray U-param.  address
+  INT    i_b;                    ! Ray V-param.  address
+
+  VECTOR pts(50);                ! Pts for one curve in picture plane
+  VECTOR pts_o(50);              ! Ordered points 
+  INT    n_pts;                  ! Number of points in pts
+  INT    n_pts_c;                ! Number of points in pts_o
+
+  INT    i_p;                    ! Loop index point
+  INT    b_val_a;                ! Blank flag for all other entities
+  INT    b_val_c;                ! Blank flag for curve
+
+  INT    DEBUG;                  ! For Debug printout
+  STRING s*1;                    ! For INPMT
+
+BEGINMODULE
+
+! +++
+! Algorithm
+! =========
+! ---
+
+! +++
+! 1. Initializations and checks      
+! ---
+
+! Initialize output variables
+  status :=  0;
+  cur_id := #0;
+
+! Debug. Change to 0 or 1
+  DEBUG := 1; 
+
+! Check graphic 
+  IF   graphic = 0 THEN
+    b_val_a   := 1;
+    b_val_c   := 1;
+  ELIF graphic = 1 THEN
+    b_val_a   := 1;  
+    b_val_c   := 0;
+  ELIF graphic = 2 THEN
+    b_val_a   := 0;  
+    b_val_c   := 0;
+  ELSE
+   EXIT("o_efn2v0  graphic not 0, 1 or 2");
+  ENDIF;
+
+! Check curve creation case
+  IF   c_case  = 1 THEN
+    ;
+  ELIF c_case  = 2 THEN
+    ;
+  ELIF c_case  = 3 THEN
+    ;
+  ELIF c_case  = 4 THEN
+    ;
+  ELSE
+   EXIT("o_efn2v0  c_case not 1, 2, 3  or 4");
+  ENDIF;
+
+! Initialize local variabels
+  nxt_id    := #0;
+
+  n_pts := -12345;
+  FOR  i_p := 1 TO 50 DO
+    pts(i_p)   := VEC( -0.123456789, -0.123456789, -0.123456789 );
+    pts_o(i_p) := VEC( -0.123456789, -0.123456789, -0.123456789 );
+  ENDFOR;
+
+
+! +++
+! 2. Retrieve point data 
+! ---
+ 
+! Scan the input part (sub-tree)
+  SET_ROOT_GM(prt_id);
+
+! Number of points
+  n_pts := 0;
+
+nxtpoi:; ! Label: Next point
+
+! Get the reference to the point (registration part)
+  nxt_id    := GET_NEXT_GM(0, 16384, "o_rpoiv0");
+  
+! The whole part (sub-tree) is scanned when nxt_id= #0
+! i.e. no additional o_rpoiv0 parts in the sub-tree
+
+  IF  nxt_id = #0 THEN
+    GOTO allpoi;
+  ENDIF;
+
+
+! Retrieve curve number (ray address)
+  i_a            := GETINT(nxt_id,1);
+  i_b            := GETINT(nxt_id,2);
+
+! Point for the requested curve ?
+  IF     c_case  = 1 AND r_curno = i_a THEN
+!   An additional point 
+    n_pts := n_pts + 1;
+!   Point to curve array. Note array address i_b
+    pts(i_b)   := GETVEC(nxt_id,3);
+
+  ELIF   c_case  = 2 AND r_curno = i_b THEN
+!   An additional point 
+    n_pts := n_pts + 1;
+!   Point to curve array. Note array address i_a
+    pts(i_a)   := GETVEC(nxt_id,3);
+
+  ELIF   c_case  = 3 AND r_curno = i_a THEN
+!   An additional point 
+    n_pts := n_pts + 1;
+!   Point to curve array. Note array address i_b
+    pts(i_b)   := GETVEC(nxt_id,4);
+
+  ELIF   c_case  = 4 AND r_curno = i_b THEN
+!   An additional point 
+    n_pts := n_pts + 1;
+!   Point to curve array. Note array address i_a
+    pts(i_a)   := GETVEC(nxt_id,4);
+
+  ELSE
+    ; ! Goto next point
+  ENDIF;
+
+! Continue scanning the input part (sub-tree)
+  GOTO  nxtpoi;
+
+allpoi:; ! Label: All point references are retrieved
+
+! +++
+! 3. Create the curve   
+! ---
+ 
+! Check the number of points
+  IF  n_pts < 2 THEN
+    status := -1;
+    EXIT();
+  ENDIF;
+  
+! "Order" points
+  n_pts_c := 0;
+  FOR  i_p := 1 TO 50 DO
+    IF ABS(pts(i_p).x + 0.123456789) < 0.000001 THEN
+      ;
+    ELSE
+      n_pts_c := n_pts_c + 1;
+      pts_o(n_pts_c) := pts(i_p);
+    ENDIF;
+
+  ENDFOR;
+
+! Programming check
+  IF  n_pts_c  <> n_pts THEN
+    EXIT("o_efn2v0  npts_c <> n_pts");
+  ENDIF;
+  
+! Create curve
+  CUR_SPLARR(#1, "FREE", n_pts, pts_o:BLANK=b_val_c,PEN=pen_no);
+
+! Output curve identity
+  cur_id := GLOBAL_REF(#1);
+
+ENDMODULE
