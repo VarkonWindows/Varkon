@@ -1,0 +1,497 @@
+!********************* sweep_sur ***********************
+! +++
+! Creates a surface by sweeping a changeable profile
+!
+! The output bicubic surface will be saved as a F07 file
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-16  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Creates a surface by sweeping a changeable profile
+
+GLOBAL GEOMETRY MODULE sweep_sur(
+
+REF    id_part_curves  :=  #0  > "@t16384 Part with 3D curve(#1) and csys curve (#2)";
+REF    id_part_profile :=  #0  > "@t16384 Part with 2D profile curve(#1)";
+FLOAT  start_scale     :=  5.0 > "Start scale";
+FLOAT  end_scale       := 10.0 > "End scale";
+FLOAT  start_rotation  := -5.0 > "Start rotation";
+FLOAT  end_rotation    := 70.0 > "End rotation";
+INT    n_u_curves      := 30   > "Number U curves";
+INT    n_v_curves      := 15   > "Number U curves";
+STRING export_name*24  := ""   > "Surface data export file name. Extension F07 will be added";
+INT    graphic_case    :=  1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_sur.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+STRING ref_cur_str*30;             ! Reference to curve as string
+REF    global_id_part_curves;      ! Global reference to part with curves
+REF    global_id_part_profile;     ! Global reference to part with profile curve
+REF    id_curve;                   ! Reference to curve
+REF    id_offset;                  ! Reference to offset curve
+REF    id_profile;                 ! Reference to profile curve
+
+VECTOR profile_pts(50);            ! Profile points
+VECTOR transf_profile_pts(50);     ! Scaled and transformed profile points
+VECTOR prev_transf_profile_pts(50);! Previous scaled and transformed profile points
+VECTOR profile_tan(50);            ! Profile tangents
+VECTOR transf_profile_tan(50);     ! Transformed profile tangents
+VECTOR prev_transf_profile_tan(50);! Previous transformed profile tangents
+VECTOR profile_pt;                 ! Profile point
+VECTOR scaled_profile_pt;          ! Scaled profile point
+VECTOR profile_tangent;            ! Profile tangent
+VECTOR transformed_profile_tangent;! Scaled profile tangent
+INT    point_number;               ! Loop variable point number
+
+FLOAT  arcl_cur;                   ! Curve arc length
+FLOAT  arcl_offset_cur;            ! Offset curve arc length
+FLOAT  arcl_profile_cur;           ! Profile curve arc length
+
+FLOAT  delta_arcl_cur;             ! Delta curve arc length
+FLOAT  delta_arcl_offset_cur;      ! Delta offset curve arc length
+FLOAT  delta_arcl_profile_cur;     ! Delta profile curve arc length
+FLOAT  delta_rotation;             ! Delta rotation angle
+FLOAT  delta_scale;                ! Delta scale factor
+
+INT    curve_number;               ! Loop variable curve number
+FLOAT  current_cur_arcl;           ! Current curve arclength
+FLOAT  current_offset_arcl;        ! Current offset curve arclength
+FLOAT  current_profile_arcl;       ! Current profile curve arclength
+FLOAT  current_rotation;           ! Current rotation angle
+FLOAT  current_scale;              ! Current scale
+
+VECTOR origin_pt;                  ! Origin point for coordinate system
+VECTOR x_axis_pt;                  ! X axis point for coordinate system
+VECTOR y_axis_pt;                  ! Y axis point for coordinate system
+
+INT    no_vlines;                  ! Number of V lines
+REF    id_all(25);                 ! Id's to all V lines
+VECTOR pts(50,50);                 ! Points
+VECTOR tgs(50,50);                 ! Tangents
+VECTOR cross(50);                  ! Twist vector
+
+INT    n_sur_comp;                 ! Number of concatenated surfaces
+REF    id_sur_comp;                ! Reference to current surface
+REF    id_prev_sur_comp;           ! Reference to previous created surface
+INT    surface_number;             ! Loop variable surface
+
+
+BEGINMODULE
+
+    IF start_scale < 0.01 OR start_scale > 100.0 THEN
+	  s_inpmt := INPMT("Start scale must be between 0.01 and 100.0! ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_scale < 0.01 OR end_scale > 100.0 THEN
+	  s_inpmt := INPMT("End scale must be between 0.01 and 100.0! ", "");
+	  GOTO eof_error;
+	ENDIF;
+
+    IF n_u_curves < 3 THEN
+	  s_inpmt := INPMT("Number of U curves must not be less than three (3) ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF n_v_curves < 3 OR n_v_curves > 50 THEN
+	  s_inpmt := INPMT("Number of V curves must not be less than three (3) or greater than fifty (50)", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF start_rotation < 0.0 OR start_rotation > 180.0 THEN
+	  s_inpmt := INPMT("Start rotation must be between 0.0 and 180.0 degrees", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_rotation < 0.0 OR end_rotation > 180.0 THEN
+	  s_inpmt := INPMT("End rotation must be between 0.0 and 180.0 degrees", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep_sur.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_scale      " + STR(start_scale, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "end_scale        " + STR(end_scale, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "start_rotation " + STR(start_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "end_rotation   " + STR(end_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "n_u_curves      " + STR(n_u_curves, 8, 0));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "n_v_curves      " + STR(n_v_curves, 8, 0));
+		OUTLIN(f_d);
+	ENDIF;
+
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+	
+	! Global references to the curves and their parts
+	IF FINDS(RSTR(id_part_curves), "##") = 1 THEN
+	    ref_cur_str := RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := RSTR(id_part_curves) + "#2.1";
+		id_offset := RVAL(ref_cur_str);
+		global_id_part_curves := id_part_curves;
+	ELSE
+	    ref_cur_str := "#" + RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves) + "#2.1";
+		id_offset :=  RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves);
+		global_id_part_curves := RVAL(ref_cur_str);
+	ENDIF;
+	
+	IF FINDS(RSTR(id_part_profile), "##") = 1 THEN
+	    ref_cur_str := RSTR(id_part_profile) + "#1.1";
+		id_profile := RVAL(ref_cur_str);
+		global_id_part_profile := id_part_profile;
+    ELSE
+	    ref_cur_str := "#" + RSTR(id_part_profile) + "#1.1";
+		id_profile := RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_profile);
+		global_id_part_profile := RVAL(ref_cur_str);
+	ENDIF;
+	
+    ! Arc lengths
+	arcl_cur := ARCL(id_curve);
+	arcl_offset_cur := ARCL(id_offset);
+	arcl_profile_cur := ARCL(id_profile);
+	
+    ! Delta arc lengths
+	delta_arcl_cur := arcl_cur/(n_u_curves - 1);
+	delta_arcl_offset_cur := arcl_offset_cur/(n_u_curves - 1);
+	delta_arcl_profile_cur := arcl_profile_cur/(n_v_curves - 1);
+	
+	! Delta rotation
+	delta_rotation := (end_rotation - start_rotation)/(n_u_curves - 1);
+	
+	! Delta scale
+	delta_scale := (end_scale - start_scale)/(n_u_curves - 1);
+	
+    IF debug_flag = 1 THEN
+		
+		OUTSTR(f_d, "arcl_cur         " + STR(arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "arcl_offset_cur  " + STR(arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "arcl_profile_cur " + STR(arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);	
+		
+		OUTSTR(f_d, "delta_arcl_cur         " + STR(delta_arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "delta_arcl_offset_cur  " + STR(delta_arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "delta_arcl_profile_cur " + STR(delta_arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "delta_rotation         " + STR(delta_rotation, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "delta_scale            " + STR(delta_scale, 12, 6));
+		OUTLIN(f_d);	
+	ENDIF;
+	
+    ! Get curve definition points from the profile curve. Save in array profile_pts
+	
+	FOR point_number := 1 TO n_v_curves DO
+	
+	    current_profile_arcl := delta_arcl_profile_cur*(point_number - 1);
+		
+		profile_pt := ON(id_profile, INV_ARCL(id_profile, current_profile_arcl));
+		
+		profile_pts(point_number) := profile_pt;
+		
+		profile_tangent := VECN(TANG(id_profile, INV_ARCL(id_profile, current_profile_arcl)));
+		
+		profile_tan(point_number) := profile_tangent;
+		
+		IF debug_flag = 1 THEN
+			
+			OUTSTR(f_d, "Point number " + STR(point_number, -1, 0) + " X= " + STR(profile_pt.x, 12, 6) 
+			                                                       + " Y= " + STR(profile_pt.y, 12, 6)
+																   + " TX= " + STR(profile_tangent.x, 12, 6) 
+			                                                       + " TY= " + STR(profile_tangent.y, 12, 6)
+																   
+																   );
+			OUTLIN(f_d);
+		ENDIF;
+	
+	ENDFOR;
+
+    ! Create all constant U curves
+	
+	n_sur_comp := 0;
+	
+    FOR curve_number := 1 TO n_u_curves DO
+	
+	    current_cur_arcl := delta_arcl_cur*(curve_number - 1);
+		
+		current_offset_arcl := delta_arcl_offset_cur*(curve_number - 1);
+		
+		current_rotation := start_rotation + delta_rotation*(curve_number - 1);
+		
+		current_scale := start_scale + delta_scale*(curve_number - 1);
+		
+		IF debug_flag = 1 THEN
+			
+			OUTSTR(f_d, "Curve number " + STR(curve_number, -1, 0));
+			OUTLIN(f_d);
+			OUTSTR(f_d, "current_cur_arcl  " + STR(current_cur_arcl, 12, 6));
+			OUTLIN(f_d);	
+			OUTSTR(f_d, "current_rotation " + STR(current_rotation, 12, 6));
+			OUTLIN(f_d);	
+			OUTSTR(f_d, "current_scale " + STR(current_scale, 12, 6));
+			OUTLIN(f_d);	
+		ENDIF;
+		
+		! Create coordinate system. Origin on curve_id. X axis point is the tangent
+		! of the curve curve_id and the Y axis point is from the curve id_offset
+		
+		origin_pt := ON(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		x_axis_pt := origin_pt + 60.0*TANG(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		y_axis_pt := ON(id_offset, INV_ARCL(id_offset, current_offset_arcl));
+		
+		!POI_FREE(#101, origin_pt : PEN=1);
+		!LIN_FREE(#102, origin_pt, x_axis_pt : PEN=2);
+		!LIN_FREE(#103, origin_pt, y_axis_pt : PEN=4);
+		
+		CSYS_3P(#2, "CurveCsys", origin_pt, x_axis_pt, y_axis_pt:BLANK=1);
+		
+		! Create the rotated local system for the profile curve
+		
+	    MODE_LOCAL(#2);
+		
+        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 0.0, 0.0:BLANK=0, PEN=4);
+		
+		! Save points from the previous transformed and scaled profile curve 
+		
+		IF curve_number > 1 THEN
+		    prev_transf_profile_pts := transf_profile_pts;
+			
+			prev_transf_profile_tan := transf_profile_tan;
+		ENDIF;
+		
+		! Set the points defining the current transformed and scaled profile curve 
+		! Loop for all profile curve points
+	    FOR point_number := 1 TO n_v_curves DO
+		
+		    ! Scale the point
+		    scaled_profile_pt := current_scale*profile_pts(point_number);
+			
+			! Transform and save the scaled curve points in array transf_profile_pts
+			! - Create the point in the local system 
+			! - Make the global coordinate system active
+			! - Get the coordinates for the created poin in the global system
+			! - Save coordinates in array transf_profile_pts
+			! - Delete the temporary created point (otherwise references will be #5.1, #5.2, ...
+			MODE_LOCAL(#3);
+			
+			POI_FREE(#5, scaled_profile_pt:BLANK=1);
+			
+			POI_FREE(#6, scaled_profile_pt + profile_tan(point_number):BLANK=1);
+			
+			!IF curve_number = 10 OR curve_number = 11 THEN
+			!    POI_FREE(#105, scaled_profile_pt:BLANK=0, PEN=2);
+			!ENDIF;
+			
+			MODE_GLOBAL();
+			
+			transf_profile_pts(point_number) := ON(#5);
+			
+			transf_profile_tan(point_number) := ON(#6) - ON(#5);
+			
+			DEL(#5);
+			DEL(#6);
+		
+		ENDFOR;
+		
+		! Delete the rotation system (otherwise #3.1, #3.2, ...)
+		DEL(#3);
+		
+        MODE_GLOBAL();
+		
+		! Delete the curves coordinate system (otherwise #2.1, #2.2, ...)
+		DEL(#2);
+
+		! If the previous curve array prev_transf_profile_pts exists
+		IF curve_number > 1 THEN
+		
+		    no_vlines := n_v_curves;
+			
+			FOR point_number := 1 TO no_vlines+1 DO
+			
+				pts(point_number, 1) := prev_transf_profile_pts(point_number);
+				
+				pts(point_number, 2) := transf_profile_pts(point_number);
+				
+				tgs(point_number, 1) := prev_transf_profile_tan(point_number);
+				
+				tgs(point_number, 2) := transf_profile_tan(point_number);
+			 
+				IF debug_flag = 1 THEN
+			
+					OUTSTR(f_d, "pts(" + STR(point_number, -1, 0) + ", 1)" +
+						   STR(pts(point_number, 1).x, 15, 8) + 
+						   STR(pts(point_number, 1).y, 15, 8) + 
+						   STR(pts(point_number, 1).z, 15, 8)
+						   );
+					OUTLIN(f_d);
+					
+					OUTSTR(f_d, "tgs(" + STR(point_number, -1, 0) + ", 1)" +
+						   STR(tgs(point_number, 1).x, 15, 8) + 
+						   STR(tgs(point_number, 1).y, 15, 8) + 
+						   STR(tgs(point_number, 1).z, 15, 8)
+						   );
+					OUTLIN(f_d);
+					
+					OUTSTR(f_d, "pts(" + STR(point_number, -1, 0) + ", 2)" +
+						   STR(pts(point_number, 2).x, 15, 8) + 
+						   STR(pts(point_number, 2).y, 15, 8) + 
+						   STR(pts(point_number, 2).z, 15, 8)
+						   );
+					OUTLIN(f_d);
+					
+					OUTSTR(f_d, "tgs(" + STR(point_number, -1, 0) + ", 2)" +
+						   STR(tgs(point_number, 2).x, 15, 8) + 
+						   STR(tgs(point_number, 2).y, 15, 8) + 
+						   STR(tgs(point_number, 2).z, 15, 8)
+						   );
+					OUTLIN(f_d);
+			
+				 ENDIF;
+			
+			
+			ENDFOR;
+		
+		    SUR_SPLARR(#7,"ZEROTWIST_1", no_vlines, 2, pts, tgs  :PEN=3); 
+		
+		ENDIF;
+	
+	ENDFOR;
+	
+    SUR_COMP(#8, #7.1, #7.2 : BLANK=0, PEN= 4);	
+	
+	DEL(#7.1);
+	
+	DEL(#7.2);
+	
+	n_sur_comp := 0;
+
+	FOR surface_number := 3 TO n_u_curves - 1 DO
+	
+		IF surface_number = 3 THEN
+		   ref_cur_str := "#8.1";
+		ELSE
+		   ref_cur_str := "#9." + STR(n_sur_comp, -1, 0);
+		ENDIF;
+
+		id_prev_sur_comp := RVAL(ref_cur_str);
+		
+		ref_cur_str := "#7." + STR(surface_number, -1, 0);
+		
+		id_sur_comp  := RVAL(ref_cur_str);
+		
+		IF surface_number = n_u_curves - 1 THEN
+		
+		   SUR_COMP(#1, id_prev_sur_comp, id_sur_comp : BLANK=b_val_sur, PEN= 2);
+		   
+		   DEL(id_sur_comp);
+		
+		ELSE
+		
+		    SUR_COMP(#9, id_prev_sur_comp, id_sur_comp : BLANK=0, PEN= 4);
+			
+			DEL(id_sur_comp);
+		
+		    n_sur_comp := n_sur_comp + 1;
+	
+	    ENDIF;
+
+	
+	ENDFOR;
+	
+	DEL(#8.1);
+	
+	FOR surface_number := 1 TO n_sur_comp DO
+	
+	    ref_cur_str := "#9." + STR(surface_number, -1, 0);
+		
+		id_sur_comp  := RVAL(ref_cur_str);
+	
+	    DEL(id_sur_comp);
+		
+	ENDFOR;
+	
+    ! Save as F07 file if name is defined	
+	
+	IF LENGTH(export_name) > 1 THEN
+	    PART(#10, su_exnmg(GLOBAL_REF(#1), export_name));
+	ENDIF;
+	
+
+close_file:
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
