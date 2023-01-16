@@ -217,6 +217,7 @@
 ! 1995-06-25 Originally written
 ! 1996-03-23 ex_nmgbic->su_exnmg   Gunnar Liden
 ! 1997-04-19 close for error       Gunnar Liden
+! 2023-01-16 Overwrite dile. Extension F07 Gunnar
 !********************************************************************
 
 GLOBAL GEOMETRY MODULE su_exnmg    (
@@ -290,9 +291,9 @@ BEGINMODULE
 !s---
 
 IF   language = 1 THEN           ! English strings
-  ermess1:=surname+".DAT exists";!
+  ermess1:=surname+".F07 exists";!
   ermess2:="Open "+surname+      !
-           ".DAT failed";        !
+           ".F07 failed";        !
   ermess3:="     ";              !
   ermess4:="Not a"+              !
       " CUB_SUR surface";        !
@@ -311,10 +312,10 @@ IF   language = 1 THEN           ! English strings
   message1:="su_exnmg  "+        !
       " Creating ";              !
 ELIF language = 2 THEN           ! Swedish strings
-  ermess1:=surname+".DAT "+      !
+  ermess1:=surname+".F07 "+      !
             "existerar";         !
   ermess2:="\ppnandet av "+      !
-   surname+ ".DAT misslyckades"; !
+   surname+ ".F07 misslyckades"; !
   ermess3:="     ";              !
   ermess4:="Ej en"+              !
       " CUB_SUR yta";            !
@@ -348,21 +349,24 @@ ENDIF;                           !
 !s---
 
   OPEN(dat,"r",act_jobdir()     ! Check if file already exists
-  +surname+".DAT");             !
+  +surname+".F07");             !
   IF (IOSTAT(dat) <> 0 ) THEN   !
 !     OK, file does not exist   !
       ;                         !
-  ELSE                          !
-    CLOSE(dat);                 !
-    EXIT("su_exnmg   " +        !
-          ermess1 );            !
+  ELSE       
+    s:= INPMT("su_exnmg "  + ermess1 + " Continue y/n", "y" );
+    IF s = "n" OR s = "N" THEN	
+        CLOSE(dat);              
+        EXIT(); 
+    ENDIF;
+    	CLOSE(dat); 
   ENDIF;                        !
 
   PSH_PMT(message1+ACT_JOBDIR() ! Message to screen
-     +surname+".DAT");          !
+     +surname+".F07");          !
 
-  OPEN(dat,"w",act_jobdir()+    ! Open output .DAT (F07) file
-        surname+".DAT");        !
+  OPEN(dat,"w",act_jobdir()+    ! Open output F07 file
+        surname+".F07");        !
   IF (IOSTAT(dat) <> 0 ) THEN   ! Check (program error)
     EXIT("su_exnmg   " +        !
           ermess2 );            !
