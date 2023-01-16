@@ -1,0 +1,377 @@
+!********************* sweep ***********************
+! +++
+! Sweeping of changeable profiles
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-15  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Sweeping of changeable profiles
+
+GLOBAL GEOMETRY MODULE sweep(
+
+REF    id_part_curves  :=  #0  > "@t16384 Part with 3D curve(#1) and csys curve (#2)";
+REF    id_part_profile :=  #0  > "@t16384 Part with 2D profile curve(#1)";
+FLOAT  start_scale     :=  5.0 > "Start scale";
+FLOAT  end_scale       := 10.0 > "End scale";
+FLOAT  start_rotation  := -5.0 > "Start rotation";
+FLOAT  end_rotation    := 70.0 > "End rotation";
+INT    n_u_curves      := 30   > "Number U curves";
+INT    n_v_curves      := 15   > "Number U curves";
+INT    graphic_case    :=  1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+STRING ref_cur_str*30;             ! Reference to curve as string
+REF    global_id_part_curves;      ! Global reference to part with curves
+REF    global_id_part_profile;     ! Global reference to part with profile curve
+REF    id_curve;                   ! Reference to curve
+REF    id_offset;                  ! Reference to offset curve
+REF    id_profile;                 ! Reference to profile curve
+
+VECTOR profile_pts(50);            ! Profile points
+VECTOR transf_profile_pts(50);     ! Scaled and transformed profile points
+VECTOR prev_transf_profile_pts(50);! Previous scaled and transformed profile points
+VECTOR profile_pt;                 ! Profile point
+VECTOR scaled_profile_pt;          ! Scaled profile point
+INT    point_number;               ! Loop variable point number
+
+FLOAT  arcl_cur;                   ! Curve arc length
+FLOAT  arcl_offset_cur;            ! Offset curve arc length
+FLOAT  arcl_profile_cur;           ! Profile curve arc length
+
+FLOAT  delta_arcl_cur;             ! Delta curve arc length
+FLOAT  delta_arcl_offset_cur;      ! Delta offset curve arc length
+FLOAT  delta_arcl_profile_cur;     ! Delta profile curve arc length
+FLOAT  delta_rotation;             ! Delta rotation angle
+FLOAT  delta_scale;                ! Delta scale factor
+
+INT    curve_number;               ! Loop variable curve number
+FLOAT  current_cur_arcl;           ! Current curve arclength
+FLOAT  current_offset_arcl;        ! Current offset curve arclength
+FLOAT  current_profile_arcl;       ! Current profile curve arclength
+FLOAT  current_rotation;           ! Current rotation angle
+FLOAT  current_scale;              ! Current scale
+
+VECTOR origin_pt;                  ! Origin point for coordinate system
+VECTOR x_axis_pt;                  ! X axis point for coordinate system
+VECTOR y_axis_pt;                  ! Y axis point for coordinate system
+
+VECTOR bplane_pt_1;                ! B-Plane point 1
+VECTOR bplane_pt_2;                ! B-Plane point 2
+VECTOR bplane_pt_3;                ! B-Plane point 3
+VECTOR bplane_pt_4;                ! B-Plane point 4
+VECTOR vec_bplane_offset;          ! B-plane offset vector
+CONSTANT FLOAT offset_plane = 3.0; ! B-plane offset distanse
+
+CONSTANT INT bplane_color_1 = 9;   ! B-Plane color 1
+CONSTANT INT bplane_color_2 = 4;   ! B-Plane color 2
+INT   current_bplane_color;        ! Current b-plane color
+
+BEGINMODULE
+
+    IF start_scale < 0.01 OR start_scale > 100.0 THEN
+	  s_inpmt := INPMT("Start scale must be between 0.01 and 100.0! ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_scale < 0.01 OR end_scale > 100.0 THEN
+	  s_inpmt := INPMT("End scale must be between 0.01 and 100.0! ", "");
+	  GOTO eof_error;
+	ENDIF;
+
+    IF n_u_curves < 3 THEN
+	  s_inpmt := INPMT("Number of U curves must not be less than three (3) ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF n_v_curves < 3 OR n_v_curves > 50 THEN
+	  s_inpmt := INPMT("Number of V curves must not be less than three (3) or greater than fifty (50)", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF start_rotation < 0.0 OR start_rotation > 180.0 THEN
+	  s_inpmt := INPMT("Start rotation must be between 0.0 and 180.0 degrees", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_rotation < 0.0 OR end_rotation > 180.0 THEN
+	  s_inpmt := INPMT("End rotation must be between 0.0 and 180.0 degrees", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_scale      " + STR(start_scale, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "end_scale        " + STR(end_scale, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "start_rotation " + STR(start_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "end_rotation   " + STR(end_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "n_u_curves      " + STR(n_u_curves, 8, 0));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "n_v_curves      " + STR(n_v_curves, 8, 0));
+		OUTLIN(f_d);
+	ENDIF;
+
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+
+	PART(#51,saabvyer());
+	
+	! Global references to the curves and their parts
+	IF FINDS(RSTR(id_part_curves), "##") = 1 THEN
+	    ref_cur_str := RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := RSTR(id_part_curves) + "#2.1";
+		id_offset := RVAL(ref_cur_str);
+		global_id_part_curves := id_part_curves;
+	ELSE
+	    ref_cur_str := "#" + RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves) + "#2.1";
+		id_offset :=  RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves);
+		global_id_part_curves := RVAL(ref_cur_str);
+	ENDIF;
+	
+	IF FINDS(RSTR(id_part_profile), "##") = 1 THEN
+	    ref_cur_str := RSTR(id_part_profile) + "#1.1";
+		id_profile := RVAL(ref_cur_str);
+		global_id_part_profile := id_part_profile;
+    ELSE
+	    ref_cur_str := "#" + RSTR(id_part_profile) + "#1.1";
+		id_profile := RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_profile);
+		global_id_part_profile := RVAL(ref_cur_str);
+	ENDIF;
+	
+    ! Arc lengths
+	arcl_cur := ARCL(id_curve);
+	arcl_offset_cur := ARCL(id_offset);
+	arcl_profile_cur := ARCL(id_profile);
+	
+    ! Delta arc lengths
+	delta_arcl_cur := arcl_cur/(n_u_curves - 1);
+	delta_arcl_offset_cur := arcl_offset_cur/(n_u_curves - 1);
+	delta_arcl_profile_cur := arcl_profile_cur/(n_v_curves - 1);
+	
+	! Delta rotation
+	delta_rotation := (end_rotation - start_rotation)/(n_u_curves - 1);
+	
+	! Delta scale
+	delta_scale := (end_scale - start_scale)/(n_u_curves - 1);
+	
+    IF debug_flag = 1 THEN
+		
+		OUTSTR(f_d, "arcl_cur         " + STR(arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "arcl_offset_cur  " + STR(arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "arcl_profile_cur " + STR(arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);	
+		
+		OUTSTR(f_d, "delta_arcl_cur         " + STR(delta_arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "delta_arcl_offset_cur  " + STR(delta_arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "delta_arcl_profile_cur " + STR(delta_arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "delta_rotation         " + STR(delta_rotation, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "delta_scale            " + STR(delta_scale, 12, 6));
+		OUTLIN(f_d);	
+	ENDIF;
+	
+
+	FOR point_number := 1 TO n_v_curves DO
+	
+	    current_profile_arcl := delta_arcl_profile_cur*(point_number - 1);
+		
+		profile_pt := ON(id_profile, INV_ARCL(id_profile, current_profile_arcl));
+		
+		profile_pts(point_number) := profile_pt;
+		
+		IF debug_flag = 1 THEN
+			
+			OUTSTR(f_d, "Point number " + STR(point_number, -1, 0) + " X= " + STR(profile_pt.x, 12, 6) 
+			                                                       + " Y= " + STR(profile_pt.y, 12, 6));
+			OUTLIN(f_d);
+		ENDIF;
+	
+	ENDFOR;
+
+    current_bplane_color := bplane_color_2;
+
+    FOR curve_number := 1 TO n_u_curves DO
+
+		IF current_bplane_color = bplane_color_1 THEN
+			current_bplane_color := bplane_color_2;
+		ELSE
+			current_bplane_color := bplane_color_1;
+		ENDIF;
+	
+	    current_cur_arcl := delta_arcl_cur*(curve_number - 1);
+		
+		current_offset_arcl := delta_arcl_offset_cur*(curve_number - 1);
+		
+		current_rotation := start_rotation + delta_rotation*(curve_number - 1);
+		
+		current_scale := start_scale + delta_scale*(curve_number - 1);
+		
+		IF debug_flag = 1 THEN
+			
+			OUTSTR(f_d, "Curve number " + STR(curve_number, -1, 0));
+			OUTLIN(f_d);
+			OUTSTR(f_d, "current_cur_arcl  " + STR(current_cur_arcl, 12, 6));
+			OUTLIN(f_d);	
+			OUTSTR(f_d, "current_rotation " + STR(current_rotation, 12, 6));
+			OUTLIN(f_d);	
+			OUTSTR(f_d, "current_scale " + STR(current_scale, 12, 6));
+			OUTLIN(f_d);	
+		ENDIF;
+		
+		origin_pt := ON(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		x_axis_pt := origin_pt + 60.0*TANG(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		y_axis_pt := ON(id_offset, INV_ARCL(id_offset, current_offset_arcl));
+		
+		!POI_FREE(#101, origin_pt : PEN=1);
+		!LIN_FREE(#102, origin_pt, x_axis_pt : PEN=2);
+		!LIN_FREE(#103, origin_pt, y_axis_pt : PEN=4);
+		
+		CSYS_3P(#2, "CurveCsys", origin_pt, x_axis_pt, y_axis_pt:BLANK=1);
+		
+	    MODE_LOCAL(#2);
+		
+        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 0.0, 0.0:BLANK=0, PEN=4);
+		
+		IF curve_number > 1 THEN
+		    prev_transf_profile_pts := transf_profile_pts;
+		ENDIF;
+		
+	    FOR point_number := 1 TO n_v_curves DO
+		
+		    scaled_profile_pt := current_scale*profile_pts(point_number);
+			
+			MODE_LOCAL(#3);
+			
+			POI_FREE(#5, scaled_profile_pt:BLANK=1);
+			
+			!POI_FREE(#105, scaled_profile_pt:BLANK=0, PEN=2);
+			
+			MODE_GLOBAL();
+			
+			transf_profile_pts(point_number) := ON(#5);
+			
+			DEL(#5);
+		
+		ENDFOR;
+		
+		DEL(#3);
+		
+        MODE_GLOBAL();
+		
+		DEL(#2);
+
+		
+		IF curve_number > 1 THEN
+		
+		    FOR point_number := 1 TO n_v_curves-1 DO
+			
+				IF current_bplane_color = bplane_color_1 THEN
+					current_bplane_color := bplane_color_2;
+				ELSE
+					current_bplane_color := bplane_color_1;
+				ENDIF;
+				
+				bplane_pt_1 := prev_transf_profile_pts(point_number);
+				bplane_pt_2 := transf_profile_pts(point_number);
+				bplane_pt_3 := transf_profile_pts(point_number + 1);
+				bplane_pt_4 := prev_transf_profile_pts(point_number + 1);
+				
+				vec_bplane_offset := VECN(VPROD(bplane_pt_3-bplane_pt_1, bplane_pt_2-bplane_pt_1));
+				
+				!IF current_bplane_color = bplane_color_2 THEN
+				    B_PLANE(#10, bplane_pt_1, bplane_pt_2, bplane_pt_3, bplane_pt_4 : BLANK= b_val_sur, PEN= current_bplane_color);
+					B_PLANE(#11, bplane_pt_1 + offset_plane*vec_bplane_offset, 
+					             bplane_pt_4 + offset_plane*vec_bplane_offset, 
+								 bplane_pt_3 + offset_plane*vec_bplane_offset, 
+								 bplane_pt_2 + offset_plane*vec_bplane_offset 
+								 : BLANK= b_val_sur, PEN= current_bplane_color);
+				!ENDIF;
+			
+			ENDFOR;
+		
+		ENDIF;
+		
+        !QCUR_SPLARR(#10, "CHORD", n_v_curves, transf_profile_pts: BLANK=b_val_cur, PEN=2);
+	
+	ENDFOR;
+
+close_file:
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

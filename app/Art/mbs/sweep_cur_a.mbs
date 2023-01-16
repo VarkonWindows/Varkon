@@ -1,0 +1,161 @@
+!********************* sweep_cur_a ***********************
+! +++
+! Curves for the part sweep
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-15  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Curves for the part sweep
+
+GLOBAL GEOMETRY MODULE sweep_cur_a(
+FLOAT  start_param     :=  25.0 > "Start parameter value (0-180 degrees)";
+FLOAT  end_param       := 135.0 > "End parameter value  (0-180 degrees)";
+FLOAT  a_coeff         :=  75.0 > "Radius coefficient for spiral";
+FLOAT  b_coeff         := 235.0 > "Height coefficient for spiral";
+FLOAT  csys_x_rot      :=   0.0 > "Csys X axis rotation";
+FLOAT  csys_y_rot      :=   0.0 > "Csys Y axis rotation";
+FLOAT  csys_z_rot      :=   0.0 > "Csys Z axis rotation";
+INT    graphic_case    :=   1   > "Eq. 1 Curves Eq. 2 Surface Eq. 3 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_cur_a.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+! http://www.mathematische-basteleien.de/spiral.htm
+!
+! Archimedes spiral
+! X= a_coeff*t*cos(t)
+! Y= a_coeff*t*sin(t)
+! Z= b_coeff*t
+! 0 <= t <= 2*PI
+
+
+CONSTANT INT n_pts = 50;   ! Number of points for the spiral
+CONSTANT FLOAT o_dist=1.0; ! Offset distance for offset curve
+VECTOR   cur_pts(50);      ! Curve points
+VECTOR   off_pts(50);      ! Offset curve points
+FLOAT    delta_t;          ! Delta angle
+VECTOR   p_spiral;         ! Spiral definition point
+INT      point_number;     ! Loop point number
+FLOAT    current_t;        ! Current angle
+
+
+BEGINMODULE
+
+    IF start_param < 0.0 OR start_param > 360.0 THEN
+	  s_inpmt := INPMT("Start param must be between 0.0 and 360.0 degrees ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_param < 0.0 OR end_param > 360.0 THEN
+	  s_inpmt := INPMT("End param must be between 0.0 and 360.0 degrees ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF end_param <= start_param THEN
+	  s_inpmt := INPMT("Start param must be greater that end parameter value ", "");
+	  GOTO eof_error;
+	ENDIF;
+	
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep_cur_a.MBS");
+		OUTLIN(f_d);
+		
+	ENDIF;
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_sur := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ENDIF;
+	
+	! Coordinate system for the spiral
+	CSYS_1P(#5, "SpiralCsys", VEC(0.0, 0.0, 0.0), csys_x_rot, csys_y_rot, csys_z_rot:BLANK=b_val_poi);
+	
+	MODE_LOCAL(#5);
+	
+	delta_t := (end_param - start_param)/(n_pts-1);
+    FOR point_number:=1 TO n_pts  DO
+   
+        current_t := start_param + delta_t*(point_number - 1);
+   
+         p_spiral := VEC(a_coeff*current_t*COS(current_t), a_coeff*current_t*SIN(current_t), b_coeff*current_t);
+	 
+	     POI_FREE(#8, p_spiral:BLANK=b_val_poi);
+	 
+	     cur_pts(point_number) := p_spiral;
+	 
+         p_spiral := VEC(a_coeff*(current_t + o_dist)*COS(current_t), a_coeff*(current_t + o_dist)*SIN(current_t), b_coeff*(current_t + o_dist));
+	 
+	     POI_FREE(#9, p_spiral:BLANK=b_val_poi);
+		 
+	     off_pts(point_number) := p_spiral;
+   
+    ENDFOR;	
+	
+    CUR_SPLARR(#1, "CHORD", n_pts, cur_pts:WIDTH=2, PEN=2, BLANK=b_val_cur);
+   
+    CUR_SPLARR(#2, "CHORD", n_pts, off_pts:WIDTH=2, PEN=4, BLANK=b_val_cur);
+	
+	MODE_GLOBAL();
+	
+	IF b_val_sur = 0 THEN
+	    SUR_RULED(#11, #1, #2, 1:PEN=3);
+	ENDIF;
+
+	
+close_file:
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

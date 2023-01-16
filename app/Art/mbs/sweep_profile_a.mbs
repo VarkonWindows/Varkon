@@ -1,0 +1,113 @@
+!********************* sweep_profile_a ***********************
+! +++
+! Curves for the part sweep
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-15  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Curves for the part sweep
+
+LOCAL GEOMETRY MODULE sweep_profile_a(
+
+INT    graphic_case    :=  1   > "Eq. 1 Curve Eq. 2 All Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_profile_a.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+
+VECTOR p_1, p_2, p_3, p_4;         ! Conic points
+VECTOR v_1, v_2, v_3, v_4;         ! Conic vectors
+FLOAT  pval_1,pval_2,pval_3,pval_4;! P-values
+
+BEGINMODULE
+
+
+
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep_profile_a.MBS");
+		OUTLIN(f_d);
+		
+	ENDIF;
+
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_sur := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ENDIF;
+	
+    p_1 := VEC(   0.0,   0.0, 0.0);	
+    p_2 := VEC( 100.0, 150.0, 0.0);	
+    p_3 := VEC( 250.0, 200.0, 0.0);	
+    p_4 := VEC( 450.0, 120.0, 0.0);	
+	
+	v_1 := VEC( 10.0,  4.0, 0.0);
+	v_2 := VEC( 10.0, 26.0, 0.0);
+	v_3 := VEC( 10.0, 10.0, 0.0);
+	v_4 := VEC( 10.0,  4.0, 0.0);
+	
+	pval_1 := 0.5;
+	pval_2 := 0.5;
+	pval_3 := 0.5;
+	pval_4 := 0.5;
+	
+
+    CUR_CONIC(#1, "FREE",
+	          p_1, p_1 + v_1, pval_1,
+			  p_2, p_2 + v_2, pval_2,
+			  p_3, p_3 + v_3, pval_3,
+			  p_4, p_4 + v_4
+			  :BLANK=b_val_cur, PEN=3);
+	
+close_file:
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
