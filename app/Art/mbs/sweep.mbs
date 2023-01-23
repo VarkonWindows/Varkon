@@ -6,7 +6,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-15  Gunnar Liden
+! 2023-01-22  Gunnar Liden
 ! 
 !
 !*******************************************************
@@ -22,7 +22,7 @@ FLOAT  end_scale       := 10.0 > "End scale";
 FLOAT  start_rotation  := -5.0 > "Start rotation";
 FLOAT  end_rotation    := 70.0 > "End rotation";
 INT    n_u_curves      := 30   > "Number U curves";
-INT    n_v_curves      := 15   > "Number U curves";
+INT    n_v_curves      := 15   > "Number V curves (profile pts)";
 INT    graphic_case    :=  1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
 
 
@@ -235,8 +235,9 @@ BEGINMODULE
 		
 		IF debug_flag = 1 THEN
 			
-			OUTSTR(f_d, "Point number " + STR(point_number, -1, 0) + " X= " + STR(profile_pt.x, 12, 6) 
-			                                                       + " Y= " + STR(profile_pt.y, 12, 6));
+			OUTSTR(f_d, "POI_FREE(#" + STR(point_number, -1, 0) + 
+			 ", VEC(" + STR(profile_pt.x, 12, 6) 
+		   + ", " + STR(profile_pt.y, 12, 6) + ", 0.0));");
 			OUTLIN(f_d);
 		ENDIF;
 	
@@ -286,7 +287,10 @@ BEGINMODULE
 		
 	    MODE_LOCAL(#2);
 		
-        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 0.0, 0.0:BLANK=0, PEN=4);
+        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 90.0, 0.0:BLANK=0, PEN=4);
+		
+        !CSYS_1P(#30, "CsysRot", VEC(0,0,0), current_rotation, 90.0, 0.0:BLANK=0, PEN=4);
+
 		
 		IF curve_number > 1 THEN
 		    prev_transf_profile_pts := transf_profile_pts;
@@ -347,7 +351,7 @@ BEGINMODULE
 		
 		ENDIF;
 		
-        !QCUR_SPLARR(#10, "CHORD", n_v_curves, transf_profile_pts: BLANK=b_val_cur, PEN=2);
+        !CUR_SPLARR(#19, "CHORD", n_v_curves, transf_profile_pts: BLANK=b_val_cur, PEN=2);
 	
 	ENDFOR;
 

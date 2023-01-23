@@ -1,0 +1,94 @@
+!********************* sweep_cur_b ***********************
+! +++
+! Curves for the part sweep: Lines
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-22  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Curves for the part sweep: Lines
+
+GLOBAL GEOMETRY MODULE sweep_cur_b(
+FLOAT  z_height        := 1000.0 > "Length of the lines";
+FLOAT  csys_x_rot      :=    0.0 > "Csys X axis rotation";
+FLOAT  csys_y_rot      :=    0.0 > "Csys Y axis rotation";
+FLOAT  csys_z_rot      :=    0.0 > "Csys Z axis rotation";
+INT    graphic_case    :=    1   > "Eq. 0 None Eq. 1 Curves Eq. 2 All");
+
+
+! Internal variables:
+
+INT    b_val_cur;        ! Blank value curves
+INT    b_val_poi;        ! Blank value points
+
+FLOAT  cur_offset;       ! Distance for the offset curve
+
+VECTOR p_cur_start;      ! Start curve point
+VECTOR p_cur_end;        ! End curve point
+
+VECTOR p_off_start;      ! Start offset curve point
+VECTOR p_off_end;        ! End offset curve point
+
+
+BEGINMODULE
+
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ENDIF;
+	
+	cur_offset := z_height/100.0;
+	
+	! Coordinate system for the lines
+	CSYS_1P(#5, "SpiralCsys", VEC(0.0, 0.0, 0.0), csys_x_rot, csys_y_rot, csys_z_rot:BLANK=b_val_poi);
+	
+	MODE_LOCAL(#5);
+	
+	p_cur_start := VEC(0.0, 0.0, 0.0);
+	
+	p_cur_end := VEC(0.0, 0.0, z_height);
+	
+	p_off_start := VEC(cur_offset, 0.0, 0.0);
+	
+	p_off_end := VEC(cur_offset, 0.0, z_height);
+	
+    CUR_CONIC(#1, "FREE", p_cur_start, p_cur_end, 0.5, p_cur_end, p_cur_start
+	         :WIDTH=2, PEN=2, BLANK=b_val_cur);
+   
+    CUR_CONIC(#2, "FREE", p_off_start, p_off_end, 0.5, p_off_end, p_off_start
+	         :WIDTH=2, PEN=2, BLANK=b_val_cur);   
+ 	
+	MODE_GLOBAL();
+	
+	
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

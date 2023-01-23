@@ -1,0 +1,291 @@
+!********************* sur_mosaic ***********************
+! +++
+! Create a mosaic pattern on a surface
+!
+! Input data to this part is a part with a name that starts
+! with sur_mosaic_
+! This part must have the same parameters as the module
+! sur_mosaic_a
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-20  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Create a mosaic pattern on a surface
+
+GLOBAL GEOMETRY MODULE sur_mosaic(
+REF    id_sur_mosaic_input :=  #0  > "@t16384 Part with input data for sur_mosaic");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_mosaic.txt"; 
+
+STRING ref_part_str*30;            ! Reference to part as string
+
+! For function GETHDR
+INT entity_type;                   ! Entity type code
+INT version_number;                ! Version number
+INT blank_flag;                    ! Blank flag Eq. 0: Visible Eq. 1: Unvisible
+INT level_number;                  ! Level number
+INT pen_number;                    ! Color number
+REF group_ids(3);                  ! Group membership identities
+
+! For function GETPRT
+STRING part_name*30;               ! Name of the part
+INT    module_type;                ! Module type Eq. 2: DRAWING Eq. 3: GEOMETRY
+INT    module_attribute;           ! Module attribute LOCAL (1), GLOBAL (2), BASIC (3)
+REF    global_id_csys;             ! Coordinate system identity positioning the part
+INT    n_params;                   ! Number of part parameters
+INT    n_members;                  ! Number of part members
+REF    id_members(10);             ! Array with global entity references (##)
+
+! Input data
+STRING sur_file_name*30;           ! Surface file name with extension ( 1)
+FLOAT  mosaic_size_u;              ! Mosaic arclength U direction     ( 2)
+FLOAT  mosaic_size_v;              ! Mosaic arclength V direction     ( 3)
+INT    mosaic_type;                ! 1: Two colors 2. All colors      ( 4)
+INT    pen_1;                      ! Color one                        ( 5)
+INT    pen_2;                      ! Color two                        ( 6)
+INT    pen_3;                      ! Color three                      ( 7)
+INT    pen_4;                      ! Color four                       ( 8)
+INT    pen_5;                      ! Color five                       ( 9)
+FLOAT  mosaic_offset;              ! Offset mosaic                    (10)
+INT    trim_flag;                  ! Trim flag. Eq. 1: Trim surface   (11)
+FLOAT  trim_start_u;               ! Surface U parameter start value  (12)
+FLOAT  trim_end_u;                 ! Surface U parameter end value    (13)
+FLOAT  trim_start_v;               ! Surface V parameter start value  (14)
+FLOAT  trim_end_v;                 ! Surface V parameter end value    (15)
+INT    graphic_flag;               ! Graphic flag                     (16)
+
+
+STRING sur_file_path_name*132;     ! Surface file name with path
+
+REF    id_input_surface;           ! Reference to the input surface
+
+INT    b_val_bpl;                  ! Blank value b-plane
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+INT    n_mosaic_u;                 ! Number mosaics U-direction	
+INT    n_mosaic_v;                 ! Number mosaics U-direction	
+FLOAT  delta_u;                    ! Delta U for the mosaic
+FLOAT  delta_v;                    ! Delta V for the mosaic
+INT    mosaic_u_index;             ! Loop index U-direction
+INT    mosaic_v_index;             ! Loop index V-direction
+
+VECTOR poi_1,poi_2,poi_3,poi_4;    ! Corner mosaic points
+VECTOR vec_1,vec_2,vec_3,vec_4;    ! Normals mosaic points
+VECTOR  uv_1, uv_2, uv_3, uv_4;    ! Corner U,V values
+
+INT    pen_start;                  ! Start color
+INT    pen_current;                ! Current color
+
+FLOAT rev_offset;                  ! Offset reverse side of surface    
+
+BEGINMODULE
+
+    PART(#30, sur_mosaic_check(id_sur_mosaic_input, n_params));
+	
+	! Get the parameter values
+	sur_file_name := GETSTR(id_sur_mosaic_input,  1);
+	mosaic_size_u := GETFLT(id_sur_mosaic_input,  2);
+	mosaic_size_v := GETFLT(id_sur_mosaic_input,  3);
+	mosaic_type   := GETINT(id_sur_mosaic_input,  4);
+	pen_1         := GETINT(id_sur_mosaic_input,  5);
+	pen_2         := GETINT(id_sur_mosaic_input,  6);
+	pen_3         := GETINT(id_sur_mosaic_input,  7);
+	pen_4         := GETINT(id_sur_mosaic_input,  8);
+	pen_5         := GETINT(id_sur_mosaic_input,  9);	
+	mosaic_offset := GETFLT(id_sur_mosaic_input, 10);
+	trim_flag     := GETINT(id_sur_mosaic_input, 11);	
+	trim_start_u  := GETFLT(id_sur_mosaic_input, 12);
+	trim_end_u    := GETFLT(id_sur_mosaic_input, 13);
+	trim_start_v  := GETFLT(id_sur_mosaic_input, 14);
+	trim_end_v    := GETFLT(id_sur_mosaic_input, 15);
+	graphic_flag  := GETINT(id_sur_mosaic_input, 16);	
+	
+	
+	sur_file_path_name := ACT_JOBDIR() + "surflib\" + sur_file_name;
+	
+	rev_offset := 0.01*mosaic_size_u;
+	
+
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_mosaic.MBS");
+		OUTLIN(f_d);
+
+		OUTSTR(f_d, "sur_file_path_name= " + sur_file_path_name);
+		OUTLIN(f_d);	
+		
+		OUTSTR(f_d, "rev_offset=    " + STR(rev_offset, 12, 4));
+		OUTLIN(f_d);
+		
+	ENDIF;	
+	
+	! Set blank values
+	IF     graphic_flag = 1 THEN
+	  b_val_bpl := 0;
+	  b_val_sur := 1;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_flag = 2 THEN
+	  b_val_bpl := 0;
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_flag = 3 THEN
+	  b_val_bpl := 0;
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_bpl := 0;
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ENDIF;
+	
+    ! Retrieve the surface
+	
+	IF trim_flag = 1 THEN
+	    SUR_EXDEF(#2, sur_file_path_name, "NMG_F07", "CUB_SUR",
+        trim_start_u, trim_end_u, trim_start_v, trim_end_v
+		: BLANK= b_val_sur, PEN=3);
+		
+		id_input_surface := #2;
+	ELSE
+	    SUR_EXDEF(#3, sur_file_path_name, "NMG_F07", "CUB_SUR" 
+		: BLANK= b_val_sur, PEN=3);
+		
+		id_input_surface := #3;
+	ENDIF;
+
+    PART(#4, sur_mosaic_deltas(GLOBAL_REF(id_input_surface), mosaic_size_u, mosaic_size_v,
+                               n_mosaic_u, n_mosaic_v, delta_u, delta_v));
+
+	
+	pen_start := pen_1;
+	
+    FOR mosaic_u_index := 0 TO n_mosaic_u DO
+	
+	    IF mosaic_type = 1 OR mosaic_type = 3 THEN
+			IF pen_start = pen_1 THEN
+				pen_start := pen_2;
+			ELSE
+				pen_start := pen_1;
+			ENDIF;
+	    ELIF mosaic_type = 2  OR mosaic_type = 4 THEN
+			IF pen_start = pen_1 THEN
+				pen_start := pen_2;
+			ELIF pen_start = pen_2 THEN
+				pen_start := pen_3;
+			ELIF pen_start = pen_3 THEN
+				pen_start := pen_4;
+			ELIF pen_start = pen_4 THEN
+				pen_start := pen_5;
+			ELSE
+				pen_start := pen_1;
+			ENDIF;
+		ELSE
+		    EXIT("sur_mosaic Not an implemented case mosaic_type= " + STR(mosaic_type, -1, 0) + " (1)");
+		ENDIF;
+		
+		pen_current := pen_start;
+	
+	    FOR mosaic_v_index := 0 TO n_mosaic_v DO
+		
+	        IF mosaic_type = 1 THEN
+				IF pen_current = pen_1 THEN
+					pen_current := pen_2;
+				ELSE
+					pen_current := pen_1;
+				ENDIF;
+	        ELIF mosaic_type = 2 THEN
+				IF pen_current = pen_1 THEN
+					pen_current := pen_2;
+				ELIF pen_current = pen_2 THEN
+					pen_current := pen_3;
+				ELIF pen_current = pen_3 THEN
+					pen_current := pen_4;
+				ELIF pen_current = pen_4 THEN
+					pen_current := pen_5;
+				ELSE
+					pen_current := pen_1;
+				ENDIF;
+	        ELIF mosaic_type = 3 OR  mosaic_type = 4 THEN
+				; ! Do nothing. Keep the color
+		    ELSE
+		        EXIT("sur_mosaic Not an implemented case mosaic_type= " + STR(mosaic_type, -1, 0) + " (2)");
+			ENDIF;
+		
+		    uv_1 := VEC( mosaic_u_index   *delta_u,  mosaic_v_index   *delta_v);
+			uv_2 := VEC((mosaic_u_index+1)*delta_u,  mosaic_v_index   *delta_v);
+			uv_3 := VEC((mosaic_u_index+1)*delta_u, (mosaic_v_index+1)*delta_v);
+			uv_4 := VEC( mosaic_u_index   *delta_u, (mosaic_v_index+1)*delta_v);
+			
+			poi_1 := EVAL(id_input_surface, "XYZ", uv_1);
+			poi_2 := EVAL(id_input_surface, "XYZ", uv_2);
+			poi_3 := EVAL(id_input_surface, "XYZ", uv_3);
+			poi_4 := EVAL(id_input_surface, "XYZ", uv_4);
+			
+			vec_1 := EVAL(id_input_surface, "NORMAL", uv_1);
+			vec_2 := EVAL(id_input_surface, "NORMAL", uv_2);
+			vec_3 := EVAL(id_input_surface, "NORMAL", uv_3);
+			vec_4 := EVAL(id_input_surface, "NORMAL", uv_4);
+			
+			B_PLANE(#1, poi_1 + (mosaic_offset + rev_offset)*vec_1, 
+			            poi_2 + (mosaic_offset + rev_offset)*vec_2,  
+						poi_3 + (mosaic_offset + rev_offset)*vec_3, 
+						poi_4 + (mosaic_offset + rev_offset)*vec_4 
+						: BLANK= b_val_bpl, PEN= pen_current);
+			B_PLANE(#9, poi_1 + (mosaic_offset - rev_offset)*vec_1, 
+			            poi_4 + (mosaic_offset - rev_offset)*vec_4,  
+						poi_3 + (mosaic_offset - rev_offset)*vec_3, 
+						poi_2 + (mosaic_offset - rev_offset)*vec_2 
+						: BLANK= b_val_bpl, PEN= pen_current);
+			
+	
+	    ENDFOR;
+		
+	ENDFOR;
+	
+
+
+	
+	
+	
+    IF debug_flag = 1 THEN
+		
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -8,7 +8,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-16  Gunnar Liden
+! 2023-01-22  Gunnar Liden
 ! 
 !
 !*******************************************************
@@ -17,8 +17,8 @@
 
 GLOBAL GEOMETRY MODULE sweep_sur(
 
-REF    id_part_curves  :=  #0  > "@t16384 Part with 3D curve(#1) and csys curve (#2)";
-REF    id_part_profile :=  #0  > "@t16384 Part with 2D profile curve(#1)";
+REF    id_part_curves  :=  #0  > "@t16384 Part with 3D curve(id #1) and csys curve (id #2)";
+REF    id_part_profile :=  #0  > "@t16384 Part with 2D profile curve(id #1)";
 FLOAT  start_scale     :=  5.0 > "Start scale";
 FLOAT  end_scale       := 10.0 > "End scale";
 FLOAT  start_rotation  := -5.0 > "Start rotation";
@@ -32,7 +32,7 @@ INT    graphic_case    :=  1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
 ! Internal variables:
 
 FILE       f_d;                    ! Debug file
-CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
 CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_sur.txt"; 
 
 STRING s_inpmt*132;                ! Return string INPMT
@@ -144,11 +144,19 @@ BEGINMODULE
 		OUTLIN(f_d);
 		OUTSTR(f_d, "n_v_curves      " + STR(n_v_curves, 8, 0));
 		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+		
 	ENDIF;
 
+    PART(#51,saabvyer());
 	
 	! Set blank values
-	IF     graphic_case = 1 THEN
+	IF     graphic_case = 0 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF     graphic_case = 1 THEN
 	  b_val_sur := 0;
 	  b_val_cur := 1;
 	  b_val_poi := 1;
@@ -211,6 +219,8 @@ BEGINMODULE
 	
     IF debug_flag = 1 THEN
 		
+		! Open debug file append mode
+		OPEN(f_d, "A", file_name);
 		OUTSTR(f_d, "arcl_cur         " + STR(arcl_cur, 12, 6));
 		OUTLIN(f_d);
 		OUTSTR(f_d, "arcl_offset_cur  " + STR(arcl_offset_cur, 12, 6));
@@ -229,6 +239,7 @@ BEGINMODULE
 		OUTLIN(f_d);
 		OUTSTR(f_d, "delta_scale            " + STR(delta_scale, 12, 6));
 		OUTLIN(f_d);	
+		CLOSE(f_d);
 	ENDIF;
 	
     ! Get curve definition points from the profile curve. Save in array profile_pts
@@ -246,6 +257,8 @@ BEGINMODULE
 		profile_tan(point_number) := profile_tangent;
 		
 		IF debug_flag = 1 THEN
+		    ! Open debug file append mode
+		    OPEN(f_d, "A", file_name);
 			
 			OUTSTR(f_d, "Point number " + STR(point_number, -1, 0) + " X= " + STR(profile_pt.x, 12, 6) 
 			                                                       + " Y= " + STR(profile_pt.y, 12, 6)
@@ -254,6 +267,7 @@ BEGINMODULE
 																   
 																   );
 			OUTLIN(f_d);
+		    CLOSE(f_d);
 		ENDIF;
 	
 	ENDFOR;
@@ -273,7 +287,8 @@ BEGINMODULE
 		current_scale := start_scale + delta_scale*(curve_number - 1);
 		
 		IF debug_flag = 1 THEN
-			
+			! Open debug file append mode
+		    OPEN(f_d, "A", file_name);
 			OUTSTR(f_d, "Curve number " + STR(curve_number, -1, 0));
 			OUTLIN(f_d);
 			OUTSTR(f_d, "current_cur_arcl  " + STR(current_cur_arcl, 12, 6));
@@ -281,7 +296,8 @@ BEGINMODULE
 			OUTSTR(f_d, "current_rotation " + STR(current_rotation, 12, 6));
 			OUTLIN(f_d);	
 			OUTSTR(f_d, "current_scale " + STR(current_scale, 12, 6));
-			OUTLIN(f_d);	
+			OUTLIN(f_d);
+			CLOSE(f_d);
 		ENDIF;
 		
 		! Create coordinate system. Origin on curve_id. X axis point is the tangent
@@ -303,7 +319,7 @@ BEGINMODULE
 		
 	    MODE_LOCAL(#2);
 		
-        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 0.0, 0.0:BLANK=0, PEN=4);
+        CSYS_1P(#3, "CsysRot", VEC(0,0,0), current_rotation, 90.0, 0.0:BLANK=0, PEN=4);
 		
 		! Save points from the previous transformed and scaled profile curve 
 		
@@ -360,7 +376,7 @@ BEGINMODULE
 		
 		    no_vlines := n_v_curves;
 			
-			FOR point_number := 1 TO no_vlines+1 DO
+			FOR point_number := 1 TO no_vlines DO
 			
 				pts(point_number, 1) := prev_transf_profile_pts(point_number);
 				
@@ -371,7 +387,8 @@ BEGINMODULE
 				tgs(point_number, 2) := transf_profile_tan(point_number);
 			 
 				IF debug_flag = 1 THEN
-			
+			        ! Open debug file append mode
+		            OPEN(f_d, "A", file_name);
 					OUTSTR(f_d, "pts(" + STR(point_number, -1, 0) + ", 1)" +
 						   STR(pts(point_number, 1).x, 15, 8) + 
 						   STR(pts(point_number, 1).y, 15, 8) + 
@@ -399,6 +416,8 @@ BEGINMODULE
 						   STR(tgs(point_number, 2).z, 15, 8)
 						   );
 					OUTLIN(f_d);
+					
+					CLOSE(f_d);
 			
 				 ENDIF;
 			
@@ -433,6 +452,18 @@ BEGINMODULE
 		
 		id_sur_comp  := RVAL(ref_cur_str);
 		
+		IF debug_flag = 1 THEN
+		    ! Open debug file append mode
+		    OPEN(f_d, "A", file_name);
+			
+			OUTSTR(f_d,"surface_number= " + STR(surface_number, -1, 0) +
+			            " id_prev_sur_comp= " + RSTR(id_prev_sur_comp) + 
+						" id_sur_comp= " + RSTR(id_sur_comp) );
+			OUTLIN(f_d);
+			
+			CLOSE(f_d);
+		ENDIF;
+		
 		IF surface_number = n_u_curves - 1 THEN
 		
 		   SUR_COMP(#1, id_prev_sur_comp, id_sur_comp : BLANK=b_val_sur, PEN= 2);
@@ -448,6 +479,8 @@ BEGINMODULE
 		    n_sur_comp := n_sur_comp + 1;
 	
 	    ENDIF;
+		
+		BLANK(id_prev_sur_comp);
 
 	
 	ENDFOR;
@@ -467,19 +500,11 @@ BEGINMODULE
     ! Save as F07 file if name is defined	
 	
 	IF LENGTH(export_name) > 1 THEN
-	    PART(#10, su_exnmg(GLOBAL_REF(#1), export_name));
+	    PART(#10, su_exnmg(GLOBAL_REF(#1), "surflib\" + export_name));
 	ENDIF;
 	
-
-close_file:
-
-    IF debug_flag = 1 THEN
-        ! Close debug file
-        CLOSE(f_d);
-	ENDIF;
+eof_error:;
 	
-eof_error:	;
-
 ENDMODULE
 
 

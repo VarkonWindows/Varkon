@@ -1,0 +1,144 @@
+!********************* sweep_sur_b ***********************
+! +++
+! Creates a surface by sweeping a changeable profile
+!
+! The output bicubic surface will be saved as a F07 file
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-22  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Creates a surface by sweeping a changeable profile
+
+GLOBAL GEOMETRY MODULE sweep_sur_b(
+
+REF    id_part_curves  :=  #0  > "@t16384 Part with 3D curve(#1) and csys curve (#2)";
+REF    id_part_profile :=  #0  > "@t16384 Part with 2D profile curve(#1)";
+INT    graphic_case    :=  1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+!CONSTANT FLOAT  start_scale     =  1.0;  ! Start scale
+!CONSTANT FLOAT  end_scale       = 10.0;  ! End scale
+!CONSTANT FLOAT  start_rotation  =  3.0;  ! Start rotation TODO SUR_COMP problem
+!CONSTANT FLOAT  end_rotation    = 54.0;  ! End rotation   TODO
+!CONSTANT INT    n_u_curves      = 40;    ! Number U curves
+!CONSTANT INT    n_v_curves      = 49;    ! Number U curves
+!CONSTANT STRING exp_name = "sweep_sur_b_spiral";! Export NMG/F07 file name
+
+CONSTANT FLOAT  start_scale     =  1.0;  ! Start scale
+CONSTANT FLOAT  end_scale       = 10.0;  ! End scale
+CONSTANT FLOAT  start_rotation  =  0.0;  ! Start rotation TODO SUR_COMP problem
+CONSTANT FLOAT  end_rotation    = 90.0;  ! End rotation   TODO
+CONSTANT INT    n_u_curves      = 10;    ! Number U curves
+CONSTANT INT    n_v_curves      = 29;    ! Number U curves
+CONSTANT STRING exp_name = "sweep_sur_b";! Export NMG/F07 file name
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_sur_b.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+STRING ref_cur_str*30;             ! Reference to curve as string
+REF    global_id_part_curves;      ! Global reference to part with curves
+REF    global_id_part_profile;     ! Global reference to part with profile curve
+
+BEGINMODULE
+
+	
+    IF debug_flag = 1 THEN
+		! Open debug file
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep_sur_b.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_scale      " + STR(start_scale, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "end_scale        " + STR(end_scale, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "start_rotation " + STR(start_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "end_rotation   " + STR(end_rotation, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "n_u_curves      " + STR(n_u_curves, 8, 0));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "n_v_curves      " + STR(n_v_curves, 8, 0));
+		OUTLIN(f_d);
+	ENDIF;
+
+	
+	! Set blank values
+	IF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+	
+	! Global references to the input parts
+	IF FINDS(RSTR(id_part_curves), "##") = 1 THEN
+		global_id_part_curves := id_part_curves;
+	ELSE
+		ref_cur_str := "#" + RSTR(id_part_curves);
+		global_id_part_curves := RVAL(ref_cur_str);
+	ENDIF;
+	
+	IF FINDS(RSTR(id_part_profile), "##") = 1 THEN
+		global_id_part_profile := id_part_profile;
+    ELSE
+		ref_cur_str := "#" + RSTR(id_part_profile);
+		global_id_part_profile := RVAL(ref_cur_str);
+	ENDIF;
+	
+	PART(#1, sweep_sur(global_id_part_curves, global_id_part_profile, 
+	                   start_scale, end_scale, start_rotation, end_rotation,
+					   n_u_curves, n_v_curves, exp_name, graphic_case));
+					 
+
+
+close_file:
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+eof_error:	;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

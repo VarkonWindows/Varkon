@@ -1,0 +1,150 @@
+!********************* sweep_profile_b ***********************
+! +++
+! A profile consisting of four lines with circular fillets
+!
+! This is a curve for the part sweep
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-22  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce A profile consisting of four lines with circular fillets
+
+LOCAL GEOMETRY MODULE sweep_profile_b(
+FLOAT  fillet_radius   := 100.0 > "Fillet radius";
+INT    graphic_case    :=   1   > "Eq. 1 Curve Eq. 2 All Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 0;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sweep_profile_b.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_lin;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+
+VECTOR p_1, p_2, p_3, p_4;         ! Conic points
+VECTOR v_1, v_2, v_3, v_4;         ! Conic vectors
+VECTOR p_1_s, p_1_e;               ! Fillet points
+VECTOR p_2_s, p_2_e;               ! Fillet points
+VECTOR p_3_s, p_3_e;               ! Fillet points
+VECTOR p_4_s, p_4_e;               ! Fillet points
+
+CONSTANT FLOAT p_value = 0.4142;   ! Circle P-value
+
+
+BEGINMODULE
+
+    IF fillet_radius > 499.95 THEN
+	    EXIT("sweep_profile_b Maximum fillet radius is 499.95");
+	ENDIF;
+	
+    IF fillet_radius < 0.05 THEN
+	    EXIT("sweep_profile_b Minimum fillet radius is 0.05");
+	ENDIF;
+
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sweep_profile_b.MBS");
+		OUTLIN(f_d);
+		
+	ENDIF;
+
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 1 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_lin := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_lin := 1;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ENDIF;
+	
+    p_1 := VEC( 500.0, -500.0, 0.0);	
+    p_2 := VEC( 500.0,  500.0, 0.0);	
+    p_3 := VEC(-500.0,  500.0, 0.0);	
+    p_4 := VEC(-500.0, -500.0, 0.0);
+	
+	v_1 := p_2 - p_1;
+	v_2 := p_3 - p_2;
+	v_3 := p_4 - p_3;
+	v_4 := p_1 - p_4;
+	
+    LIN_FREE(#2, p_1, p_2: BLANK= b_val_lin);
+	LIN_FREE(#3, p_2, p_3: BLANK= b_val_lin);
+	LIN_FREE(#4, p_3, p_4: BLANK= b_val_lin);
+	LIN_FREE(#5, p_4, p_1: BLANK= b_val_lin);
+	
+	ARC_FIL(#6, #5, #2, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#7, #2, #3, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#8, #3, #4, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#9, #4, #5, fillet_radius, 4: BLANK= b_val_lin);
+	
+	p_1_s := ON(#6, 0.0);
+	p_1_e := ON(#6, 1.0);
+	p_2_s := ON(#7, 0.0);
+	p_2_e := ON(#7, 1.0);
+	p_3_s := ON(#8, 0.0);
+	p_3_e := ON(#8, 1.0);
+	p_4_s := ON(#9, 0.0);
+	p_4_e := ON(#9, 1.0);	
+	
+	!LIN_FREE(#10, p_1_s, p_1_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#11, p_2_s, p_2_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#12, p_3_s, p_3_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#13, p_4_s, p_4_e: BLANK= b_val_lin, PEN=2);
+
+    CUR_CONIC(#1, "FREE",
+	          p_1_s, p_1_s + v_4, p_value,
+			  p_1_e, p_1_e + v_1, 0.5,
+			  p_2_s, p_2_s + v_1, p_value,
+			  p_2_e, p_2_e + v_2, 0.5,
+			  p_3_s, p_3_s + v_2, p_value,
+			  p_3_e, p_3_e + v_3, 0.5,
+			  p_4_s, p_4_s + v_3, p_value,
+			  p_4_e, p_4_e + v_4, 0.5,
+			  p_1_s, p_1_s + v_4
+			  :BLANK=b_val_cur, PEN=3);
+
+
+    IF debug_flag = 1 THEN
+        ! Close debug file
+        CLOSE(f_d);
+	ENDIF;
+	
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,109 @@
+!********************* sur_iso_grid ***********************
+! +++
+! Creates a grid of iso curves on a surface
+!
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-22  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Creates a grid of iso curves on a surface
+
+GLOBAL GEOMETRY MODULE sur_iso_grid(
+
+REF    id_surface      :=  #0  > "@t16 Select surface";
+INT    iso_case        :=  1   > "Iso grid case";
+INT    cur_col_u       :=  2   > "Color of U curves";
+INT    cur_col_v       :=  4   > "Color of V curves";
+FLOAT  cur_width       :=  2.0 > "Curve width";
+INT    graphic_case    :=  1   > "Eq. 1 Curves Eq. 2 All");
+
+
+! Internal variables:
+
+INT    b_val_cur;                  ! Blank value curves
+
+STRING ref_cur_str*30;             ! Reference to curve as string
+REF    global_id_surface;          ! Global reference to input surface
+
+INT    n_u, n_v;                   ! Number of patches
+INT    i_u, i_v;                   ! Loop index patches
+FLOAT  delta_u, delta_v;           ! Parameter delta values
+
+BEGINMODULE
+
+    IF iso_case < 1 OR iso_case > 5 THEN
+	
+	  EXIT("sur_iso_grid Iso case not between 1 and 5 ");
+	  
+	ENDIF;
+	
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_cur := 1;
+	ELIF   graphic_case = 1 THEN
+	  b_val_cur := 0;
+	ELSE
+	  b_val_cur := 0;
+	ENDIF;
+	
+	! Global references of the input surface
+	IF FINDS(RSTR(id_surface), "##") = 1 THEN
+		global_id_surface := id_surface;
+	ELSE
+	    ref_cur_str := "#" + RSTR(id_surface);
+		global_id_surface := RVAL(ref_cur_str);
+	ENDIF;
+		
+	! Get number of patches
+	GETSURH(global_id_surface, "NPATU", n_u);
+	GETSURH(global_id_surface, "NPATV", n_v);
+	
+	IF iso_case = 1 OR  iso_case = 2 THEN
+	    FOR i_u := 0 TO n_u DO
+	        CUR_ISO(#1, global_id_surface, "U", i_u, 0.0, n_v 
+		    : BLANK= b_val_cur, PEN= cur_col_u, WIDTH= cur_width);
+	    ENDFOR;
+	ENDIF;
+	
+	IF iso_case = 1 OR  iso_case = 3 THEN
+	    FOR i_v := 0 TO n_v DO
+	        CUR_ISO(#2, global_id_surface, "V", i_v, 0.0, n_u 
+		    : BLANK= b_val_cur, PEN= cur_col_v, WIDTH= cur_width);
+	    ENDFOR;	
+	ENDIF;
+	
+	IF iso_case = 4 THEN
+	    CUR_ISO(#3, global_id_surface, "V", 0.0, 0.0, n_u 
+		: BLANK= b_val_cur, PEN= cur_col_v, WIDTH= cur_width);
+	    CUR_ISO(#4, global_id_surface, "V", n_v, 0.0, n_u 
+		: BLANK= b_val_cur, PEN= cur_col_v, WIDTH= cur_width);
+	ENDIF;
+	
+	IF iso_case = 5 THEN
+	    CUR_ISO(#5, global_id_surface, "U", 0.0, 0.0, n_v 
+		: BLANK= b_val_cur, PEN= cur_col_u, WIDTH= cur_width);
+	    CUR_ISO(#6, global_id_surface, "U", n_u, 0.0, n_v 
+		: BLANK= b_val_cur, PEN= cur_col_u, WIDTH= cur_width);
+	ENDIF;
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

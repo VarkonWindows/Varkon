@@ -1,0 +1,120 @@
+!********************* sur_mosaic_deltas ***********************
+! +++
+! Returns the deltas and number of mosaics in U- and V-direction
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-20  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Returns the deltas and number of mosaics in U- and V-direction
+
+GLOBAL GEOMETRY MODULE sur_mosaic_deltas(
+    REF    id_input_surface;           ! Reference to the input surface
+    FLOAT  mosaic_size_u;              ! Mosaic arclength U direction
+    FLOAT  mosaic_size_v;              ! Mosaic arclength V direction
+VAR INT    n_mosaic_u;                 ! Number mosaics U-direction	
+VAR INT    n_mosaic_v;                 ! Number mosaics U-direction	
+VAR FLOAT  delta_u;                    ! Delta U for the mosaic
+VAR FLOAT  delta_v);                   ! Delta V for the mosaic
+
+! Internal variables:
+
+CONSTANT INT    b_val_cur = 1;     ! Blank value curves
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_mosaic_deltas.txt"; 
+
+
+INT    n_u;                        ! Number of patches in U-direction
+INT    n_v;                        ! Number of  patches in V-direction
+
+FLOAT  arcl_u_aver;                ! Average arclength in U-direction
+FLOAT  arcl_v_aver;                ! Average arclength in V-direction
+INT    mosaic_u_index;             ! Loop index U-direction
+INT    mosaic_v_index;             ! Loop index V-direction
+
+BEGINMODULE
+
+    ! Get surface data
+	GETSURH(id_input_surface, "NPATU", n_u);
+	GETSURH(id_input_surface, "NPATV", n_v);
+	
+	CUR_ISO(#4, id_input_surface, "U", 0.0, 0.0, n_v:BLANK=b_val_cur, PEN=2);
+	
+	arcl_u_aver := ARCL(#4);
+	
+	CUR_ISO(#5, id_input_surface, "U", n_u, 0.0, n_v:BLANK=b_val_cur, PEN=2);
+	
+	arcl_u_aver := (arcl_u_aver + ARCL(#5))/2.0;
+	
+	CUR_ISO(#6, id_input_surface, "V", 0.0, 0.0, n_u:BLANK=b_val_cur, PEN=2);
+	
+	arcl_v_aver := ARCL(#6);
+	
+	CUR_ISO(#7, id_input_surface, "V", n_v, 0.0, n_u:BLANK=b_val_cur, PEN=2);
+	
+	arcl_v_aver := (arcl_u_aver + ARCL(#7))/2.0;
+	
+	n_mosaic_u := ROUND(arcl_u_aver/mosaic_size_u);
+	n_mosaic_v := ROUND(arcl_v_aver/mosaic_size_v);
+	
+	delta_u := n_u/(n_mosaic_u - 1);
+	delta_v := n_v/(n_mosaic_v - 1);
+	
+	n_mosaic_u := n_mosaic_u -2;
+	n_mosaic_v := n_mosaic_v -2;
+	
+	
+    IF debug_flag = 1 THEN
+	
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_mosaic_deltas.MBS");
+		OUTLIN(f_d);
+	
+		OUTSTR(f_d, "arcl_u_aver=   " + STR(arcl_u_aver, 12, 4));
+		OUTLIN(f_d);		
+		OUTSTR(f_d, "arcl_v_aver=   " + STR(arcl_v_aver, 12, 4));
+		OUTLIN(f_d);	
+		
+		OUTSTR(f_d, "n_mosaic_u=    " + STR(n_mosaic_u, 7, 0));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "n_mosaic_v=    " + STR(n_mosaic_v, 7, 0));
+		OUTLIN(f_d);		
+		
+		OUTSTR(f_d, "n_u=           " + STR(n_u, 7, 0));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "n_v=           " + STR(n_v, 7, 0));
+		OUTLIN(f_d);		
+		
+		OUTSTR(f_d, "delta_u=       " + STR(delta_u, 12, 4));
+		OUTLIN(f_d);		
+		OUTSTR(f_d, "delta_v=       " + STR(delta_v, 12, 4));
+		OUTLIN(f_d);
+		
+        CLOSE(f_d);
+		
+	ENDIF;
+
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

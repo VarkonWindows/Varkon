@@ -1,0 +1,118 @@
+!********************* sur_art ***********************
+! +++
+! Make a surface to an art object (picture)
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-17  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Make a surface to an art object (picture)
+
+GLOBAL GEOMETRY MODULE sur_art(
+REF    id_sur_art_input :=  #0  > "@t16384 Part with input data for one type of art");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_art.txt"; 
+
+STRING ref_part_str*30;            ! Reference to part as string
+REF    global_id_sur_art_input;    ! Global reference to input part
+
+! For function GETHDR
+INT entity_type;                   ! Entity type code
+INT version_number;                ! Version number
+INT blank_flag;                    ! Blank flag Eq. 0: Visible Eq. 1: Unvisible
+INT level_number;                  ! Level number
+INT pen_number;                    ! Color number
+REF group_ids(3);                  ! Group membership identities
+
+! For function GETPRT
+STRING part_name*30;               ! Name of the part
+INT    module_type;                ! Module type Eq. 2: DRAWING Eq. 3: GEOMETRY
+INT    module_attribute;           ! Module attribute LOCAL (1), GLOBAL (2), BASIC (3)
+REF    global_id_csys;             ! Coordinate system identity positioning the part
+INT    n_params;                   ! Number of parameters in the part
+INT    n_members;                  ! Number of part members
+REF    id_members(10);             ! Array with global entity references (##)
+
+BEGINMODULE
+
+	! Global reference to the input part
+	IF FINDS(RSTR(id_sur_art_input), "##") = 1 THEN
+	
+		global_id_sur_art_input := id_sur_art_input;
+		
+	ELSE
+	
+		ref_part_str := "#" + RSTR(id_sur_art_input);
+		global_id_sur_art_input := RVAL(ref_part_str);
+
+	ENDIF;
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_art.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "global_id_sur_art_input= " + RSTR(global_id_sur_art_input));
+		OUTLIN(f_d);
+		
+	ENDIF;
+
+	
+    GETHDR(global_id_sur_art_input, entity_type, version_number, blank_flag, 
+           level_number, pen_number, group_ids);
+		  
+    IF entity_type <> 16384 THEN
+	
+	  EXIT("sur_art Input entity is not a part. Entity type is " + STR(entity_type, -1, 0));
+	
+	ENDIF;
+	
+	GETPRT( global_id_sur_art_input, part_name, module_type, module_attribute, 
+	        global_id_csys, n_params, n_members, id_members);
+	
+
+    IF debug_flag = 1 THEN
+		
+		OUTSTR(f_d, "Input part name is " + part_name);
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "Number of parameters is " + STR(n_params, -1, 0));
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+	IF FINDS(part_name, "sur_mosaic_") = 1 THEN
+	
+	    PART(#1, sur_mosaic(global_id_sur_art_input));
+	
+	ELSE 
+	  EXIT("sur_art Input case is not yet implemented. part_name= " + part_name);	
+	ENDIF;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

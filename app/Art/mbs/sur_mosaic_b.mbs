@@ -1,0 +1,65 @@
+!********************* sur_mosaic_b ***********************
+! +++
+! Saxophon icon
+!
+! Input data for the module sur_mosaic.
+!
+! The idea is that this data is saved, i.e. it stores the
+! input data for one picture. For the creation of another
+! picture based on the same surface should this file be
+! copied and given another name, but always starting with
+! sur_mosaic_
+!
+!
+! The input surface must be in the subdirectory surflib
+! to the active job directory. The input surface must be
+! a bicubic surface in the NMG_F07 format 
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-20  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Input data for the module sur_mosaic
+
+GLOBAL GEOMETRY MODULE sur_mosaic_b(
+STRING sur_file_name*30 :=  "saxophone.F07"   > "Surface file name with extension";
+FLOAT  mosaic_size_u    :=   2.0 > "Mosaic arclength U direction";
+FLOAT  mosaic_size_v    :=   2.0 > "Mosaic arclength V direction";
+INT    mosaic_type      :=   1   > "Eq. 1: Two colors 2: All colors 3-4: Stripes";
+INT    pen_1            :=   4   > "Color one";
+INT    pen_2            :=   9   > "Color two";
+INT    pen_3            :=   4   > "Color three";
+INT    pen_4            :=   3   > "Color four";
+INT    pen_5            :=   9   > "Color five";
+FLOAT  mosaic_offset    :=   0.1 > "Offset mosaic";
+INT    trim_flag        :=   0   > "Trim flag. Eq. 1: Trim surface";
+FLOAT  trim_start_u     :=  0.0  > "Surface U parameter start value"; 
+FLOAT  trim_end_u       :=  1.0  > "Surface U parameter end value"; 
+FLOAT  trim_start_v     :=  0.0  > "Surface V parameter start value"; 
+FLOAT  trim_end_v       :=  1.0  > "Surface V parameter end value"; 
+INT    graphic_flag     :=  1    > "Graphic flag");
+
+BEGINMODULE
+
+; ! Do nothing. Registers only input data 
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
