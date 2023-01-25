@@ -1,0 +1,68 @@
+!********************* eval_data ***********************
+! +++
+! Evaluation of a profile data curve 
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-24  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Evaluation of a profile data curve 
+
+BASIC GEOMETRY MODULE eval_data(
+    REF    id_curve;         ! Identity of curve
+	FLOAT  rel_arclength;    ! Relative arclength 0.0 - 1.0
+VAR FLOAT  value_curve);     ! Returned curve value
+
+! Internal variables:
+
+VECTOR pt_lin_1, pt_lin_2;   ! Line points
+VECTOR pt_int;               ! Intersection point
+INT    n_int;                ! Number of intersect points
+
+BEGINMODULE
+
+    IF rel_arclength < 0.0 OR rel_arclength > 1.0 THEN
+	    EXIT("rectabgle_data Input parameter value " + 
+		      STR(rel_arclength, -1, 4) + " is not between 0.0 - 1.0");
+	ENDIF;
+	
+	value_curve := -0.123456789;
+	
+    pt_lin_1 := VEC(1000.0*rel_arclength, -1000.0, 0.0);
+	
+    pt_lin_2 := VEC(1000.0*rel_arclength,  1000.0, 0.0);
+	
+	LIN_FREE(#1, pt_lin_1, pt_lin_2 : BLANK=0, PEN=3);
+	
+	n_int := N_INTERSECT(id_curve, #1, -1);
+	
+	IF n_int = 0 OR n_int > 1 THEN
+	    EXIT();
+	ENDIF;
+	
+	pt_int := INTERSECT(id_curve, #1, -1);
+	
+	POI_FREE(#2, pt_int : BLANK=0);
+	
+	value_curve := pt_int.y;
+	
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

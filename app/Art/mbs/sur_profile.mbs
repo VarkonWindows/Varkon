@@ -1,0 +1,296 @@
+!********************* sur_profile ***********************
+! +++
+! Creates mosaic and/or a surface by sweeping a profile
+!
+! An output bicubic surface can be saved as a F07 file
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-25  Gunnar Liden
+! 
+!
+!*******************************************************
+
+!sdesce Creates mosaic and/or a surface by sweeping a profile
+
+GLOBAL GEOMETRY MODULE sur_profile(
+
+REF    id_part_curves  :=    #0    > "@t16384 Part with 3D curve(id #1) and csys curve (id #2)";
+STRING profile_str*9   := "rect"   > "Main profile curve type";
+INT    set_profile     :=    1     > "A set of variable values defing one profile";
+STRING sur_type*30     := "mosaic" > "Surface type: mosaic, stripes, curves";
+INT    set_number      :=    1     > "Number of set of variable values";
+INT    graphic_case    :=    1     > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_profile.txt"; 
+
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+STRING ref_cur_str*30;             ! Reference to curve as string
+REF    global_id_part_curves;      ! Global reference to part with curves
+REF    id_curve;                   ! Reference to curve
+REF    id_offset;                  ! Reference to offset curve
+REF    id_profile;                 ! Reference to profile curve
+
+FLOAT  arcl_cur;                   ! Curve arc length
+FLOAT  arcl_offset_cur;            ! Offset curve arc length
+FLOAT  arcl_profile_cur;           ! Profile curve arc length
+
+FLOAT  delta_arcl_cur;             ! Delta curve arc length
+FLOAT  delta_arcl_offset_cur;      ! Delta offset curve arc length
+FLOAT  delta_arcl_profile_cur;     ! Delta profile curve arc length
+FLOAT  delta_rotation;             ! Delta rotation angle
+FLOAT  delta_scale;                ! Delta scale factor
+
+INT    curve_number;               ! Loop variable curve number
+FLOAT  current_cur_arcl;           ! Current curve arclength
+FLOAT  current_offset_arcl;        ! Current offset curve arclength
+FLOAT  current_profile_arcl;       ! Current profile curve arclength
+FLOAT  current_rotation;           ! Current rotation angle
+FLOAT  current_scale;              ! Current scale
+
+REF    id_transf;                  ! Current transformation
+
+VECTOR origin_pt;                  ! Origin point for coordinate system
+VECTOR x_axis_pt;                  ! X axis point for coordinate system
+VECTOR y_axis_pt;                  ! Y axis point for coordinate system
+
+INT    no_vlines;                  ! Number of V lines
+REF    id_all(25);                 ! Id's to all V lines
+VECTOR pts(50,50);                 ! Points
+VECTOR tgs(50,50);                 ! Tangents
+VECTOR cross(50);                  ! Twist vector
+
+INT    n_u_curves;                 ! Number of U curves
+
+! Data for case rectangle. Set one (1) of variables
+CONSTANT INT n_u_rect_1 = 30;      ! Number of U curves
+
+FLOAT  rel_arclength;              ! Relative arclength 0.0 - 1.0
+FLOAT  width_rectangle;            ! Rectangle width
+FLOAT  height_rectangle;           ! Rectangle height
+FLOAT  fillet_radius;              ! Fillet radius";
+FLOAT  scale_profile;              ! Profile scale";
+FLOAT  rotation_profile;           ! Profile rotation
+INT    n_pts_approx;               ! Number of approximation points
+
+INT    n_sur_comp;                 ! Number of concatenated surfaces
+REF    id_sur_comp;                ! Reference to current surface
+REF    id_prev_sur_comp;           ! Reference to previous created surface
+INT    surface_number;             ! Loop variable surface
+
+CONSTANT FLOAT pixel_scale = 1.33; ! Correction for screen 2560 X 1440
+!CONSTANT FLOAT pixel_scale = 1.00; ! QQQQQQQQQQQQQQQQQQQQ
+
+BEGINMODULE
+
+    n_u_curves := -12345;
+	
+	IF profile_str = "rect"  AND set_profile = 1 THEN
+	    n_u_curves := n_u_rect_1;
+	ELSE
+	    EXIT("sur_profile Profile " + profile_str + 
+		  " Number " + STR(set_profile, -1, 0) + " is not implemented");
+	ENDIF;
+
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_profile.MBS");
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+
+    PART(#51,saabvyer());
+	
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+	
+	! Global references to the curves and their parts
+	IF FINDS(RSTR(id_part_curves), "##") = 1 THEN
+	    ref_cur_str := RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := RSTR(id_part_curves) + "#2.1";
+		id_offset := RVAL(ref_cur_str);
+		global_id_part_curves := id_part_curves;
+	ELSE
+	    ref_cur_str := "#" + RSTR(id_part_curves) + "#1.1";
+		id_curve := RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves) + "#2.1";
+		id_offset :=  RVAL(ref_cur_str);
+		ref_cur_str := "#" + RSTR(id_part_curves);
+		global_id_part_curves := RVAL(ref_cur_str);
+	ENDIF;
+	
+    ! Arc lengths
+	arcl_cur := ARCL(id_curve);
+	arcl_offset_cur := ARCL(id_offset);
+	!TODO arcl_profile_cur := ARCL(id_profile);
+	
+    ! Delta arc lengths
+	delta_arcl_cur := arcl_cur/(n_u_curves - 1);
+	delta_arcl_offset_cur := arcl_offset_cur/(n_u_curves - 1);
+	!TODO delta_arcl_profile_cur := arcl_profile_cur/(n_v_curves - 1);
+	
+    IF debug_flag = 1 THEN
+		
+		! Open debug file append mode
+		OPEN(f_d, "A", file_name);
+		OUTSTR(f_d, "arcl_cur         " + STR(arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "arcl_offset_cur  " + STR(arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		!TODOOUTSTR(f_d, "arcl_profile_cur " + STR(arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);	
+		
+		OUTSTR(f_d, "delta_arcl_cur         " + STR(delta_arcl_cur, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "delta_arcl_offset_cur  " + STR(delta_arcl_offset_cur, 12, 6));
+		OUTLIN(f_d);	
+		!TODO OUTSTR(f_d, "delta_arcl_profile_cur " + STR(delta_arcl_profile_cur, 12, 6));
+		OUTLIN(f_d);
+		
+		!TODO OUTSTR(f_d, "delta_rotation         " + STR(delta_rotation, 12, 6));
+		OUTLIN(f_d);
+		!TODO OUTSTR(f_d, "delta_scale            " + STR(delta_scale, 12, 6));
+		OUTLIN(f_d);	
+		CLOSE(f_d);
+	ENDIF;
+	
+	TFORM_MOVE(#30, VEC(0.0, 0.0, 0.0), VEC(0.0, 0.0, 0.0), 1.0, pixel_scale, 1.0);
+	
+    FOR curve_number := 1 TO n_u_curves DO
+	
+	    current_cur_arcl := delta_arcl_cur*(curve_number - 1);
+		
+		current_offset_arcl := delta_arcl_offset_cur*(curve_number - 1);
+
+		! Create coordinate system. Origin on curve_id. X axis point is the tangent
+		! of the curve curve_id and the Y axis point is from the curve id_offset
+		
+		origin_pt := ON(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		x_axis_pt := origin_pt + 60.0*TANG(id_curve, INV_ARCL(id_curve, current_cur_arcl));
+		
+		y_axis_pt := ON(id_offset, INV_ARCL(id_offset, current_offset_arcl));
+		
+		CSYS_3P(#2, "CurveCsys", origin_pt, x_axis_pt, y_axis_pt:BLANK=1);
+		
+		MODE_LOCAL(#2);
+		
+		CSYS_1P(#3, "CsysRot", VEC(0,0,0), 0.0, 90.0, 0.0:BLANK=1, PEN=4);
+		
+		MODE_GLOBAL();
+		
+        ! Get data for the profile curve for current arc length
+		rel_arclength := current_cur_arcl/arcl_cur;
+		IF rel_arclength > 1.0 THEN
+		    rel_arclength := 1.0; ! Epsilon error
+		ENDIF;
+		
+		IF rel_arclength < 0.05 THEN
+		    rel_arclength := 0.05; ! TODO
+		ENDIF;
+		
+		PART(#4, rectangle_data(set_profile, rel_arclength, width_rectangle, height_rectangle,
+		         fillet_radius, scale_profile, rotation_profile, n_pts_approx, 2));
+				 
+        IF debug_flag = 1 THEN
+		
+		    ! Open debug file append mode
+		    OPEN(f_d, "A", file_name);
+		    OUTSTR(f_d, "rel_arclength     " + STR(rel_arclength, 12, 6));
+		    OUTLIN(f_d);
+		    OUTSTR(f_d, "width_rectangle   " + STR(width_rectangle, 12, 6));
+		    OUTLIN(f_d);	
+		    OUTSTR(f_d, "height_rectangle  " + STR(height_rectangle, 12, 6));
+		    OUTLIN(f_d);	
+		
+		    OUTSTR(f_d, "fillet_radius     " + STR(fillet_radius, 12, 6));
+		    OUTLIN(f_d);
+		    OUTSTR(f_d, "scale_profile     " + STR(scale_profile, 12, 6));
+		    OUTLIN(f_d);	
+		    OUTSTR(f_d, "rotation_profile  " + STR(rotation_profile, 12, 6));
+		    OUTLIN(f_d);
+		
+		    OUTSTR(f_d, "n_pts_approx      " + STR(n_pts_approx, 12, 0));
+		    OUTLIN(f_d);
+		
+		    CLOSE(f_d);
+	    ENDIF;
+				 
+		PART(#5, profile_rectangle(width_rectangle, height_rectangle,
+		         fillet_radius, scale_profile, rotation_profile, n_pts_approx, 2));
+				 
+	    ref_cur_str := "#5.1#1.1"; ! or #5.1#20.1
+		id_profile := RVAL(ref_cur_str);
+		
+		PART(#6, tra_1csyv0(GLOBAL_REF(#3), 2, id_transf));
+		
+		!QQQQ IF curve_number > n_u_curves - 2 THEN
+		TCOPY(#7, id_profile, id_transf, 1 :BLANK = b_val_cur, PEN=3);
+		
+		TCOPY(#8, #7, #30, 1 :BLANK = b_val_cur, PEN=4);
+		
+		DEL(#7);
+		!QQQQENDIF;
+		
+		! Delete the curves coordinate system (otherwise #2.1, #2.2, ...)
+		DEL(#2);
+		DEL(#3);
+		DEL(#4);
+		DEL(#5);
+		DEL(#6);
+		
+		
+    ENDFOR;		
+
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

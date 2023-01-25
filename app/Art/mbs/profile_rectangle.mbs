@@ -1,0 +1,230 @@
+!********************* profile_rectangle ***********************
+! +++
+! A profile consisting of four lines with circular fillets
+!
+! The output exact curve has the identity #1
+!
+! The output approximate curve has the identity #20.
+!
+! The ouput curve is defined in the X-Y plane
+!
+! This is a curve that will be swept creating a surface
+!
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-25  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce A profile consisting of four lines with circular fillets
+
+BASIC GEOMETRY MODULE profile_rectangle(
+FLOAT  width_rectangle    := 2000.0 > "Rectangle width";
+FLOAT  height_rectangle   := 1500.0 > "Rectangle height";
+FLOAT  fillet_radius      :=  100.0 > "Fillet radius";
+FLOAT  scale_profile      :=    1.0 > "Profile scale";
+FLOAT  rotation_profile   :=    0.0 > "Profile rotation";
+INT    n_pts_approx       :=   44   > "Number of approximation points";
+INT    graphic_case       :=    1   > "Eq. 1 Curve Eq. 2 All Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\profile_rectangle.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_lin;                  ! Blank value lines and circles
+INT    b_val_cur;                  ! Blank value exact curve
+INT    b_val_apr;                  ! Blank value approximated curve
+
+
+VECTOR p_1, p_2, p_3, p_4;         ! Conic points
+VECTOR v_1, v_2, v_3, v_4;         ! Conic vectors
+VECTOR p_1_s, p_1_e;               ! Fillet points
+VECTOR p_2_s, p_2_e;               ! Fillet points
+VECTOR p_3_s, p_3_e;               ! Fillet points
+VECTOR p_4_s, p_4_e;               ! Fillet points
+
+FLOAT  arc_length;                 ! Profile curve length
+FLOAT  delta_arcl;                 ! Delta arc length
+FLOAT  current_arcl;               ! Current arc length
+INT    point_number;               ! Loop point number
+VECTOR pts_cur(100);               ! Spline points
+VECTOR tan_cur(100);               ! Spline tangents
+
+CONSTANT FLOAT p_value = 0.4142;   ! Circle P-value
+
+CONSTANT FLOAT eps_fillet = 0.05;  ! Epsilon for fillet max-min
+
+CONSTANT FLOAT min_length = 10.0;  ! Minimum height and width
+
+         FLOAT max_radius;         ! Maximum fillet radius  
+
+
+BEGINMODULE
+
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug profile_rectangle.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "scale_profile= " + STR(scale_profile, -1, 4) + 
+		            " width_rectangle= " + STR(width_rectangle, -1, 4) +
+					" height_rectangle= " + STR(height_rectangle, -1, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "fillet_radius= " + STR(fillet_radius, -1, 4) + 
+					" rotation_profile= " + STR(rotation_profile, -1, 4));
+		OUTLIN(f_d);			
+		
+		CLOSE(f_d);
+		
+	ENDIF;
+
+    IF width_rectangle*scale_profile < min_length THEN
+	    EXIT("profile_rectangle Minimum scaled rectangle width is " + STR(min_length, -1, 3));
+	ENDIF;
+	
+    IF height_rectangle*scale_profile < min_length THEN
+	    EXIT("profile_rectangle Minimum scaled rectangle height is " + STR(min_length, -1, 3));
+	ENDIF;
+	
+	max_radius := width_rectangle/2.0;
+	IF height_rectangle < width_rectangle THEN
+	    max_radius := height_rectangle/2.0;
+	ENDIF;
+	
+	max_radius := max_radius - eps_fillet;
+	
+    IF fillet_radius > max_radius THEN
+	    EXIT("profile_rectangle Maximum fillet radius is greater than " + STR(max_radius, -1, 3));
+	ENDIF;
+	
+    IF fillet_radius*scale_profile < eps_fillet THEN
+	    EXIT("profile_rectangle Minimum scaled fillet radius is "  + STR(eps_fillet, -1, 0));
+	ENDIF;
+	
+	IF n_pts_approx > 0 AND n_pts_approx < 20 THEN
+	     EXIT("profile_rectangle Minimum number of approximation points is 20");
+	ENDIF;
+	
+	IF n_pts_approx > 0 AND n_pts_approx > 100 THEN
+	     EXIT("profile_rectangle Maximum number of approximation points is 100");
+	ENDIF;
+
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 1;
+	  b_val_apr := 1;
+	ELIF   graphic_case = 1 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 0;
+	  b_val_apr := 0;
+	ELIF   graphic_case = 2 THEN
+	  b_val_lin := 0;
+	  b_val_cur := 0;
+	  b_val_apr := 0;
+	ELSE
+	  b_val_lin := 0;
+	  b_val_cur := 0;
+	  b_val_apr := 0;
+	ENDIF;
+	
+    p_1 := VEC( width_rectangle/2.0*scale_profile, -height_rectangle/2.0*scale_profile, 0.0);	
+    p_2 := VEC( width_rectangle/2.0*scale_profile,  height_rectangle/2.0*scale_profile, 0.0);	
+    p_3 := VEC(-width_rectangle/2.0*scale_profile,  height_rectangle/2.0*scale_profile, 0.0);	
+    p_4 := VEC(-width_rectangle/2.0*scale_profile, -height_rectangle/2.0*scale_profile, 0.0);
+	
+	v_1 := p_2 - p_1;
+	v_2 := p_3 - p_2;
+	v_3 := p_4 - p_3;
+	v_4 := p_1 - p_4;
+	
+    LIN_FREE(#2, p_1, p_2: BLANK= b_val_lin);
+	LIN_FREE(#3, p_2, p_3: BLANK= b_val_lin);
+	LIN_FREE(#4, p_3, p_4: BLANK= b_val_lin);
+	LIN_FREE(#5, p_4, p_1: BLANK= b_val_lin);
+	
+	ARC_FIL(#6, #5, #2, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
+	ARC_FIL(#7, #2, #3, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
+	ARC_FIL(#8, #3, #4, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
+	ARC_FIL(#9, #4, #5, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
+	
+	p_1_s := ON(#6, 0.0);
+	p_1_e := ON(#6, 1.0);
+	p_2_s := ON(#7, 0.0);
+	p_2_e := ON(#7, 1.0);
+	p_3_s := ON(#8, 0.0);
+	p_3_e := ON(#8, 1.0);
+	p_4_s := ON(#9, 0.0);
+	p_4_e := ON(#9, 1.0);	
+	
+	!LIN_FREE(#10, p_1_s, p_1_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#11, p_2_s, p_2_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#12, p_3_s, p_3_e: BLANK= b_val_lin, PEN=2);
+	!LIN_FREE(#13, p_4_s, p_4_e: BLANK= b_val_lin, PEN=2);
+	
+	!QQQQ CUR_COMP(#14, #2, #3, #4, #5 :BLANK=b_val_lin, PEN=3);
+	           
+    CUR_CONIC(#14, "FREE", 
+	          p_1_s, p_1_s + v_4, p_value,
+			  p_1_e, p_1_e + v_1, 0.5,
+			  p_2_s, p_2_s + v_1, p_value,
+			  p_2_e, p_2_e + v_2, 0.5,
+			  p_3_s, p_3_s + v_2, p_value,
+			  p_3_e, p_3_e + v_3, 0.5,
+			  p_4_s, p_4_s + v_3, p_value,
+			  p_4_e, p_4_e + v_4, 0.5,
+			  p_1_s, p_1_s + v_4
+			  :BLANK=b_val_lin, PEN=3);
+			  
+	TFORM_ROTP(#15, VEC(0.0, 0.0, 0.0), rotation_profile);
+	
+	TCOPY(#1, #14, #15, 1 : BLANK=b_val_cur);
+	
+	IF n_pts_approx = 0 THEN
+	    EXIT();
+	ENDIF;
+	
+    arc_length := ARCL(#1);
+	
+	delta_arcl := arc_length/(n_pts_approx-1);
+	
+	FOR point_number := 1 TO n_pts_approx DO
+	
+	    current_arcl := (point_number - 1)*delta_arcl;
+		
+		pts_cur(point_number) :=   ON(#1, INV_ARCL(#1, current_arcl));
+		
+		tan_cur(point_number) := pts_cur(point_number) + delta_arcl*TANG(#1, INV_ARCL(#1, current_arcl));
+		
+		!LIN_FREE(#100, pts_cur(point_number), tan_cur(point_number):WIDTH=10, PEN=2);
+	
+	ENDFOR;
+	
+	CUR_SPLARR(#20, "CHORD", n_pts_approx, pts_cur, tan_cur : BLANK= b_val_apr);
+	
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
