@@ -8,7 +8,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-25  Gunnar Liden
+! 2023-01-27  Gunnar Liden
 ! 
 !
 !*******************************************************
@@ -22,6 +22,7 @@ STRING profile_str*9   := "rect"   > "Main profile curve type";
 INT    set_profile     :=    1     > "A set of variable values defing one profile";
 STRING sur_type*30     := "mosaic" > "Surface type: mosaic, stripes, curves";
 INT    set_number      :=    1     > "Number of set of variable values";
+STRING sur_file_name*50:=   ""     > "File name without extension (.F07)";
 INT    graphic_case    :=    1     > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
 
 
@@ -76,7 +77,9 @@ VECTOR cross(50);                  ! Twist vector
 INT    n_u_curves;                 ! Number of U curves
 
 ! Data for case rectangle. Set one (1) of variables
-CONSTANT INT n_u_rect_1 = 30;      ! Number of U curves
+CONSTANT INT n_u_rect_1 = 21;     ! Number of U curves
+
+REF    id_curves(101);             ! References to section curves
 
 FLOAT  rel_arclength;              ! Relative arclength 0.0 - 1.0
 FLOAT  width_rectangle;            ! Rectangle width
@@ -221,10 +224,6 @@ BEGINMODULE
 		    rel_arclength := 1.0; ! Epsilon error
 		ENDIF;
 		
-		IF rel_arclength < 0.05 THEN
-		    rel_arclength := 0.05; ! TODO
-		ENDIF;
-		
 		PART(#4, rectangle_data(set_profile, rel_arclength, width_rectangle, height_rectangle,
 		         fillet_radius, scale_profile, rotation_profile, n_pts_approx, 2));
 				 
@@ -260,13 +259,11 @@ BEGINMODULE
 		
 		PART(#6, tra_1csyv0(GLOBAL_REF(#3), 2, id_transf));
 		
-		!QQQQ IF curve_number > n_u_curves - 2 THEN
 		TCOPY(#7, id_profile, id_transf, 1 :BLANK = b_val_cur, PEN=3);
 		
 		TCOPY(#8, #7, #30, 1 :BLANK = b_val_cur, PEN=4);
 		
-		DEL(#7);
-		!QQQQENDIF;
+		id_curves(curve_number) :=   GLOBAL_REF(RVAL("#8." + STR(curve_number, -1, 0))); 
 		
 		! Delete the curves coordinate system (otherwise #2.1, #2.2, ...)
 		DEL(#2);
@@ -274,9 +271,12 @@ BEGINMODULE
 		DEL(#4);
 		DEL(#5);
 		DEL(#6);
-		
-		
+		DEL(#7);
+
     ENDFOR;		
+	
+!   Create the surface
+    PART(#1, sur_profile_exp(n_u_curves, id_curves, sur_file_name, graphic_case));
 
 	
 ENDMODULE

@@ -1,0 +1,200 @@
+!********************* rectangle_adjust ***********************
+! +++
+! Adjusts the data from rectangle_data for the surface start part
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-27  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Adjusts the data from rectangle_data for the surface start part
+
+BASIC GEOMETRY MODULE rectangle_adjust(
+	FLOAT  rel_arclength;    ! Relative arclength 0.0 - 1.0
+	FLOAT  min_radius;       ! Minimum radius
+	FLOAT  min_length;       ! Minimum length
+	REF    id_upper_curve;   ! Curve defining the upper corner curve
+	REF    id_lower_curve;   ! Curve defining the lower corner curve
+	REF    id_radius_curve;  ! Curve defining the fillet radius curve
+	FLOAT  width_input;      ! Input width value
+	FLOAT  fillet_input;     ! Input radius value
+VAR FLOAT  width_adjusted;   ! Adjusted quadrat width
+VAR FLOAT  fillet_adjusted;  ! Adjusted fillet radius
+    INT    graphic_case);    ! Graphic case
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\rectangle_adjust.txt"; 
+
+STRING s_inpmt*132;                ! Return string INPMT
+
+INT    b_val_lin;                  ! Blank value lines
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_pts;                  ! Blank value points
+
+CONSTANT INT n_pts = 30;           ! Number of points   for the width curve
+VECTOR cur_pts(30);                ! Points defining the width curve
+FLOAT  delta_arcl;                 ! Delta arc length   for the width curve
+FLOAT  current_arcl;               ! Current arc length for the width curve
+FLOAT  current_param;              ! Current parameter  for the width curve
+INT    pt_number;                  ! Loop variable point number
+VECTOR poi_upper;                  ! Current upper corner point
+VECTOR poi_lower;                  ! Current lower corner point
+FLOAT  current_dist;               ! Current distance
+FLOAT  corner_cur_arcl;            ! Arclength for the corner curves
+FLOAT  scale_to_1000;              ! Scale factor to 1000
+INT    n_int;                      ! Number of intersect points
+VECTOR poi_int;                    ! Intersect point
+
+
+BEGINMODULE
+
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 1;
+	  b_val_pts := 1;
+	ELIF   graphic_case = 1 THEN
+	  b_val_lin := 1;
+	  b_val_cur := 0;
+	  b_val_pts := 0;
+	ELIF   graphic_case = 2 THEN
+	  b_val_lin := 0;
+	  b_val_cur := 0;
+	  b_val_pts := 0;
+	ELSE
+	  b_val_lin := 0;
+	  b_val_cur := 0;
+	  b_val_pts := 0;
+	ENDIF;
+
+!   Initialize output values
+    width_adjusted  := width_input;
+	fillet_adjusted := fillet_input;
+	
+	poi_int := VEC(-0.123456789, -0.123456789, 0.0);
+	
+!   Create the width curve
+
+    corner_cur_arcl := ARCL(id_upper_curve);
+	
+	scale_to_1000 := 1000.0/corner_cur_arcl;
+	
+	delta_arcl := corner_cur_arcl/(n_pts - 1);
+	
+    FOR pt_number := 1 TO n_pts DO
+	
+	  current_arcl := delta_arcl*(pt_number - 1);
+	  
+	  current_param := INV_ARCL(id_upper_curve, current_arcl);
+	  
+	  poi_upper := ON(id_upper_curve, current_param);
+	  
+	  poi_lower := ON(id_lower_curve, current_param);
+	  
+	  !POI_FREE(#11, poi_upper : PEN=2);
+	  !POI_FREE(#12, poi_lower : PEN=3);
+	  
+	  current_dist := VECL(poi_upper - poi_lower);
+	
+	  cur_pts(pt_number) := VEC(current_arcl*scale_to_1000, current_dist, 0.0);
+	
+	ENDFOR;
+	
+	CUR_SPLARR(#1, "CHORD", n_pts, cur_pts : BLANK= b_val_cur, PEN=3);
+	
+	n_int := N_INTERSECT(#1, id_radius_curve);
+	
+	
+	IF n_int = 1 THEN
+	   poi_int := INTERSECT(#1, id_radius_curve);
+	   
+	   POI_FREE(#8, poi_int : PEN=2);
+	   
+	   IF rel_arclength*1000.0 <= poi_int.x THEN
+	   
+	      LIN_FREE(#2, VEC(0.0, min_radius, 0.0), 
+		     VEC(poi_int.x, poi_int.y/2.0*0.98, 0.0) :BLANK= b_val_lin, PEN=2);
+	      LIN_FREE(#3, VEC(0.0, min_length, 0.0), 
+		     VEC(poi_int.x, poi_int.y, 0.0) :BLANK= b_val_lin, PEN=3);
+			 
+	        PART(#4, eval_data(GLOBAL_REF(#2), rel_arclength, fillet_adjusted));
+			
+			PART(#5, eval_data(GLOBAL_REF(#3), rel_arclength, width_adjusted));
+			
+	   ELIF  2.0*fillet_input > width_input THEN
+	   
+	       fillet_adjusted := width_input/2.0*0.98;
+
+       ENDIF;	   
+	   
+	ENDIF;
+	
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug rectangle_adjust.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "rel_arclength     " + STR(rel_arclength, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "width_input       " + STR(width_input, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "fillet_input      " + STR(fillet_input, 12, 6));
+		OUTLIN(f_d);	
+		OUTSTR(f_d, "corner_cur_arcl   " + STR(corner_cur_arcl, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "scale_to_1000     " + STR(scale_to_1000, 12, 6));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "id_upper_curve    " + RSTR(id_upper_curve));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "id_lower_curve    " + RSTR(id_lower_curve));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "id_radius_curve   " + RSTR(id_radius_curve));
+		OUTLIN(f_d);		
+		
+		!FOR pt_number := 1 TO n_pts DO
+		!    OUTSTR(f_d, STR(pt_number, 3, 0) + " X= " 
+		!	         + STR(cur_pts(pt_number).x, 10, 4) 
+		!			 + STR(cur_pts(pt_number).y, 10, 4));
+        !    OUTLIN(f_d);					 
+		!ENDFOR;
+		
+		OUTSTR(f_d, "n_int=             " + STR(n_int, 12, 0));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "poi_int            " 
+			         + STR(poi_int.x, 10, 4) 
+					 + STR(poi_int.y, 10, 4));
+        OUTLIN(f_d);
+	
+		OUTSTR(f_d, "width_adjusted     " + STR(width_adjusted, 12, 6));
+		OUTLIN(f_d);
+		OUTSTR(f_d, "fillet_adjusted    " + STR(fillet_adjusted, 12, 6));
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
