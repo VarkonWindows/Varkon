@@ -1,0 +1,158 @@
+!********************* cur_reduce_che ***********************
+! +++
+! Checks if the segment is within tolerance
+!
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-28  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Approximates a curve by reduction of curve segments
+
+GLOBAL GEOMETRY MODULE cur_reduce_che(
+    REF    id_orig_curve;      ! Id origin curve
+	REF    id_seg_curve;       ! Id curve segment to check
+    FLOAT  start_arcl;         ! Start arclength
+    FLOAT  end_arcl;           ! End arclength
+	FLOAT  coord_tol;          ! Coordinate tolerance
+	FLOAT  angle_tol;          ! Angle tolerance
+VAR INT    within_tol);        ! Flag 1: Within Flag -1: Not
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\cur_reduce_che.txt"; 
+
+CONSTANT INT    b_val_cur = 0;     ! Blank value help curves
+CONSTANT INT    b_val_poi = 0;     ! Blank value points
+
+FLOAT  cur_t_start;                ! Origin curve start parameter value
+FLOAT  cur_t_end;                  ! Origin curve end   parameter value
+
+CONSTANT INT n_check_pts = 10;     ! Number of check points   
+FLOAT  cur_t;                      ! Curve parameter value
+FLOAT  delta_arcl;                 ! Delta arclength for check
+FLOAT  current_arcl;               ! Current arclength for check
+INT    check_number;               ! Loop variable check point
+FLOAT  arcl_deg_cur;               ! Curve segment arc length
+
+
+
+VECTOR poi_check;                  ! Check point
+VECTOR tangent_check;              ! Check point
+
+FLOAT  t_closest;                  ! Curve parameter for the closest point
+VECTOR poi_closest;                ! Closest point on origin curve
+VECTOR tangent_closest;            ! Closest point tangent on origin curve
+FLOAT  check_dist;                 ! Check distance
+
+BEGINMODULE
+
+    within_tol := 1;
+	
+	cur_t_start := INV_ARCL(id_orig_curve, start_arcl);
+	
+	cur_t_end   := INV_ARCL(id_orig_curve, end_arcl);
+	
+	CUR_TRIM(#2, id_orig_curve, cur_t_start, cur_t_end : BLANK= b_val_cur, PEN=4);
+	
+	arcl_deg_cur := ARCL(id_seg_curve);
+	
+	delta_arcl := arcl_deg_cur/(n_check_pts - 1);
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug cur_reduce_che.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "coord_tol=  " + STR(coord_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "angle_tol=  " + STR(angle_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_arcl=  " + STR(start_arcl, 10, 4));
+		OUTLIN(f_d);
+
+		OUTSTR(f_d, "end_arcl=    " + STR(end_arcl, 10, 4));
+		OUTLIN(f_d);		
+		
+		OUTSTR(f_d, "arcl_deg_cur= " + STR(arcl_deg_cur, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "delta_arcl=  " + STR(delta_arcl, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "n_check_pts= " + STR(n_check_pts, 10, 0));
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+
+    FOR check_number := 2 TO n_check_pts - 1 DO
+	
+	    current_arcl := (check_number - 1)*delta_arcl;
+		
+		cur_t := INV_ARCL(id_seg_curve, current_arcl);
+		
+		poi_check := ON(id_seg_curve, cur_t);
+		
+		tangent_check := TANG(id_seg_curve, cur_t);
+		
+		t_closest := INV_ON(#2, poi_check);
+		
+		poi_closest := ON(#2, t_closest);
+		
+		tangent_closest := TANG(#2, t_closest);
+		
+		check_dist := VECL(poi_check - poi_closest);
+		
+        IF debug_flag = 1 THEN
+		    OPEN(f_d, "A", file_name);
+			
+		    OUTSTR(f_d, "check_number= " + STR(check_number, 10, 0));
+		    OUTLIN(f_d);			
+			
+		    OUTSTR(f_d, "check_dist=   " + STR(check_dist, 10, 4));
+		    OUTLIN(f_d);
+			
+			CLOSE(f_d);
+		ENDIF;
+		
+		IF check_dist > coord_tol THEN
+		
+		    within_tol := -1;
+		
+		    GOTO out_of_tolerance;
+			
+		ENDIF;
+		
+		
+	ENDFOR;
+
+out_of_tolerance: ;
+	
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

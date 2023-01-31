@@ -1,0 +1,58 @@
+!********************* cur_reduce_offs ***********************
+! +++
+! Create offset curve with radius as input
+!
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-30  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Create offset curve with radius as input
+
+
+GLOBAL GEOMETRY MODULE cur_reduce_offs(
+REF  id_curve;
+FLOAT fillet_sign;  ! 1.0 or -1.0
+FLOAT fillet_radius);
+
+
+! Internal variables:
+
+VECTOR poi_end;   ! Fillet end point
+FLOAT cur_offset;
+
+CONSTANT FLOAT corner_size = 100000.0;
+
+BEGINMODULE
+
+  LIN_FREE(#2, VEC(0.0, -corner_size, 0.0), VEC(0.0, 0.0, 0.0) : BLANK=1);
+  LIN_FREE(#3, VEC(0.0, 0.0, 0.0), VEC(  corner_size, 0.0 , 0.0) : BLANK=1);  
+  ARC_FIL(#4, #2, #3, fillet_radius, 1 :  PEN=3);
+  
+  poi_end := ON(#4, 0.0);
+  
+  POI_FREE(#5, poi_end);
+  
+  cur_offset := poi_end.x;
+
+  CUR_OFFS(#1, id_curve, fillet_sign*cur_offset : BLANK=1, PEN = 1);
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

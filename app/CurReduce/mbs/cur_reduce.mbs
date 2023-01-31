@@ -1,0 +1,166 @@
+!********************* cur_reduce ***********************
+! +++
+! Approximates a curve by reduction of curve segments
+!
+! Should be added as option for CUR_APPROX
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-29  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Approximates a curve by reduction of curve segments
+
+GLOBAL GEOMETRY MODULE cur_reduce(
+REF    id_curve  :=    #0    > "@t8 Curve");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\cur_reduce.txt"; 
+
+CONSTANT INT    b_val_cur = 0;     ! Blank value help curves
+CONSTANT INT    b_val_poi = 0;     ! Blank value points
+
+CONSTANT FLOAT  coord_tol = 0.4;   ! Coordinate tolerance
+CONSTANT FLOAT  angle_tol = 1.6;   ! Angle tolerance
+
+FLOAT  arcl_cur;           ! Arc length input curve
+FLOAT  start_arcl;         ! Start arclength 
+FLOAT  end_arcl;           ! End arclength
+VECTOR poi_end;            ! Segment end point
+VECTOR tpoi_end;           ! Segment end tangent point
+VECTOR poi_mid;            ! Mid point
+
+INT    n_points;           ! Number of output points
+CONSTANT INT max_n_pts= 30;! Maximum number of points
+VECTOR conic_pts(20);      ! Conic points
+VECTOR conic_tpts(20);     ! Conic tangent points
+VECTOR conic_mpts(20);     ! Conic mid points
+FLOAT  conic_pvalues(20);  ! Conic p values
+STRING conic_mp_flags(20)*1; ! Mid value flag (P or M)
+
+INT    pt_number;
+INT font;	
+FLOAT d_l;
+INT   ns_geo;
+INT   ns_gra;
+VECTOR poi_debug;
+VECTOR tang_debug;
+
+BEGINMODULE
+
+    arcl_cur := ARCL(id_curve);
+	
+	start_arcl := 0.0;
+	
+	n_points := 1;
+	
+	conic_pts( n_points) :=   ON(id_curve, 0.0);
+	conic_tpts(n_points) := ON(id_curve, 0.0) + TANG(id_curve, 0.0);
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug cur_reduce.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "coord_tol=  " + STR(coord_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "angle_tol=  " + STR(angle_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "arcl_cur=    " + STR(arcl_cur, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_arcl=  " + STR(start_arcl, 10, 4));
+		OUTLIN(f_d);
+	
+
+		GETCURH(id_curve, font, d_l, ns_geo, ns_gra);
+		
+		FOR pt_number := 0 TO ns_geo DO
+		
+		    poi_debug := ON(id_curve, pt_number);
+			
+		    OUTSTR(f_d, "cur_pts(" + STR(pt_number + 1, 2, 0) + ") := VEC(" 
+			+ STR(poi_debug.x, 12, 6) + ","  + STR(poi_debug.y, 12, 6) + "," + STR(poi_debug.z, 12, 6) + ");"    );
+		    OUTLIN(f_d);
+			
+			tang_debug := TANG(id_curve, pt_number);
+			
+		    OUTSTR(f_d, "cur_tan(" + STR(pt_number + 1, 2, 0) + ") := VEC(" 
+			+ STR(tang_debug.x, 12, 6) + ","  + STR(tang_debug.y, 12, 6) + "," + STR(tang_debug.z, 12, 6) + ");"    );
+		    OUTLIN(f_d);
+		
+		ENDFOR;
+		
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+	
+next_segment:
+	
+	PART(#2, cur_reduce_seg(id_curve, start_arcl, coord_tol, angle_tol,
+	                        end_arcl, poi_end, tpoi_end, poi_mid));
+							
+							
+	n_points := n_points + 1;
+	
+	conic_pts( n_points)        :=  poi_end;
+	conic_tpts(n_points)        := tpoi_end;
+	conic_mpts(n_points - 1)    :=  poi_mid;
+	conic_pvalues(n_points - 1) := 0.5;     ! TODO
+	conic_mp_flags(n_points - 1):= "P";
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "A", file_name);
+		
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "n_points=   " + STR(n_points, 10, 0));
+		OUTLIN(f_d);		
+		
+		OUTSTR(f_d, "start_arcl=  " + STR(start_arcl, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "end_arcl=    " + STR(end_arcl, 10, 4));
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+	IF end_arcl < arcl_cur THEN
+	
+	    start_arcl := end_arcl;
+		
+		DEL(#2);
+		
+		GOTO next_segment;
+	
+	ENDIF;
+	
+    CUR_CONARR(#1, "FREE", n_points, conic_pts, conic_tpts, conic_mp_flags, conic_pvalues, conic_mpts : PEN=3);
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

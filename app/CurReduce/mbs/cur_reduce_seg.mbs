@@ -1,0 +1,208 @@
+!********************* cur_reduce_seg ***********************
+! +++
+! Approximates a curve by reduction of curve segments
+!
+! Should be added as option for CUR_APPROX
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-28  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Approximates a curve by reduction of curve segments
+
+GLOBAL GEOMETRY MODULE cur_reduce_seg(
+    REF    id_curve;           ! Id curve
+    FLOAT  start_arcl;         ! Start arclength
+	FLOAT  coord_tol;          ! Coordinate tolerance
+	FLOAT  angle_tol;          ! Angle tolerance
+VAR FLOAT  end_arcl;           ! End arclength
+VAR VECTOR poi_end;            ! Segment end point
+VAR VECTOR tpoi_end;           ! Segment end tangent point
+VAR VECTOR poi_mid);           ! Mid point
+
+
+! Internal variables:
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\cur_reduce_seg.txt"; 
+
+CONSTANT INT    b_val_cur = 0;     ! Blank value help curves
+CONSTANT INT    b_val_poi = 0;     ! Blank value points
+
+FLOAT  arcl_cur;                   ! Curve arc length
+
+CONSTANT FLOAT arcl_fact = 0.01;  ! Factor for delta_arcl
+FLOAT  delta_arcl;                 ! Delta arclength
+FLOAT  end_pt_arcl;                ! End point arc length
+FLOAT  mid_pt_arcl;                ! Mid point arc length
+FLOAT  p_value;                    ! P value
+
+FLOAT  delta_test;                 ! Delta test
+
+INT    n_max;                      ! Maximum number of 
+
+INT    i_step;                     ! Loop variable
+
+VECTOR poi_start;                  ! Point segment start
+VECTOR tpoi_start;                 ! Tangent point segment start
+
+FLOAT  cur_t;                      ! Curve parameter value
+
+INT    within_tol;                 ! Eq. 1: Within Eq. -1: Not within
+
+FLOAT  within_arcl;                ! Arc length within tolerance
+
+BEGINMODULE
+
+    arcl_cur := ARCL(id_curve);
+	
+	delta_arcl := arcl_fact*arcl_cur;
+	
+	IF start_arcl + 3.0*delta_arcl > arcl_cur THEN
+	    delta_arcl := (arcl_cur - start_arcl)/3.0;
+	ENDIF;
+	
+	n_max := TRUNC((arcl_cur - start_arcl)/delta_arcl) + 1;
+	
+	cur_t := INV_ARCL(id_curve, start_arcl);
+	
+	poi_start := ON(id_curve, cur_t);
+	
+	tpoi_start := poi_start + TANG(id_curve, cur_t);
+	
+	within_tol := 1;
+	
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug cur_reduce_seg.MBS");
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "coord_tol=  " + STR(coord_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "angle_tol=  " + STR(angle_tol, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "arcl_cur=    " + STR(arcl_cur, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "delta_arcl=  " + STR(delta_arcl, 10, 4));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "n_max=       " + STR(n_max, 10, 0));
+		OUTLIN(f_d);
+		
+		OUTSTR(f_d, "start_arcl=  " + STR(start_arcl, 10, 4));
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+    FOR i_step := 3 TO n_max DO
+	
+	    mid_pt_arcl := start_arcl + i_step*delta_arcl/2.0;
+		
+		end_pt_arcl := start_arcl + i_step*delta_arcl;
+		
+		IF end_pt_arcl > arcl_cur THEN
+		
+		    GOTO out_of_tolerance;
+		
+		ENDIF;
+		
+		cur_t := INV_ARCL(id_curve, mid_pt_arcl);
+		
+		poi_mid := ON(id_curve, cur_t);
+		
+		cur_t := INV_ARCL(id_curve, end_pt_arcl);
+		
+	    poi_end := ON(id_curve, cur_t);
+	
+	    tpoi_end := poi_start + TANG(id_curve, cur_t);
+		
+		!CUR_CONIC(#1, "FREE", poi_start, tpoi_start, poi_mid, poi_end, tpoi_end : BLANK= b_val_cur);
+		p_value := 0.5;
+		CUR_CONIC(#1, "FREE", poi_start, tpoi_start, p_value, poi_end, tpoi_end : BLANK= b_val_cur);
+	
+	    PART(#2, cur_reduce_che(id_curve, GLOBAL_REF(#1), start_arcl, end_pt_arcl, 
+		                        coord_tol, angle_tol, within_tol));
+								
+        IF debug_flag = 1 THEN
+		    OPEN(f_d, "A", file_name);
+			
+		    OUTSTR(f_d, "i_step=      " + STR(i_step, 10, 0));
+		    OUTLIN(f_d);			
+			
+		    OUTSTR(f_d, "mid_pt_arcl= " + STR(mid_pt_arcl, 10, 4));
+		    OUTLIN(f_d);
+
+		    OUTSTR(f_d, "end_pt_arcl= " + STR(end_pt_arcl, 10, 4));
+		    OUTLIN(f_d);	
+
+		    OUTSTR(f_d, "within_tol=  " + STR(within_tol, 10, 0));
+		    OUTLIN(f_d);			
+			
+			CLOSE(f_d);
+		ENDIF;
+								
+		IF within_tol = -1 THEN
+		    GOTO out_of_tolerance;
+		ENDIF;
+		
+		DEL(#1);
+		DEL(#2);
+
+	ENDFOR;
+	
+out_of_tolerance:;	
+
+	end_arcl := start_arcl + (i_step - 1)*delta_arcl;
+	
+	cur_t := INV_ARCL(id_curve, end_arcl);
+	
+	poi_end := ON(id_curve, cur_t);
+	
+	tpoi_end := poi_start + TANG(id_curve, cur_t);
+	
+	mid_pt_arcl := start_arcl + (i_step - 1)*delta_arcl/2.0;
+	
+	poi_mid := ON(id_curve, cur_t);
+	
+	IF debug_flag = 1 THEN
+		OPEN(f_d, "A", file_name);
+		
+		OUTSTR(f_d, "i_step - 1 = " + STR(i_step - 1, 10, 0));
+		OUTLIN(f_d);			
+		
+		OUTSTR(f_d, "end_arcl=    " + STR(end_arcl, 10, 4));
+		OUTLIN(f_d);
+
+		OUTSTR(f_d, "cur_t=       " + STR(cur_t, 10, 4));
+		OUTLIN(f_d);	
+
+		OUTSTR(f_d, "within_tol=  " + STR(within_tol, 10, 0));
+		OUTLIN(f_d);			
+		
+		CLOSE(f_d);
+	ENDIF;
+
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
