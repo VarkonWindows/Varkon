@@ -6,7 +6,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-27  Gunnar Liden
+! 2023-01-31  Gunnar Liden
 ! 
 !*******************************************************
 
@@ -15,11 +15,12 @@
 BASIC GEOMETRY MODULE rectangle_data(
     INT    set_profile;      ! A set of variable values defing one profile
 	FLOAT  rel_arclength;    ! Relative arclength 0.0 - 1.0
+VAR REF    id_upper_curve;   ! Id upper corner curve	
+VAR REF    id_radius_curve;  ! Id fillet radius curve
 VAR FLOAT  width_rectangle;  ! Rectangle width
 VAR FLOAT  height_rectangle; ! Rectangle height
 VAR FLOAT  fillet_radius;    ! Fillet radius
-VAR FLOAT  scale_profile;    ! Profile scale ! TODO Remove
-VAR FLOAT  rotation_profile; ! Profile rotation
+VAR FLOAT  rotation_angle;   ! Profile rotation angle
 VAR INT    n_pts_approx;     ! Number of approximation points
     INT    graphic_case);    ! Graphic case
 
@@ -36,7 +37,7 @@ INT    b_val_cur;                  ! Blank value curves
 INT    b_val_pts;                  ! Blank value points
 
 ! Data for set one (set_profile=1)
-CONSTANT FLOAT  half_quadrat_1            = 400.0;
+CONSTANT FLOAT  half_square_1            = 400.0;
 CONSTANT VECTOR vec_start_1               = VEC(-4.0, 20.0, 0.0);
 CONSTANT FLOAT  p_value_1                 = 0.4;
 CONSTANT VECTOR poi_start_1               = VEC(0.0, 0.0, 0.0);
@@ -49,11 +50,46 @@ CONSTANT FLOAT fillet_radius_three_1      =  45.0;
 CONSTANT FLOAT fillet_radius_three_arcl_1 = 600.0;
 CONSTANT FLOAT fillet_radius_four_1       =   2.0;
 
-CONSTANT FLOAT  scale_profile_1           =   1.0; 
 CONSTANT INT    n_pts_approx_1            =   0;
 
+
+! Data for set one (set_profile=2)
+CONSTANT FLOAT  half_square_2             = 400.0;
+CONSTANT VECTOR vec_start_2               = VEC(-4.0, 20.0, 0.0);
+CONSTANT FLOAT  p_value_2                 = 0.4;
+CONSTANT VECTOR poi_start_2               = VEC(0.0, 0.0, 0.0);
+CONSTANT VECTOR vec_end_2                 = VEC(10.0, 0.0, 0.0);
+
+CONSTANT FLOAT fillet_radius_one_2        =   31.3;
+CONSTANT FLOAT fillet_radius_two_2        =   31.3;
+CONSTANT FLOAT fillet_radius_two_arcl_2   = 100.0;
+CONSTANT FLOAT fillet_radius_three_2      =   31.3;
+CONSTANT FLOAT fillet_radius_three_arcl_2 = 600.0;
+CONSTANT FLOAT fillet_radius_four_2       =   31.3;
+
+CONSTANT INT    n_pts_approx_2            =   0;
+
+
+! Data for set one (set_profile=3)
+CONSTANT FLOAT  half_square_3             = 400.0;
+CONSTANT VECTOR vec_start_3               = VEC(20.0, -10.0, 0.0);
+CONSTANT FLOAT  p_value_3                 = 0.46;
+CONSTANT VECTOR poi_start_3               = VEC(0.0,  0.0, 0.0);
+CONSTANT VECTOR vec_end_3                 = VEC(10.0, 0.0, 0.0);
+
+CONSTANT FLOAT fillet_radius_one_3        =    1.2;
+CONSTANT FLOAT fillet_radius_two_3        =    1.2;
+CONSTANT FLOAT fillet_radius_two_arcl_3   = 100.0;
+CONSTANT FLOAT fillet_radius_three_3      =   1.2;
+CONSTANT FLOAT fillet_radius_three_arcl_3 = 600.0;
+CONSTANT FLOAT fillet_radius_four_3       =   1.2;
+
+CONSTANT INT    n_pts_approx_3            =   0;
+
+
+
 ! Parameters for the rectangle corner curve
-FLOAT  half_quadrat;                  ! Length half quadrat
+FLOAT  half_square;                  ! Length half quadrat
 VECTOR poi_start;                     ! Conic start point
 VECTOR vec_start;                     ! Conic start vector
 FLOAT  p_value;                       ! Conic P value
@@ -86,9 +122,8 @@ FLOAT  value_curve;                    ! Intersect value
 CONSTANT FLOAT min_radius = 0.45;      ! Minimum radius (eps_fillet=0.05)
 CONSTANT FLOAT min_length = 1.00;      ! Minimum height and width
 
-REF    id_upper_curve;                 ! Id upper corner curve
+
 REF    id_lower_curve;                 ! Id lower corner curve
-REF    id_radius_curve;                ! Id fillet radius curve
 FLOAT  width_adjusted;                 ! Adjusted quadrat width
 FLOAT  fillet_adjusted;                ! Adjusted fillet radius	
 
@@ -98,8 +133,8 @@ CONSTANT FLOAT pixel_scale  = 1.00;    ! Do only scale here for test/debug
 
 BEGINMODULE
 
-    IF set_profile < 1 OR set_profile > 1 THEN
-	    EXIT("rectabgle_data Set of rectable data for " + 
+    IF set_profile < 1 OR set_profile > 3 THEN
+	    EXIT("rectangle_data Set of rectagle data for " + 
 		      STR(set_profile, -1, 0) + " is not implemented");
 	ENDIF;
 	
@@ -127,8 +162,7 @@ BEGINMODULE
     width_rectangle := 0.123456789; 
     height_rectangle := 0.123456789; 
     fillet_radius := 0.123456789;   
-    scale_profile := 0.123456789; 
-    rotation_profile := 0.123456789; 
+    rotation_angle := 0.123456789; 
     n_pts_approx := 0; 
 
 !   Set data
@@ -136,21 +170,46 @@ BEGINMODULE
   
     IF set_profile = 1 THEN
    
-        half_quadrat := half_quadrat_1;
+        half_square := half_square_1;
 	   
 	    poi_start := poi_start_1;
 	    vec_start := vec_start_1;
 	    p_value   := p_value_1;
-	    poi_end   := VEC(half_quadrat, half_quadrat, 0.0);
+	    poi_end   := VEC(half_square, half_square, 0.0);
 	    vec_end   := vec_end_1;
-		
-	    scale_profile := scale_profile_1; 
  
         n_pts_approx := n_pts_approx_1;
-	
+		
+    ELIF set_profile = 2 THEN
+   
+        half_square := half_square_2;
+	   
+	    poi_start := poi_start_2;
+	    vec_start := vec_start_2;
+	    p_value   := p_value_2;
+	    poi_end   := VEC(half_square, half_square, 0.0);
+	    vec_end   := vec_end_2;
+		
+        n_pts_approx := n_pts_approx_2;
+		
+    ELIF set_profile = 3 THEN
+   
+        half_square := half_square_3;
+	   
+	    poi_start := poi_start_3;
+	    vec_start := vec_start_3;
+	    p_value   := p_value_3;
+	    poi_end   := VEC(half_square, half_square, 0.0);
+	    vec_end   := vec_end_3;
+		
+        n_pts_approx := n_pts_approx_3;
+		
      ELSE
         EXIT("rectangle_data Unvalid set_profile= " + STR(set_profile, -1, 0) + " (1)");  
     ENDIF;
+	
+	!LIN_FREE(#77, poi_start, poi_start + 20.0*vec_start);
+	!LIN_FREE(#78, poi_end, poi_end + 20.0*vec_end);
 
 !   Create the rectangle right upper corner curve 
 	CUR_CONIC(#1, "FREE", poi_start, poi_start + vec_start, p_value,
@@ -171,15 +230,46 @@ BEGINMODULE
 	id_lower_curve := GLOBAL_REF(#32);
 	
 !   Create the curve defining the fillet radius
-    p_one   := VEC(      0.0 - eps_extend,     fillet_radius_one_1,   0.0);
-	p_two   := VEC(fillet_radius_two_arcl_1,   fillet_radius_two_1,   0.0);
-	p_three := VEC(fillet_radius_three_arcl_1, fillet_radius_three_1, 0.0);
-    p_four  := VEC(  1000.0 + eps_extend,      fillet_radius_four_1,  0.0);
+    IF set_profile = 1 THEN
+   
+		p_one   := VEC(      0.0 - eps_extend,     fillet_radius_one_1,   0.0);
+		p_two   := VEC(fillet_radius_two_arcl_1,   fillet_radius_two_1,   0.0);
+		p_three := VEC(fillet_radius_three_arcl_1, fillet_radius_three_1, 0.0);
+		p_four  := VEC(  1000.0 + eps_extend,      fillet_radius_four_1,  0.0);
+		
+		v_one   := VEC( 1.0,  1.8,   0.0);
+		v_two   := p_three - p_two;
+		v_three := VEC( 1.0,  0.0,   0.0);
+		v_four  := VEC( 1.0, -1.5,   0.0);
+		
+    ELIF set_profile = 2 THEN
+   
+		p_one   := VEC(      0.0 - eps_extend,     fillet_radius_one_2,   0.0);
+		p_two   := VEC(fillet_radius_two_arcl_2,   fillet_radius_two_2,   0.0);
+		p_three := VEC(fillet_radius_three_arcl_2, fillet_radius_three_2, 0.0);
+		p_four  := VEC(  1000.0 + eps_extend,      fillet_radius_four_2,  0.0);
+		
+		v_one   := VEC( 1.0,  0.0,   0.0);
+		v_two   := p_three - p_two;
+		v_three := VEC( 1.0,  0.0,   0.0);
+		v_four  := VEC( 1.0,  0.0,   0.0);
+		
+    ELIF set_profile = 3 THEN
+   
+		p_one   := VEC(      0.0 - eps_extend,     fillet_radius_one_3,   0.0);
+		p_two   := VEC(fillet_radius_two_arcl_3,   fillet_radius_two_3,   0.0);
+		p_three := VEC(fillet_radius_three_arcl_3, fillet_radius_three_3, 0.0);
+		p_four  := VEC(  1000.0 + eps_extend,      fillet_radius_four_3,  0.0);
+		
+		v_one   := VEC( 1.0,  0.0,   0.0);
+		v_two   := p_three - p_two;
+		v_three := VEC( 1.0,  0.0,   0.0);
+		v_four  := VEC( 1.0,  0.0,   0.0);
+
+		
+	ENDIF;
 	
-	v_one   := VEC( 1.0,  1.8,   0.0);
-	v_two   := p_three - p_two;
-	v_three := VEC( 1.0,  0.0,   0.0);
-	v_four  := VEC( 1.0, -1.5,   0.0);
+
 	
 	CUR_CONIC(#6, "FREE", p_one,   p_one   + v_one,   0.5,
 	                      p_two,   p_two   + v_two,   0.5,
@@ -210,10 +300,10 @@ BEGINMODULE
 	height_rectangle := width_rectangle;
 	
 !   Output rectangle rotation
-	rotation_profile := ANGLE(poi_line_end.x - poi_line_start.x,  poi_line_end.y - poi_line_start.y);
+	rotation_angle := ANGLE(poi_line_end.x - poi_line_start.x,  poi_line_end.y - poi_line_start.y);
 
 							  
-    IF set_profile = 1 THEN
+    IF set_profile = 1 OR set_profile = 2 OR set_profile = 3 THEN
 	
 !       Calculate the output fillet radius 
         PART(#7, eval_data(GLOBAL_REF(#6), rel_arclength, value_curve));
@@ -251,17 +341,17 @@ BEGINMODULE
 	    TCOPY(#33, #4, #30, 1 :  BLANK= b_val_cur, PEN=4);
 	    TCOPY(#34, #5, #30, 1 :  BLANK= b_val_cur, PEN=4);
 		
-		LIN_FREE(#11, VEC(0.0, 0.0, 0.0), VEC(half_quadrat,    0.0,      0.0) :  BLANK= b_val_lin);
+		LIN_FREE(#11, VEC(0.0, 0.0, 0.0), VEC(half_square,    0.0,      0.0) :  BLANK= b_val_lin);
 		LIN_FREE(#12, VEC(0.0, 0.0, 0.0), 
-					  VEC(    0.0,       half_quadrat*pixel_scale, 0.0) :  BLANK= b_val_lin);
-		LIN_FREE(#16, VEC(-half_quadrat, half_quadrat*pixel_scale, 0.0), 
-					  VEC( half_quadrat, half_quadrat*pixel_scale, 0.0) :  BLANK= b_val_lin);
-		LIN_FREE(#20, VEC(-half_quadrat,-half_quadrat*pixel_scale, 0.0), 
-					  VEC( half_quadrat,-half_quadrat*pixel_scale, 0.0) :  BLANK= b_val_lin);
-		LIN_FREE(#21, VEC(-half_quadrat,-half_quadrat*pixel_scale, 0.0), 
-					  VEC(-half_quadrat, half_quadrat*pixel_scale, 0.0) :  BLANK= b_val_lin);
-		LIN_FREE(#22, VEC( half_quadrat,-half_quadrat*pixel_scale, 0.0), 
-					  VEC( half_quadrat, half_quadrat*pixel_scale, 0.0) :  BLANK= b_val_lin);
+					  VEC(    0.0,       half_square*pixel_scale, 0.0) :  BLANK= b_val_lin);
+		LIN_FREE(#16, VEC(-half_square, half_square*pixel_scale, 0.0), 
+					  VEC( half_square, half_square*pixel_scale, 0.0) :  BLANK= b_val_lin);
+		LIN_FREE(#20, VEC(-half_square,-half_square*pixel_scale, 0.0), 
+					  VEC( half_square,-half_square*pixel_scale, 0.0) :  BLANK= b_val_lin);
+		LIN_FREE(#21, VEC(-half_square,-half_square*pixel_scale, 0.0), 
+					  VEC(-half_square, half_square*pixel_scale, 0.0) :  BLANK= b_val_lin);
+		LIN_FREE(#22, VEC( half_square,-half_square*pixel_scale, 0.0), 
+					  VEC( half_square, half_square*pixel_scale, 0.0) :  BLANK= b_val_lin);
 					  
 	    tang_start := TANG(#31, cur_t);
 	
@@ -302,9 +392,7 @@ BEGINMODULE
 		
 		    OUTSTR(f_d, "fillet_radius     " + STR(fillet_radius, 12, 6));
 		    OUTLIN(f_d);
-		    OUTSTR(f_d, "scale_profile     " + STR(scale_profile, 12, 6));
-		    OUTLIN(f_d);	
-		    OUTSTR(f_d, "rotation_profile  " + STR(rotation_profile, 12, 6));
+		    OUTSTR(f_d, "rotation_angle  " + STR(rotation_angle, 12, 6));
 		    OUTLIN(f_d);
 		
 		    OUTSTR(f_d, "n_pts_approx      " + STR(n_pts_approx, 12, 0));

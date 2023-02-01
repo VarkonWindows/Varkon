@@ -15,7 +15,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-27  Gunnar Liden
+! 2023-01-31  Gunnar Liden
 ! 
 !*******************************************************
 
@@ -25,7 +25,6 @@ BASIC GEOMETRY MODULE profile_rectangle(
 FLOAT  width_rectangle    := 2000.0 > "Rectangle width";
 FLOAT  height_rectangle   := 1500.0 > "Rectangle height";
 FLOAT  fillet_radius      :=  100.0 > "Fillet radius";
-FLOAT  scale_profile      :=    1.0 > "Profile scale"; ! TODO Remove
 FLOAT  rotation_profile   :=    0.0 > "Profile rotation";
 INT    n_pts_approx       :=   44   > "Number of approximation points";
 INT    graphic_case       :=    1   > "Eq. 1 Curve Eq. 2 All Eq. 4 All");
@@ -75,9 +74,8 @@ BEGINMODULE
 		OUTSTR(f_d, "Debug profile_rectangle.MBS");
 		OUTLIN(f_d);
 		
-		OUTSTR(f_d, "scale_profile= " + STR(scale_profile, -1, 4) + 
-		            " width_rectangle= " + STR(width_rectangle, -1, 4) +
-					" height_rectangle= " + STR(height_rectangle, -1, 4));
+		OUTSTR(f_d,"width_rectangle= " + STR(width_rectangle, -1, 4) +
+				 " height_rectangle= " + STR(height_rectangle, -1, 4));
 		OUTLIN(f_d);
 		
 		OUTSTR(f_d, "fillet_radius= " + STR(fillet_radius, -1, 4) + 
@@ -88,12 +86,12 @@ BEGINMODULE
 		
 	ENDIF;
 
-    IF width_rectangle*scale_profile < min_length THEN
+    IF width_rectangle < min_length THEN
 	    EXIT("profile_rectangle width_rectangle = " + STR(width_rectangle, -1,3)  + 
 		  " exceeds minimum scaled rectangle width is " + STR(min_length, -1, 3));
 	ENDIF;
 	
-    IF height_rectangle*scale_profile < min_length THEN
+    IF height_rectangle < min_length THEN
 	    EXIT("profile_rectangle Minimum scaled rectangle height is " + STR(min_length, -1, 3));
 	ENDIF;
 	
@@ -108,7 +106,7 @@ BEGINMODULE
 	    EXIT("profile_rectangle Maximum fillet radius is greater than " + STR(max_radius, -1, 3));
 	ENDIF;
 	
-    IF fillet_radius*scale_profile < eps_fillet THEN
+    IF fillet_radius < eps_fillet THEN
 	    EXIT("profile_rectangle Minimum scaled fillet radius is "  + STR(eps_fillet, -1, 0));
 	ENDIF;
 	
@@ -139,10 +137,10 @@ BEGINMODULE
 	  b_val_apr := 0;
 	ENDIF;
 	
-    p_1 := VEC( width_rectangle/2.0*scale_profile, -height_rectangle/2.0*scale_profile, 0.0);	
-    p_2 := VEC( width_rectangle/2.0*scale_profile,  height_rectangle/2.0*scale_profile, 0.0);	
-    p_3 := VEC(-width_rectangle/2.0*scale_profile,  height_rectangle/2.0*scale_profile, 0.0);	
-    p_4 := VEC(-width_rectangle/2.0*scale_profile, -height_rectangle/2.0*scale_profile, 0.0);
+    p_1 := VEC( width_rectangle/2.0, -height_rectangle/2.0, 0.0);	
+    p_2 := VEC( width_rectangle/2.0,  height_rectangle/2.0, 0.0);	
+    p_3 := VEC(-width_rectangle/2.0,  height_rectangle/2.0, 0.0);	
+    p_4 := VEC(-width_rectangle/2.0, -height_rectangle/2.0, 0.0);
 	
 	v_1 := p_2 - p_1;
 	v_2 := p_3 - p_2;
@@ -154,10 +152,10 @@ BEGINMODULE
 	LIN_FREE(#4, p_3, p_4: BLANK= b_val_lin);
 	LIN_FREE(#5, p_4, p_1: BLANK= b_val_lin);
 	
-	ARC_FIL(#6, #5, #2, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
-	ARC_FIL(#7, #2, #3, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
-	ARC_FIL(#8, #3, #4, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
-	ARC_FIL(#9, #4, #5, fillet_radius*scale_profile, 4: BLANK= b_val_lin);
+	ARC_FIL(#6, #5, #2, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#7, #2, #3, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#8, #3, #4, fillet_radius, 4: BLANK= b_val_lin);
+	ARC_FIL(#9, #4, #5, fillet_radius, 4: BLANK= b_val_lin);
 	
 	p_1_s := ON(#6, 0.0);
 	p_1_e := ON(#6, 1.0);

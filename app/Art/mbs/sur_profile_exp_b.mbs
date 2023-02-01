@@ -1,0 +1,164 @@
+!********************* sur_profile_exp_b ***********************
+! +++
+!
+! Creates an output bicubic surface that will be saved as a F07 file
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-28  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Creates an output bicubic surface that will be saved as a F07 file
+
+GLOBAL GEOMETRY MODULE sur_profile_exp_b(
+    INT    n_curves;         ! Number of input curves
+VAR REF    id_curves(101);   ! References to section curves that define the surface
+    STRING sur_file_name*50; ! File name without extension (.F07)
+    INT    graphic_case);    ! Eq. 1 Surface Eq. 2 Curves Eq. 4 All
+
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_profile_exp_b.txt"; 
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_poi;                  ! Blank value points
+
+! Number of V lines is 13
+FLOAT  cur_params(13);
+VECTOR sur_pts(101, 13);           ! Surface points  
+VECTOR sur_tanu(101, 13);          ! Surface U tangents  
+
+INT    curve_number;               ! Loop variable curve number
+INT    fillet_number;              ! Circle fillet number
+INT    line_number;                ! Line number
+INT    point_number;               ! Loop variable point number
+REF    id_current_cur;             ! Id current curve
+FLOAT  cur_t;                      ! Curve parameter value
+INT    n_used_curves;              ! Number of used curves
+
+CONSTANT INT pen_start = 2;
+CONSTANT INT pen_black = 1;
+INT current_pen;
+
+BEGINMODULE
+
+    IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_profile_exp_b.MBS");
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+	
+	IF n_curves > 101 THEN
+	    EXIT("sur_profile_exp_b Input number of curves exceeds 101");
+	ENDIF;
+	
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_poi := 1;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_poi := 1;
+	ENDIF;
+	
+	cur_params( 1) :=  0.0; ! Arc start
+	cur_params( 2) :=  0.5; ! Arc 
+	cur_params( 3) :=  1.0; ! Arc end 
+	cur_params( 4) :=  2.0; ! Arc start
+	cur_params( 5) :=  2.5; ! Arc 
+	cur_params( 6) :=  3.0; ! Arc end 
+	cur_params( 7) :=  4.0; ! Arc start
+	cur_params( 8) :=  4.5; ! Arc 
+	cur_params( 9) :=  5.0; ! Arc end 
+	cur_params(10) :=  6.0; ! Arc start
+	cur_params(11) :=  6.5; ! Arc 
+	cur_params(12) :=  7.0; ! Arc end 
+	cur_params(13) :=  8.0; ! Arc start
+	
+	n_used_curves := 0;
+	
+	!FOR  curve_number := 1 TO n_curves DO
+	FOR  curve_number := 2 TO n_curves - 1 DO
+	
+	    n_used_curves := n_used_curves + 1;
+	
+	    id_current_cur := id_curves(curve_number);
+		
+		FOR point_number := 1 TO 13 DO
+		
+		    cur_t := cur_params(point_number);
+			
+		    sur_pts( n_used_curves, point_number) :=   ON(id_current_cur, cur_t);
+		
+		    sur_tanu(n_used_curves, point_number) := VECN(TANG(id_current_cur, cur_t));
+			
+			IF point_number = 1 THEN 
+			    current_pen := pen_start;
+			ELSE
+			    current_pen := pen_black;
+			ENDIF;
+			
+			IF debug_flag = 5 THEN
+			   POI_FREE(#8, ON(id_current_cur, cur_t):PEN= current_pen, WIDTH=1.5);
+			   LIN_FREE(#9, sur_pts( n_used_curves, point_number),
+			                sur_pts( n_used_curves, point_number) + 
+					   10.0*sur_tanu( n_used_curves, point_number) 
+					   : PEN=current_pen, WIDTH=1.2);
+					   
+		        OPEN(f_d, "A", file_name);
+		
+		        OUTSTR(f_d, "point_number= " + STR(point_number, -1, 0) +
+				            " cur_t= " + STR(cur_t, 5,2));
+		        OUTLIN(f_d);
+		
+		        CLOSE(f_d);
+			ENDIF;
+			
+		ENDFOR;
+	
+	ENDFOR;
+	
+    SUR_SPLARR(#1, "ZEROTWIST_1", n_used_curves, 13, sur_pts : BLANK= b_val_sur, PEN=3);
+	
+	! TODO Save
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

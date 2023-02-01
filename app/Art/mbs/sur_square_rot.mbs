@@ -1,0 +1,166 @@
+!********************* sur_square_rot ***********************
+! +++
+!
+! Creates a surface defined by scaling and twisting a square
+!
+! ---
+! Revision history
+! ________________
+!
+! 2023-01-31  Gunnar Liden
+! 
+!*******************************************************
+
+!sdesce Creates a surface defined by scaling and twisting a square
+
+GLOBAL GEOMETRY MODULE sur_square_rot(
+REF    id_corner_cur_one    :=    #0   > "@t8 Curve defining rotation and scaling";
+REF    id_radius_curve      :=    #0   > "@t8 Curve defining the fillet radius";
+FLOAT  surface_height       :=   500.0 > "Surface height";
+INT    sur_case             :=     1   > "Surface case";
+INT    graphic_case         :=     1   > "Eq. 1 Surface Eq. 2 Curves Eq. 4 All");
+
+
+! Internal variables:
+
+FILE       f_d;                    ! Debug file
+CONSTANT INT debug_flag = 1;       ! Eq. 1: Write to debug file
+CONSTANT STRING file_name = "C:\Varkon\app\Art\job\debug\sur_square_rot.txt"; 
+
+INT    b_val_sur;                  ! Blank value surface
+INT    b_val_cur;                  ! Blank value curves
+INT    b_val_lin;                  ! Blank value lines
+INT    b_val_poi;                  ! Blank value points
+
+CONSTANT INT n_v = 9;              ! Number of V lines
+FLOAT  cur_params(9);              ! Curve parameter values
+REF    id_limit_curves(9);         ! Ids limit curves
+REF    id_tang_curves(9);          ! Ids tangent curves
+REF    id_spine;                   ! Id spine
+
+FLOAT  half_square;                ! Half width end square defined by id_corner_cur_one
+VECTOR poi_end_corner_cur;         ! End point of the curve id_corner_cur_one
+VECTOR poi_start_corner_cur;       ! Start point of the curve id_corner_cur_one
+FLOAT  cur_t;                      ! Curve parameter value
+
+CONSTANT INT n_spline = 50;        ! Number of points in splined curve
+VECTOR cur_pts(50);                ! Spline curve points
+FLOAT  delta_arcl;                 ! Delta arc length
+FLOAT  current_arcl;               ! Delta arc length
+INT    point_number;               ! Loop variable point
+FLOAT  delta_height;               ! Delta surface height
+FLOAT  current_height;             ! Current height
+VECTOR poi_current;                ! Current point
+
+CONSTANT INT n_sections = 0;       ! Number of section (U patches)
+
+REF    id_corner_cur_two;          ! Curve 2 defining rotation and scaling
+REF    id_corner_cur_three;        ! Curve 3 defining rotation and scaling
+REF    id_corner_cur_four;         ! Curve 4 defining rotation and scaling
+
+BEGINMODULE
+	
+	IF debug_flag = 1 THEN
+		OPEN(f_d, "W", file_name);
+		
+		OUTSTR(f_d, "Debug sur_square_rot.MBS");
+		OUTLIN(f_d);
+		
+		CLOSE(f_d);
+	ENDIF;
+		
+	! Set blank values
+	IF     graphic_case = 0 THEN
+	  b_val_sur := 1;
+	  b_val_cur := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ELIF     graphic_case = 1 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 2 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ELIF   graphic_case = 3 THEN
+	  b_val_sur := 0;
+	  b_val_cur := 0;
+	  b_val_lin := 0;
+	  b_val_poi := 0;
+	ELSE
+	  b_val_sur := 0;
+	  b_val_cur := 1;
+	  b_val_lin := 1;
+	  b_val_poi := 1;
+	ENDIF;
+	
+!   Get half width of the square 
+
+	cur_t := INV_ARCL(id_corner_cur_one, ARCL(id_corner_cur_one));
+	
+	poi_end_corner_cur := ON(id_corner_cur_one, cur_t);
+	
+	half_square := ABS(poi_end_corner_cur.x);
+	
+	IF ABS(ABS(poi_end_corner_cur.x) - ABS(poi_end_corner_cur.y)) > 0.01 THEN
+	    EXIT("sur_square_rot X and Y for end point rotate - scale curve must be equal");
+	ENDIF;
+	
+	poi_start_corner_cur := ON(id_corner_cur_one, 0.0);
+	
+	IF  VECL(poi_start_corner_cur)  > 0.01 THEN
+	    EXIT("sur_square_rot Start point rotate - scale curve must be the origin");
+	ENDIF;
+	
+!   Create the 3 D tangent curves
+
+    delta_arcl := ARCL(id_corner_cur_one)/(n_spline - 1);
+	
+	delta_height := surface_height/(n_spline - 1);
+	
+	FOR point_number := 1 TO n_spline DO
+	
+	    current_arcl := (point_number - 1)*delta_arcl;
+		
+		current_height := (point_number - 1)*delta_height;
+		
+		cur_t := INV_ARCL(id_corner_cur_one, current_arcl);
+		
+		poi_current := ON(id_corner_cur_one, cur_t);
+		
+		poi_current.z := current_height;
+		
+		cur_pts(point_number) := poi_current;
+	
+	ENDFOR;
+	
+	CUR_SPLARR(#2, "CHORD", n_spline, cur_pts : BLANK= b_val_cur, PEN=3);
+	
+
+	TFORM_ROTP(#3, VEC(0.0, 0.0, 0.0), -90.0);
+	
+	TCOPY(#4, #2, #3, 1 :  BLANK= b_val_cur, PEN=3);
+	TCOPY(#5, #4, #3, 1 :  BLANK= b_val_cur, PEN=3);
+	TCOPY(#6, #5, #3, 1 :  BLANK= b_val_cur, PEN=3);
+
+
+	
+	
+ENDMODULE
+
+
+
+
+
+
+
+
+
+
+
+
+
+

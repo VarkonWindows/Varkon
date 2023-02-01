@@ -8,7 +8,7 @@
 ! Revision history
 ! ________________
 !
-! 2023-01-27  Gunnar Liden
+! 2023-01-31  Gunnar Liden
 ! 
 !
 !*******************************************************
@@ -78,21 +78,28 @@ INT    n_u_curves;                 ! Number of U curves
 
 ! Data for case rectangle. Set one (1) of variables
 CONSTANT INT n_u_rect_1 = 21;     ! Number of U curves
+CONSTANT INT n_u_rect_2 = 11;     ! Number of U curves
+CONSTANT INT n_u_rect_3 = 6;     ! Number of U curves
 
 REF    id_curves(101);             ! References to section curves
 
 FLOAT  rel_arclength;              ! Relative arclength 0.0 - 1.0
+REF    id_upper_corner_curve;	   ! Id of the upper corner curve
+REF    id_radius_curve;            ! Id fillet radius curve
 FLOAT  width_rectangle;            ! Rectangle width
 FLOAT  height_rectangle;           ! Rectangle height
-FLOAT  fillet_radius;              ! Fillet radius";
-FLOAT  scale_profile;              ! Profile scale";
-FLOAT  rotation_profile;           ! Profile rotation
+FLOAT  fillet_radius;              ! Fillet radius
+FLOAT  rotation_angle;             ! Profile rotation
 INT    n_pts_approx;               ! Number of approximation points
 
 INT    n_sur_comp;                 ! Number of concatenated surfaces
 REF    id_sur_comp;                ! Reference to current surface
 REF    id_prev_sur_comp;           ! Reference to previous created surface
 INT    surface_number;             ! Loop variable surface
+
+CONSTANT FLOAT surface_height = 500.0; ! Surface height";
+CONSTANT INT sur_case         =   1;   ! Surface case
+CONSTANT INT graphic_case_sur =   2;   ! Graphic sur_square_rot
 
 CONSTANT FLOAT pixel_scale = 1.33; ! Correction for screen 2560 X 1440
 !CONSTANT FLOAT pixel_scale = 1.00; ! QQQQQQQQQQQQQQQQQQQQ
@@ -103,6 +110,13 @@ BEGINMODULE
 	
 	IF profile_str = "rect"  AND set_profile = 1 THEN
 	    n_u_curves := n_u_rect_1;
+		
+	ELIF profile_str = "rect"  AND set_profile = 2 THEN
+	    n_u_curves := n_u_rect_2;
+		
+	ELIF profile_str = "rect"  AND set_profile = 3 THEN
+	    n_u_curves := n_u_rect_3;
+		
 	ELSE
 	    EXIT("sur_profile Profile " + profile_str + 
 		  " Number " + STR(set_profile, -1, 0) + " is not implemented");
@@ -126,7 +140,7 @@ BEGINMODULE
 	  b_val_poi := 1;
 	ELIF     graphic_case = 1 THEN
 	  b_val_sur := 0;
-	  b_val_cur := 1;
+	  b_val_cur := 0;
 	  b_val_poi := 1;
 	ELIF   graphic_case = 2 THEN
 	  b_val_sur := 0;
@@ -223,9 +237,11 @@ BEGINMODULE
 		IF rel_arclength > 1.0 THEN
 		    rel_arclength := 1.0; ! Epsilon error
 		ENDIF;
-		
-		PART(#4, rectangle_data(set_profile, rel_arclength, width_rectangle, height_rectangle,
-		         fillet_radius, scale_profile, rotation_profile, n_pts_approx, 2));
+
+		PART(#4, rectangle_data(set_profile, rel_arclength, 
+		id_upper_corner_curve, id_radius_curve, 
+		         width_rectangle, height_rectangle,
+		         fillet_radius, rotation_angle, n_pts_approx, 2));
 				 
         IF debug_flag = 1 THEN
 		
@@ -240,9 +256,7 @@ BEGINMODULE
 		
 		    OUTSTR(f_d, "fillet_radius     " + STR(fillet_radius, 12, 6));
 		    OUTLIN(f_d);
-		    OUTSTR(f_d, "scale_profile     " + STR(scale_profile, 12, 6));
-		    OUTLIN(f_d);	
-		    OUTSTR(f_d, "rotation_profile  " + STR(rotation_profile, 12, 6));
+		    OUTSTR(f_d, "rotation_angle    " + STR(rotation_angle, 12, 6));
 		    OUTLIN(f_d);
 		
 		    OUTSTR(f_d, "n_pts_approx      " + STR(n_pts_approx, 12, 0));
@@ -252,7 +266,7 @@ BEGINMODULE
 	    ENDIF;
 				 
 		PART(#5, profile_rectangle(width_rectangle, height_rectangle,
-		         fillet_radius, scale_profile, rotation_profile, n_pts_approx, 2));
+		         fillet_radius, rotation_angle, n_pts_approx, 2));
 				 
 	    ref_cur_str := "#5.1#1.1"; ! or #5.1#20.1
 		id_profile := RVAL(ref_cur_str);
@@ -265,10 +279,14 @@ BEGINMODULE
 		
 		id_curves(curve_number) :=   GLOBAL_REF(RVAL("#8." + STR(curve_number, -1, 0))); 
 		
+		!POI_FREE(#21, ON(id_curves(curve_number), 6.0));
+		!POI_FREE(#22, ON(id_curves(curve_number), 7.0));
+		!CUR_TRIM(#31, id_curves(curve_number), 6.00001, 6.99999: PEN=2);
+		
 		! Delete the curves coordinate system (otherwise #2.1, #2.2, ...)
 		DEL(#2);
 		DEL(#3);
-		DEL(#4);
+		!DEL(#4);
 		DEL(#5);
 		DEL(#6);
 		DEL(#7);
@@ -276,9 +294,13 @@ BEGINMODULE
     ENDFOR;		
 	
 !   Create the surface
-    PART(#1, sur_profile_exp(n_u_curves, id_curves, sur_file_name, graphic_case));
-
+    !PART(#1, sur_profile_exp(n_u_curves, id_curves, sur_file_name, "LOFT", graphic_case));
 	
+	PART(#1, sur_square_rot(id_upper_corner_curve, 
+	                        id_radius_curve, surface_height, 
+	                        sur_case, graphic_case_sur));
+
+
 ENDMODULE
 
 
